@@ -91,12 +91,6 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         label: "Tags",
         icon: Tag,
         description: "Marcadores livres para classificar contatos.",
-        phase: "Fase 1",
-        planned: [
-          "Criar, renomear e escolher cor",
-          "Aplicar em contatos e filtrar a lista por elas",
-          "Mesclar duas tags que viraram a mesma coisa",
-        ],
       },
     ],
   },

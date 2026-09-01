@@ -6,6 +6,7 @@ import { ALL_SECTIONS, findSection } from "@/features/settings/sections";
 import { createClient } from "@/lib/supabase/server";
 
 import { StagesEditor } from "./stages-editor";
+import { TagsEditor } from "./tags-editor";
 
 export function generateStaticParams() {
   return ALL_SECTIONS.map((s) => ({ section: s.slug }));
@@ -107,6 +108,28 @@ async function StagesSection() {
   return <StagesEditor pipelineId={pipeline.id} stages={stages} />;
 }
 
+/** Tags da organização, com quantos contatos usam cada uma. */
+async function TagsSection() {
+  const supabase = await createClient();
+
+  const [{ data: tagsData }, { data: assignments }] = await Promise.all([
+    supabase.from("tags").select("id, name, color").order("name"),
+    supabase.from("person_tags").select("tag_id"),
+  ]);
+
+  const counts = new Map<string, number>();
+  for (const row of assignments ?? []) {
+    counts.set(row.tag_id, (counts.get(row.tag_id) ?? 0) + 1);
+  }
+
+  const tags = (tagsData ?? []).map((t) => ({
+    ...t,
+    person_count: counts.get(t.id) ?? 0,
+  }));
+
+  return <TagsEditor tags={tags} />;
+}
+
 /** Seção ainda sem conteúdo: diz o que vai ter e em que fase. */
 function PlannedSection({
   phase,
@@ -158,6 +181,8 @@ export default async function SettingsSectionPage({
         <GeneralSection />
       ) : found.slug === "etapas-do-funil" ? (
         <StagesSection />
+      ) : found.slug === "tags" ? (
+        <TagsSection />
       ) : (
         <PlannedSection phase={found.phase} planned={found.planned} />
       )}
