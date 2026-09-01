@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Mail, MessageCircle, Phone } from "lucide-react";
+import { ArrowLeft, Mail, Phone } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,7 +67,6 @@ export default async function PersonPage({
   const phone = person.phone
     ? `${person.phone_country_code ?? ""} ${person.phone}`.trim()
     : null;
-  const waDigits = `${person.phone_country_code ?? ""}${person.phone ?? ""}`.replace(/\D/g, "");
 
   return (
     <main className="space-y-6 p-6">
@@ -113,17 +112,6 @@ export default async function PersonPage({
             <div className="flex items-center gap-2">
               <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span>{phone ?? "—"}</span>
-              {waDigits.length >= 10 ? (
-                <a
-                  href={`https://wa.me/${waDigits}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-green-600 hover:underline"
-                  aria-label="Abrir WhatsApp"
-                >
-                  <MessageCircle className="h-4 w-4" />
-                </a>
-              ) : null}
             </div>
             <div className="flex items-center gap-2">
               <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
