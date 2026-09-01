@@ -123,6 +123,61 @@ function addressFrom(src) {
 const hasAddress = (a) => Object.values(a).some((v) => v !== null);
 
 /**
+ * Molde canônico de uma pessoa.
+ *
+ * Toda linha enviada precisa ter EXATAMENTE estas chaves. O PostgREST recusa
+ * inserção em lote quando os objetos têm formatos diferentes:
+ *
+ *   PGRST102 — All object keys must match
+ *
+ * E as três origens produzem formatos diferentes por natureza: contato traz
+ * endereço, lead não traz, cliente traz documentos. Normalizar contra o molde
+ * resolve na saída, sem espalhar campos nulos pela lógica de fusão.
+ */
+const PERSON_TEMPLATE = {
+  legacy_id: null,
+  full_name: null,
+  email: null,
+  phone: null,
+  phone_country_code: null,
+  extra_phones: [],
+  company: null,
+  job_title: null,
+  gender: null,
+  notes: null,
+  tax_id: null,
+  national_id: null,
+  national_id_issuer: null,
+  birth_date: null,
+  nationality: null,
+  birthplace: null,
+  marital_status: null,
+  address_street: null,
+  address_number: null,
+  address_complement: null,
+  address_district: null,
+  address_city: null,
+  address_state: null,
+  address_country: null,
+  address_postal_code: null,
+  lifecycle_stage: "contact",
+  created_at: null,
+  deleted_at: null,
+};
+
+function normalize(person) {
+  const row = { ...PERSON_TEMPLATE, ...person };
+
+  // Colunas NOT NULL não aceitam nulo explícito, e omiti-las quebraria a
+  // uniformidade de chaves. Então preenchemos aqui.
+  row.extra_phones = Array.isArray(row.extra_phones) ? row.extra_phones : [];
+  row.created_at = row.created_at ?? new Date().toISOString();
+  row.full_name = row.full_name ?? "Sem nome";
+
+  return row;
+}
+
+/**
  * Funde as três origens numa lista de pessoas.
  *
  * A chave de deduplicação é o id do contato. Lead e cliente que apontam para
@@ -228,7 +283,7 @@ function mergePeople({ contacts, leads, clients }) {
     }
   }
 
-  return [...byKey.values()];
+  return [...byKey.values()].map(normalize);
 }
 
 // ------------------------------------------------------------------ execução
@@ -278,6 +333,21 @@ async function main() {
   console.log(`  oportunidades..... ${byStage.opportunity ?? 0}`);
   console.log(`  clientes.......... ${byStage.client ?? 0}`);
   console.log(`  duplicatas evitadas: ${contacts.length + leads.length + clients.length - people.length}`);
+
+  // Confere o que já quebrou uma vez: se as linhas não tiverem exatamente o
+  // mesmo conjunto de chaves, o PostgREST recusa o lote inteiro com PGRST102.
+  // Melhor descobrir aqui do que no meio da gravação.
+  const signatures = new Set(
+    people.map((p) => Object.keys(p).sort().join("|")),
+  );
+  console.log(`\nFormatos distintos de linha: ${signatures.size}`);
+  if (signatures.size !== 1) {
+    console.error(
+      "As linhas não têm o mesmo conjunto de chaves. A gravação em lote " +
+        "falharia com PGRST102. Abortando antes de tocar no banco.",
+    );
+    process.exit(1);
+  }
 
   if (DRY_RUN) {
     console.log("\nSimulação: nada foi gravado. Rode sem --dry-run para aplicar.");
