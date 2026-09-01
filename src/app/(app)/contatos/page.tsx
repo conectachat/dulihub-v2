@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Briefcase, MessageCircle, RotateCcw, Trash2 } from "lucide-react";
+import { Briefcase, RotateCcw, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,12 +31,6 @@ function initials(name: string) {
 function fullPhone(ddi: string | null, phone: string | null) {
   if (!phone) return null;
   return ddi ? `${ddi} ${phone}` : phone;
-}
-
-/** Link de WhatsApp aceita só dígitos. */
-function whatsappHref(ddi: string | null, phone: string | null) {
-  const digits = `${ddi ?? ""}${phone ?? ""}`.replace(/\D/g, "");
-  return digits.length >= 10 ? `https://wa.me/${digits}` : null;
 }
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
@@ -111,7 +105,6 @@ export default async function ContatosPage({
             <TableBody>
               {people.map((person) => {
                 const phone = fullPhone(person.phone_country_code, person.phone);
-                const wa = whatsappHref(person.phone_country_code, person.phone);
 
                 return (
                   <TableRow key={person.id}>
@@ -169,22 +162,6 @@ export default async function ContatosPage({
                             </span>
                           ) : null}
                         </Link>
-
-                        {wa ? (
-                          <a
-                            href={wa}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-green-600 hover:bg-accent"
-                            aria-label={`WhatsApp de ${person.full_name}`}
-                          >
-                            <MessageCircle className="h-4 w-4" />
-                          </a>
-                        ) : (
-                          <span className="inline-flex h-9 w-9 items-center justify-center text-muted-foreground/30">
-                            <MessageCircle className="h-4 w-4" />
-                          </span>
-                        )}
 
                         <PersonDialog person={person} />
 
