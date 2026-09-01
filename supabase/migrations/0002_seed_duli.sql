@@ -4,9 +4,8 @@
 -- Rodar DEPOIS de:
 --   1. aplicar 0001_core.sql
 --   2. criar o usuário no painel: Authentication > Users > Add user
+--      email: rdrumond@duliconsulting.com
 --      (o gatilho on_auth_user_created cria o profile sozinho)
---
--- ANTES DE RODAR: troque o email abaixo pelo seu.
 -- =============================================================================
 
 -- Organização raiz. Só pode existir uma — o índice parcial
@@ -23,14 +22,13 @@ values (
 on conflict (slug) do nothing;
 
 -- Vincula o usuário criado no painel como owner da Duli.
--- >>> TROQUE O EMAIL ABAIXO <<<
 insert into organization_members (organization_id, user_id, role)
 select
   (select id from organizations where slug = 'duli'),
   p.id,
   'owner'
 from profiles p
-where p.email = 'TROQUE_PELO_SEU_EMAIL@duliconsulting.com'
+where p.email = 'rdrumond@duliconsulting.com'
 on conflict (organization_id, user_id) do update set role = 'owner';
 
 -- Conferência: deve devolver uma linha com a Duli e o papel owner.
