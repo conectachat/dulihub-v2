@@ -5,6 +5,7 @@ import { getUserContext } from "@/features/organizations/queries";
 import { ALL_SECTIONS, findSection } from "@/features/settings/sections";
 import { createClient } from "@/lib/supabase/server";
 
+import { DocumentTypesEditor } from "./document-types-editor";
 import { StagesEditor } from "./stages-editor";
 import { TagsEditor } from "./tags-editor";
 
@@ -130,6 +131,17 @@ async function TagsSection() {
   return <TagsEditor tags={tags} />;
 }
 
+/** Catálogo de documentos: árvore de grupos, subgrupos e documentos. */
+async function DocumentTypesSection() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("document_types")
+    .select("id, parent_id, name, is_group, position")
+    .order("position");
+
+  return <DocumentTypesEditor nodes={data ?? []} />;
+}
+
 /** Seção ainda sem conteúdo: diz o que vai ter e em que fase. */
 function PlannedSection({
   phase,
@@ -183,6 +195,8 @@ export default async function SettingsSectionPage({
         <StagesSection />
       ) : found.slug === "tags" ? (
         <TagsSection />
+      ) : found.slug === "categorias-de-documento" ? (
+        <DocumentTypesSection />
       ) : (
         <PlannedSection phase={found.phase} planned={found.planned} />
       )}

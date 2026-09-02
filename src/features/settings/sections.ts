@@ -115,13 +115,7 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         slug: "categorias-de-documento",
         label: "Categorias de documento",
         icon: FileStack,
-        description: "Como os documentos do cliente são agrupados e cobrados.",
-        phase: "Fase 2",
-        planned: [
-          "Categorias e subcategorias, com hierarquia",
-          "Marcar quais são obrigatórias",
-          "Prazo limite por categoria",
-        ],
+        description: "Catálogo compartilhado. Cada tipo de visto escolhe daqui o que exige.",
       },
       {
         slug: "status-de-etapas",
