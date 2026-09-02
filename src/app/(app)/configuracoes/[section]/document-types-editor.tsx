@@ -86,6 +86,15 @@ export function DocumentTypesEditor({ nodes }: { nodes: DocNode[] }) {
 
   return (
     <div className="space-y-6">
+      {/*
+        Criar vem antes da lista de propósito: com o catálogo cheio, o campo no
+        fim obrigaria a rolar até embaixo a cada pasta nova.
+      */}
+      <div className="space-y-2 rounded-3xl border border-dashed p-4">
+        <Label className="text-sm font-medium">Nova pasta na raiz</Label>
+        <CreateForm parentId={null} label="Criar" />
+      </div>
+
       {flat.length === 0 ? (
         <EmptyState
           icon={Folder}
@@ -166,11 +175,6 @@ export function DocumentTypesEditor({ nodes }: { nodes: DocNode[] }) {
           })}
         </ul>
       )}
-
-      <div className="space-y-2 rounded-3xl border border-dashed p-4">
-        <Label className="text-sm font-medium">Nova pasta na raiz</Label>
-        <CreateForm parentId={null} label="Criar" />
-      </div>
 
       <p className="text-sm text-muted-foreground">
         Toda pasta recebe arquivos e pode ter subpastas — não é preciso nomear

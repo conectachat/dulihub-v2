@@ -1,0 +1,19 @@
+-- =============================================================================
+-- 0011 — Catálogo de documentos vira árvore de pastas livres
+--
+-- `is_group` era excludente: grupo organizava e não recebia nada; documento
+-- recebia e não podia ter filhos. O Renato precisa das duas coisas no mesmo
+-- nó — "pasta Rendimentos, o cliente sobe o que tiver" — e recusou a ideia de
+-- um interruptor por pasta. Então o conceito some e nada entra no lugar: toda
+-- pasta tem subpasta e recebe arquivo.
+--
+-- Sem `cascade` de propósito. Nada depende desta coluna — conferido em índice,
+-- gatilho, policy, view e função — e se algo inesperado depender, esta
+-- migration deve falhar alto em vez de derrubar aquilo em silêncio.
+--
+-- Aplicada DEPOIS do código que parou de ler a coluna (commit 842984b). Na
+-- ordem inversa o PostgREST erraria, as telas descartam o `error` e mostrariam
+-- "Catálogo vazio" em vez de falha — e a reação natural a isso é recriar as
+-- pastas, duplicando o catálogo.
+-- =============================================================================
+alter table document_types drop column is_group;
