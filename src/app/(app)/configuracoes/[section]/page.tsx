@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, FileStack, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronRight, FileStack } from "lucide-react";
 
+import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { SectionHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -288,36 +289,50 @@ async function VisaTypesSection({ visaId }: { visaId?: string }) {
               key={type.id}
               className="flex flex-wrap items-center gap-3 rounded-2xl border p-3"
             >
-              <Link
-                href={`/configuracoes/tipos-de-visto?visa=${type.id}`}
-                className="min-w-0 flex-1"
-              >
-                <p className="truncate font-medium hover:underline">{type.name}</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">{type.name}</p>
                 <p className="text-xs text-muted-foreground">
                   {stagesByType.get(type.id) ?? 0} etapas ·{" "}
                   {docsByType.get(type.id) ?? 0} documentos
                   {type.estimated_days ? ` · ${type.estimated_days} dias` : ""}
                 </p>
-              </Link>
+              </div>
 
               {!type.is_active ? (
                 <Badge variant="secondary">Inativo</Badge>
               ) : null}
 
+              {/*
+                Botão com rótulo, não o nome virando link: o molde de etapas e
+                documentos é o principal desta tela, e nome sublinhado no hover
+                não anuncia que existe uma tela inteira atrás dele.
+              */}
+              <Button asChild variant="outline" size="sm" className="rounded-xl">
+                <Link href={`/configuracoes/tipos-de-visto?visa=${type.id}`}>
+                  Etapas e documentos
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Link>
+              </Button>
+
               <VisaTypeDialog visaType={type} />
 
-              <form action={deleteVisaType}>
-                <input type="hidden" name="id" value={type.id} />
-                <Button
-                  type="submit"
-                  variant="ghost"
-                  size="icon"
-                  className="text-muted-foreground hover:text-destructive"
-                  aria-label={`Excluir ${type.name}`}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </form>
+              <ConfirmAction
+                action={deleteVisaType}
+                hidden={{ id: type.id }}
+                title={`Excluir o tipo de visto “${type.name}”?`}
+                consequence={`O molde inteiro vai junto: ${
+                  stagesByType.get(type.id) ?? 0
+                } etapas e ${
+                  docsByType.get(type.id) ?? 0
+                } pastas exigidas. Processos já criados a partir dele não são afetados — a cópia dentro do processo é independente. Não dá para desfazer.`}
+                confirmLabel="Excluir o molde"
+                triggerLabel={`Excluir ${type.name}`}
+                needsConfirmation={
+                  (stagesByType.get(type.id) ?? 0) +
+                    (docsByType.get(type.id) ?? 0) >
+                  0
+                }
+              />
             </li>
           ))}
         </ul>
