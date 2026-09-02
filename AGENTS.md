@@ -73,3 +73,16 @@ nunca o hex direto.
 
 `bun run build` e `bun test` passando. Para mudança de schema, o teste de RLS:
 usuário da organização A não enxerga dado da organização B.
+
+## Migrations: arquivo sempre, no mesmo commit
+
+Toda alteração de schema vira arquivo em `supabase/migrations/`, no mesmo commit
+em que é aplicada no banco — inclusive quando aplicada por ferramenta que não
+gera o arquivo sozinha.
+
+Sem isso os arquivos deixam de recriar o banco do zero, e some a possibilidade
+de ambiente de teste, de restauração após acidente, e de outra pessoa começar a
+trabalhar no projeto. É dívida que só aparece no pior momento.
+
+Ver `supabase/migrations/README.md` para o estado atual e o desencontro
+conhecido da 0001/0002.
