@@ -103,13 +103,6 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         icon: Stamp,
         description:
           "Cada tipo de visto define as etapas e os documentos que o processo exige.",
-        phase: "Fase 2",
-        planned: [
-          "Cadastro do tipo de visto (EB-1A, EB-2 NIW, O-1...)",
-          "Modelo de etapas que o processo percorre",
-          "Documentos exigidos por etapa, com prazo",
-          "Ao criar um processo, o modelo é copiado — mudar o modelo depois não altera processos em andamento",
-        ],
       },
       {
         slug: "categorias-de-documento",
