@@ -123,7 +123,7 @@ function StatusRow({
             type="submit"
             variant="ghost"
             size="sm"
-            className="h-8 rounded-xl text-xs text-muted-foreground"
+            className="h-8 rounded-xl text-xs text-primary"
             title="Fazer deste o status de toda etapa nova"
           >
             Tornar padrão
@@ -141,7 +141,7 @@ function StatusRow({
 
       {status.is_system ? (
         <span
-          className="inline-flex h-8 w-8 items-center justify-center text-muted-foreground/50"
+          className="inline-flex h-8 w-8 items-center justify-center text-primary/40"
           title="Status de fábrica: pode ser renomeado e recolorido, não excluído"
         >
           <Lock className="h-3.5 w-3.5" />

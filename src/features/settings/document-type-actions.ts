@@ -37,7 +37,6 @@ export async function createDocumentType(
 
   const rawParent = formData.get("parent_id");
   const parentId = typeof rawParent === "string" && rawParent ? rawParent : null;
-  const isGroup = formData.get("is_group") === "on";
 
   const orgId = await organizationId();
   if (!orgId) return { error: "Sua conta não está vinculada a nenhuma organização." };
@@ -59,7 +58,6 @@ export async function createDocumentType(
     organization_id: orgId,
     parent_id: parentId,
     name: parsed.data,
-    is_group: isGroup,
     position: (siblings?.[0]?.position ?? -1) + 1,
   });
 
@@ -77,28 +75,6 @@ export async function renameDocumentType(formData: FormData): Promise<void> {
   const supabase = await createClient();
   await supabase.from("document_types").update({ name: parsed.data }).eq("id", id);
 
-  revalidatePath(PATH);
-}
-
-/** Alterna entre pasta e documento. */
-export async function toggleGroup(formData: FormData): Promise<void> {
-  const id = formData.get("id");
-  const isGroup = formData.get("is_group") === "true";
-  if (typeof id !== "string") return;
-
-  const supabase = await createClient();
-
-  // Nó com filhos não vira documento: os filhos ficariam pendurados em algo
-  // que a tela trata como folha.
-  if (isGroup) {
-    const { count } = await supabase
-      .from("document_types")
-      .select("id", { count: "exact", head: true })
-      .eq("parent_id", id);
-    if ((count ?? 0) > 0) return;
-  }
-
-  await supabase.from("document_types").update({ is_group: !isGroup }).eq("id", id);
   revalidatePath(PATH);
 }
 

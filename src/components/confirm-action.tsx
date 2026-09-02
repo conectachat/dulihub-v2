@@ -65,7 +65,7 @@ export function ConfirmAction({
           type="submit"
           variant="ghost"
           size={size}
-          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+          className="h-8 w-8 text-primary/60 hover:text-destructive"
           aria-label={triggerLabel}
           disabled={disabled}
           title={disabled ? disabledReason : undefined}
@@ -82,7 +82,7 @@ export function ConfirmAction({
         type="button"
         variant="ghost"
         size={size}
-        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+        className="h-8 w-8 text-primary/60 hover:text-destructive"
         onClick={() => setOpen(true)}
         aria-label={triggerLabel}
         disabled={disabled}

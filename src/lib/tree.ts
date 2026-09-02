@@ -62,7 +62,15 @@ export function flattenTree<T extends TreeNodeBase>(nodes: T[]): Flattened<T>[] 
   return out;
 }
 
-/** Recuo em rem por nível. Um só lugar define o passo da hierarquia. */
+/**
+ * Recuo em rem por nível. Um só lugar define o passo da hierarquia.
+ *
+ * O teto de cinco não é estético: a partir daí o conteúdo da linha sai da tela
+ * no celular. Níveis mais fundos continuam existindo, só param de recuar — a
+ * ordem de leitura já diz onde cada um está.
+ */
+const MAX_INDENT_LEVEL = 5;
+
 export function indentStyle(depth: number) {
-  return { marginLeft: `${depth * 1.5}rem` };
+  return { marginLeft: `${Math.min(depth, MAX_INDENT_LEVEL) * 1.5}rem` };
 }

@@ -52,7 +52,12 @@ export function VisaTypeDialog({ visaType }: { visaType?: VisaTypeForm }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {isEdit ? (
-          <Button variant="ghost" size="icon" aria-label={`Editar ${visaType!.name}`}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-primary"
+            aria-label={`Editar ${visaType!.name}`}
+          >
             <Pencil className="h-4 w-4" />
           </Button>
         ) : (

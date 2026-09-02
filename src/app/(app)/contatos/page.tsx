@@ -157,12 +157,12 @@ export default async function ContatosPage({
                       <div className="flex items-center justify-end gap-1">
                         <Link
                           href={`/contatos/${person.id}`}
-                          className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent"
+                          className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl text-primary hover:bg-accent"
                           aria-label={`${person.opportunity_count} oportunidade(s) de ${person.full_name}`}
                         >
                           <Briefcase className="h-4 w-4" />
                           {person.opportunity_count > 0 ? (
-                            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
+                            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-medium text-brand-foreground">
                               {person.opportunity_count}
                             </span>
                           ) : null}
@@ -177,6 +177,7 @@ export default async function ContatosPage({
                               type="submit"
                               variant="ghost"
                               size="icon"
+                              className="text-primary"
                               aria-label={`Restaurar ${person.full_name}`}
                             >
                               <RotateCcw className="h-4 w-4" />
@@ -189,7 +190,7 @@ export default async function ContatosPage({
                               type="submit"
                               variant="ghost"
                               size="icon"
-                              className="text-destructive hover:text-destructive"
+                              className="text-primary/60 hover:text-destructive"
                               aria-label={`Excluir ${person.full_name}`}
                             >
                               <Trash2 className="h-4 w-4" />

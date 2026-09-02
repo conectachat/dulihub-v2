@@ -110,6 +110,21 @@ volta limpo, campo e estado local junto. Ver
 ainda aparecem dentro de `src/components/ui/`, que é código gerado pelo
 shadcn e não se edita à mão.
 
+### Cor de botão e ícone
+
+Nada de ícone de ação em cinza — foi o que fez a tela inteira parecer desligada.
+
+| Elemento | Cor |
+|---|---|
+| Ação primária, selo de estado | `bg-primary` cheio |
+| Ícone de navegação e edição — subir, descer, `+`, lápis, restaurar | `text-primary` |
+| Ícone de pasta, contador, indicador de atenção | `text-brand` / `bg-brand` |
+| Excluir | `text-primary/60`, virando `hover:text-destructive` |
+
+Excluir fica discreto até o mouse chegar de propósito: botão vermelho
+permanente convida ao clique acidental. O laranja é reservado ao que chama
+atenção — não vira cor de moldura nem de fundo de bloco.
+
 ### Cor vem de token, sempre
 
 Nada de `bg-emerald-500`, `text-slate-600` e afins: a paleta do Tailwind não é

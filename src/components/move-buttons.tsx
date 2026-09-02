@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 /**
  * Botões de subir e descer, para reordenar entre irmãos.
  *
+ * Navy, como todo ícone de ação nesta base — cinza fazia a tela inteira parecer
+ * desligada. Desabilitado o `Button` já esmaece sozinho.
+ *
  * Substitui arrastar-e-soltar em toda a base, e é escolha, não limitação:
  * funciona no celular, no teclado e no leitor de tela, sem depender de
  * biblioteca. Numa árvore o arrastar é ainda pior — soltar entre dois níveis é
@@ -39,7 +42,7 @@ export function MoveButtons({
           type="submit"
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-8 w-8 text-primary"
           disabled={isFirst}
           aria-label={`Subir ${label}`}
         >
@@ -54,7 +57,7 @@ export function MoveButtons({
           type="submit"
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-8 w-8 text-primary"
           disabled={isLast}
           aria-label={`Descer ${label}`}
         >

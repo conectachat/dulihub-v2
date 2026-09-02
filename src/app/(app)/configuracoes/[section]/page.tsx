@@ -147,7 +147,7 @@ async function DocumentTypesSection() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("document_types")
-    .select("id, parent_id, name, is_group, position")
+    .select("id, parent_id, name, position")
     .order("position");
 
   return <DocumentTypesEditor nodes={data ?? []} />;
@@ -185,7 +185,7 @@ async function VisaTypesSection({ visaId }: { visaId?: string }) {
           .order("position"),
         supabase
           .from("document_types")
-          .select("id, parent_id, name, is_group, position")
+          .select("id, parent_id, name, position")
           .order("position"),
         supabase
           .from("visa_type_documents")

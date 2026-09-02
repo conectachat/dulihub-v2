@@ -98,7 +98,7 @@ export function StagesEditor({
               <div className="flex shrink-0 items-center gap-0.5">
                 {terminal ? (
                   <span
-                    className="inline-flex h-8 w-8 items-center justify-center text-muted-foreground/50"
+                    className="inline-flex h-8 w-8 items-center justify-center text-primary/40"
                     title="Etapa de encerramento: pode ser renomeada, não excluída"
                   >
                     <Lock className="h-3.5 w-3.5" />
