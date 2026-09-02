@@ -2,17 +2,12 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Tag as TagIcon } from "lucide-react";
 
+import { ConfirmAction } from "@/components/confirm-action";
+import { EmptyState } from "@/components/empty-state";
+import { InlineText } from "@/components/inline-text";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   createTag,
@@ -80,30 +75,23 @@ function CreateButton() {
 
 /** Nome e cor salvam sozinhos: nome ao sair do campo, cor ao escolher. */
 function TagRow({ tag }: { tag: Tag }) {
-  const nameFormRef = useRef<HTMLFormElement>(null);
   const colorFormRef = useRef<HTMLFormElement>(null);
   const [color, setColor] = useState(tag.color ?? FALLBACK_COLOR);
-  const [confirming, setConfirming] = useState(false);
 
-  const inUse = tag.person_count > 0;
+  const affected =
+    tag.person_count === 1 ? "1 contato" : `${tag.person_count} contatos`;
 
   return (
     <li className="flex flex-wrap items-center gap-3 rounded-2xl border p-3">
-      <form ref={nameFormRef} action={updateTag} className="min-w-40 flex-1">
-        <input type="hidden" name="id" value={tag.id} />
-        <input type="hidden" name="color" value={color} />
-        <Input
-          name="name"
-          defaultValue={tag.name}
-          aria-label={`Nome da tag ${tag.name}`}
-          onBlur={(e) => {
-            if (e.target.value.trim() && e.target.value !== tag.name) {
-              nameFormRef.current?.requestSubmit();
-            }
-          }}
-          className="h-9 rounded-xl"
-        />
-      </form>
+      {/* A cor viaja junto no rename para não ser apagada pela atualização. */}
+      <InlineText
+        action={updateTag}
+        name="name"
+        value={tag.name}
+        hidden={{ id: tag.id, color }}
+        label={`Nome da tag ${tag.name}`}
+        className="min-w-40 flex-1"
+      />
 
       <form ref={colorFormRef} action={updateTag}>
         <input type="hidden" name="id" value={tag.id} />
@@ -120,64 +108,18 @@ function TagRow({ tag }: { tag: Tag }) {
       </form>
 
       <span className="w-24 shrink-0 text-right text-xs text-muted-foreground">
-        {tag.person_count === 1 ? "1 contato" : `${tag.person_count} contatos`}
+        {affected}
       </span>
 
-      {inUse ? (
-        <>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
-            onClick={() => setConfirming(true)}
-            aria-label={`Excluir ${tag.name}`}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-
-          <Dialog open={confirming} onOpenChange={setConfirming}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Excluir a tag “{tag.name}”?</DialogTitle>
-                <DialogDescription>
-                  Ela será removida de {tag.person_count}{" "}
-                  {tag.person_count === 1 ? "contato" : "contatos"}. Os contatos
-                  permanecem — perdem só esta marcação. Não dá para desfazer.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setConfirming(false)}
-                >
-                  Cancelar
-                </Button>
-                <form action={deleteTag}>
-                  <input type="hidden" name="id" value={tag.id} />
-                  <Button type="submit" variant="destructive">
-                    Excluir mesmo assim
-                  </Button>
-                </form>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </>
-      ) : (
-        <form action={deleteTag}>
-          <input type="hidden" name="id" value={tag.id} />
-          <Button
-            type="submit"
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
-            aria-label={`Excluir ${tag.name}`}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </form>
-      )}
+      <ConfirmAction
+        action={deleteTag}
+        hidden={{ id: tag.id }}
+        title={`Excluir a tag “${tag.name}”?`}
+        consequence={`Ela será removida de ${affected}. Os contatos permanecem — perdem só esta marcação. Não dá para desfazer.`}
+        confirmLabel="Excluir mesmo assim"
+        triggerLabel={`Excluir ${tag.name}`}
+        needsConfirmation={tag.person_count > 0}
+      />
     </li>
   );
 }
@@ -197,9 +139,11 @@ export function TagsEditor({ tags }: { tags: Tag[] }) {
   return (
     <div className="space-y-6">
       {tags.length === 0 ? (
-        <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-          Nenhuma tag ainda. Crie a primeira abaixo.
-        </p>
+        <EmptyState
+          icon={TagIcon}
+          title="Nenhuma tag ainda"
+          hint="Crie a primeira abaixo."
+        />
       ) : (
         <ul className="space-y-2">
           {tags.map((tag) => (
@@ -211,7 +155,7 @@ export function TagsEditor({ tags }: { tags: Tag[] }) {
       <form
         ref={formRef}
         action={formAction}
-        className="space-y-3 rounded-2xl border border-dashed p-4"
+        className="space-y-3 rounded-3xl border border-dashed p-4"
       >
         <div className="space-y-1">
           <label htmlFor="new-tag" className="text-sm font-medium">

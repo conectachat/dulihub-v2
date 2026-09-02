@@ -31,6 +31,8 @@ export function ConfirmAction({
   confirmLabel = "Excluir",
   triggerLabel,
   needsConfirmation = true,
+  disabled = false,
+  disabledReason,
   icon: Icon = Trash2,
   size = "icon",
 }: {
@@ -42,6 +44,10 @@ export function ConfirmAction({
   /** Rótulo para leitor de tela. */
   triggerLabel: string;
   needsConfirmation?: boolean;
+  /** Impede a ação sem escondê-la — a pessoa vê que existe e por que não pode. */
+  disabled?: boolean;
+  /** Explica o bloqueio ao passar o mouse. Obrigatório quando `disabled`. */
+  disabledReason?: string;
   icon?: React.ComponentType<{ className?: string }>;
   size?: "icon" | "sm";
 }) {
@@ -61,6 +67,8 @@ export function ConfirmAction({
           size={size}
           className="h-8 w-8 text-muted-foreground hover:text-destructive"
           aria-label={triggerLabel}
+          disabled={disabled}
+          title={disabled ? disabledReason : undefined}
         >
           <Icon className="h-4 w-4" />
         </Button>
@@ -77,6 +85,8 @@ export function ConfirmAction({
         className="h-8 w-8 text-muted-foreground hover:text-destructive"
         onClick={() => setOpen(true)}
         aria-label={triggerLabel}
+        disabled={disabled}
+        title={disabled ? disabledReason : undefined}
       >
         <Icon className="h-4 w-4" />
       </Button>

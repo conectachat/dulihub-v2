@@ -30,7 +30,7 @@ export function MoveCard({
         defaultValue={currentStageId}
         onChange={() => formRef.current?.requestSubmit()}
         aria-label="Mover para outra etapa"
-        className="w-full rounded-lg border-0 bg-muted px-2 py-1 text-xs text-muted-foreground"
+        className="w-full rounded-xl border-0 bg-muted px-2 py-1 text-xs text-muted-foreground"
       >
         {stages.map((s) => (
           <option key={s.id} value={s.id}>

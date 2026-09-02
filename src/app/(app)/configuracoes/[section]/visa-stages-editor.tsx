@@ -2,8 +2,12 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
+import { ListChecks, Plus } from "lucide-react";
 
+import { ConfirmAction } from "@/components/confirm-action";
+import { EmptyState } from "@/components/empty-state";
+import { InlineText } from "@/components/inline-text";
+import { MoveButtons } from "@/components/move-buttons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,6 +17,7 @@ import {
   updateVisaStage,
   type VisaState,
 } from "@/features/settings/visa-type-actions";
+import { flattenTree, indentStyle } from "@/lib/tree";
 
 export type StageNode = {
   id: string;
@@ -23,44 +28,7 @@ export type StageNode = {
   estimated_days: number | null;
 };
 
-type FlatStage = StageNode & {
-  depth: number;
-  isFirst: boolean;
-  isLast: boolean;
-  descendants: number;
-};
-
 const initialState: VisaState = { error: null };
-
-function flatten(nodes: StageNode[]): FlatStage[] {
-  const byParent = new Map<string | null, StageNode[]>();
-  for (const node of nodes) {
-    const list = byParent.get(node.parent_id) ?? [];
-    list.push(node);
-    byParent.set(node.parent_id, list);
-  }
-  for (const list of byParent.values()) list.sort((a, b) => a.position - b.position);
-
-  const count = (id: string): number =>
-    (byParent.get(id) ?? []).reduce((sum, c) => sum + 1 + count(c.id), 0);
-
-  const out: FlatStage[] = [];
-  const walk = (parentId: string | null, depth: number) => {
-    const siblings = byParent.get(parentId) ?? [];
-    siblings.forEach((node, i) => {
-      out.push({
-        ...node,
-        depth,
-        isFirst: i === 0,
-        isLast: i === siblings.length - 1,
-        descendants: count(node.id),
-      });
-      walk(node.id, depth + 1);
-    });
-  };
-  walk(null, 0);
-  return out;
-}
 
 function AddButton() {
   const { pending } = useFormStatus();
@@ -120,47 +88,6 @@ function CreateStageForm({
   );
 }
 
-/** Nome e prazo salvam ao sair do campo. */
-function StageFields({ stage }: { stage: FlatStage }) {
-  const nameRef = useRef<HTMLFormElement>(null);
-  const daysRef = useRef<HTMLFormElement>(null);
-
-  return (
-    <>
-      <form ref={nameRef} action={updateVisaStage} className="min-w-0 flex-1">
-        <input type="hidden" name="id" value={stage.id} />
-        <Input
-          name="name"
-          defaultValue={stage.name}
-          aria-label={`Nome da etapa ${stage.name}`}
-          onBlur={(e) => {
-            if (e.target.value.trim() && e.target.value !== stage.name) {
-              nameRef.current?.requestSubmit();
-            }
-          }}
-          className="h-8 rounded-xl border-0 bg-transparent px-2 hover:bg-muted focus-visible:bg-background"
-        />
-      </form>
-
-      <form ref={daysRef} action={updateVisaStage}>
-        <input type="hidden" name="id" value={stage.id} />
-        <Input
-          name="estimated_days"
-          inputMode="numeric"
-          placeholder="dias"
-          defaultValue={stage.estimated_days?.toString() ?? ""}
-          aria-label={`Prazo de ${stage.name} em dias`}
-          onBlur={(e) => {
-            const current = stage.estimated_days?.toString() ?? "";
-            if (e.target.value !== current) daysRef.current?.requestSubmit();
-          }}
-          className="h-8 w-16 rounded-xl text-center text-xs"
-        />
-      </form>
-    </>
-  );
-}
-
 export function VisaStagesEditor({
   visaTypeId,
   stages,
@@ -168,24 +95,45 @@ export function VisaStagesEditor({
   visaTypeId: string;
   stages: StageNode[];
 }) {
-  const flat = flatten(stages);
+  const flat = flattenTree(stages);
   const [addingTo, setAddingTo] = useState<string | null>(null);
 
   return (
     <div className="space-y-5">
       {flat.length === 0 ? (
-        <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-          Nenhuma etapa ainda. A primeira costuma ser a de coleta de documentos.
-        </p>
+        <EmptyState
+          icon={ListChecks}
+          title="Nenhuma etapa ainda"
+          hint="A primeira costuma ser a de coleta de documentos."
+        />
       ) : (
         <ul className="space-y-1">
           {flat.map((stage) => (
             <li key={stage.id}>
               <div
-                className="flex items-center gap-1 rounded-xl border px-2 py-1"
-                style={{ marginLeft: `${stage.depth * 1.5}rem` }}
+                className="flex items-center gap-1 rounded-2xl border px-2 py-1"
+                style={indentStyle(stage.depth)}
               >
-                <StageFields stage={stage} />
+                <InlineText
+                  action={updateVisaStage}
+                  name="name"
+                  value={stage.name}
+                  hidden={{ id: stage.id }}
+                  label={`Nome da etapa ${stage.name}`}
+                  className="flex-1"
+                />
+
+                <InlineText
+                  action={updateVisaStage}
+                  name="estimated_days"
+                  value={stage.estimated_days?.toString() ?? ""}
+                  hidden={{ id: stage.id }}
+                  label={`Prazo de ${stage.name} em dias`}
+                  placeholder="dias"
+                  inputMode="numeric"
+                  required={false}
+                  className="w-16 shrink-0"
+                />
 
                 <form action={updateVisaStage}>
                   <input type="hidden" name="id" value={stage.id} />
@@ -217,58 +165,29 @@ export function VisaStagesEditor({
                   <Plus className="h-4 w-4" />
                 </Button>
 
-                <form action={moveVisaStage}>
-                  <input type="hidden" name="id" value={stage.id} />
-                  <input type="hidden" name="direction" value="up" />
-                  <Button
-                    type="submit"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    disabled={stage.isFirst}
-                    aria-label={`Subir ${stage.name}`}
-                  >
-                    <ChevronUp className="h-4 w-4" />
-                  </Button>
-                </form>
+                <MoveButtons
+                  action={moveVisaStage}
+                  hidden={{ id: stage.id }}
+                  label={stage.name}
+                  isFirst={stage.isFirst}
+                  isLast={stage.isLast}
+                />
 
-                <form action={moveVisaStage}>
-                  <input type="hidden" name="id" value={stage.id} />
-                  <input type="hidden" name="direction" value="down" />
-                  <Button
-                    type="submit"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    disabled={stage.isLast}
-                    aria-label={`Descer ${stage.name}`}
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </form>
-
-                <form action={deleteVisaStage}>
-                  <input type="hidden" name="id" value={stage.id} />
-                  <Button
-                    type="submit"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    aria-label={`Excluir ${stage.name}${
-                      stage.descendants > 0
-                        ? ` e as ${stage.descendants} sub-etapas`
-                        : ""
-                    }`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </form>
+                <ConfirmAction
+                  action={deleteVisaStage}
+                  hidden={{ id: stage.id }}
+                  title={`Excluir “${stage.name}”?`}
+                  consequence={`As ${stage.descendants} sub-etapas dentro dela vão junto. Processos já criados a partir deste molde não são afetados — a cópia dentro do processo é independente.`}
+                  confirmLabel="Excluir tudo"
+                  triggerLabel={`Excluir ${stage.name}`}
+                  needsConfirmation={stage.descendants > 0}
+                />
               </div>
 
               {addingTo === stage.id ? (
                 <div
-                  className="mt-1 rounded-xl border border-dashed p-2"
-                  style={{ marginLeft: `${(stage.depth + 1) * 1.5}rem` }}
+                  className="mt-1 rounded-2xl border border-dashed p-2"
+                  style={indentStyle(stage.depth + 1)}
                 >
                   <CreateStageForm
                     visaTypeId={visaTypeId}
@@ -282,7 +201,7 @@ export function VisaStagesEditor({
         </ul>
       )}
 
-      <div className="space-y-2 rounded-2xl border border-dashed p-4">
+      <div className="space-y-2 rounded-3xl border border-dashed p-4">
         <p className="text-sm font-medium">Nova etapa</p>
         <CreateStageForm visaTypeId={visaTypeId} parentId={null} />
       </div>

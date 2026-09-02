@@ -2,8 +2,11 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
-import { ChevronDown, ChevronUp, Lock, Plus, Trash2 } from "lucide-react";
+import { Lock, Plus } from "lucide-react";
 
+import { ConfirmAction } from "@/components/confirm-action";
+import { InlineText } from "@/components/inline-text";
+import { MoveButtons } from "@/components/move-buttons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,6 +16,7 @@ import {
   renameStage,
   type StageActionState,
 } from "@/features/settings/stage-actions";
+import { cn } from "@/lib/utils";
 
 type Stage = {
   id: string;
@@ -35,28 +39,6 @@ function AddButton() {
   );
 }
 
-/** Salva o novo nome ao sair do campo, se mudou. */
-function StageName({ stage }: { stage: Stage }) {
-  const formRef = useRef<HTMLFormElement>(null);
-
-  return (
-    <form ref={formRef} action={renameStage} className="min-w-0 flex-1">
-      <input type="hidden" name="id" value={stage.id} />
-      <Input
-        name="name"
-        defaultValue={stage.name}
-        aria-label={`Nome da etapa ${stage.name}`}
-        onBlur={(e) => {
-          if (e.target.value.trim() && e.target.value !== stage.name) {
-            formRef.current?.requestSubmit();
-          }
-        }}
-        className="h-9 rounded-xl"
-      />
-    </form>
-  );
-}
-
 export function StagesEditor({
   pipelineId,
   stages,
@@ -71,6 +53,7 @@ export function StagesEditor({
     if (state.ok) addFormRef.current?.reset();
   }, [state.ok]);
 
+  // Ganho e perdido não se movem, então a vizinhança que importa é a do meio.
   const middle = stages.filter((s) => !s.is_won && !s.is_lost);
 
   return (
@@ -78,8 +61,6 @@ export function StagesEditor({
       <ul className="space-y-2">
         {stages.map((stage) => {
           const terminal = stage.is_won || stage.is_lost;
-          const first = middle[0]?.id === stage.id;
-          const last = middle[middle.length - 1]?.id === stage.id;
           const hasCards = stage.opportunity_count > 0;
 
           return (
@@ -88,18 +69,25 @@ export function StagesEditor({
               className="flex items-center gap-2 rounded-2xl border p-2"
             >
               <span
-                className={
-                  "h-2 w-2 shrink-0 rounded-full " +
-                  (stage.is_won
-                    ? "bg-emerald-500"
+                className={cn(
+                  "h-2 w-2 shrink-0 rounded-full",
+                  stage.is_won
+                    ? "bg-success"
                     : stage.is_lost
                       ? "bg-destructive"
-                      : "bg-muted-foreground/40")
-                }
+                      : "bg-muted-foreground/40",
+                )}
                 aria-hidden
               />
 
-              <StageName stage={stage} />
+              <InlineText
+                action={renameStage}
+                name="name"
+                value={stage.name}
+                hidden={{ id: stage.id }}
+                label={`Nome da etapa ${stage.name}`}
+                className="flex-1"
+              />
 
               <span className="w-20 shrink-0 text-right text-xs text-muted-foreground">
                 {stage.opportunity_count === 1
@@ -117,52 +105,22 @@ export function StagesEditor({
                   </span>
                 ) : (
                   <>
-                    <form action={moveStage}>
-                      <input type="hidden" name="id" value={stage.id} />
-                      <input type="hidden" name="direction" value="up" />
-                      <Button
-                        type="submit"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        disabled={first}
-                        aria-label={`Subir ${stage.name}`}
-                      >
-                        <ChevronUp className="h-4 w-4" />
-                      </Button>
-                    </form>
-                    <form action={moveStage}>
-                      <input type="hidden" name="id" value={stage.id} />
-                      <input type="hidden" name="direction" value="down" />
-                      <Button
-                        type="submit"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        disabled={last}
-                        aria-label={`Descer ${stage.name}`}
-                      >
-                        <ChevronDown className="h-4 w-4" />
-                      </Button>
-                    </form>
-                    <form action={deleteStage}>
-                      <input type="hidden" name="id" value={stage.id} />
-                      <Button
-                        type="submit"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                        disabled={hasCards}
-                        title={
-                          hasCards
-                            ? "Mova os negócios desta etapa antes de excluí-la"
-                            : undefined
-                        }
-                        aria-label={`Excluir ${stage.name}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </form>
+                    <MoveButtons
+                      action={moveStage}
+                      hidden={{ id: stage.id }}
+                      label={stage.name}
+                      isFirst={middle[0]?.id === stage.id}
+                      isLast={middle[middle.length - 1]?.id === stage.id}
+                    />
+                    <ConfirmAction
+                      action={deleteStage}
+                      hidden={{ id: stage.id }}
+                      title={`Excluir “${stage.name}”?`}
+                      triggerLabel={`Excluir ${stage.name}`}
+                      needsConfirmation={false}
+                      disabled={hasCards}
+                      disabledReason="Mova os negócios desta etapa antes de excluí-la"
+                    />
                   </>
                 )}
               </div>
@@ -174,7 +132,7 @@ export function StagesEditor({
       <form
         ref={addFormRef}
         action={formAction}
-        className="flex flex-wrap items-end gap-2 rounded-2xl border border-dashed p-3"
+        className="flex flex-wrap items-end gap-2 rounded-3xl border border-dashed p-3"
       >
         <input type="hidden" name="pipeline_id" value={pipelineId} />
         <div className="min-w-48 flex-1 space-y-1">

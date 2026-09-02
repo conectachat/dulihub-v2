@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { Briefcase, RotateCcw, Trash2 } from "lucide-react";
+import { Briefcase, RotateCcw, Trash2, Users } from "lucide-react";
 
+import { EmptyState } from "@/components/empty-state";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,45 +63,39 @@ export default async function ContatosPage({
 
   return (
     <main className="space-y-6 p-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Contatos</h1>
-          <p className="text-sm text-muted-foreground">
-            Fonte única dos seus contatos. Cada contato pode ter múltiplas
-            oportunidades.
-          </p>
-        </div>
-        <PersonDialog />
-      </header>
+      <PageHeader
+        title="Contatos"
+        description="Fonte única dos seus contatos. Cada contato pode ter múltiplas oportunidades."
+        actions={<PersonDialog />}
+      />
 
       <ContactFilters>
         <TagFilter tags={allTags} />
       </ContactFilters>
 
       {error ? (
-        <div className="rounded-md border border-destructive/50 p-4 text-sm">
+        <div className="rounded-2xl border border-destructive/50 p-4 text-sm">
           <p className="font-medium text-destructive">
             Não foi possível carregar os contatos.
           </p>
           <p className="text-muted-foreground">{error}</p>
         </div>
       ) : people.length === 0 ? (
-        <div className="rounded-md border border-dashed p-10 text-center">
-          <p className="text-sm font-medium">
-            {showingDeleted
+        <EmptyState
+          icon={Users}
+          title={
+            showingDeleted
               ? "Nenhum contato excluído."
               : q
                 ? `Nenhum contato encontrado para "${q}".`
-                : "Nenhum contato ainda."}
-          </p>
-          {!showingDeleted && !q ? (
-            <p className="mt-1 text-sm text-muted-foreground">
-              Crie o primeiro no botão acima.
-            </p>
-          ) : null}
-        </div>
+                : "Nenhum contato ainda."
+          }
+          hint={
+            !showingDeleted && !q ? "Crie o primeiro no botão acima." : undefined
+          }
+        />
       ) : (
-        <div className="overflow-x-auto rounded-md border">
+        <div className="overflow-x-auto rounded-3xl border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -161,7 +157,7 @@ export default async function ContatosPage({
                       <div className="flex items-center justify-end gap-1">
                         <Link
                           href={`/contatos/${person.id}`}
-                          className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent"
+                          className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent"
                           aria-label={`${person.opportunity_count} oportunidade(s) de ${person.full_name}`}
                         >
                           <Briefcase className="h-4 w-4" />

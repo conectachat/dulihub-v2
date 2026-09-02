@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { Trash2 } from "lucide-react";
+import { KanbanSquare, Trash2 } from "lucide-react";
 
+import { EmptyState } from "@/components/empty-state";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { deleteOpportunity } from "@/features/opportunities/actions";
 import { getBoard, listPeopleForPicker } from "@/features/opportunities/queries";
@@ -24,7 +26,7 @@ export default async function CrmPage() {
   if (board.error) {
     return (
       <main className="space-y-4 p-6">
-        <h1 className="text-2xl font-semibold tracking-tight">CRM</h1>
+        <PageHeader title="CRM" />
         <div className="rounded-2xl border border-destructive/50 p-4 text-sm">
           <p className="font-medium text-destructive">
             Não foi possível carregar o funil.
@@ -38,13 +40,12 @@ export default async function CrmPage() {
   if (!board.pipelineId) {
     return (
       <main className="space-y-4 p-6">
-        <h1 className="text-2xl font-semibold tracking-tight">CRM</h1>
-        <div className="rounded-2xl border border-dashed p-10 text-center text-sm">
-          <p className="font-medium">Nenhum funil configurado.</p>
-          <p className="mt-1 text-muted-foreground">
-            Crie um funil em Configuração para começar.
-          </p>
-        </div>
+        <PageHeader title="CRM" />
+        <EmptyState
+          icon={KanbanSquare}
+          title="Nenhum funil configurado."
+          hint="Crie um funil em Configuração para começar."
+        />
       </main>
     );
   }
@@ -59,15 +60,11 @@ export default async function CrmPage() {
 
   return (
     <main className="space-y-6 p-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">CRM</h1>
-          <p className="text-sm text-muted-foreground">
-            {board.pipelineName} · {money(totalAberto, "BRL")} em negociação
-          </p>
-        </div>
-        <OpportunityDialog people={people} stages={stageOptions} />
-      </header>
+      <PageHeader
+        title="CRM"
+        description={`${board.pipelineName} · ${money(totalAberto, "BRL")} em negociação`}
+        actions={<OpportunityDialog people={people} stages={stageOptions} />}
+      />
 
       <div className="flex gap-4 overflow-x-auto pb-4">
         {board.stages.map((stage) => {
@@ -83,7 +80,7 @@ export default async function CrmPage() {
               <div className="mb-3 px-1">
                 <h2 className="flex items-center gap-2 truncate text-sm font-semibold">
                   {stage.is_won ? (
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-success" />
                   ) : stage.is_lost ? (
                     <span className="h-2 w-2 shrink-0 rounded-full bg-destructive" />
                   ) : null}
@@ -97,9 +94,7 @@ export default async function CrmPage() {
 
               <div className="flex-1 space-y-2">
                 {cards.length === 0 ? (
-                  <p className="rounded-2xl border border-dashed p-4 text-center text-xs text-muted-foreground">
-                    Vazia
-                  </p>
+                  <EmptyState title="Vazia" size="compact" />
                 ) : (
                   cards.map((card) => (
                     <article

@@ -1,14 +1,15 @@
 "use client";
 
-import { useRef } from "react";
 import { File, Folder } from "lucide-react";
 
-import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/empty-state";
+import { InlineText } from "@/components/inline-text";
 import { Button } from "@/components/ui/button";
 import {
   toggleVisaDocument,
   updateVisaDocument,
 } from "@/features/settings/visa-type-actions";
+import { flattenTree, indentStyle } from "@/lib/tree";
 import { cn } from "@/lib/utils";
 
 export type CatalogNode = {
@@ -26,71 +27,6 @@ export type Selection = {
   deadline_days: number | null;
 };
 
-type FlatNode = CatalogNode & { depth: number };
-
-function flatten(nodes: CatalogNode[]): FlatNode[] {
-  const byParent = new Map<string | null, CatalogNode[]>();
-  for (const node of nodes) {
-    const list = byParent.get(node.parent_id) ?? [];
-    list.push(node);
-    byParent.set(node.parent_id, list);
-  }
-  for (const list of byParent.values()) list.sort((a, b) => a.position - b.position);
-
-  const out: FlatNode[] = [];
-  const walk = (parentId: string | null, depth: number) => {
-    for (const node of byParent.get(parentId) ?? []) {
-      out.push({ ...node, depth });
-      walk(node.id, depth + 1);
-    }
-  };
-  walk(null, 0);
-  return out;
-}
-
-/** Obrigatoriedade e prazo são do visto, não do catálogo. */
-function SelectionFields({ selection }: { selection: Selection }) {
-  const daysRef = useRef<HTMLFormElement>(null);
-
-  return (
-    <>
-      <form action={updateVisaDocument}>
-        <input type="hidden" name="id" value={selection.id} />
-        <input
-          type="hidden"
-          name="is_required"
-          value={String(!selection.is_required)}
-        />
-        <Button
-          type="submit"
-          variant="ghost"
-          size="sm"
-          className="h-7 rounded-xl text-xs"
-          title="Alternar entre obrigatório e opcional neste visto"
-        >
-          {selection.is_required ? "Obrigatório" : "Opcional"}
-        </Button>
-      </form>
-
-      <form ref={daysRef} action={updateVisaDocument}>
-        <input type="hidden" name="id" value={selection.id} />
-        <Input
-          name="deadline_days"
-          inputMode="numeric"
-          placeholder="dias"
-          defaultValue={selection.deadline_days?.toString() ?? ""}
-          aria-label="Prazo em dias"
-          onBlur={(e) => {
-            const current = selection.deadline_days?.toString() ?? "";
-            if (e.target.value !== current) daysRef.current?.requestSubmit();
-          }}
-          className="h-7 w-16 rounded-xl text-center text-xs"
-        />
-      </form>
-    </>
-  );
-}
-
 export function VisaDocumentsEditor({
   visaTypeId,
   catalog,
@@ -100,15 +36,16 @@ export function VisaDocumentsEditor({
   catalog: CatalogNode[];
   selections: Selection[];
 }) {
-  const flat = flatten(catalog);
+  const flat = flattenTree(catalog);
   const byDocType = new Map(selections.map((s) => [s.document_type_id, s]));
 
   if (flat.length === 0) {
     return (
-      <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-        O catálogo está vazio. Monte-o em <strong>Categorias de documento</strong>{" "}
-        antes de definir o que este visto exige.
-      </p>
+      <EmptyState
+        icon={Folder}
+        title="O catálogo está vazio"
+        hint="Monte-o em Categorias de documento antes de definir o que este visto exige."
+      />
     );
   }
 
@@ -123,10 +60,10 @@ export function VisaDocumentsEditor({
             <li
               key={node.id}
               className={cn(
-                "flex items-center gap-2 rounded-xl border px-2 py-1.5",
+                "flex items-center gap-2 rounded-2xl border px-2 py-1.5",
                 isSelected ? "border-primary/40 bg-primary/5" : "border-transparent",
               )}
-              style={{ marginLeft: `${node.depth * 1.5}rem` }}
+              style={indentStyle(node.depth)}
             >
               <form action={toggleVisaDocument} className="flex items-center">
                 <input type="hidden" name="visa_type_id" value={visaTypeId} />
@@ -162,7 +99,38 @@ export function VisaDocumentsEditor({
               <span className="min-w-0 flex-1 truncate text-sm">{node.name}</span>
 
               {selection && !node.is_group ? (
-                <SelectionFields selection={selection} />
+                <>
+                  {/* Obrigatoriedade e prazo são do visto, não do catálogo. */}
+                  <form action={updateVisaDocument}>
+                    <input type="hidden" name="id" value={selection.id} />
+                    <input
+                      type="hidden"
+                      name="is_required"
+                      value={String(!selection.is_required)}
+                    />
+                    <Button
+                      type="submit"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 rounded-xl text-xs"
+                      title="Alternar entre obrigatório e opcional neste visto"
+                    >
+                      {selection.is_required ? "Obrigatório" : "Opcional"}
+                    </Button>
+                  </form>
+
+                  <InlineText
+                    action={updateVisaDocument}
+                    name="deadline_days"
+                    value={selection.deadline_days?.toString() ?? ""}
+                    hidden={{ id: selection.id }}
+                    label={`Prazo de ${node.name} em dias`}
+                    placeholder="dias"
+                    inputMode="numeric"
+                    required={false}
+                    className="w-16 shrink-0"
+                  />
+                </>
               ) : null}
             </li>
           );

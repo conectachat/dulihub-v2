@@ -2,24 +2,13 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import {
-  ChevronDown,
-  ChevronUp,
-  File,
-  Folder,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { File, Folder, Plus } from "lucide-react";
 
+import { ConfirmAction } from "@/components/confirm-action";
+import { EmptyState } from "@/components/empty-state";
+import { InlineText } from "@/components/inline-text";
+import { MoveButtons } from "@/components/move-buttons";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -30,6 +19,7 @@ import {
   toggleGroup,
   type DocTypeState,
 } from "@/features/settings/document-type-actions";
+import { flattenTree, indentStyle } from "@/lib/tree";
 
 export type DocNode = {
   id: string;
@@ -39,55 +29,7 @@ export type DocNode = {
   position: number;
 };
 
-/** Nó já achatado para renderização, com profundidade e vizinhança. */
-type FlatNode = DocNode & {
-  depth: number;
-  isFirst: boolean;
-  isLast: boolean;
-  descendants: number;
-};
-
 const initialState: DocTypeState = { error: null };
-
-/**
- * Achata a árvore preservando a ordem de leitura.
- *
- * A tela desenha a hierarquia por recuo, não por painéis aninhados: é mais
- * simples de construir, e o recuo já comunica o nível.
- */
-function flatten(nodes: DocNode[]): FlatNode[] {
-  const byParent = new Map<string | null, DocNode[]>();
-  for (const node of nodes) {
-    const list = byParent.get(node.parent_id) ?? [];
-    list.push(node);
-    byParent.set(node.parent_id, list);
-  }
-  for (const list of byParent.values()) {
-    list.sort((a, b) => a.position - b.position);
-  }
-
-  const countDescendants = (id: string): number => {
-    const children = byParent.get(id) ?? [];
-    return children.reduce((sum, c) => sum + 1 + countDescendants(c.id), 0);
-  };
-
-  const out: FlatNode[] = [];
-  const walk = (parentId: string | null, depth: number) => {
-    const siblings = byParent.get(parentId) ?? [];
-    siblings.forEach((node, index) => {
-      out.push({
-        ...node,
-        depth,
-        isFirst: index === 0,
-        isLast: index === siblings.length - 1,
-        descendants: countDescendants(node.id),
-      });
-      walk(node.id, depth + 1);
-    });
-  };
-  walk(null, 0);
-  return out;
-}
 
 function AddButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
@@ -96,26 +38,6 @@ function AddButton({ label }: { label: string }) {
       <Plus className="mr-1 h-4 w-4" />
       {pending ? "Criando..." : label}
     </Button>
-  );
-}
-
-function NodeName({ node }: { node: FlatNode }) {
-  const formRef = useRef<HTMLFormElement>(null);
-  return (
-    <form ref={formRef} action={renameDocumentType} className="min-w-0 flex-1">
-      <input type="hidden" name="id" value={node.id} />
-      <Input
-        name="name"
-        defaultValue={node.name}
-        aria-label={`Nome de ${node.name}`}
-        onBlur={(e) => {
-          if (e.target.value.trim() && e.target.value !== node.name) {
-            formRef.current?.requestSubmit();
-          }
-        }}
-        className="h-8 rounded-xl border-0 bg-transparent px-2 hover:bg-muted focus-visible:bg-background"
-      />
-    </form>
   );
 }
 
@@ -165,29 +87,27 @@ function CreateForm({
 }
 
 export function DocumentTypesEditor({ nodes }: { nodes: DocNode[] }) {
-  const flat = flatten(nodes);
+  const flat = flattenTree(nodes);
   const [addingTo, setAddingTo] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState<FlatNode | null>(null);
 
   return (
     <div className="space-y-6">
       {flat.length === 0 ? (
-        <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-          Catálogo vazio. Crie o primeiro grupo abaixo — por exemplo
-          &ldquo;Documentos pessoais&rdquo;.
-        </p>
+        <EmptyState
+          icon={Folder}
+          title="Catálogo vazio"
+          hint="Crie o primeiro grupo abaixo — por exemplo “Documentos pessoais”."
+        />
       ) : (
         <ul className="space-y-1">
           {flat.map((node) => (
             <li key={node.id}>
               <div
-                className="flex items-center gap-1 rounded-xl border px-2 py-1"
-                style={{ marginLeft: `${node.depth * 1.5}rem` }}
+                className="flex items-center gap-1 rounded-2xl border px-2 py-1"
+                style={indentStyle(node.depth)}
               >
                 <span
-                  className={
-                    node.is_group ? "text-brand" : "text-muted-foreground"
-                  }
+                  className={node.is_group ? "text-brand" : "text-muted-foreground"}
                   aria-hidden
                 >
                   {node.is_group ? (
@@ -197,15 +117,18 @@ export function DocumentTypesEditor({ nodes }: { nodes: DocNode[] }) {
                   )}
                 </span>
 
-                <NodeName node={node} />
+                <InlineText
+                  action={renameDocumentType}
+                  name="name"
+                  value={node.name}
+                  hidden={{ id: node.id }}
+                  label={`Nome de ${node.name}`}
+                  className="flex-1"
+                />
 
                 <form action={toggleGroup}>
                   <input type="hidden" name="id" value={node.id} />
-                  <input
-                    type="hidden"
-                    name="is_group"
-                    value={String(node.is_group)}
-                  />
+                  <input type="hidden" name="is_group" value={String(node.is_group)} />
                   <Button
                     type="submit"
                     variant="ghost"
@@ -228,9 +151,7 @@ export function DocumentTypesEditor({ nodes }: { nodes: DocNode[] }) {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() =>
-                      setAddingTo(addingTo === node.id ? null : node.id)
-                    }
+                    onClick={() => setAddingTo(addingTo === node.id ? null : node.id)}
                     aria-label={`Adicionar dentro de ${node.name}`}
                     aria-expanded={addingTo === node.id}
                   >
@@ -238,67 +159,31 @@ export function DocumentTypesEditor({ nodes }: { nodes: DocNode[] }) {
                   </Button>
                 ) : null}
 
-                <form action={moveDocumentType}>
-                  <input type="hidden" name="id" value={node.id} />
-                  <input type="hidden" name="direction" value="up" />
-                  <Button
-                    type="submit"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    disabled={node.isFirst}
-                    aria-label={`Subir ${node.name}`}
-                  >
-                    <ChevronUp className="h-4 w-4" />
-                  </Button>
-                </form>
+                <MoveButtons
+                  action={moveDocumentType}
+                  hidden={{ id: node.id }}
+                  label={node.name}
+                  isFirst={node.isFirst}
+                  isLast={node.isLast}
+                />
 
-                <form action={moveDocumentType}>
-                  <input type="hidden" name="id" value={node.id} />
-                  <input type="hidden" name="direction" value="down" />
-                  <Button
-                    type="submit"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    disabled={node.isLast}
-                    aria-label={`Descer ${node.name}`}
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </form>
-
-                {node.descendants > 0 ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    onClick={() => setConfirming(node)}
-                    aria-label={`Excluir ${node.name}`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                ) : (
-                  <form action={deleteDocumentType}>
-                    <input type="hidden" name="id" value={node.id} />
-                    <Button
-                      type="submit"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      aria-label={`Excluir ${node.name}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </form>
-                )}
+                <ConfirmAction
+                  action={deleteDocumentType}
+                  hidden={{ id: node.id }}
+                  title={`Excluir “${node.name}”?`}
+                  consequence={`Isso apaga também os ${node.descendants} ${
+                    node.descendants === 1 ? "item" : "itens"
+                  } dentro dele. Tipos de visto que exigiam qualquer um deles perdem a exigência. Não dá para desfazer.`}
+                  confirmLabel="Excluir tudo"
+                  triggerLabel={`Excluir ${node.name}`}
+                  needsConfirmation={node.descendants > 0}
+                />
               </div>
 
               {addingTo === node.id ? (
                 <div
-                  className="mt-1 rounded-xl border border-dashed p-2"
-                  style={{ marginLeft: `${(node.depth + 1) * 1.5}rem` }}
+                  className="mt-1 rounded-2xl border border-dashed p-2"
+                  style={indentStyle(node.depth + 1)}
                 >
                   <CreateForm
                     parentId={node.id}
@@ -312,7 +197,7 @@ export function DocumentTypesEditor({ nodes }: { nodes: DocNode[] }) {
         </ul>
       )}
 
-      <div className="space-y-2 rounded-2xl border border-dashed p-4">
+      <div className="space-y-2 rounded-3xl border border-dashed p-4">
         <Label className="text-sm font-medium">Novo item na raiz</Label>
         <CreateForm parentId={null} label="Criar" />
       </div>
@@ -322,38 +207,6 @@ export function DocumentTypesEditor({ nodes }: { nodes: DocNode[] }) {
         cliente envia. Este catálogo é compartilhado: cada tipo de visto escolhe
         daqui o que exige, com prazo e obrigatoriedade próprios.
       </p>
-
-      <Dialog
-        open={confirming !== null}
-        onOpenChange={(open) => !open && setConfirming(null)}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Excluir &ldquo;{confirming?.name}&rdquo;?</DialogTitle>
-            <DialogDescription>
-              Isso apaga também os {confirming?.descendants}{" "}
-              {confirming?.descendants === 1 ? "item" : "itens"} dentro dele.
-              Tipos de visto que exigiam qualquer um deles perdem a exigência.
-              Não dá para desfazer.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setConfirming(null)}
-            >
-              Cancelar
-            </Button>
-            <form action={deleteDocumentType}>
-              <input type="hidden" name="id" value={confirming?.id ?? ""} />
-              <Button type="submit" variant="destructive">
-                Excluir tudo
-              </Button>
-            </form>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

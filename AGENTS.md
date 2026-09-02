@@ -69,10 +69,58 @@ coluna e código em inglês.
 Azul `#022b64` é `--primary`. Laranja `#FF6600` é `--brand`. Use os tokens,
 nunca o hex direto.
 
+## UI: use o que já existe
+
+Tela nova não reimplementa o que outra já resolveu. Foi assim que o app antigo
+virou o que virou: cada tela refazendo o campo que salva sozinho, a árvore com
+recuo, o aviso de lista vazia — cada uma com pequenas diferenças. Em cinco
+telas incomoda; em trinta, ninguém consegue mais mudar nada.
+
+| Precisa de | Use |
+|---|---|
+| Título de página, com descrição e ações | `PageHeader` / `SectionHeader` |
+| Lista vazia, sem resultado, nada configurado | `EmptyState` |
+| Campo que salva ao sair do foco | `InlineText` |
+| Reordenar entre irmãos | `MoveButtons` |
+| Excluir, com aviso do que se perde | `ConfirmAction` |
+| Árvore em lista com recuo | `flattenTree` + `indentStyle` de `@/lib/tree` |
+
+Falta um? Extraia para `src/components/` na segunda cópia, não na terceira.
+
+### Raio de canto — quatro papéis, e só
+
+| Uso | Raio |
+|---|---|
+| Controle pequeno: campo, botão, chip de seleção | `rounded-xl` |
+| Linha de lista, item de árvore, cartão de quadro | `rounded-2xl` |
+| Superfície: cartão, painel, área de criação, tabela | `rounded-3xl` |
+| Avatar, etiqueta, pílula, indicador | `rounded-full` |
+
+`rounded-md`, `rounded-lg` e `rounded-4xl` ficam de fora — os dois primeiros
+ainda aparecem dentro de `src/components/ui/`, que é código gerado pelo
+shadcn e não se edita à mão.
+
+### Cor vem de token, sempre
+
+Nada de `bg-emerald-500`, `text-slate-600` e afins: a paleta do Tailwind não é
+a da Duli. Use `primary`, `brand`, `success`, `warning`, `destructive`,
+`muted`, `accent` — definidos em `src/app/globals.css`. Um token trocado lá
+muda o app inteiro, inclusive o modo escuro; um hex espalhado pelas telas não.
+
+### Borda tracejada quer dizer uma coisa só
+
+Tracejado marca **espaço que ainda vai ser preenchido**: estado vazio e área de
+criação. Não é decoração de cartão comum.
+
 ## Antes de dar algo por pronto
 
-`bun run build` e `bun test` passando. Para mudança de schema, o teste de RLS:
-usuário da organização A não enxerga dado da organização B.
+`bun run build`, `bun x tsc --noEmit` e `bun test` passando. Para mudança de
+schema, o teste de RLS: usuário da organização A não enxerga dado da
+organização B.
+
+`bun x eslint src` acusa 7 erros herdados, todos de `setState` dentro de
+`useEffect` (fechar diálogo e limpar formulário depois do sucesso, e a leitura
+da preferência da sidebar). Não cresça esse número.
 
 ## Migrations: arquivo sempre, no mesmo commit
 

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, FileStack, Trash2 } from "lucide-react";
 
+import { EmptyState } from "@/components/empty-state";
+import { SectionHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -262,9 +264,11 @@ async function VisaTypesSection({ visaId }: { visaId?: string }) {
       </div>
 
       {(types ?? []).length === 0 ? (
-        <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-          Nenhum tipo de visto ainda. Crie o primeiro — EB-1A, EB-2 NIW, O-1.
-        </p>
+        <EmptyState
+          icon={FileStack}
+          title="Nenhum tipo de visto ainda"
+          hint="Crie o primeiro — EB-1A, EB-2 NIW, O-1."
+        />
       ) : (
         <ul className="space-y-2">
           {(types ?? []).map((type) => (
@@ -319,7 +323,7 @@ function PlannedSection({
   planned?: string[];
 }) {
   return (
-    <div className="space-y-4 rounded-2xl border border-dashed p-5">
+    <div className="space-y-4 rounded-3xl border border-dashed p-5">
       <div className="flex items-center gap-2">
         <Badge variant="secondary">Em construção</Badge>
         {phase ? (
@@ -354,10 +358,7 @@ export default async function SettingsSectionPage({
 
   return (
     <div className="space-y-6 p-6">
-      <header>
-        <h2 className="text-xl font-semibold tracking-tight">{found.label}</h2>
-        <p className="text-sm text-muted-foreground">{found.description}</p>
-      </header>
+      <SectionHeader title={found.label} description={found.description} />
 
       {found.slug === "geral" ? (
         <GeneralSection />

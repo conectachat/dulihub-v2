@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import {
   ArrowRightLeft,
   CalendarDays,
+  History,
   Mail,
   MessageSquare,
   Phone,
@@ -13,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -159,10 +161,11 @@ export function Timeline({
       </form>
 
       {items.length === 0 ? (
-        <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-          Nada registrado ainda. Movimentos no funil aparecem aqui
-          automaticamente.
-        </p>
+        <EmptyState
+          icon={History}
+          title="Nada registrado ainda"
+          hint="Movimentos no funil aparecem aqui automaticamente."
+        />
       ) : (
         <ol className="space-y-3">
           {items.map((item) => {
