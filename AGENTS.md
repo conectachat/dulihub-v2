@@ -84,8 +84,18 @@ telas incomoda; em trinta, ninguém consegue mais mudar nada.
 | Reordenar entre irmãos | `MoveButtons` |
 | Excluir, com aviso do que se perde | `ConfirmAction` |
 | Árvore em lista com recuo | `flattenTree` + `indentStyle` de `@/lib/tree` |
+| Escolher cor da paleta | `ColorPicker` |
 
 Falta um? Extraia para `src/components/` na segunda cópia, não na terceira.
+
+### Limpar formulário depois do sucesso: `key`, não `useEffect`
+
+O jeito intuitivo — `useEffect(() => { if (state.ok) form.reset() })` — é o que
+produz os erros de `set-state-in-effect` que o projeto ainda carrega. O jeito
+sem efeito: a Server Action devolve um `token` que muda a cada sucesso, e a
+tela usa esse token como `key` do bloco de criação. React remonta o bloco e ele
+volta limpo, campo e estado local junto. Ver
+`stage-status-actions.ts` e `stage-statuses-editor.tsx`.
 
 ### Raio de canto — quatro papéis, e só
 
@@ -120,7 +130,8 @@ organização B.
 
 `bun x eslint src` acusa 7 erros herdados, todos de `setState` dentro de
 `useEffect` (fechar diálogo e limpar formulário depois do sucesso, e a leitura
-da preferência da sidebar). Não cresça esse número.
+da preferência da sidebar). Não cresça esse número — o padrão do `key` acima
+resolve o caso do formulário, e é como a tela de status de etapas foi feita.
 
 ## Migrations: arquivo sempre, no mesmo commit
 

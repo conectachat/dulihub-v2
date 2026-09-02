@@ -116,12 +116,6 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         icon: ListChecks,
         description:
           "Os estados que uma etapa do processo pode assumir, e a cor de cada um.",
-        phase: "Fase 2",
-        planned: [
-          "Criar estados próprios além de pendente, em andamento e concluído",
-          "Cor por estado, para leitura rápida no acompanhamento",
-          "Marcar quais estados contam como etapa concluída",
-        ],
       },
     ],
   },

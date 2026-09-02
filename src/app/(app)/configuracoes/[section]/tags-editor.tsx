@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Plus, Tag as TagIcon } from "lucide-react";
 
+import { ColorPicker } from "@/components/color-picker";
 import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { InlineText } from "@/components/inline-text";
@@ -15,8 +16,7 @@ import {
   updateTag,
   type TagActionState,
 } from "@/features/settings/tag-actions";
-import { TAG_COLORS } from "@/features/settings/tag-colors";
-import { cn } from "@/lib/utils";
+import { DEFAULT_COLOR } from "@/lib/palette";
 
 type Tag = {
   id: string;
@@ -26,42 +26,7 @@ type Tag = {
 };
 
 const initialState: TagActionState = { error: null };
-const FALLBACK_COLOR = TAG_COLORS[0];
 
-function ColorPicker({
-  name,
-  value,
-  onChange,
-}: {
-  name: string;
-  value: string;
-  onChange?: (color: string) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Cor da tag">
-      {TAG_COLORS.map((color) => (
-        <label
-          key={color}
-          className={cn(
-            "h-6 w-6 cursor-pointer rounded-full ring-offset-2 ring-offset-background transition-shadow",
-            value === color && "ring-2 ring-foreground",
-          )}
-          style={{ backgroundColor: color }}
-        >
-          <input
-            type="radio"
-            name={name}
-            value={color}
-            checked={value === color}
-            onChange={() => onChange?.(color)}
-            className="sr-only"
-          />
-          <span className="sr-only">{color}</span>
-        </label>
-      ))}
-    </div>
-  );
-}
 
 function CreateButton() {
   const { pending } = useFormStatus();
@@ -76,7 +41,7 @@ function CreateButton() {
 /** Nome e cor salvam sozinhos: nome ao sair do campo, cor ao escolher. */
 function TagRow({ tag }: { tag: Tag }) {
   const colorFormRef = useRef<HTMLFormElement>(null);
-  const [color, setColor] = useState(tag.color ?? FALLBACK_COLOR);
+  const [color, setColor] = useState(tag.color ?? DEFAULT_COLOR);
 
   const affected =
     tag.person_count === 1 ? "1 contato" : `${tag.person_count} contatos`;
@@ -98,6 +63,7 @@ function TagRow({ tag }: { tag: Tag }) {
         <input type="hidden" name="name" value={tag.name} />
         <ColorPicker
           name="color"
+          label={`Cor da tag ${tag.name}`}
           value={color}
           onChange={(next) => {
             setColor(next);
@@ -126,13 +92,13 @@ function TagRow({ tag }: { tag: Tag }) {
 
 export function TagsEditor({ tags }: { tags: Tag[] }) {
   const [state, formAction] = useActionState(createTag, initialState);
-  const [newColor, setNewColor] = useState<string>(FALLBACK_COLOR);
+  const [newColor, setNewColor] = useState<string>(DEFAULT_COLOR);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (state.ok) {
       formRef.current?.reset();
-      setNewColor(FALLBACK_COLOR);
+      setNewColor(DEFAULT_COLOR);
     }
   }, [state.ok]);
 

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
-import { TAG_COLORS } from "./tag-colors";
+import { PALETTE } from "@/lib/palette";
 
 export type TagActionState = { error: string | null; ok?: boolean };
 
@@ -13,7 +13,7 @@ const tagSchema = z.object({
   color: z
     .string()
     .trim()
-    .refine((c) => (TAG_COLORS as readonly string[]).includes(c), "Cor inválida"),
+    .refine((c) => (PALETTE as readonly string[]).includes(c), "Cor inválida"),
 });
 
 /** Traduz erro do banco para linguagem de quem está usando o app. */

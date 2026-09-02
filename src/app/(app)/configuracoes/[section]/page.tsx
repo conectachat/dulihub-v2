@@ -13,6 +13,7 @@ import { ALL_SECTIONS, findSection } from "@/features/settings/sections";
 import { createClient } from "@/lib/supabase/server";
 
 import { DocumentTypesEditor } from "./document-types-editor";
+import { StageStatusesEditor } from "./stage-statuses-editor";
 import { StagesEditor } from "./stages-editor";
 import { TagsEditor } from "./tags-editor";
 import { VisaDocumentsEditor } from "./visa-documents-editor";
@@ -150,6 +151,17 @@ async function DocumentTypesSection() {
     .order("position");
 
   return <DocumentTypesEditor nodes={data ?? []} />;
+}
+
+/** Status que uma etapa de processo pode assumir. */
+async function StageStatusesSection() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("stage_statuses")
+    .select("id, code, label, color, position, is_default, is_done, is_system")
+    .order("position");
+
+  return <StageStatusesEditor statuses={data ?? []} />;
 }
 
 /**
@@ -370,6 +382,8 @@ export default async function SettingsSectionPage({
         <DocumentTypesSection />
       ) : found.slug === "tipos-de-visto" ? (
         <VisaTypesSection visaId={visa} />
+      ) : found.slug === "status-de-etapas" ? (
+        <StageStatusesSection />
       ) : (
         <PlannedSection phase={found.phase} planned={found.planned} />
       )}
