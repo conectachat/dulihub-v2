@@ -50,43 +50,60 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* =============================================================================
+   Paleta
+   =============================================================================
+   Os neutros NÃO são cinza puro. Todos carregam o matiz 258 do azul oficial
+   (#022b64) com croma baixíssimo — 0.004 a 0.024.
+
+   É a mudança que mais afeta a percepção: cinza de croma zero é o padrão de
+   fábrica de toda biblioteca de componentes, e por isso lê como template.
+   Tingir a base faz o app parecer produto sem colorir nada explicitamente.
+
+   Fundo levemente tingido e cartão branco puro: a diferença entre os dois cria
+   a sensação de superfície flutuando, que a sombra leve completa.
+
+   Revisar quando o manual da marca chegar. Nenhum valor está escrito fixo em
+   componente, então a troca acontece só aqui.
+   ============================================================================= */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: oklch(0.985 0.004 258);
+  --foreground: oklch(0.20 0.021 258);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.20 0.021 258);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.20 0.021 258);
   /* Azul oficial Duli #022b64 */
   --primary: oklch(0.302 0.110 258.3);
-  --primary-foreground: oklch(0.985 0 0);
-  /* Laranja oficial Duli #FF6600 */
+  --primary-foreground: oklch(0.99 0.004 258);
+  /* Laranja oficial Duli #FF6600. Só onde chama atenção — contador, alerta,
+     marca. Como cor de interface, cansa em minutos de uso diário. */
   --brand: oklch(0.696 0.204 43.5);
-  --brand-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --brand-foreground: oklch(0.99 0.004 258);
+  --secondary: oklch(0.965 0.006 258);
+  --secondary-foreground: oklch(0.26 0.024 258);
+  --muted: oklch(0.965 0.006 258);
+  --muted-foreground: oklch(0.52 0.018 258);
+  --accent: oklch(0.955 0.010 258);
+  --accent-foreground: oklch(0.26 0.024 258);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  --border: oklch(0.915 0.008 258);
+  --input: oklch(0.915 0.008 258);
   --ring: oklch(0.302 0.110 258.3);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --chart-1: oklch(0.302 0.110 258.3);
+  --chart-2: oklch(0.696 0.204 43.5);
+  --chart-3: oklch(0.55 0.09 258);
+  --chart-4: oklch(0.70 0.06 258);
+  --chart-5: oklch(0.82 0.03 258);
   /* Base arredondada: tudo que deriva de --radius acompanha. */
   --radius: 0.9rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar: oklch(0.975 0.006 258);
+  --sidebar-foreground: oklch(0.20 0.021 258);
   --sidebar-primary: oklch(0.302 0.110 258.3);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-primary-foreground: oklch(0.99 0.004 258);
+  --sidebar-accent: oklch(0.955 0.010 258);
+  --sidebar-accent-foreground: oklch(0.26 0.024 258);
+  --sidebar-border: oklch(0.915 0.008 258);
   --sidebar-ring: oklch(0.708 0 0);
 }
 
