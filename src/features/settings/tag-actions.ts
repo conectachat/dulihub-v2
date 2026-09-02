@@ -4,22 +4,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
+import { TAG_COLORS } from "./tag-colors";
 
 export type TagActionState = { error: string | null; ok?: boolean };
-
-/** Paleta fixa. Escolher de uma lista mantém a leitura consistente e evita
- *  cores que somem no tema claro ou no escuro. */
-export const TAG_COLORS = [
-  "#64748b",
-  "#ef4444",
-  "#f97316",
-  "#f59e0b",
-  "#22c55e",
-  "#14b8a6",
-  "#3b82f6",
-  "#8b5cf6",
-  "#ec4899",
-] as const;
 
 const tagSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome da tag").max(40),

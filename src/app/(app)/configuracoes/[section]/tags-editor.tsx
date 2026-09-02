@@ -18,9 +18,9 @@ import {
   createTag,
   deleteTag,
   updateTag,
-  TAG_COLORS,
   type TagActionState,
 } from "@/features/settings/tag-actions";
+import { TAG_COLORS } from "@/features/settings/tag-colors";
 import { cn } from "@/lib/utils";
 
 type Tag = {
