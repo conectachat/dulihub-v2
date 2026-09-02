@@ -58,6 +58,37 @@ export function StagesEditor({
 
   return (
     <div className="space-y-6">
+      {/*
+        Criar vem antes da lista de propósito: com o funil cheio, o campo no
+        fim obrigaria a rolar até embaixo a cada etapa nova.
+      */}
+      <form
+        ref={addFormRef}
+        action={formAction}
+        className="flex flex-wrap items-end gap-2 rounded-3xl border border-dashed p-3"
+      >
+        <input type="hidden" name="pipeline_id" value={pipelineId} />
+        <div className="min-w-48 flex-1 space-y-1">
+          <label htmlFor="new-stage" className="text-sm font-medium">
+            Nova etapa
+          </label>
+          <Input
+            id="new-stage"
+            name="name"
+            placeholder="Ex.: Proposta enviada"
+            required
+            className="rounded-xl"
+          />
+        </div>
+        <AddButton />
+      </form>
+
+      {state.error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {state.error}
+        </p>
+      ) : null}
+
       <ul className="space-y-2">
         {stages.map((stage) => {
           const terminal = stage.is_won || stage.is_lost;
@@ -128,33 +159,6 @@ export function StagesEditor({
           );
         })}
       </ul>
-
-      <form
-        ref={addFormRef}
-        action={formAction}
-        className="flex flex-wrap items-end gap-2 rounded-3xl border border-dashed p-3"
-      >
-        <input type="hidden" name="pipeline_id" value={pipelineId} />
-        <div className="min-w-48 flex-1 space-y-1">
-          <label htmlFor="new-stage" className="text-sm font-medium">
-            Nova etapa
-          </label>
-          <Input
-            id="new-stage"
-            name="name"
-            placeholder="Ex.: Proposta enviada"
-            required
-            className="rounded-xl"
-          />
-        </div>
-        <AddButton />
-      </form>
-
-      {state.error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
-        </p>
-      ) : null}
 
       <p className="text-sm text-muted-foreground">
         Etapas novas entram antes de ganho e perdido. Essas duas podem ser

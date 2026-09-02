@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { Plus, Tag as TagIcon } from "lucide-react";
 
 import { ColorPicker } from "@/components/color-picker";
+import { ColorPickerPopover } from "@/components/color-picker-popover";
 import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { InlineText } from "@/components/inline-text";
@@ -48,6 +49,21 @@ function TagRow({ tag }: { tag: Tag }) {
 
   return (
     <li className="flex flex-wrap items-center gap-3 rounded-2xl border p-3">
+      <form ref={colorFormRef} action={updateTag} className="flex">
+        <input type="hidden" name="id" value={tag.id} />
+        <input type="hidden" name="name" value={tag.name} />
+        <input type="hidden" name="color" value={color} />
+        <ColorPickerPopover
+          value={color}
+          label={`Cor da tag ${tag.name}`}
+          onChange={(next) => {
+            setColor(next);
+            // Espera o estado virar valor do campo antes de enviar.
+            queueMicrotask(() => colorFormRef.current?.requestSubmit());
+          }}
+        />
+      </form>
+
       {/* A cor viaja junto no rename para não ser apagada pela atualização. */}
       <InlineText
         action={updateTag}
@@ -57,21 +73,6 @@ function TagRow({ tag }: { tag: Tag }) {
         label={`Nome da tag ${tag.name}`}
         className="min-w-40 flex-1"
       />
-
-      <form ref={colorFormRef} action={updateTag}>
-        <input type="hidden" name="id" value={tag.id} />
-        <input type="hidden" name="name" value={tag.name} />
-        <ColorPicker
-          name="color"
-          label={`Cor da tag ${tag.name}`}
-          value={color}
-          onChange={(next) => {
-            setColor(next);
-            // Espera o estado virar valor do campo antes de enviar.
-            queueMicrotask(() => colorFormRef.current?.requestSubmit());
-          }}
-        />
-      </form>
 
       <span className="w-24 shrink-0 text-right text-xs text-muted-foreground">
         {affected}
@@ -104,20 +105,10 @@ export function TagsEditor({ tags }: { tags: Tag[] }) {
 
   return (
     <div className="space-y-6">
-      {tags.length === 0 ? (
-        <EmptyState
-          icon={TagIcon}
-          title="Nenhuma tag ainda"
-          hint="Crie a primeira abaixo."
-        />
-      ) : (
-        <ul className="space-y-2">
-          {tags.map((tag) => (
-            <TagRow key={tag.id} tag={tag} />
-          ))}
-        </ul>
-      )}
-
+      {/*
+        Criar vem antes da lista de propósito: com a lista cheia, o campo no
+        fim obrigaria a rolar até embaixo a cada tag nova.
+      */}
       <form
         ref={formRef}
         action={formAction}
@@ -138,7 +129,12 @@ export function TagsEditor({ tags }: { tags: Tag[] }) {
 
         <div className="space-y-2">
           <p className="text-sm font-medium">Cor</p>
-          <ColorPicker name="color" value={newColor} onChange={setNewColor} />
+          <ColorPicker
+            name="color"
+            label="Cor da nova tag"
+            value={newColor}
+            onChange={setNewColor}
+          />
         </div>
 
         <CreateButton />
@@ -149,6 +145,20 @@ export function TagsEditor({ tags }: { tags: Tag[] }) {
           {state.error}
         </p>
       ) : null}
+
+      {tags.length === 0 ? (
+        <EmptyState
+          icon={TagIcon}
+          title="Nenhuma tag ainda"
+          hint="Crie a primeira abaixo."
+        />
+      ) : (
+        <ul className="space-y-2">
+          {tags.map((tag) => (
+            <TagRow key={tag.id} tag={tag} />
+          ))}
+        </ul>
+      )}
 
       <p className="text-sm text-muted-foreground">
         Tags valem para a pessoa, não para o estágio dela. Uma marcação posta no

@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { Check, CircleDot, Lock, Plus } from "lucide-react";
 
 import { ColorPicker } from "@/components/color-picker";
+import { ColorPickerPopover } from "@/components/color-picker-popover";
 import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { InlineText } from "@/components/inline-text";
@@ -60,11 +61,20 @@ function StatusRow({
 
   return (
     <li className="flex flex-wrap items-center gap-2 rounded-2xl border p-2">
-      <span
-        className="h-2.5 w-2.5 shrink-0 rounded-full"
-        style={{ backgroundColor: color }}
-        aria-hidden
-      />
+      <form ref={colorFormRef} action={updateStageStatus} className="flex">
+        <input type="hidden" name="id" value={status.id} />
+        <input type="hidden" name="label" value={status.label} />
+        <input type="hidden" name="color" value={color} />
+        <ColorPickerPopover
+          value={color}
+          label={`Cor de ${status.label}`}
+          onChange={(next) => {
+            setColor(next);
+            // Espera o estado virar valor do campo antes de enviar.
+            queueMicrotask(() => colorFormRef.current?.requestSubmit());
+          }}
+        />
+      </form>
 
       {/* A cor viaja junto para não ser apagada pela atualização do nome. */}
       <InlineText
@@ -75,20 +85,6 @@ function StatusRow({
         label={`Nome do status ${status.label}`}
         className="min-w-40 flex-1"
       />
-
-      <form ref={colorFormRef} action={updateStageStatus}>
-        <input type="hidden" name="id" value={status.id} />
-        <input type="hidden" name="label" value={status.label} />
-        <ColorPicker
-          name="color"
-          label={`Cor de ${status.label}`}
-          value={color}
-          onChange={(next) => {
-            setColor(next);
-            queueMicrotask(() => colorFormRef.current?.requestSubmit());
-          }}
-        />
-      </form>
 
       <form action={toggleStageStatusDone}>
         <input type="hidden" name="id" value={status.id} />
@@ -131,32 +127,34 @@ function StatusRow({
         </form>
       )}
 
-      <MoveButtons
-        action={moveStageStatus}
-        hidden={{ id: status.id }}
-        label={status.label}
-        isFirst={isFirst}
-        isLast={isLast}
-      />
-
-      {status.is_system ? (
-        <span
-          className="inline-flex h-8 w-8 items-center justify-center text-primary/40"
-          title="Status de fábrica: pode ser renomeado e recolorido, não excluído"
-        >
-          <Lock className="h-3.5 w-3.5" />
-        </span>
-      ) : (
-        <ConfirmAction
-          action={deleteStageStatus}
+      <div className="flex shrink-0 items-center gap-0.5">
+        <MoveButtons
+          action={moveStageStatus}
           hidden={{ id: status.id }}
-          title={`Excluir o status “${status.label}”?`}
-          consequence="Etapas que estiverem neste status ficam sem status. Não dá para desfazer."
-          triggerLabel={`Excluir ${status.label}`}
-          disabled={status.is_default}
-          disabledReason="Escolha outro status como padrão antes de excluir este"
+          label={status.label}
+          isFirst={isFirst}
+          isLast={isLast}
         />
-      )}
+
+        {status.is_system ? (
+          <span
+            className="inline-flex h-8 w-8 items-center justify-center text-primary/40"
+            title="Status de fábrica: pode ser renomeado e recolorido, não excluído"
+          >
+            <Lock className="h-3.5 w-3.5" />
+          </span>
+        ) : (
+          <ConfirmAction
+            action={deleteStageStatus}
+            hidden={{ id: status.id }}
+            title={`Excluir o status “${status.label}”?`}
+            consequence="Etapas que estiverem neste status ficam sem status. Não dá para desfazer."
+            triggerLabel={`Excluir ${status.label}`}
+            disabled={status.is_default}
+            disabledReason="Escolha outro status como padrão antes de excluir este"
+          />
+        )}
+      </div>
     </li>
   );
 }
