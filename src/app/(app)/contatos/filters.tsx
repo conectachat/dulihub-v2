@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
  * página, pode ser compartilhado por link, e a lista continua sendo buscada
  * no servidor — o navegador nunca recebe contato que o filtro escondeu.
  */
-export function ContactFilters() {
+export function ContactFilters({ children }: { children?: React.ReactNode }) {
   const router = useRouter();
   const params = useSearchParams();
   const [, startTransition] = useTransition();
@@ -55,7 +55,10 @@ export function ContactFilters() {
         />
       </div>
 
-      <div className="inline-flex rounded-md border p-1">
+      {/* Slot para filtros que o servidor precisa alimentar, como o de tags. */}
+      {children}
+
+      <div className="inline-flex rounded-2xl border p-1">
         <Button
           type="button"
           size="sm"

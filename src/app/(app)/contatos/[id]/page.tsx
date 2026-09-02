@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { LIFECYCLE_LABELS } from "@/features/people/schema";
+import { listTags } from "@/features/people/queries";
 
 import { PersonDialog } from "../person-dialog";
+import { PersonTags } from "./person-tags";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
@@ -50,11 +52,14 @@ export default async function PersonPage({
   // registro existe em outra organização.
   if (!person) notFound();
 
-  const { data: opportunitiesRaw } = await supabase
-    .from("opportunities")
-    .select("id, title, status, value, currency, created_at, stage:pipeline_stages(name)")
-    .eq("person_id", id)
-    .order("created_at", { ascending: false });
+  const [{ data: opportunitiesRaw }, allTags] = await Promise.all([
+    supabase
+      .from("opportunities")
+      .select("id, title, status, value, currency, created_at, stage:pipeline_stages(name)")
+      .eq("person_id", id)
+      .order("created_at", { ascending: false }),
+    listTags(),
+  ]);
 
   const opportunities = (opportunitiesRaw ?? []) as unknown as Opportunity[];
   // Sem os tipos gerados do banco, o cliente Supabase infere a relação
@@ -87,11 +92,6 @@ export default async function PersonPage({
             <Badge variant="secondary">
               {LIFECYCLE_LABELS[person.lifecycle_stage] ?? person.lifecycle_stage}
             </Badge>
-            {tags.map((tag) => (
-              <Badge key={tag.id} variant="outline">
-                {tag.name}
-              </Badge>
-            ))}
           </div>
           {person.company || person.job_title ? (
             <p className="text-sm text-muted-foreground">
@@ -126,6 +126,15 @@ export default async function PersonPage({
             <p className="text-muted-foreground">
               Cadastrado em {dateFormatter.format(new Date(person.created_at))}
             </p>
+
+            <div className="space-y-2 border-t pt-3">
+              <p className="font-medium">Tags</p>
+              <PersonTags
+                personId={person.id}
+                allTags={allTags}
+                selectedIds={tags.map((t) => t.id)}
+              />
+            </div>
           </CardContent>
         </Card>
 

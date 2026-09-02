@@ -12,10 +12,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { restorePerson, softDeletePerson } from "@/features/people/actions";
-import { listPeople } from "@/features/people/queries";
+import { listPeople, listTags } from "@/features/people/queries";
 
 import { ContactFilters } from "./filters";
 import { PersonDialog } from "./person-dialog";
+import { TagFilter } from "./tag-filter";
 
 export const metadata = { title: "Contatos — Duli Hub" };
 
@@ -42,13 +43,19 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
 export default async function ContatosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; view?: string }>;
+  searchParams: Promise<{ q?: string; view?: string; tags?: string }>;
 }) {
-  const { q, view } = await searchParams;
-  const { people, error } = await listPeople({
-    search: q,
-    view: view === "excluidos" ? "excluidos" : "ativos",
-  });
+  const { q, view, tags } = await searchParams;
+  const tagIds = (tags ?? "").split(",").filter(Boolean);
+
+  const [{ people, error }, allTags] = await Promise.all([
+    listPeople({
+      search: q,
+      tagIds,
+      view: view === "excluidos" ? "excluidos" : "ativos",
+    }),
+    listTags(),
+  ]);
 
   const showingDeleted = view === "excluidos";
 
@@ -65,7 +72,9 @@ export default async function ContatosPage({
         <PersonDialog />
       </header>
 
-      <ContactFilters />
+      <ContactFilters>
+        <TagFilter tags={allTags} />
+      </ContactFilters>
 
       {error ? (
         <div className="rounded-md border border-destructive/50 p-4 text-sm">
