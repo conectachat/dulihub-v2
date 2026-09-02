@@ -212,6 +212,18 @@ export function StageStatusesEditor({ statuses }: { statuses: StageStatus[] }) {
 
   return (
     <div className="space-y-6">
+      {/*
+        Criar vem antes da lista de propósito: com a lista cheia, o campo no
+        fim obrigaria a rolar até embaixo a cada status novo.
+      */}
+      <CreateStatusForm key={state.token ?? 0} action={formAction} />
+
+      {state.error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {state.error}
+        </p>
+      ) : null}
+
       {statuses.length === 0 ? (
         <EmptyState
           icon={CircleDot}
@@ -230,14 +242,6 @@ export function StageStatusesEditor({ statuses }: { statuses: StageStatus[] }) {
           ))}
         </ul>
       )}
-
-      <CreateStatusForm key={state.token ?? 0} action={formAction} />
-
-      {state.error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
-        </p>
-      ) : null}
 
       <p className="text-sm text-muted-foreground">
         <strong>Padrão</strong> é onde toda etapa nova começa — só um por vez.{" "}
