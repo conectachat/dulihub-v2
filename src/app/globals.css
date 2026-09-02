@@ -7,9 +7,14 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  /* "Lora speaks, Open Sans explains, IBM Plex Mono states the facts."
+     Manual de Identidade Visual da Duli. Lora em títulos, Open Sans no texto
+     da interface, e mono em dado — valor, prazo, data, número de processo.
+     Mono não é enfeite: alinha na vertical e evita confundir 3 com 8. */
+  --font-sans: var(--font-open-sans);
+  --font-serif: var(--font-lora);
+  --font-mono: var(--font-plex-mono);
+  --font-heading: var(--font-lora);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -36,6 +41,8 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
   --color-brand: var(--brand);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-brand-foreground: var(--brand-foreground);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
@@ -51,60 +58,76 @@
 }
 
 /* =============================================================================
-   Paleta
+   Paleta oficial da Duli
    =============================================================================
-   Os neutros NÃO são cinza puro. Todos carregam o matiz 258 do azul oficial
-   (#022b64) com croma baixíssimo — 0.004 a 0.024.
+   Valores tirados do Manual de Identidade Visual, em `marca/`. Substituíram um
+   palpite anterior que estava errado num ponto importante: eu havia tingido os
+   neutros de AZUL, e a marca usa neutros QUENTES — bege — contra o azul e o
+   laranja. É o contraste frio/quente que dá a personalidade.
 
-   É a mudança que mais afeta a percepção: cinza de croma zero é o padrão de
-   fábrica de toda biblioteca de componentes, e por isso lê como template.
-   Tingir a base faz o app parecer produto sem colorir nada explicitamente.
+   Núcleo:
+     #022B64  navy      ação primária, títulos
+     #FF6600  laranja   só onde chama atenção; como cor de interface, cansa
+     #FBFAF8  off-white fundo
+     #EDEAE4  bege      superfície suave
+     #E4E1DC  bege      bordas
+     #3E4C63  azul-aço  texto corrido
+     #8A97AA  azul-cinza texto secundário — a cor mais usada do manual
 
-   Fundo levemente tingido e cartão branco puro: a diferença entre os dois cria
-   a sensação de superfície flutuando, que a sombra leve completa.
+   Sinal:
+     #0E7C6B  verde     sucesso
+     #C4341F  vermelho  erro — substitui o vermelho padrão do shadcn
+     #FFC24D  âmbar     atenção
 
-   Revisar quando o manual da marca chegar. Nenhum valor está escrito fixo em
-   componente, então a troca acontece só aqui.
+   Nenhum valor está escrito fixo em componente: tudo passa por estes tokens,
+   então o modo escuro futuro se resolve só aqui.
    ============================================================================= */
 :root {
-  --background: oklch(0.985 0.004 258);
-  --foreground: oklch(0.20 0.021 258);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.20 0.021 258);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.20 0.021 258);
-  /* Azul oficial Duli #022b64 */
-  --primary: oklch(0.302 0.110 258.3);
-  --primary-foreground: oklch(0.99 0.004 258);
-  /* Laranja oficial Duli #FF6600. Só onde chama atenção — contador, alerta,
-     marca. Como cor de interface, cansa em minutos de uso diário. */
-  --brand: oklch(0.696 0.204 43.5);
-  --brand-foreground: oklch(0.99 0.004 258);
-  --secondary: oklch(0.965 0.006 258);
-  --secondary-foreground: oklch(0.26 0.024 258);
-  --muted: oklch(0.965 0.006 258);
-  --muted-foreground: oklch(0.52 0.018 258);
-  --accent: oklch(0.955 0.010 258);
-  --accent-foreground: oklch(0.26 0.024 258);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.915 0.008 258);
-  --input: oklch(0.915 0.008 258);
-  --ring: oklch(0.302 0.110 258.3);
-  --chart-1: oklch(0.302 0.110 258.3);
-  --chart-2: oklch(0.696 0.204 43.5);
-  --chart-3: oklch(0.55 0.09 258);
-  --chart-4: oklch(0.70 0.06 258);
-  --chart-5: oklch(0.82 0.03 258);
+  --background: #fbfaf8;
+  --foreground: #3e4c63;
+  --card: #ffffff;
+  --card-foreground: #3e4c63;
+  --popover: #ffffff;
+  --popover-foreground: #3e4c63;
+
+  --primary: #022b64;
+  --primary-foreground: #fbfaf8;
+
+  --brand: #ff6600;
+  --brand-foreground: #ffffff;
+
+  --secondary: #f2ede6;
+  --secondary-foreground: #022b64;
+  --muted: #edeae4;
+  --muted-foreground: #8a97aa;
+  --accent: #edeae4;
+  --accent-foreground: #022b64;
+
+  --destructive: #c4341f;
+  --success: #0e7c6b;
+  --warning: #ffc24d;
+
+  --border: #e4e1dc;
+  --input: #e4e1dc;
+  --ring: #022b64;
+
+  --chart-1: #022b64;
+  --chart-2: #ff6600;
+  --chart-3: #0e7c6b;
+  --chart-4: #8fa3c0;
+  --chart-5: #b9c6da;
+
   /* Base arredondada: tudo que deriva de --radius acompanha. */
   --radius: 0.9rem;
-  --sidebar: oklch(0.975 0.006 258);
-  --sidebar-foreground: oklch(0.20 0.021 258);
-  --sidebar-primary: oklch(0.302 0.110 258.3);
-  --sidebar-primary-foreground: oklch(0.99 0.004 258);
-  --sidebar-accent: oklch(0.955 0.010 258);
-  --sidebar-accent-foreground: oklch(0.26 0.024 258);
-  --sidebar-border: oklch(0.915 0.008 258);
-  --sidebar-ring: oklch(0.708 0 0);
+
+  --sidebar: #f2ede6;
+  --sidebar-foreground: #3e4c63;
+  --sidebar-primary: #022b64;
+  --sidebar-primary-foreground: #fbfaf8;
+  --sidebar-accent: #e4e1dc;
+  --sidebar-accent-foreground: #022b64;
+  --sidebar-border: #e4e1dc;
+  --sidebar-ring: #022b64;
 }
 
 .dark {
