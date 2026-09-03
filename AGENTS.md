@@ -97,6 +97,15 @@ tela usa esse token como `key` do bloco de criação. React remonta o bloco e el
 volta limpo, campo e estado local junto. Ver
 `stage-status-actions.ts` e `stage-statuses-editor.tsx`.
 
+### Criar vem antes da lista
+
+Formulário de criação no topo, sempre. No fim da lista ele obriga a rolar até
+embaixo a cada item novo, e a lista é justamente o que cresce. A mensagem de
+erro fica grudada no formulário: aviso no pé de uma lista longa não é lido por
+quem acabou de digitar lá em cima.
+
+Vale para as quatro telas de configuração e para qualquer tela nova.
+
 ### Raio de canto — quatro papéis, e só
 
 | Uso | Raio |

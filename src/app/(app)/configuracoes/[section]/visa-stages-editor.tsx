@@ -100,6 +100,15 @@ export function VisaStagesEditor({
 
   return (
     <div className="space-y-5">
+      {/*
+        Criar vem antes da lista de propósito: com a lista cheia, o campo no
+        fim obrigaria a rolar até embaixo a cada etapa nova.
+      */}
+      <div className="space-y-2 rounded-3xl border border-dashed p-4">
+        <p className="text-sm font-medium">Nova etapa</p>
+        <CreateStageForm visaTypeId={visaTypeId} parentId={null} />
+      </div>
+
       {flat.length === 0 ? (
         <EmptyState
           icon={ListChecks}
@@ -201,10 +210,6 @@ export function VisaStagesEditor({
         </ul>
       )}
 
-      <div className="space-y-2 rounded-3xl border border-dashed p-4">
-        <p className="text-sm font-medium">Nova etapa</p>
-        <CreateStageForm visaTypeId={visaTypeId} parentId={null} />
-      </div>
     </div>
   );
 }

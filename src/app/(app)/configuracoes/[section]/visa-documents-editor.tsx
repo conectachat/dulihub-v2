@@ -5,6 +5,8 @@ import { Folder, FolderOpen } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { InlineText } from "@/components/inline-text";
+import { MoveButtons } from "@/components/move-buttons";
+import { SectionHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,10 +17,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  moveVisaDocument,
   toggleVisaDocument,
   updateVisaDocument,
 } from "@/features/settings/visa-type-actions";
-import { flattenTree, indentStyle, type Flattened } from "@/lib/tree";
+import { flattenTree, indentStyle } from "@/lib/tree";
 import { cn } from "@/lib/utils";
 
 export type CatalogNode = {
@@ -33,6 +36,7 @@ export type Selection = {
   document_type_id: string;
   is_required: boolean;
   deadline_days: number | null;
+  position: number;
 };
 
 /**
@@ -44,12 +48,14 @@ export type Selection = {
  */
 function SelectBox({
   visaTypeId,
-  node,
+  id,
+  name,
   isSelected,
   losing,
 }: {
   visaTypeId: string;
-  node: Flattened<CatalogNode>;
+  id: string;
+  name: string;
   isSelected: boolean;
   losing: number;
 }) {
@@ -59,19 +65,19 @@ function SelectBox({
   const fields = (
     <>
       <input type="hidden" name="visa_type_id" value={visaTypeId} />
-      <input type="hidden" name="document_type_id" value={node.id} />
+      <input type="hidden" name="document_type_id" value={id} />
       <input type="hidden" name="selected" value={String(isSelected)} />
     </>
   );
 
   const box = cn(
-    "flex h-4 w-4 items-center justify-center rounded border text-[10px]",
+    "flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px]",
     isSelected
       ? "border-primary bg-primary text-primary-foreground"
       : "border-muted-foreground/40",
   );
 
-  const label = `${isSelected ? "Remover" : "Exigir"} ${node.name}`;
+  const label = `${isSelected ? "Remover" : "Exigir"} ${name}`;
 
   if (!needsConfirmation) {
     return (
@@ -106,7 +112,7 @@ function SelectBox({
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Remover “{node.name}” deste visto?</DialogTitle>
+            <DialogTitle>Remover “{name}” deste visto?</DialogTitle>
             <DialogDescription>
               Saem {losing} exigências ao todo — esta e as {losing - 1} de
               dentro dela. A obrigatoriedade e o prazo de cada uma se perdem, e
@@ -143,20 +149,37 @@ export function VisaDocumentsEditor({
   catalog: CatalogNode[];
   selections: Selection[];
 }) {
-  const flat = flattenTree(catalog);
   const byDocType = new Map(selections.map((s) => [s.document_type_id, s]));
+  const nameOf = new Map(catalog.map((n) => [n.id, n.name]));
+  const parentOf = new Map(catalog.map((n) => [n.id, n.parent_id]));
 
-  if (flat.length === 0) {
-    return (
-      <EmptyState
-        icon={Folder}
-        title="O catálogo está vazio"
-        hint="Monte-o em Categorias de documento antes de definir o que este visto exige."
-      />
-    );
-  }
+  /**
+   * Pai visível: sobe até achar um ancestral que este visto também exige.
+   *
+   * Marcar um filho sem o pai é possível, e sem isto ele sumiria da lista —
+   * `flattenTree` começa da raiz e nunca alcançaria um nó pendurado em alguém
+   * que não está ali.
+   */
+  const visibleParent = (docTypeId: string): string | null => {
+    let cursor = parentOf.get(docTypeId) ?? null;
+    while (cursor && !byDocType.has(cursor)) cursor = parentOf.get(cursor) ?? null;
+    return cursor;
+  };
 
-  // Quantas exigências some ao desmarcar cada pasta: ela mais as de dentro que
+  // A árvore do que é exigido usa a ordem DO VISTO, não a do catálogo.
+  const required = flattenTree(
+    selections.map((s) => ({
+      id: s.document_type_id,
+      parent_id: visibleParent(s.document_type_id),
+      position: s.position,
+      selection: s,
+      name: nameOf.get(s.document_type_id) ?? "—",
+    })),
+  );
+
+  const catalogTree = flattenTree(catalog);
+
+  // Quantas exigências somem ao desmarcar cada pasta: ela e as de dentro que
   // também estão marcadas.
   const childrenOf = new Map<string, string[]>();
   for (const node of catalog) {
@@ -170,43 +193,54 @@ export function VisaDocumentsEditor({
     (byDocType.has(id) ? 1 : 0) +
     (childrenOf.get(id) ?? []).reduce((sum, child) => sum + countSelected(child), 0);
 
+  if (catalogTree.length === 0) {
+    return (
+      <EmptyState
+        icon={Folder}
+        title="O catálogo está vazio"
+        hint="Monte-o em Categorias de documento antes de definir o que este visto exige."
+      />
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      <ul className="space-y-1">
-        {flat.map((node) => {
-          const selection = byDocType.get(node.id);
-          const isSelected = Boolean(selection);
-          const Icon = node.descendants > 0 ? FolderOpen : Folder;
+    <div className="space-y-8">
+      <section className="space-y-3">
+        <SectionHeader
+          title="Exigidos neste visto"
+          description="Nesta ordem, e é assim que o cliente verá no processo. As setas organizam."
+        />
 
-          return (
-            <li
-              key={node.id}
-              className={cn(
-                "flex items-center gap-2 rounded-2xl border px-2 py-1.5",
-                isSelected ? "border-primary/40 bg-primary/5" : "border-transparent",
-              )}
-              style={indentStyle(node.depth)}
-            >
-              <SelectBox
-                visaTypeId={visaTypeId}
-                node={node}
-                isSelected={isSelected}
-                losing={countSelected(node.id)}
-              />
+        {required.length === 0 ? (
+          <EmptyState
+            title="Nada exigido ainda"
+            hint="Marque abaixo, no catálogo, o que este visto pede."
+            size="compact"
+          />
+        ) : (
+          <ul className="space-y-1">
+            {required.map((node) => {
+              const Icon = node.descendants > 0 ? FolderOpen : Folder;
 
-              <Icon className="h-4 w-4 shrink-0 text-brand" aria-hidden />
+              return (
+                <li
+                  key={node.id}
+                  className="flex items-center gap-2 rounded-2xl border px-2 py-1.5"
+                  style={indentStyle(node.depth)}
+                >
+                  <Icon className="h-4 w-4 shrink-0 text-brand" aria-hidden />
 
-              <span className="min-w-0 flex-1 truncate text-sm">{node.name}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm">
+                    {node.name}
+                  </span>
 
-              {selection ? (
-                <>
                   {/* Obrigatoriedade e prazo são do visto, não do catálogo. */}
                   <form action={updateVisaDocument}>
-                    <input type="hidden" name="id" value={selection.id} />
+                    <input type="hidden" name="id" value={node.selection.id} />
                     <input
                       type="hidden"
                       name="is_required"
-                      value={String(!selection.is_required)}
+                      value={String(!node.selection.is_required)}
                     />
                     <Button
                       type="submit"
@@ -214,38 +248,94 @@ export function VisaDocumentsEditor({
                       size="sm"
                       className={cn(
                         "h-8 rounded-xl text-xs",
-                        selection.is_required ? "text-primary" : "text-muted-foreground",
+                        node.selection.is_required
+                          ? "text-primary"
+                          : "text-muted-foreground",
                       )}
                       title="Alternar entre obrigatório e opcional neste visto"
                     >
-                      {selection.is_required ? "Obrigatório" : "Opcional"}
+                      {node.selection.is_required ? "Obrigatório" : "Opcional"}
                     </Button>
                   </form>
 
                   <InlineText
                     action={updateVisaDocument}
                     name="deadline_days"
-                    value={selection.deadline_days?.toString() ?? ""}
-                    hidden={{ id: selection.id }}
+                    value={node.selection.deadline_days?.toString() ?? ""}
+                    hidden={{ id: node.selection.id }}
                     label={`Prazo de ${node.name} em dias`}
                     placeholder="dias"
                     inputMode="numeric"
                     required={false}
                     className="w-16 shrink-0"
                   />
-                </>
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
 
-      <p className="text-sm text-muted-foreground">
-        Marcar uma pasta marca tudo dentro dela — e desmarcar também. A seleção
-        é gravada pasta por pasta: acrescentar pasta ao catálogo depois não muda
-        o que este visto já exigia. Obrigatoriedade e prazo valem só para este
-        visto.
-      </p>
+                  <div className="flex shrink-0 items-center gap-0.5">
+                    <MoveButtons
+                      action={moveVisaDocument}
+                      hidden={{ id: node.selection.id }}
+                      label={node.name}
+                      isFirst={node.isFirst}
+                      isLast={node.isLast}
+                    />
+                    <SelectBox
+                      visaTypeId={visaTypeId}
+                      id={node.id}
+                      name={node.name}
+                      isSelected
+                      losing={countSelected(node.id)}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <SectionHeader
+          title="Catálogo"
+          description="Marque o que este visto exige. Marcar uma pasta alcança tudo dentro dela — e desmarcar também."
+        />
+
+        <ul className="space-y-1">
+          {catalogTree.map((node) => {
+            const isSelected = byDocType.has(node.id);
+            const Icon = node.descendants > 0 ? FolderOpen : Folder;
+
+            return (
+              <li
+                key={node.id}
+                className={cn(
+                  "flex items-center gap-2 rounded-2xl border px-2 py-1.5",
+                  isSelected
+                    ? "border-primary/40 bg-primary/5"
+                    : "border-transparent",
+                )}
+                style={indentStyle(node.depth)}
+              >
+                <SelectBox
+                  visaTypeId={visaTypeId}
+                  id={node.id}
+                  name={node.name}
+                  isSelected={isSelected}
+                  losing={countSelected(node.id)}
+                />
+
+                <Icon className="h-4 w-4 shrink-0 text-brand" aria-hidden />
+
+                <span className="min-w-0 flex-1 truncate text-sm">{node.name}</span>
+              </li>
+            );
+          })}
+        </ul>
+
+        <p className="text-sm text-muted-foreground">
+          A seleção é gravada pasta por pasta: acrescentar pasta ao catálogo
+          depois não muda o que este visto já exigia.
+        </p>
+      </section>
     </div>
   );
 }

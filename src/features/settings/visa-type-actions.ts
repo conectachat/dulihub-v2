@@ -270,15 +270,100 @@ export async function toggleVisaDocument(formData: FormData): Promise<void> {
       .eq("visa_type_id", visaTypeId)
       .in("document_type_id", affected);
   } else {
+    // Entra no fim da lista deste visto. Antes a posição recomeçava do zero a
+    // cada clique, então marcar duas pastas dava a ambas a posição 0 e a ordem
+    // ficava indefinida — era o que fazia a lista parecer alfabética.
+    const { data: last } = await supabase
+      .from("visa_type_documents")
+      .select("position")
+      .eq("visa_type_id", visaTypeId)
+      .order("position", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    let next = (last?.position ?? -1) + 1;
+
     await supabase.from("visa_type_documents").upsert(
-      affected.map((document_type_id, index) => ({
+      affected.map((document_type_id) => ({
         visa_type_id: visaTypeId,
         document_type_id,
-        position: index,
+        position: next++,
       })),
       { onConflict: "visa_type_id,document_type_id", ignoreDuplicates: true },
     );
   }
+
+  revalidatePath(PATH);
+}
+
+/**
+ * Reordena uma exigência entre as irmãs, dentro deste visto.
+ *
+ * A ordem é do VISTO, não do catálogo: o mesmo "Rendimentos" pode vir primeiro
+ * no EB-2 NIW e por último no O-1. É esta ordem que o cliente vai enxergar no
+ * processo, porque o molde é copiado com ela.
+ *
+ * Troca só entre irmãs — nó não muda de pai por aqui. Subir "Passaporte" para
+ * fora de "Documentos Pessoais" seria mudança de hierarquia, que se faz no
+ * catálogo e vale para todos os vistos.
+ */
+export async function moveVisaDocument(formData: FormData): Promise<void> {
+  const id = formData.get("id");
+  const direction = formData.get("direction");
+  if (typeof id !== "string" || (direction !== "up" && direction !== "down")) return;
+
+  const supabase = await createClient();
+
+  const { data: row } = await supabase
+    .from("visa_type_documents")
+    .select("id, visa_type_id, position, document_type_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!row) return;
+
+  // Irmãs são as exigências do mesmo visto que compartilham o pai no catálogo.
+  const [{ data: catalog }, { data: siblingsRaw }] = await Promise.all([
+    supabase.from("document_types").select("id, parent_id"),
+    supabase
+      .from("visa_type_documents")
+      .select("id, position, document_type_id")
+      .eq("visa_type_id", row.visa_type_id)
+      .order("position"),
+  ]);
+
+  const parentOf = new Map(
+    (catalog ?? []).map((n) => [n.id as string, n.parent_id as string | null]),
+  );
+  const selected = new Set((siblingsRaw ?? []).map((s) => s.document_type_id));
+
+  /** Pai visível: sobe até achar um ancestral que este visto também exige. */
+  const visibleParent = (docTypeId: string): string | null => {
+    let cursor = parentOf.get(docTypeId) ?? null;
+    while (cursor && !selected.has(cursor)) cursor = parentOf.get(cursor) ?? null;
+    return cursor;
+  };
+
+  const myParent = visibleParent(row.document_type_id);
+  const siblings = (siblingsRaw ?? []).filter(
+    (s) => visibleParent(s.document_type_id) === myParent,
+  );
+
+  const index = siblings.findIndex((s) => s.id === row.id);
+  const neighbour = siblings[direction === "up" ? index - 1 : index + 1];
+  if (!neighbour) return;
+
+  // Posição intermediária antes da troca, para nunca haver duas iguais no meio
+  // do caminho caso um índice único apareça depois.
+  await supabase.from("visa_type_documents").update({ position: -1 }).eq("id", row.id);
+  await supabase
+    .from("visa_type_documents")
+    .update({ position: row.position })
+    .eq("id", neighbour.id);
+  await supabase
+    .from("visa_type_documents")
+    .update({ position: neighbour.position })
+    .eq("id", row.id);
 
   revalidatePath(PATH);
 }

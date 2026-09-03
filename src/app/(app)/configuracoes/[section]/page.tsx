@@ -190,7 +190,7 @@ async function VisaTypesSection({ visaId }: { visaId?: string }) {
           .order("position"),
         supabase
           .from("visa_type_documents")
-          .select("id, document_type_id, is_required, deadline_days")
+          .select("id, document_type_id, is_required, deadline_days, position")
           .eq("visa_type_id", visaId),
       ]);
 
