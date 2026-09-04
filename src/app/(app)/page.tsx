@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Contact, Target, Users, Wallet } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
+import { QueryError } from "@/components/query-error";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getUserContext } from "@/features/organizations/queries";
@@ -20,7 +21,18 @@ export default async function DashboardPage() {
   // caso o matcher mude no futuro.
   if (!context) return null;
 
-  const { people } = await listPeople();
+  const { people, error } = await listPeople();
+
+  // Sem isto os três números viram 0 e a tela convida a "começar cadastrando
+  // um contato" — com 76 deles no banco.
+  if (error) {
+    return (
+      <main className="space-y-6 p-6">
+        <PageHeader title="Início" />
+        <QueryError detalhe={error} />
+      </main>
+    );
+  }
 
   const totals = {
     contatos: people.length,

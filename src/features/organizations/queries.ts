@@ -28,9 +28,30 @@ export type UserContext = {
 export async function getUserContext(): Promise<UserContext | null> {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Envolvido porque `getUser` fala com a rede: uma queda aqui estourava no
+  // layout, e exceção em layout escapa da fronteira de erro do próprio grupo
+  // de rotas — o app inteiro sumia por causa de um piscar do servidor de
+  // autenticação. Agora vira campo `error`, e a casca continua de pé.
+  let user = null;
+  let authError: string | null = null;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    user = data.user;
+    authError = error?.message ?? null;
+  } catch (e) {
+    authError = e instanceof Error ? e.message : "Falha ao verificar a sessão.";
+  }
+
+  if (authError) {
+    return {
+      userId: "",
+      email: "",
+      fullName: null,
+      organizations: [],
+      isRoot: false,
+      error: authError,
+    };
+  }
 
   if (!user) return null;
 

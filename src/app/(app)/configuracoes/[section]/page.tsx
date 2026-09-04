@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ChevronRight, FileStack } from "lucide-react";
 
 import { ConfirmAction } from "@/components/confirm-action";
+import { QueryError } from "@/components/query-error";
 import { EmptyState } from "@/components/empty-state";
 import { SectionHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -85,11 +86,16 @@ async function GeneralSection() {
 async function StagesSection() {
   const supabase = await createClient();
 
-  const { data: pipeline } = await supabase
+  const { data: pipeline, error: pipelineError } = await supabase
     .from("pipelines")
     .select("id, name")
     .eq("is_default", true)
     .maybeSingle();
+
+  // Erro antes de vazio, sempre: leitura falha não é "organização sem funil".
+  if (pipelineError) {
+    return <QueryError detalhe={pipelineError.message} />;
+  }
 
   if (!pipeline) {
     return (
@@ -99,7 +105,10 @@ async function StagesSection() {
     );
   }
 
-  const [{ data: stagesData }, { data: opportunities }] = await Promise.all([
+  const [
+    { data: stagesData, error: stagesError },
+    { data: opportunities, error: countError },
+  ] = await Promise.all([
     supabase
       .from("pipeline_stages")
       .select("id, name, position, is_won, is_lost")
@@ -107,6 +116,11 @@ async function StagesSection() {
       .order("position"),
     supabase.from("opportunities").select("stage_id"),
   ]);
+
+  // A contagem também: com ela zerada por erro, toda etapa parece vazia e
+  // segura de excluir.
+  const falha = stagesError ?? countError;
+  if (falha) return <QueryError detalhe={falha.message} />;
 
   const counts = new Map<string, number>();
   for (const row of opportunities ?? []) {
@@ -125,10 +139,16 @@ async function StagesSection() {
 async function TagsSection() {
   const supabase = await createClient();
 
-  const [{ data: tagsData }, { data: assignments }] = await Promise.all([
+  const [
+    { data: tagsData, error: tagsError },
+    { data: assignments, error: assignmentsError },
+  ] = await Promise.all([
     supabase.from("tags").select("id, name, color").order("name"),
     supabase.from("person_tags").select("tag_id"),
   ]);
+
+  const falha = tagsError ?? assignmentsError;
+  if (falha) return <QueryError detalhe={falha.message} />;
 
   const counts = new Map<string, number>();
   for (const row of assignments ?? []) {
@@ -146,10 +166,14 @@ async function TagsSection() {
 /** Catálogo de documentos: árvore de grupos, subgrupos e documentos. */
 async function DocumentTypesSection() {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("document_types")
     .select("id, parent_id, name, position")
     .order("position");
+
+  // Sem isto, uma leitura falha vira "Catálogo vazio" — e a reação a isso é
+  // recriar as pastas, duplicando tudo. É o cenário que a 0011 documentou.
+  if (error) return <QueryError detalhe={error.message} />;
 
   return <DocumentTypesEditor nodes={data ?? []} />;
 }
@@ -157,10 +181,12 @@ async function DocumentTypesSection() {
 /** Status que uma etapa de processo pode assumir. */
 async function StageStatusesSection() {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("stage_statuses")
     .select("id, code, label, color, position, is_default, is_done, is_system")
     .order("position");
+
+  if (error) return <QueryError detalhe={error.message} />;
 
   return <StageStatusesEditor statuses={data ?? []} />;
 }
@@ -176,8 +202,12 @@ async function VisaTypesSection({ visaId }: { visaId?: string }) {
   const supabase = await createClient();
 
   if (visaId) {
-    const [{ data: visa }, { data: stages }, { data: catalog }, { data: selections }] =
-      await Promise.all([
+    const [
+      { data: visa, error: visaError },
+      { data: stages, error: stagesError },
+      { data: catalog, error: catalogError },
+      { data: selections, error: selectionsError },
+    ] = await Promise.all([
         supabase.from("visa_types").select("*").eq("id", visaId).maybeSingle(),
         supabase
           .from("visa_stages")
@@ -193,6 +223,11 @@ async function VisaTypesSection({ visaId }: { visaId?: string }) {
           .select("id, document_type_id, is_required, deadline_days, position")
           .eq("visa_type_id", visaId),
       ]);
+
+    // Leitura falha não é "não encontrado", e catálogo falho não é catálogo
+    // vazio — as duas confusões levam a recriar o que já existe.
+    const falha = visaError ?? stagesError ?? catalogError ?? selectionsError;
+    if (falha) return <QueryError detalhe={falha.message} />;
 
     if (!visa) {
       return (
@@ -252,12 +287,20 @@ async function VisaTypesSection({ visaId }: { visaId?: string }) {
     );
   }
 
-  const [{ data: types }, { data: stageCounts }, { data: docCounts }] =
-    await Promise.all([
-      supabase.from("visa_types").select("*").order("position").order("name"),
-      supabase.from("visa_stages").select("visa_type_id"),
-      supabase.from("visa_type_documents").select("visa_type_id"),
-    ]);
+  const [
+    { data: types, error: typesError },
+    { data: stageCounts, error: stageCountsError },
+    { data: docCounts, error: docCountsError },
+  ] = await Promise.all([
+    supabase.from("visa_types").select("*").order("position").order("name"),
+    supabase.from("visa_stages").select("visa_type_id"),
+    supabase.from("visa_type_documents").select("visa_type_id"),
+  ]);
+
+  // Sem isto, uma leitura falha vira "Nenhum tipo de visto ainda. Crie o
+  // primeiro" — convite para recriar o molde inteiro em cima do que existe.
+  const falhaLista = typesError ?? stageCountsError ?? docCountsError;
+  if (falhaLista) return <QueryError detalhe={falhaLista.message} />;
 
   const countBy = (rows: { visa_type_id: string }[] | null) => {
     const map = new Map<string, number>();

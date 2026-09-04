@@ -5,6 +5,7 @@ import { ArrowLeft, Mail, Phone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
+import { QueryError } from "@/components/query-error";
 import { formatarMoeda } from "@/lib/totals";
 import { LIFECYCLE_LABELS } from "@/features/people/schema";
 import { listTags } from "@/features/people/queries";
@@ -40,7 +41,7 @@ export default async function PersonPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: person } = await supabase
+  const { data: person, error: personError } = await supabase
     .from("people")
     .select(
       `id, full_name, email, phone, phone_country_code, company, job_title,
@@ -50,17 +51,20 @@ export default async function PersonPage({
     .eq("id", id)
     .maybeSingle();
 
+  // Erro antes de 404: consulta falha não é "não existe". Sem esta linha,
+  // uma queda de leitura devolvia página de não encontrado para um contato
+  // que está no banco.
+  if (personError) return <QueryError detalhe={personError.message} />;
+
   // Some para quem não pode ver: a RLS devolve vazio, e 404 não revela se o
   // registro existe em outra organização.
   if (!person) notFound();
 
   const [
-    { data: opportunitiesRaw },
-    allTags,
-    timeline,
-    {
-      data: { user },
-    },
+    { data: opportunitiesRaw, error: oportunidadesError },
+    { tags: allTags, error: tagsError },
+    { items: timeline, error: timelineError },
+    { data: { user }, error: userError },
   ] = await Promise.all([
     supabase
       .from("opportunities")
@@ -71,6 +75,12 @@ export default async function PersonPage({
     getTimeline(id),
     supabase.auth.getUser(),
   ]);
+
+  // O erro de `getUser` entra junto: sem ele, `user` vem nulo e a linha do
+  // tempo inteira parece de outra pessoa, escondendo os botões de excluir.
+  const falha =
+    oportunidadesError?.message ?? tagsError ?? timelineError ?? userError?.message;
+  if (falha) return <QueryError detalhe={falha} />;
 
   const opportunities = (opportunitiesRaw ?? []) as unknown as Opportunity[];
   // Sem os tipos gerados do banco, o cliente Supabase infere a relação

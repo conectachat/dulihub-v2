@@ -107,21 +107,18 @@ export async function listPeople({
   return { people, error: null };
 }
 
-export async function listTags(): Promise<PersonTag[]> {
+export async function listTags(): Promise<{
+  tags: PersonTag[];
+  error: string | null;
+}> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("tags")
     .select("id, name, color")
     .order("name");
-  return (data as PersonTag[] | null) ?? [];
-}
 
-export async function getPerson(id: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("people")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-  return { person: data, error: error?.message ?? null };
+  // Sem o canal de erro, tag sumia da tela e parecia que ninguém marcou nada.
+  if (error) return { tags: [], error: error.message };
+
+  return { tags: (data as PersonTag[] | null) ?? [], error: null };
 }

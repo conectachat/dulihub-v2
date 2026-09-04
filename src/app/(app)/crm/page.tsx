@@ -15,9 +15,12 @@ export const metadata = { title: "CRM — Duli Hub" };
 
 
 export default async function CrmPage() {
-  const [board, people] = await Promise.all([getBoard(), listPeopleForPicker()]);
+  const [board, { people, error: peopleError }] = await Promise.all([
+    getBoard(),
+    listPeopleForPicker(),
+  ]);
 
-  if (board.error) {
+  if (board.error ?? peopleError) {
     return (
       <main className="space-y-4 p-6">
         <PageHeader title="CRM" />
@@ -25,7 +28,7 @@ export default async function CrmPage() {
           <p className="font-medium text-destructive">
             Não foi possível carregar o funil.
           </p>
-          <p className="text-muted-foreground">{board.error}</p>
+          <p className="text-muted-foreground">{board.error ?? peopleError}</p>
         </div>
       </main>
     );

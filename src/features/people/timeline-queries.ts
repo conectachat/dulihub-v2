@@ -33,10 +33,16 @@ export const ACTIVITY_LABELS: Record<string, string> = {
  * data. A fusão acontece aqui, na leitura, porque quem abre a ficha quer ler
  * a história em ordem, não alternar entre duas listas.
  */
-export async function getTimeline(personId: string): Promise<TimelineItem[]> {
+export async function getTimeline(personId: string): Promise<{
+  items: TimelineItem[];
+  error: string | null;
+}> {
   const supabase = await createClient();
 
-  const [{ data: notes }, { data: activities }] = await Promise.all([
+  const [
+    { data: notes, error: notesError },
+    { data: activities, error: activitiesError },
+  ] = await Promise.all([
     supabase
       .from("notes")
       .select("id, body, created_at, created_by, author:profiles(full_name, email)")
@@ -50,6 +56,11 @@ export async function getTimeline(personId: string): Promise<TimelineItem[]> {
       .eq("person_id", personId)
       .order("occurred_at", { ascending: false }),
   ]);
+
+  // Falha parcial é o pior caso aqui: notas carregam, atividades não, e a
+  // pessoa lê metade da história achando que é toda ela.
+  const falha = notesError ?? activitiesError;
+  if (falha) return { items: [], error: falha.message };
 
   type AuthorRow = { full_name: string | null; email: string } | null;
   const nameOf = (author: AuthorRow) =>
@@ -96,7 +107,9 @@ export async function getTimeline(personId: string): Promise<TimelineItem[]> {
     };
   });
 
-  return [...fromNotes, ...fromActivities].sort(
+  const items = [...fromNotes, ...fromActivities].sort(
     (a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt),
   );
+
+  return { items, error: null };
 }

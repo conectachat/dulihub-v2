@@ -67,7 +67,10 @@ export async function getBoard(): Promise<Board> {
     };
   }
 
-  const [{ data: stagesData }, { data: cardsData, error: cardsError }] =
+  const [
+    { data: stagesData, error: stagesError },
+    { data: cardsData, error: cardsError },
+  ] =
     await Promise.all([
       supabase
         .from("pipeline_stages")
@@ -111,18 +114,30 @@ export async function getBoard(): Promise<Board> {
     stages,
     cardsByStage,
     totalsByStage,
-    error: cardsError?.message ?? null,
+    // Antes só o erro dos cartões subia. Com as etapas falhando o quadro
+    // aparecia sem coluna nenhuma e sem explicação, porque error vinha nulo.
+    error: stagesError?.message ?? cardsError?.message ?? null,
   };
 }
 
-/** Pessoas para o seletor ao criar oportunidade. */
+/**
+ * Pessoas para o seletor ao criar oportunidade.
+ *
+ * Com canal de erro porque, sem ele, uma leitura falha deixava o seletor
+ * "Contato" vazio: a pessoa não conseguia criar oportunidade nenhuma e nada
+ * na tela dizia por quê.
+ */
 export async function listPeopleForPicker() {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("people")
     .select("id, full_name")
     .is("deleted_at", null)
     .order("full_name")
     .limit(500);
-  return (data ?? []) as { id: string; full_name: string }[];
+
+  return {
+    people: (data ?? []) as { id: string; full_name: string }[],
+    error: error?.message ?? null,
+  };
 }

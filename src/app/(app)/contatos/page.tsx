@@ -50,7 +50,7 @@ export default async function ContatosPage({
   const { q, view, tags } = await searchParams;
   const tagIds = (tags ?? "").split(",").filter(Boolean);
 
-  const [{ people, error }, allTags] = await Promise.all([
+  const [{ people, error }, { tags: allTags, error: tagsError }] = await Promise.all([
     listPeople({
       search: q,
       tagIds,
@@ -73,7 +73,7 @@ export default async function ContatosPage({
         <TagFilter tags={allTags} />
       </ContactFilters>
 
-      {error ? (
+      {error ?? tagsError ? (
         <div className="rounded-2xl border border-destructive/50 p-4 text-sm">
           <p className="font-medium text-destructive">
             Não foi possível carregar os contatos.
