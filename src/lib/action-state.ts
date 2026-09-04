@@ -30,12 +30,33 @@ export type ActionState = {
 
 export const ESTADO_INICIAL: ActionState = { error: null };
 
-/** Falha, com a mensagem que aparece na tela. */
+/**
+ * Falha, com a mensagem que aparece na tela.
+ *
+ * Carrega `token` como o sucesso: duas falhas iguais em seguida precisam ser
+ * distinguíveis, senão a segunda não dispara aviso nenhum e a pessoa acha que
+ * o clique não chegou a acontecer.
+ */
 export function falhou(error: string): ActionState {
-  return { error };
+  return { error, token: crypto.randomUUID() };
 }
 
 /** Sucesso, com marca nova. */
 export function gravou(): ActionState {
   return { error: null, ok: true, token: crypto.randomUUID() };
 }
+
+/**
+ * Assinatura de Server Action ligada a um `<form action={...}>`.
+ *
+ * A união existe porque a conversão das ações acontece em pedaços: durante
+ * ela, os componentes compartilhados recebem tanto as já convertidas quanto as
+ * que ainda devolvem `void`. Some quando a última for convertida.
+ *
+ * React ignora o valor de retorno de uma ação de formulário — é por isso que
+ * converter `void` para `ActionState` não muda nenhum call site. Quem quiser a
+ * mensagem chama a ação dentro de uma closure e lê o retorno ali.
+ */
+export type AcaoDeFormulario = (
+  formData: FormData,
+) => void | Promise<void> | Promise<ActionState>;

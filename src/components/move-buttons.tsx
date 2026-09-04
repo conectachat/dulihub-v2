@@ -3,6 +3,8 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import type { AcaoDeFormulario } from "@/lib/action-state";
+import { comAviso } from "@/lib/avisar";
 
 /**
  * Botões de subir e descer, para reordenar entre irmãos.
@@ -14,6 +16,10 @@ import { Button } from "@/components/ui/button";
  * funciona no celular, no teclado e no leitor de tela, sem depender de
  * biblioteca. Numa árvore o arrastar é ainda pior — soltar entre dois níveis é
  * ambíguo: o item vai depois daquele ou dentro dele? Botão não tem essa dúvida.
+ *
+ * A recusa vira aviso flutuante, e não texto na linha: aqui não há onde
+ * escrever — a linha é duas setas. E a lista já volta sozinha à ordem certa,
+ * porque a ordem vem do servidor.
  */
 export function MoveButtons({
   action,
@@ -22,20 +28,22 @@ export function MoveButtons({
   isFirst,
   isLast,
 }: {
-  action: (formData: FormData) => void | Promise<void>;
+  action: AcaoDeFormulario;
   hidden: Record<string, string>;
   /** Nome do item, para o leitor de tela. */
   label: string;
   isFirst: boolean;
   isLast: boolean;
 }) {
+  const enviar = comAviso(action);
+
   const fields = Object.entries(hidden).map(([key, value]) => (
     <input key={key} type="hidden" name={key} value={value} />
   ));
 
   return (
     <>
-      <form action={action}>
+      <form action={enviar}>
         {fields}
         <input type="hidden" name="direction" value="up" />
         <Button
@@ -50,7 +58,7 @@ export function MoveButtons({
         </Button>
       </form>
 
-      <form action={action}>
+      <form action={enviar}>
         {fields}
         <input type="hidden" name="direction" value="down" />
         <Button

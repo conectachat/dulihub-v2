@@ -3,13 +3,21 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { gravou, type ActionState } from "@/lib/action-state";
+import { falhou, gravou, type ActionState } from "@/lib/action-state";
+import { traduzirErro } from "@/lib/erros";
+import { resultado, resultadoSemContagem } from "@/lib/gravar";
 import { createClient } from "@/lib/supabase/server";
 
 /** @deprecated Use `ActionState` de `@/lib/action-state`. */
 export type StageActionState = ActionState;
 
 const nameSchema = z.string().trim().min(1, "Informe o nome da etapa").max(60);
+
+/** Toda tela que muda quando o funil muda. */
+function revalidar() {
+  revalidatePath("/configuracoes/etapas-do-funil");
+  revalidatePath("/crm");
+}
 
 /**
  * Cria uma etapa antes das terminais.
@@ -22,14 +30,14 @@ export async function createStage(
   formData: FormData,
 ): Promise<StageActionState> {
   const parsedName = nameSchema.safeParse(formData.get("name"));
-  if (!parsedName.success) return { error: parsedName.error.issues[0].message };
+  if (!parsedName.success) return falhou(parsedName.error.issues[0].message);
 
   const pipelineId = formData.get("pipeline_id");
-  if (typeof pipelineId !== "string") return { error: "Funil não informado." };
+  if (typeof pipelineId !== "string") return falhou("Funil não informado.");
 
   const supabase = await createClient();
 
-  const { data: siblings } = await supabase
+  const { data: siblings, error: siblingsError } = await supabase
     .from("pipeline_stages")
     .select("position")
     .eq("pipeline_id", pipelineId)
@@ -38,37 +46,48 @@ export async function createStage(
     .order("position", { ascending: false })
     .limit(1);
 
+  if (siblingsError) return falhou(traduzirErro(siblingsError));
+
   const nextPosition = (siblings?.[0]?.position ?? -1) + 1;
   if (nextPosition >= 98) {
-    return { error: "Limite de etapas atingido. Junte ou remova alguma antes." };
+    return falhou("Limite de etapas atingido. Junte ou remova alguma antes.");
   }
 
-  const { error } = await supabase.from("pipeline_stages").insert({
-    pipeline_id: pipelineId,
-    name: parsedName.data,
-    position: nextPosition,
-  });
+  const resposta = await supabase
+    .from("pipeline_stages")
+    .insert({
+      pipeline_id: pipelineId,
+      name: parsedName.data,
+      position: nextPosition,
+    })
+    .select("id");
 
-  if (error) return { error: error.message };
+  const estado = resultado(resposta);
+  if (estado.error) return estado;
 
-  revalidatePath("/configuracoes/etapas-do-funil");
-  revalidatePath("/crm");
+  revalidar();
   return gravou();
 }
 
-export async function renameStage(formData: FormData): Promise<void> {
+export async function renameStage(formData: FormData): Promise<ActionState> {
   const id = formData.get("id");
   const parsedName = nameSchema.safeParse(formData.get("name"));
-  if (typeof id !== "string" || !parsedName.success) return;
+  if (typeof id !== "string") return falhou("Etapa não informada.");
+  if (!parsedName.success) return falhou(parsedName.error.issues[0].message);
 
   const supabase = await createClient();
-  await supabase
-    .from("pipeline_stages")
-    .update({ name: parsedName.data })
-    .eq("id", id);
+  const estado = resultado(
+    await supabase
+      .from("pipeline_stages")
+      .update({ name: parsedName.data })
+      .eq("id", id)
+      .select("id"),
+  );
 
-  revalidatePath("/configuracoes/etapas-do-funil");
-  revalidatePath("/crm");
+  if (estado.error) return estado;
+
+  revalidar();
+  return estado;
 }
 
 /**
@@ -76,23 +95,34 @@ export async function renameStage(formData: FormData): Promise<void> {
  *
  * Só entre etapas do meio: ganho e perdido ficam sempre no fim, porque o funil
  * termina neles.
+ *
+ * A troca em si vai por RPC (`0014`). Feita daqui, seriam três gravações sem
+ * transação — falhar no meio deixaria a etapa presa na posição `-1`, no topo da
+ * lista, com o botão de subir desabilitado por ser a primeira. Sem volta pela
+ * tela.
  */
-export async function moveStage(formData: FormData): Promise<void> {
+export async function moveStage(formData: FormData): Promise<ActionState> {
   const id = formData.get("id");
   const direction = formData.get("direction");
-  if (typeof id !== "string" || (direction !== "up" && direction !== "down")) return;
+  if (typeof id !== "string" || (direction !== "up" && direction !== "down")) {
+    return falhou("Movimento não informado.");
+  }
 
   const supabase = await createClient();
 
-  const { data: stage } = await supabase
+  const { data: stage, error: stageError } = await supabase
     .from("pipeline_stages")
     .select("id, pipeline_id, position, is_won, is_lost")
     .eq("id", id)
     .maybeSingle();
 
-  if (!stage || stage.is_won || stage.is_lost) return;
+  if (stageError) return falhou(traduzirErro(stageError));
+  if (!stage) return falhou("Etapa não encontrada.");
+  if (stage.is_won || stage.is_lost) {
+    return falhou("Ganho e perdido ficam sempre no fim do funil.");
+  }
 
-  const { data: neighbour } = await supabase
+  const { data: neighbour, error: neighbourError } = await supabase
     .from("pipeline_stages")
     .select("id, position")
     .eq("pipeline_id", stage.pipeline_id)
@@ -103,46 +133,65 @@ export async function moveStage(formData: FormData): Promise<void> {
     .limit(1)
     .maybeSingle();
 
-  if (!neighbour) return;
+  if (neighbourError) return falhou(traduzirErro(neighbourError));
+  // Já está na ponta. Não é erro, e a tela já desabilita o botão.
+  if (!neighbour) return gravou();
 
-  // Posição intermediária evita colisão caso um índice único seja adicionado
-  // depois. Duas trocas simples poderiam esbarrar uma na outra.
-  await supabase.from("pipeline_stages").update({ position: -1 }).eq("id", stage.id);
-  await supabase
-    .from("pipeline_stages")
-    .update({ position: stage.position })
-    .eq("id", neighbour.id);
-  await supabase
-    .from("pipeline_stages")
-    .update({ position: neighbour.position })
-    .eq("id", stage.id);
+  const estado = resultadoSemContagem(
+    await supabase.rpc("swap_positions", {
+      p_tabela: "pipeline_stages",
+      p_a: stage.id,
+      p_b: neighbour.id,
+    }),
+  );
 
-  revalidatePath("/configuracoes/etapas-do-funil");
-  revalidatePath("/crm");
+  if (estado.error) return estado;
+
+  revalidar();
+  return estado;
 }
 
 /**
  * Remove uma etapa do meio.
  *
  * Terminal não passa daqui: o gatilho `pipeline_stages_protect_terminal` no
- * banco recusa, e a mensagem é traduzida para o usuário.
+ * banco recusa, e agora a mensagem dele chega ao usuário — antes era descartada
+ * junto com o resto.
  */
-export async function deleteStage(formData: FormData): Promise<void> {
+export async function deleteStage(formData: FormData): Promise<ActionState> {
   const id = formData.get("id");
-  if (typeof id !== "string") return;
+  if (typeof id !== "string") return falhou("Etapa não informada.");
 
   const supabase = await createClient();
 
   // Etapa com oportunidade dentro não some sem levar o negócio junto.
-  const { count } = await supabase
+  //
+  // O `?? 0` que estava aqui era caminho de perda de dado: contagem com erro
+  // devolve `count` nulo, `?? 0` virava zero, a guarda abria e a exclusão
+  // seguia. Erro de leitura não pode virar permissão.
+  const { count, error: countError } = await supabase
     .from("opportunities")
     .select("id", { count: "exact", head: true })
     .eq("stage_id", id);
 
-  if ((count ?? 0) > 0) return;
+  if (countError) return falhou(traduzirErro(countError));
+  if (count === null) {
+    return falhou("Não foi possível conferir se há negócios nesta etapa.");
+  }
+  if (count > 0) {
+    return falhou(
+      count === 1
+        ? "Há 1 negócio nesta etapa. Mova-o antes de excluí-la."
+        : `Há ${count} negócios nesta etapa. Mova-os antes de excluí-la.`,
+    );
+  }
 
-  await supabase.from("pipeline_stages").delete().eq("id", id);
+  const estado = resultado(
+    await supabase.from("pipeline_stages").delete().eq("id", id).select("id"),
+  );
 
-  revalidatePath("/configuracoes/etapas-do-funil");
-  revalidatePath("/crm");
+  if (estado.error) return estado;
+
+  revalidar();
+  return estado;
 }

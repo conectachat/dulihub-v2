@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono, Lora, Open_Sans } from "next/font/google";
 import "./globals.css";
 
+import { Toaster } from "@/components/ui/sonner";
+
 /**
  * Tipografia da marca, do Manual de Identidade Visual:
  * "Lora speaks, Open Sans explains, IBM Plex Mono states the facts."
@@ -40,7 +42,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="pt-BR"
       className={`${openSans.variable} ${lora.variable} ${plexMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        {/* Canal de aviso para ação de linha, que não tem onde escrever. */}
+        <Toaster position="bottom-right" />
+      </body>
     </html>
   );
 }

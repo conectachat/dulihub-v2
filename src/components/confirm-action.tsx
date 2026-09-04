@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import type { AcaoDeFormulario } from "@/lib/action-state";
+import { comAviso } from "@/lib/avisar";
 import {
   Dialog,
   DialogContent,
@@ -36,7 +38,7 @@ export function ConfirmAction({
   icon: Icon = Trash2,
   size = "icon",
 }: {
-  action: (formData: FormData) => void | Promise<void>;
+  action: AcaoDeFormulario;
   hidden: Record<string, string>;
   title: string;
   consequence?: string;
@@ -52,14 +54,28 @@ export function ConfirmAction({
   size?: "icon" | "sm";
 }) {
   const [open, setOpen] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
   const hiddenFields = Object.entries(hidden).map(([key, value]) => (
     <input key={key} type="hidden" name={key} value={value} />
   ));
 
+  /**
+   * O diálogo fica aberto depois de enviar — ninguém o fecha, e no sucesso ele
+   * some junto com a linha que o continha. Isso deixa um lugar pronto para a
+   * recusa, melhor que aviso flutuante: o flutuante some e deixa o diálogo
+   * aberto sem explicação nenhuma.
+   */
+  async function confirmar(formData: FormData) {
+    setErro(null);
+    const resultado = await action(formData);
+    if (resultado && resultado.error) setErro(resultado.error);
+  }
+
   if (!needsConfirmation) {
+    // Sem diálogo não há onde escrever: vai como aviso flutuante.
     return (
-      <form action={action}>
+      <form action={comAviso(action)}>
         {hiddenFields}
         <Button
           type="submit"
@@ -91,7 +107,13 @@ export function ConfirmAction({
         <Icon className="h-4 w-4" />
       </Button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(proximo) => {
+          setOpen(proximo);
+          if (!proximo) setErro(null);
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
@@ -99,11 +121,17 @@ export function ConfirmAction({
               <DialogDescription>{consequence}</DialogDescription>
             ) : null}
           </DialogHeader>
+          {erro ? (
+            <p role="alert" className="text-sm text-destructive">
+              {erro}
+            </p>
+          ) : null}
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <form action={action}>
+            <form action={confirmar}>
               {hiddenFields}
               <Button type="submit" variant="destructive">
                 {confirmLabel}
