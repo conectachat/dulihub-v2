@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRef } from "react";
 
 import { setPersonTags } from "@/features/people/tag-actions";
+import { comAviso } from "@/lib/avisar";
+import { DEFAULT_COLOR } from "@/lib/palette";
 import { cn } from "@/lib/utils";
 
 type Tag = { id: string; name: string; color: string | null };
@@ -40,12 +42,16 @@ export function PersonTags({
   }
 
   return (
-    <form ref={formRef} action={setPersonTags} className="flex flex-wrap gap-2">
+    <form
+      ref={formRef}
+      action={comAviso(setPersonTags)}
+      className="flex flex-wrap gap-2"
+    >
       <input type="hidden" name="person_id" value={personId} />
 
       {allTags.map((tag) => {
         const isOn = selected.has(tag.id);
-        const color = tag.color ?? "#64748b";
+        const color = tag.color ?? DEFAULT_COLOR;
 
         return (
           <label

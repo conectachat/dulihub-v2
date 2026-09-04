@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { gravou, type ActionState } from "@/lib/action-state";
+import { falhou, gravou, type ActionState } from "@/lib/action-state";
+import { NADA_GRAVADO, traduzirErro } from "@/lib/erros";
+import { resultado, resultadoSemContagem } from "@/lib/gravar";
 import { parseMoney } from "@/lib/numbers";
 import { createClient } from "@/lib/supabase/server";
 
@@ -46,10 +48,10 @@ export async function createOpportunity(
     source: formData.get("source"),
   });
 
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return falhou(parsed.error.issues[0].message);
 
   const { supabase, userId, organizationId } = await context();
-  if (!organizationId) return { error: "Sua conta não está vinculada a nenhuma organização." };
+  if (!organizationId) return falhou("Sua conta não está vinculada a nenhuma organização.");
 
   const { data: stage } = await supabase
     .from("pipeline_stages")
@@ -78,7 +80,7 @@ export async function createOpportunity(
     created_by: userId,
   });
 
-  if (error) return { error: error.message };
+  if (error) return falhou(traduzirErro(error));
 
   // Quem tem oportunidade deixa de ser simples contato. Cliente não regride.
   await supabase
@@ -98,25 +100,30 @@ export async function createOpportunity(
  * Etapa terminal define status e data de encerramento; voltar para o meio do
  * funil reabre. Assim a coluna onde o cartão está e o status nunca divergem.
  */
-export async function moveOpportunity(formData: FormData): Promise<void> {
+export async function moveOpportunity(formData: FormData): Promise<ActionState> {
   const id = formData.get("id");
   const stageId = formData.get("stage_id");
-  if (typeof id !== "string" || typeof stageId !== "string") return;
+  if (typeof id !== "string" || typeof stageId !== "string") {
+    return falhou("Movimento não informado.");
+  }
 
   const { supabase, userId, organizationId } = await context();
-  if (!organizationId) return;
+  if (!organizationId) {
+    return falhou("Sua conta não está vinculada a nenhuma organização.");
+  }
 
-  const { data: stage } = await supabase
+  const { data: stage, error: stageError } = await supabase
     .from("pipeline_stages")
     .select("name, probability, is_won, is_lost")
     .eq("id", stageId)
     .maybeSingle();
 
-  if (!stage) return;
+  if (stageError) return falhou(traduzirErro(stageError));
+  if (!stage) return falhou("Etapa não encontrada.");
 
   const terminal = stage.is_won || stage.is_lost;
 
-  const { data: updated } = await supabase
+  const { data: updated, error: updateError } = await supabase
     .from("opportunities")
     .update({
       stage_id: stageId,
@@ -128,37 +135,58 @@ export async function moveOpportunity(formData: FormData): Promise<void> {
     .select("person_id")
     .maybeSingle();
 
-  if (updated?.person_id) {
-    // Registra o movimento: o histórico da pessoa precisa mostrar por onde
-    // a negociação passou, não só onde parou.
-    await supabase.from("activities").insert({
-      organization_id: organizationId,
-      person_id: updated.person_id,
-      opportunity_id: id,
-      type: "stage_change",
-      description: `Movida para ${stage.name}`,
-      created_by: userId,
-    });
+  if (updateError) return falhou(traduzirErro(updateError));
+  if (!updated) return falhou(NADA_GRAVADO);
+
+  if (updated.person_id) {
+    // Registra o movimento: o histórico da pessoa precisa mostrar por onde a
+    // negociação passou, não só onde parou.
+    //
+    // Falhar aqui é falha da operação inteira, não detalhe: sem o registro, o
+    // cartão muda de coluna e o histórico perde o movimento para sempre — que
+    // é exatamente o que este bloco existe para preservar.
+    const registro = resultadoSemContagem(
+      await supabase.from("activities").insert({
+        organization_id: organizationId,
+        person_id: updated.person_id,
+        opportunity_id: id,
+        type: "stage_change",
+        description: `Movida para ${stage.name}`,
+        created_by: userId,
+      }),
+    );
+    if (registro.error) return registro;
 
     if (stage.is_won) {
-      await supabase
-        .from("people")
-        .update({ lifecycle_stage: "client" })
-        .eq("id", updated.person_id);
+      const promocao = resultado(
+        await supabase
+          .from("people")
+          .update({ lifecycle_stage: "client" })
+          .eq("id", updated.person_id)
+          .select("id"),
+      );
+      if (promocao.error) return promocao;
     }
   }
 
   revalidatePath("/crm");
   revalidatePath("/contatos");
+  return gravou();
 }
 
-export async function deleteOpportunity(formData: FormData): Promise<void> {
+export async function deleteOpportunity(
+  formData: FormData,
+): Promise<ActionState> {
   const id = formData.get("id");
-  if (typeof id !== "string") return;
+  if (typeof id !== "string") return falhou("Oportunidade não informada.");
 
   const { supabase } = await context();
-  await supabase.from("opportunities").delete().eq("id", id);
+  const estado = resultado(
+    await supabase.from("opportunities").delete().eq("id", id).select("id"),
+  );
+  if (estado.error) return estado;
 
   revalidatePath("/crm");
   revalidatePath("/contatos");
+  return estado;
 }

@@ -3,6 +3,7 @@
 import { useRef } from "react";
 
 import { moveOpportunity } from "@/features/opportunities/actions";
+import { comAviso } from "@/lib/avisar";
 
 /**
  * Seletor de etapa dentro do cartão.
@@ -23,7 +24,7 @@ export function MoveCard({
   const formRef = useRef<HTMLFormElement>(null);
 
   return (
-    <form ref={formRef} action={moveOpportunity}>
+    <form ref={formRef} action={comAviso(moveOpportunity)}>
       <input type="hidden" name="id" value={opportunityId} />
       <select
         name="stage_id"

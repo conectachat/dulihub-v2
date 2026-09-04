@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { KanbanSquare, Trash2 } from "lucide-react";
+import { KanbanSquare } from "lucide-react";
 
+import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { formatarMoeda, formatarPorMoeda, juntarMoedas } from "@/lib/totals";
-import { Button } from "@/components/ui/button";
 import { deleteOpportunity } from "@/features/opportunities/actions";
 import { getBoard, listPeopleForPicker } from "@/features/opportunities/queries";
 
@@ -111,18 +111,13 @@ export default async function CrmPage() {
                         <p className="min-w-0 flex-1 text-sm font-medium leading-snug">
                           {card.title}
                         </p>
-                        <form action={deleteOpportunity}>
-                          <input type="hidden" name="id" value={card.id} />
-                          <Button
-                            type="submit"
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
-                            aria-label={`Excluir ${card.title}`}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </form>
+                        <ConfirmAction
+                          action={deleteOpportunity}
+                          hidden={{ id: card.id }}
+                          title={`Excluir "${card.title}"?`}
+                          consequence="Oportunidade não tem lixeira: some de vez, com valor, etapa e histórico de movimentação. O contato permanece."
+                          triggerLabel={`Excluir ${card.title}`}
+                        />
                       </div>
 
                       {card.person ? (

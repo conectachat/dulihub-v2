@@ -2,9 +2,9 @@ import Link from "next/link";
 import { Briefcase, RotateCcw, Trash2, Users } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
+import { IconAction } from "@/components/icon-action";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -171,31 +171,20 @@ export default async function ContatosPage({
                         <PersonDialog person={person} />
 
                         {showingDeleted ? (
-                          <form action={restorePerson}>
-                            <input type="hidden" name="id" value={person.id} />
-                            <Button
-                              type="submit"
-                              variant="ghost"
-                              size="icon"
-                              className="text-primary"
-                              aria-label={`Restaurar ${person.full_name}`}
-                            >
-                              <RotateCcw className="h-4 w-4" />
-                            </Button>
-                          </form>
+                          <IconAction
+                            action={restorePerson}
+                            hidden={{ id: person.id }}
+                            label={`Restaurar ${person.full_name}`}
+                            icon={RotateCcw}
+                          />
                         ) : (
-                          <form action={softDeletePerson}>
-                            <input type="hidden" name="id" value={person.id} />
-                            <Button
-                              type="submit"
-                              variant="ghost"
-                              size="icon"
-                              className="text-primary/60 hover:text-destructive"
-                              aria-label={`Excluir ${person.full_name}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </form>
+                          <IconAction
+                            action={softDeletePerson}
+                            hidden={{ id: person.id }}
+                            label={`Excluir ${person.full_name}`}
+                            icon={Trash2}
+                            tone="destructive"
+                          />
                         )}
                       </div>
                     </TableCell>

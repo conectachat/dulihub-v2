@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
+import { comAviso } from "@/lib/avisar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -205,7 +206,7 @@ export function Timeline({
                     </p>
 
                     {canDelete ? (
-                      <form action={deleteEntry}>
+                      <form action={comAviso(deleteEntry)}>
                         <input type="hidden" name="id" value={item.id} />
                         <input type="hidden" name="kind" value={item.kind} />
                         <input type="hidden" name="person_id" value={personId} />

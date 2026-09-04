@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
-import { gravou, type ActionState } from "@/lib/action-state";
+import { falhou, gravou, type ActionState } from "@/lib/action-state";
+import { traduzirErro } from "@/lib/erros";
+import { resultado } from "@/lib/gravar";
 import { createClient } from "@/lib/supabase/server";
 import { personFromForm } from "./schema";
 
@@ -31,11 +33,11 @@ export async function createPerson(
   formData: FormData,
 ): Promise<ActionState> {
   const parsed = personFromForm(formData);
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return falhou(parsed.error.issues[0].message);
 
   const organizationId = await currentOrganizationId();
   if (!organizationId) {
-    return { error: "Sua conta não está vinculada a nenhuma organização." };
+    return falhou("Sua conta não está vinculada a nenhuma organização.");
   }
 
   const supabase = await createClient();
@@ -50,7 +52,7 @@ export async function createPerson(
     created_by: user?.id ?? null,
   });
 
-  if (error) return { error: error.message };
+  if (error) return falhou(traduzirErro(error));
 
   revalidatePath("/contatos");
   return gravou();
@@ -61,15 +63,15 @@ export async function updatePerson(
   formData: FormData,
 ): Promise<ActionState> {
   const id = formData.get("id");
-  if (typeof id !== "string" || !id) return { error: "Contato não informado." };
+  if (typeof id !== "string" || !id) return falhou("Contato não informado.");
 
   const parsed = personFromForm(formData);
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return falhou(parsed.error.issues[0].message);
 
   const supabase = await createClient();
   const { error } = await supabase.from("people").update(parsed.data).eq("id", id);
 
-  if (error) return { error: error.message };
+  if (error) return falhou(traduzirErro(error));
 
   revalidatePath("/contatos");
   return gravou();
@@ -81,25 +83,40 @@ export async function updatePerson(
  * Contato tem histórico pendurado — notas, arquivos, oportunidades. Apagar de
  * verdade levaria tudo junto, e quase sempre a intenção é só tirar da vista.
  */
-export async function softDeletePerson(formData: FormData): Promise<void> {
+export async function softDeletePerson(
+  formData: FormData,
+): Promise<ActionState> {
   const id = formData.get("id");
-  if (typeof id !== "string" || !id) return;
+  if (typeof id !== "string" || !id) return falhou("Contato não informado.");
 
   const supabase = await createClient();
-  await supabase
-    .from("people")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("id", id);
+  const estado = resultado(
+    await supabase
+      .from("people")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id)
+      .select("id"),
+  );
+  if (estado.error) return estado;
 
   revalidatePath("/contatos");
+  return estado;
 }
 
-export async function restorePerson(formData: FormData): Promise<void> {
+export async function restorePerson(formData: FormData): Promise<ActionState> {
   const id = formData.get("id");
-  if (typeof id !== "string" || !id) return;
+  if (typeof id !== "string" || !id) return falhou("Contato não informado.");
 
   const supabase = await createClient();
-  await supabase.from("people").update({ deleted_at: null }).eq("id", id);
+  const estado = resultado(
+    await supabase
+      .from("people")
+      .update({ deleted_at: null })
+      .eq("id", id)
+      .select("id"),
+  );
+  if (estado.error) return estado;
 
   revalidatePath("/contatos");
+  return estado;
 }

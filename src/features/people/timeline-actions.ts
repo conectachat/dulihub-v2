@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { gravou, type ActionState } from "@/lib/action-state";
+import { falhou, gravou, type ActionState } from "@/lib/action-state";
+import { traduzirErro } from "@/lib/erros";
 import { createClient } from "@/lib/supabase/server";
 
 /** @deprecated Use `ActionState` de `@/lib/action-state`. */
@@ -54,11 +55,11 @@ export async function createEntry(
     occurred_at: formData.get("occurred_at"),
   });
 
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return falhou(parsed.error.issues[0].message);
 
   const { supabase, userId, organizationId } = await context();
   if (!organizationId) {
-    return { error: "Sua conta não está vinculada a nenhuma organização." };
+    return falhou("Sua conta não está vinculada a nenhuma organização.");
   }
 
   const { person_id, type, body, occurred_at } = parsed.data;
@@ -71,7 +72,7 @@ export async function createEntry(
       body,
       created_by: userId,
     });
-    if (error) return { error: error.message };
+    if (error) return falhou(traduzirErro(error));
   } else {
     // Atividade aceita: ligação de ontem lançada hoje tem que cair no lugar
     // certo da linha do tempo, não no topo.
@@ -86,7 +87,7 @@ export async function createEntry(
         : when.toISOString(),
       created_by: userId,
     });
-    if (error) return { error: error.message };
+    if (error) return falhou(traduzirErro(error));
   }
 
   revalidatePath(`/contatos/${person_id}`);
@@ -99,7 +100,7 @@ export async function createEntry(
  * Só o autor, e nunca registro do sistema: o movimento no funil é histórico
  * automático. Se der para reescrever, deixa de servir como histórico.
  */
-export async function deleteEntry(formData: FormData): Promise<void> {
+export async function deleteEntry(formData: FormData): Promise<ActionState> {
   const id = formData.get("id");
   const kind = formData.get("kind");
   const personId = formData.get("person_id");
@@ -109,22 +110,38 @@ export async function deleteEntry(formData: FormData): Promise<void> {
     typeof personId !== "string" ||
     (kind !== "note" && kind !== "activity")
   ) {
-    return;
+    return falhou("Entrada não informada.");
   }
 
   const { supabase, userId } = await context();
-  if (!userId) return;
+  if (!userId) return falhou("Sua sessão expirou. Entre de novo.");
 
-  if (kind === "note") {
-    await supabase.from("notes").delete().eq("id", id).eq("created_by", userId);
-  } else {
-    await supabase
-      .from("activities")
-      .delete()
-      .eq("id", id)
-      .eq("created_by", userId)
-      .neq("type", "stage_change");
+  // As condições de autoria e de tipo fazem parte do filtro, então zero linhas
+  // aqui quer dizer "não é seu, ou é registro automático do sistema" — e essa
+  // recusa passa a ter voz, em vez de o botão simplesmente não fazer nada.
+  const resposta =
+    kind === "note"
+      ? await supabase
+          .from("notes")
+          .delete()
+          .eq("id", id)
+          .eq("created_by", userId)
+          .select("id")
+      : await supabase
+          .from("activities")
+          .delete()
+          .eq("id", id)
+          .eq("created_by", userId)
+          .neq("type", "stage_change")
+          .select("id");
+
+  if (resposta.error) return falhou(traduzirErro(resposta.error));
+  if (!resposta.data || resposta.data.length === 0) {
+    return falhou(
+      "Só quem escreveu pode apagar, e movimento de funil é histórico do sistema.",
+    );
   }
 
   revalidatePath(`/contatos/${personId}`);
+  return gravou();
 }
