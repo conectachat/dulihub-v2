@@ -22,8 +22,15 @@ export function ContactFilters({ children }: { children?: React.ReactNode }) {
   const currentSearch = params.get("q") ?? "";
   const view = params.get("view") === "excluidos" ? "excluidos" : "ativos";
   const [term, setTerm] = useState(currentSearch);
+  const [ultimaUrl, setUltimaUrl] = useState(currentSearch);
 
-  useEffect(() => setTerm(currentSearch), [currentSearch]);
+  // A URL manda: voltar no navegador, ou trocar de aba entre ativos e
+  // excluídos, tem que se refletir no campo. Ajuste durante a renderização e
+  // não em efeito — React refaz a renderização na hora, antes de pintar.
+  if (currentSearch !== ultimaUrl) {
+    setUltimaUrl(currentSearch);
+    setTerm(currentSearch);
+  }
 
   function apply(next: { q?: string; view?: string }) {
     const sp = new URLSearchParams(params.toString());

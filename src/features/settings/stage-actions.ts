@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { gravou, type ActionState } from "@/lib/action-state";
 import { createClient } from "@/lib/supabase/server";
 
-export type StageActionState = { error: string | null; ok?: boolean };
+/** @deprecated Use `ActionState` de `@/lib/action-state`. */
+export type StageActionState = ActionState;
 
 const nameSchema = z.string().trim().min(1, "Informe o nome da etapa").max(60);
 
@@ -51,7 +53,7 @@ export async function createStage(
 
   revalidatePath("/configuracoes/etapas-do-funil");
   revalidatePath("/crm");
-  return { error: null, ok: true };
+  return gravou();
 }
 
 export async function renameStage(formData: FormData): Promise<void> {

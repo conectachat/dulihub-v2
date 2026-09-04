@@ -3,10 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { gravou, type ActionState } from "@/lib/action-state";
 import { createClient } from "@/lib/supabase/server";
 import { PALETTE } from "@/lib/palette";
 
-export type TagActionState = { error: string | null; ok?: boolean };
+/** @deprecated Use `ActionState` de `@/lib/action-state`. */
+export type TagActionState = ActionState;
 
 const tagSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome da tag").max(40),
@@ -56,7 +58,7 @@ export async function createTag(
 
   revalidatePath("/configuracoes/tags");
   revalidatePath("/contatos");
-  return { error: null, ok: true };
+  return gravou();
 }
 
 export async function updateTag(formData: FormData): Promise<void> {

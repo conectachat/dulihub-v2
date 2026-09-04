@@ -3,21 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { gravou, type ActionState } from "@/lib/action-state";
 import { createClient } from "@/lib/supabase/server";
 
-/**
- * `token` muda a cada gravação bem-sucedida.
- *
- * É o que a tela usa como `key` do formulário de criação: React remonta o
- * bloco e ele volta limpo — sem `useEffect` chamando `setState` depois do
- * sucesso, que é o padrão que o compilador do React acusa como cascata de
- * renderização.
- */
-export type StageStatusState = {
-  error: string | null;
-  ok?: boolean;
-  token?: number;
-};
+/** @deprecated Use `ActionState` de `@/lib/action-state` direto. */
+export type StageStatusState = ActionState;
 
 const SECTION = "/configuracoes/status-de-etapas";
 
@@ -100,7 +90,7 @@ export async function createStageStatus(
   if (error) return { error: humanize(error.message) };
 
   revalidatePath(SECTION);
-  return { error: null, ok: true, token: Date.now() };
+  return gravou();
 }
 
 /** Nome e cor salvam separado, cada um ao seu gatilho. */

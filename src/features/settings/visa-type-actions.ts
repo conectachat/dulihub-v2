@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { gravou, type ActionState } from "@/lib/action-state";
 import { createClient } from "@/lib/supabase/server";
 
-export type VisaState = { error: string | null; ok?: boolean };
+/** @deprecated Use `ActionState` de `@/lib/action-state`. */
+export type VisaState = ActionState;
 
 const PATH = "/configuracoes/tipos-de-visto";
 
@@ -83,7 +85,7 @@ export async function saveVisaType(
   }
 
   revalidatePath(PATH);
-  return { error: null, ok: true };
+  return gravou();
 }
 
 export async function deleteVisaType(formData: FormData): Promise<void> {
@@ -147,7 +149,7 @@ export async function createVisaStage(
   if (error) return { error: error.message };
 
   revalidatePath(PATH);
-  return { error: null, ok: true };
+  return gravou();
 }
 
 export async function updateVisaStage(formData: FormData): Promise<void> {

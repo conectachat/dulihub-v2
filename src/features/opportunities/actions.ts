@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { gravou, type ActionState } from "@/lib/action-state";
 import { createClient } from "@/lib/supabase/server";
 
-export type ActionState = { error: string | null; ok?: boolean };
+export type { ActionState };
 
 const opportunitySchema = z.object({
   person_id: z.string().uuid("Escolha um contato"),
@@ -97,7 +98,7 @@ export async function createOpportunity(
 
   revalidatePath("/crm");
   revalidatePath("/contatos");
-  return { error: null, ok: true };
+  return gravou();
 }
 
 /**

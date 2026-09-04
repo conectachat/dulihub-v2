@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Plus, Tag as TagIcon } from "lucide-react";
 
@@ -91,17 +91,50 @@ function TagRow({ tag }: { tag: Tag }) {
   );
 }
 
+/**
+ * Bloco de criação.
+ *
+ * Vive separado e é remontado pela `key` a cada sucesso: campo e cor voltam
+ * ao inicial sem efeito nenhum limpando estado depois do fato.
+ */
+function CreateTagForm({ action }: { action: (formData: FormData) => void }) {
+  const [newColor, setNewColor] = useState<string>(DEFAULT_COLOR);
+
+  return (
+    <form
+      action={action}
+      className="space-y-3 rounded-3xl border border-dashed p-4"
+    >
+      <div className="space-y-1">
+        <label htmlFor="new-tag" className="text-sm font-medium">
+          Nova tag
+        </label>
+        <Input
+          id="new-tag"
+          name="name"
+          placeholder="Ex.: EB-1A, Indicação, Urgente"
+          required
+          className="rounded-xl"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-sm font-medium">Cor</p>
+        <ColorPicker
+          name="color"
+          label="Cor da nova tag"
+          value={newColor}
+          onChange={setNewColor}
+        />
+      </div>
+
+      <CreateButton />
+    </form>
+  );
+}
+
 export function TagsEditor({ tags }: { tags: Tag[] }) {
   const [state, formAction] = useActionState(createTag, initialState);
-  const [newColor, setNewColor] = useState<string>(DEFAULT_COLOR);
-  const formRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    if (state.ok) {
-      formRef.current?.reset();
-      setNewColor(DEFAULT_COLOR);
-    }
-  }, [state.ok]);
 
   return (
     <div className="space-y-6">
@@ -109,36 +142,7 @@ export function TagsEditor({ tags }: { tags: Tag[] }) {
         Criar vem antes da lista de propósito: com a lista cheia, o campo no
         fim obrigaria a rolar até embaixo a cada tag nova.
       */}
-      <form
-        ref={formRef}
-        action={formAction}
-        className="space-y-3 rounded-3xl border border-dashed p-4"
-      >
-        <div className="space-y-1">
-          <label htmlFor="new-tag" className="text-sm font-medium">
-            Nova tag
-          </label>
-          <Input
-            id="new-tag"
-            name="name"
-            placeholder="Ex.: EB-1A, Indicação, Urgente"
-            required
-            className="rounded-xl"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Cor</p>
-          <ColorPicker
-            name="color"
-            label="Cor da nova tag"
-            value={newColor}
-            onChange={setNewColor}
-          />
-        </div>
-
-        <CreateButton />
-      </form>
+      <CreateTagForm key={state.token ?? "novo"} action={formAction} />
 
       {state.error ? (
         <p role="alert" className="text-sm text-destructive">

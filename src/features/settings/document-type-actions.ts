@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { gravou, type ActionState } from "@/lib/action-state";
 import { createClient } from "@/lib/supabase/server";
 
-export type DocTypeState = { error: string | null; ok?: boolean };
+/** @deprecated Use `ActionState` de `@/lib/action-state`. */
+export type DocTypeState = ActionState;
 
 const PATH = "/configuracoes/categorias-de-documento";
 
@@ -64,7 +66,7 @@ export async function createDocumentType(
   if (error) return { error: error.message };
 
   revalidatePath(PATH);
-  return { error: null, ok: true };
+  return gravou();
 }
 
 export async function renameDocumentType(formData: FormData): Promise<void> {

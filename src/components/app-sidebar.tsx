@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import {
   ChevronLeft,
   Contact,
@@ -18,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { signOut } from "@/features/auth/actions";
+import { usePersistedFlag } from "@/lib/use-persisted-flag";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -58,26 +58,10 @@ export function AppSidebar({
   roleLabel: string;
 }) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
-
-  // Lê a preferência depois da montagem: no servidor não existe localStorage,
-  // e ler antes causaria divergência entre o HTML enviado e o renderizado.
-  useEffect(() => {
-    try {
-      setCollapsed(window.localStorage.getItem(STORAGE_KEY) === "1");
-    } catch {
-      // Navegador com armazenamento bloqueado. Segue expandido.
-    }
-  }, []);
+  const [collapsed, setCollapsed] = usePersistedFlag(STORAGE_KEY);
 
   function toggle() {
-    setCollapsed((prev) => {
-      const next = !prev;
-      try {
-        window.localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
-      } catch {}
-      return next;
-    });
+    setCollapsed(!collapsed);
   }
 
   return (

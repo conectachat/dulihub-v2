@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 
+import { gravou, type ActionState } from "@/lib/action-state";
 import { createClient } from "@/lib/supabase/server";
 import { personSchema } from "./schema";
 
-export type ActionState = { error: string | null; ok?: boolean };
+export type { ActionState };
 
 /** Organização em que o usuário atual cria registros. */
 async function currentOrganizationId(): Promise<string | null> {
@@ -64,7 +65,7 @@ export async function createPerson(
   if (error) return { error: error.message };
 
   revalidatePath("/contatos");
-  return { error: null, ok: true };
+  return gravou();
 }
 
 export async function updatePerson(
@@ -83,7 +84,7 @@ export async function updatePerson(
   if (error) return { error: error.message };
 
   revalidatePath("/contatos");
-  return { error: null, ok: true };
+  return gravou();
 }
 
 /**

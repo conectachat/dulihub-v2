@@ -88,14 +88,51 @@ telas incomoda; em trinta, ninguém consegue mais mudar nada.
 
 Falta um? Extraia para `src/components/` na segunda cópia, não na terceira.
 
+### O portão roda sozinho
+
+`.githooks/pre-commit` roda tipos e lint antes de cada commit; a suíte fica no
+CI (`.github/workflows/ci.yml`), porque levantar o jsdom custa segundos demais
+para cobrar a cada commit — portão que atrapalha é portão que alguém pula com
+`--no-verify`.
+
+Numa máquina nova, uma vez: `git config core.hooksPath .githooks`.
+
+### Teste antes do código
+
+Regra de negócio e função pura entram com o teste que falha primeiro. Não é
+cerimônia: `bun test` reportou verde por nove dias rodando **zero** testes, e
+nesse período cinco defeitos chegaram à produção — inclusive um que impedia
+criar contato pela tela.
+
+Não precisa de dependência nova: `vitest`, `jsdom` e `@testing-library/react`
+já estão instalados. Componente React renderiza em teste hoje.
+
+Cada defeito corrigido entra com o teste que o reproduz. Ver
+`src/lib/tree.test.ts`, que cobre os dois casos que ninguém tinha coberto —
+ciclo e nó órfão — e que faziam a linha sumir da tela sem aviso.
+
+### Estado de ação: um tipo só
+
+Toda Server Action devolve `ActionState` de `@/lib/action-state`, e todo
+sucesso passa por `gravou()`, que carimba um `token` novo.
+
+O `token` é o que permite fechar diálogo e limpar formulário **sem**
+`useEffect`: a tela usa como `key`, ou compara com o último visto durante a
+renderização. Comparar `ok` não serve — ele continua verdadeiro depois do
+primeiro sucesso, e a segunda gravação não seria percebida.
+
+`useDialogOnSuccess` (`@/lib/use-dialog-on-success`) faz isso para diálogo.
+
 ### Limpar formulário depois do sucesso: `key`, não `useEffect`
 
 O jeito intuitivo — `useEffect(() => { if (state.ok) form.reset() })` — é o que
-produz os erros de `set-state-in-effect` que o projeto ainda carrega. O jeito
-sem efeito: a Server Action devolve um `token` que muda a cada sucesso, e a
-tela usa esse token como `key` do bloco de criação. React remonta o bloco e ele
-volta limpo, campo e estado local junto. Ver
-`stage-status-actions.ts` e `stage-statuses-editor.tsx`.
+produzia os sete erros de `set-state-in-effect`. O jeito sem efeito: o bloco de
+criação vive em componente próprio e a tela o remonta com
+`key={state.token ?? "novo"}`. Volta limpo, campo e estado local junto.
+
+Preferência guardada no navegador tem solução própria: `usePersistedFlag`
+(`@/lib/use-persisted-flag`), sobre `useSyncExternalStore`. Ler `localStorage`
+em efeito de montagem é a versão errada do mesmo problema.
 
 ### Criar vem antes da lista
 
@@ -152,10 +189,11 @@ criação. Não é decoração de cartão comum.
 schema, o teste de RLS: usuário da organização A não enxerga dado da
 organização B.
 
-`bun x eslint src` acusa 7 erros herdados, todos de `setState` dentro de
-`useEffect` (fechar diálogo e limpar formulário depois do sucesso, e a leitura
-da preferência da sidebar). Não cresça esse número — o padrão do `key` acima
-resolve o caso do formulário, e é como a tela de status de etapas foi feita.
+Um comando só faz os três: `bun run verify`.
+
+Lint em **zero**, sem exceção herdada. Era 7, todos de `setState` dentro de
+`useEffect`; foram pagos, não administrados. Se voltar a subir, o commit não
+acontece — a trava local recusa antes.
 
 ## Migrations: arquivo sempre, no mesmo commit
 

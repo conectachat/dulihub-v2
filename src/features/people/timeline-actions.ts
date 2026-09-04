@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { gravou, type ActionState } from "@/lib/action-state";
 import { createClient } from "@/lib/supabase/server";
 
-export type TimelineActionState = { error: string | null; ok?: boolean };
+/** @deprecated Use `ActionState` de `@/lib/action-state`. */
+export type TimelineActionState = ActionState;
 
 /** Tipos que o usuário pode lançar. `stage_change` é do sistema e não entra. */
 const USER_TYPES = ["note", "call", "meeting", "email", "other"] as const;
@@ -88,7 +90,7 @@ export async function createEntry(
   }
 
   revalidatePath(`/contatos/${person_id}`);
-  return { error: null, ok: true };
+  return gravou();
 }
 
 /**

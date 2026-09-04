@@ -1,0 +1,21 @@
+#!/bin/sh
+#
+# Trava local: nada quebrado entra em commit.
+#
+# Roda o que é rápido — tipos e lint. A suíte de testes fica no CI, porque
+# levantar o jsdom custa uns dez segundos e isso, cobrado a cada commit,
+# vira motivo para passar por cima com --no-verify. Portão que atrapalha é
+# portão que ninguém usa.
+#
+# Ligado por: git config core.hooksPath .githooks
+# Pular de propósito, num commit de emergência: git commit --no-verify
+
+set -e
+
+echo "→ tipos"
+bun run typecheck
+
+echo "→ lint"
+bun run lint
+
+echo "✓ ok"

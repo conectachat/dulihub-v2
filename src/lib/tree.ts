@@ -36,29 +36,62 @@ export function flattenTree<T extends TreeNodeBase>(nodes: T[]): Flattened<T>[] 
     list.sort((a, b) => a.position - b.position);
   }
 
-  const countDescendants = (id: string): number =>
-    (byParent.get(id) ?? []).reduce(
-      (sum, child) => sum + 1 + countDescendants(child.id),
+  /** `visitados` corta ciclo: sem ele a contagem recorre para sempre. */
+  const countDescendants = (id: string, visitados: Set<string>): number => {
+    if (visitados.has(id)) return 0;
+    visitados.add(id);
+    return (byParent.get(id) ?? []).reduce(
+      (soma, filho) => soma + 1 + countDescendants(filho.id, visitados),
       0,
     );
+  };
 
   const out: Flattened<T>[] = [];
+  const emitidos = new Set<string>();
 
-  const walk = (parentId: string | null, depth: number) => {
-    const siblings = byParent.get(parentId) ?? [];
-    siblings.forEach((node, index) => {
+  const walk = (irmaos: T[], depth: number) => {
+    irmaos.forEach((node, index) => {
+      if (emitidos.has(node.id)) return;
+      emitidos.add(node.id);
+
       out.push({
         ...node,
         depth,
         isFirst: index === 0,
-        isLast: index === siblings.length - 1,
-        descendants: countDescendants(node.id),
+        isLast: index === irmaos.length - 1,
+        descendants: countDescendants(node.id, new Set()),
       });
-      walk(node.id, depth + 1);
+
+      walk(byParent.get(node.id) ?? [], depth + 1);
     });
   };
 
-  walk(null, 0);
+  walk(byParent.get(null) ?? [], 0);
+
+  /**
+   * Nada some.
+   *
+   * Um nó cujo pai não está no conjunto — pai apagado, consulta filtrada,
+   * seleção parcial — ou um preso em ciclo nunca é alcançado a partir da raiz.
+   * Deixá-lo de fora é o pior desfecho possível: a linha existe no banco e não
+   * há tela que a alcance para corrigir ou excluir. Então ele aparece na raiz,
+   * onde dá para mexer nele.
+   *
+   * A ordem entre esses é a que veio do banco: qualquer critério aqui seria
+   * inventado, e este é um caso de conserto, não de leitura corrente.
+   */
+  const soltos = nodes.filter((node) => !emitidos.has(node.id));
+  soltos.forEach((node, index) => {
+    emitidos.add(node.id);
+    out.push({
+      ...node,
+      depth: 0,
+      isFirst: index === 0,
+      isLast: index === soltos.length - 1,
+      descendants: countDescendants(node.id, new Set()),
+    });
+  });
+
   return out;
 }
 

@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { Pencil, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useDialogOnSuccess } from "@/lib/use-dialog-on-success";
 import {
   Dialog,
   DialogContent,
@@ -45,16 +46,13 @@ function SaveButton() {
 
 export function PersonDialog({ person }: { person?: PersonFormValues }) {
   const isEdit = Boolean(person);
-  const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState(
     isEdit ? updatePerson : createPerson,
     initialState,
   );
 
   // Fecha só quando a Server Action confirmou que gravou.
-  useEffect(() => {
-    if (state.ok) setOpen(false);
-  }, [state.ok]);
+  const { open, setOpen } = useDialogOnSuccess(state.token);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

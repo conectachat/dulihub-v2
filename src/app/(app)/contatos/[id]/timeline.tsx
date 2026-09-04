@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
   ArrowRightLeft,
@@ -70,6 +70,85 @@ function SubmitButton() {
   );
 }
 
+/**
+ * Campo de escrita.
+ *
+ * Separado e remontado pela `key` a cada sucesso: texto e tipo voltam ao
+ * inicial sem efeito nenhum limpando estado depois do fato.
+ */
+function Composer({
+  personId,
+  action,
+}: {
+  personId: string;
+  action: (formData: FormData) => void;
+}) {
+  const [type, setType] = useState<string>("note");
+  const isNote = type === "note";
+
+  return (
+    <form action={action} className="space-y-3">
+      <input type="hidden" name="person_id" value={personId} />
+      <input type="hidden" name="type" value={type} />
+
+      <textarea
+        name="body"
+        required
+        rows={3}
+        placeholder={
+          isNote
+            ? "O que vale registrar sobre esta pessoa?"
+            : "O que foi conversado?"
+        }
+        className="w-full resize-y rounded-2xl border bg-transparent px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      />
+
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap gap-1">
+          {TYPES.map((t) => {
+            const Icon = t.icon;
+            const active = type === t.value;
+            return (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => setType(t.value)}
+                aria-pressed={active}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition-colors",
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent",
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Nota é sempre do agora. Atividade pode ser lançada depois. */}
+        {!isNote ? (
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <CalendarDays className="h-3.5 w-3.5" />
+            <span className="sr-only">Quando aconteceu</span>
+            <Input
+              type="datetime-local"
+              name="occurred_at"
+              className="h-8 w-auto rounded-xl text-xs"
+            />
+          </label>
+        ) : null}
+
+        <div className="ml-auto">
+          <SubmitButton />
+        </div>
+      </div>
+    </form>
+  );
+}
+
 export function Timeline({
   personId,
   items,
@@ -80,85 +159,16 @@ export function Timeline({
   currentUserId: string | null;
 }) {
   const [state, formAction] = useActionState(createEntry, initialState);
-  const [type, setType] = useState<string>("note");
-  const formRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    if (state.ok) {
-      formRef.current?.reset();
-      setType("note");
-    }
-  }, [state.ok]);
-
-  const isNote = type === "note";
 
   return (
     <div className="space-y-6">
-      <form ref={formRef} action={formAction} className="space-y-3">
-        <input type="hidden" name="person_id" value={personId} />
-        <input type="hidden" name="type" value={type} />
+      <Composer key={state.token ?? "novo"} personId={personId} action={formAction} />
 
-        <textarea
-          name="body"
-          required
-          rows={3}
-          placeholder={
-            isNote
-              ? "O que vale registrar sobre esta pessoa?"
-              : "O que foi conversado?"
-          }
-          className="w-full resize-y rounded-2xl border bg-transparent px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-        />
-
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex flex-wrap gap-1">
-            {TYPES.map((t) => {
-              const Icon = t.icon;
-              const active = type === t.value;
-              return (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => setType(t.value)}
-                  aria-pressed={active}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition-colors",
-                    active
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent",
-                  )}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Nota é sempre do agora. Atividade pode ser lançada depois. */}
-          {!isNote ? (
-            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <CalendarDays className="h-3.5 w-3.5" />
-              <span className="sr-only">Quando aconteceu</span>
-              <Input
-                type="datetime-local"
-                name="occurred_at"
-                className="h-8 w-auto rounded-xl text-xs"
-              />
-            </label>
-          ) : null}
-
-          <div className="ml-auto">
-            <SubmitButton />
-          </div>
-        </div>
-
-        {state.error ? (
-          <p role="alert" className="text-sm text-destructive">
-            {state.error}
-          </p>
-        ) : null}
-      </form>
+      {state.error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {state.error}
+        </p>
+      ) : null}
 
       {items.length === 0 ? (
         <EmptyState

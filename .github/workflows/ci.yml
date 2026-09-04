@@ -1,0 +1,33 @@
+name: CI
+
+# Roda em tudo que chega ao main, e em toda proposta de mudança.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      # --frozen-lockfile: o CI não pode resolver versão diferente da que
+      # roda na máquina. Se o lockfile estiver desatualizado, é para falhar
+      # aqui e não virar "na minha máquina funciona".
+      - run: bun install --frozen-lockfile
+
+      - name: Tipos
+        run: bun run typecheck
+
+      - name: Lint
+        run: bun run lint
+
+      # A suíte roda aqui, e não no gancho local, porque levantar o jsdom
+      # custa segundos demais para cobrar a cada commit.
+      - name: Testes
+        run: bun run test
