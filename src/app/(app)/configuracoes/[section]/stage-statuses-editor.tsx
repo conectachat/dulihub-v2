@@ -21,6 +21,7 @@ import {
   updateStageStatus,
   type StageStatusState,
 } from "@/features/settings/stage-status-actions";
+import { comAviso } from "@/lib/avisar";
 import { DEFAULT_COLOR } from "@/lib/palette";
 import { cn } from "@/lib/utils";
 
@@ -61,7 +62,7 @@ function StatusRow({
 
   return (
     <li className="flex flex-wrap items-center gap-2 rounded-2xl border p-2">
-      <form ref={colorFormRef} action={updateStageStatus} className="flex">
+      <form ref={colorFormRef} action={comAviso(updateStageStatus)} className="flex">
         <input type="hidden" name="id" value={status.id} />
         <input type="hidden" name="label" value={status.label} />
         <input type="hidden" name="color" value={color} />
@@ -86,7 +87,7 @@ function StatusRow({
         className="min-w-40 flex-1"
       />
 
-      <form action={toggleStageStatusDone}>
+      <form action={comAviso(toggleStageStatusDone)}>
         <input type="hidden" name="id" value={status.id} />
         <input type="hidden" name="is_done" value={String(!status.is_done)} />
         <Button
@@ -113,7 +114,7 @@ function StatusRow({
           Padrão
         </span>
       ) : (
-        <form action={setDefaultStageStatus}>
+        <form action={comAviso(setDefaultStageStatus)}>
           <input type="hidden" name="id" value={status.id} />
           <Button
             type="submit"

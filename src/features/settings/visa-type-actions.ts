@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { gravou, type ActionState } from "@/lib/action-state";
+import { falhou, gravou, type ActionState } from "@/lib/action-state";
+import { traduzirErro } from "@/lib/erros";
+import { resultado, resultadoSemContagem } from "@/lib/gravar";
 import { parseMoney, parseWholeNumber } from "@/lib/numbers";
 import { createClient } from "@/lib/supabase/server";
 
@@ -34,13 +36,6 @@ async function organizationId() {
   return data?.organization_id ?? null;
 }
 
-function humanize(message: string) {
-  if (message.includes("visa_types_org_name_unique")) {
-    return "Já existe um tipo de visto com esse nome.";
-  }
-  return message;
-}
-
 // ---------------------------------------------------------------- tipo de visto
 
 export async function saveVisaType(
@@ -54,7 +49,7 @@ export async function saveVisaType(
     currency: formData.get("currency") ?? "BRL",
     estimated_days: formData.get("estimated_days"),
   });
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return falhou(parsed.error.issues[0].message);
 
   const supabase = await createClient();
   const id = formData.get("id");
@@ -65,29 +60,33 @@ export async function saveVisaType(
       .from("visa_types")
       .update({ ...parsed.data, is_active: isActive })
       .eq("id", id);
-    if (error) return { error: humanize(error.message) };
+    if (error) return falhou(traduzirErro(error));
   } else {
     const orgId = await organizationId();
-    if (!orgId) return { error: "Sua conta não está vinculada a nenhuma organização." };
+    if (!orgId) return falhou("Sua conta não está vinculada a nenhuma organização.");
 
     const { error } = await supabase
       .from("visa_types")
       .insert({ ...parsed.data, is_active: isActive, organization_id: orgId });
-    if (error) return { error: humanize(error.message) };
+    if (error) return falhou(traduzirErro(error));
   }
 
   revalidatePath(PATH);
   return gravou();
 }
 
-export async function deleteVisaType(formData: FormData): Promise<void> {
+export async function deleteVisaType(formData: FormData): Promise<ActionState> {
   const id = formData.get("id");
-  if (typeof id !== "string") return;
+  if (typeof id !== "string") return falhou("Tipo de visto não informado.");
 
   const supabase = await createClient();
-  await supabase.from("visa_types").delete().eq("id", id);
+  const estado = resultado(
+    await supabase.from("visa_types").delete().eq("id", id).select("id"),
+  );
+  if (estado.error) return estado;
 
   revalidatePath(PATH);
+  return estado;
 }
 
 // ------------------------------------------------------------- etapas do molde
@@ -109,7 +108,7 @@ export async function createVisaStage(
     name: formData.get("name"),
     estimated_days: formData.get("estimated_days"),
   });
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return falhou(parsed.error.issues[0].message);
 
   const visaTypeId = formData.get("visa_type_id");
   if (typeof visaTypeId !== "string") return { error: "Tipo de visto não informado." };
@@ -138,15 +137,15 @@ export async function createVisaStage(
     position: (siblings?.[0]?.position ?? -1) + 1,
   });
 
-  if (error) return { error: error.message };
+  if (error) return falhou(traduzirErro(error));
 
   revalidatePath(PATH);
   return gravou();
 }
 
-export async function updateVisaStage(formData: FormData): Promise<void> {
+export async function updateVisaStage(formData: FormData): Promise<ActionState> {
   const id = formData.get("id");
-  if (typeof id !== "string") return;
+  if (typeof id !== "string") return falhou("Etapa não informada.");
 
   const patch: Record<string, unknown> = {};
 
@@ -163,28 +162,36 @@ export async function updateVisaStage(formData: FormData): Promise<void> {
       typeof raw === "string" ? parseWholeNumber(raw) : null;
   }
 
-  if (Object.keys(patch).length === 0) return;
+  // Nada a mudar não é falha; a tela só não precisa fazer nada.
+  if (Object.keys(patch).length === 0) return gravou();
 
   const supabase = await createClient();
-  await supabase.from("visa_stages").update(patch).eq("id", id);
+  const estado = resultado(
+    await supabase.from("visa_stages").update(patch).eq("id", id).select("id"),
+  );
+  if (estado.error) return estado;
 
   revalidatePath(PATH);
+  return estado;
 }
 
-export async function moveVisaStage(formData: FormData): Promise<void> {
+export async function moveVisaStage(formData: FormData): Promise<ActionState> {
   const id = formData.get("id");
   const direction = formData.get("direction");
-  if (typeof id !== "string" || (direction !== "up" && direction !== "down")) return;
+  if (typeof id !== "string" || (direction !== "up" && direction !== "down")) {
+    return falhou("Movimento não informado.");
+  }
 
   const supabase = await createClient();
 
-  const { data: node } = await supabase
+  const { data: node, error: nodeError } = await supabase
     .from("visa_stages")
     .select("id, visa_type_id, parent_id, position")
     .eq("id", id)
     .maybeSingle();
 
-  if (!node) return;
+  if (nodeError) return falhou(traduzirErro(nodeError));
+  if (!node) return falhou("Etapa não encontrada.");
 
   let query = supabase
     .from("visa_stages")
@@ -197,27 +204,43 @@ export async function moveVisaStage(formData: FormData): Promise<void> {
     ? query.eq("parent_id", node.parent_id)
     : query.is("parent_id", null);
 
-  const { data: neighbour } = await query[direction === "down" ? "gt" : "lt"](
-    "position",
-    node.position,
-  ).maybeSingle();
+  const { data: neighbour, error: neighbourError } = await query[
+    direction === "down" ? "gt" : "lt"
+  ]("position", node.position).maybeSingle();
 
-  if (!neighbour) return;
+  if (neighbourError) return falhou(traduzirErro(neighbourError));
+  // Já está na ponta. Não é erro, e a tela já desabilita o botão.
+  if (!neighbour) return gravou();
 
-  await supabase.from("visa_stages").update({ position: neighbour.position }).eq("id", node.id);
-  await supabase.from("visa_stages").update({ position: node.position }).eq("id", neighbour.id);
+  // Pela RPC da 0014. As duas gravações soltas que estavam aqui não tinham
+  // transação nem posição sentinela: falhar entre elas deixava dois irmãos com
+  // a mesma posição, e a busca de vizinho usa comparação estrita — a seta
+  // parava de encontrar quem estava empatado.
+  const estado = resultadoSemContagem(
+    await supabase.rpc("swap_positions", {
+      p_tabela: "visa_stages",
+      p_a: node.id,
+      p_b: neighbour.id,
+    }),
+  );
+  if (estado.error) return estado;
 
   revalidatePath(PATH);
+  return estado;
 }
 
-export async function deleteVisaStage(formData: FormData): Promise<void> {
+export async function deleteVisaStage(formData: FormData): Promise<ActionState> {
   const id = formData.get("id");
-  if (typeof id !== "string") return;
+  if (typeof id !== "string") return falhou("Etapa não informada.");
 
   const supabase = await createClient();
-  await supabase.from("visa_stages").delete().eq("id", id);
+  const estado = resultado(
+    await supabase.from("visa_stages").delete().eq("id", id).select("id"),
+  );
+  if (estado.error) return estado;
 
   revalidatePath(PATH);
+  return estado;
 }
 
 // ------------------------------------------------- documentos exigidos do visto
@@ -229,19 +252,29 @@ export async function deleteVisaStage(formData: FormData): Promise<void> {
  * só o grupo faria com que acrescentar um documento ao catálogo depois mudasse,
  * calado, o que este visto já exigia — e a decisão foi que nada muda sozinho.
  */
-export async function toggleVisaDocument(formData: FormData): Promise<void> {
+export async function toggleVisaDocument(
+  formData: FormData,
+): Promise<ActionState> {
   const visaTypeId = formData.get("visa_type_id");
   const documentTypeId = formData.get("document_type_id");
   const selected = formData.get("selected") === "true";
 
-  if (typeof visaTypeId !== "string" || typeof documentTypeId !== "string") return;
+  if (typeof visaTypeId !== "string" || typeof documentTypeId !== "string") {
+    return falhou("Pasta ou tipo de visto não informado.");
+  }
 
   const supabase = await createClient();
 
   // Descobre o nó e todos abaixo dele.
-  const { data: all } = await supabase
+  //
+  // O erro aqui importa mais do que parece: com a leitura falhando, `children`
+  // ficava vazio, a subárvore encolhia para um nó só, e a pessoa via metade da
+  // seleção acontecer sem nenhum aviso.
+  const { data: all, error: catalogoError } = await supabase
     .from("document_types")
     .select("id, parent_id");
+
+  if (catalogoError) return falhou(traduzirErro(catalogoError));
 
   const children = new Map<string | null, string[]>();
   for (const row of all ?? []) {
@@ -258,16 +291,19 @@ export async function toggleVisaDocument(formData: FormData): Promise<void> {
   collect(documentTypeId);
 
   if (selected) {
-    await supabase
-      .from("visa_type_documents")
-      .delete()
-      .eq("visa_type_id", visaTypeId)
-      .in("document_type_id", affected);
+    const estado = resultadoSemContagem(
+      await supabase
+        .from("visa_type_documents")
+        .delete()
+        .eq("visa_type_id", visaTypeId)
+        .in("document_type_id", affected),
+    );
+    if (estado.error) return estado;
   } else {
     // Entra no fim da lista deste visto. Antes a posição recomeçava do zero a
     // cada clique, então marcar duas pastas dava a ambas a posição 0 e a ordem
     // ficava indefinida — era o que fazia a lista parecer alfabética.
-    const { data: last } = await supabase
+    const { data: last, error: lastError } = await supabase
       .from("visa_type_documents")
       .select("position")
       .eq("visa_type_id", visaTypeId)
@@ -275,19 +311,25 @@ export async function toggleVisaDocument(formData: FormData): Promise<void> {
       .limit(1)
       .maybeSingle();
 
+    if (lastError) return falhou(traduzirErro(lastError));
+
     let next = (last?.position ?? -1) + 1;
 
-    await supabase.from("visa_type_documents").upsert(
-      affected.map((document_type_id) => ({
-        visa_type_id: visaTypeId,
-        document_type_id,
-        position: next++,
-      })),
-      { onConflict: "visa_type_id,document_type_id", ignoreDuplicates: true },
+    const estado = resultadoSemContagem(
+      await supabase.from("visa_type_documents").upsert(
+        affected.map((document_type_id) => ({
+          visa_type_id: visaTypeId,
+          document_type_id,
+          position: next++,
+        })),
+        { onConflict: "visa_type_id,document_type_id", ignoreDuplicates: true },
+      ),
     );
+    if (estado.error) return estado;
   }
 
   revalidatePath(PATH);
+  return gravou();
 }
 
 /**
@@ -301,23 +343,31 @@ export async function toggleVisaDocument(formData: FormData): Promise<void> {
  * fora de "Documentos Pessoais" seria mudança de hierarquia, que se faz no
  * catálogo e vale para todos os vistos.
  */
-export async function moveVisaDocument(formData: FormData): Promise<void> {
+export async function moveVisaDocument(
+  formData: FormData,
+): Promise<ActionState> {
   const id = formData.get("id");
   const direction = formData.get("direction");
-  if (typeof id !== "string" || (direction !== "up" && direction !== "down")) return;
+  if (typeof id !== "string" || (direction !== "up" && direction !== "down")) {
+    return falhou("Movimento não informado.");
+  }
 
   const supabase = await createClient();
 
-  const { data: row } = await supabase
+  const { data: row, error: rowError } = await supabase
     .from("visa_type_documents")
     .select("id, visa_type_id, position, document_type_id")
     .eq("id", id)
     .maybeSingle();
 
-  if (!row) return;
+  if (rowError) return falhou(traduzirErro(rowError));
+  if (!row) return falhou("Exigência não encontrada.");
 
   // Irmãs são as exigências do mesmo visto que compartilham o pai no catálogo.
-  const [{ data: catalog }, { data: siblingsRaw }] = await Promise.all([
+  const [
+    { data: catalog, error: catalogError },
+    { data: siblingsRaw, error: siblingsError },
+  ] = await Promise.all([
     supabase.from("document_types").select("id, parent_id"),
     supabase
       .from("visa_type_documents")
@@ -325,6 +375,11 @@ export async function moveVisaDocument(formData: FormData): Promise<void> {
       .eq("visa_type_id", row.visa_type_id)
       .order("position"),
   ]);
+
+  // Sem isto, catálogo falhando deixaria toda pasta sem pai visível, todas
+  // viravam irmãs entre si, e a seta moveria a linha errada.
+  const arvoreFalhou = catalogError ?? siblingsError;
+  if (arvoreFalhou) return falhou(traduzirErro(arvoreFalhou));
 
   const parentOf = new Map(
     (catalog ?? []).map((n) => [n.id as string, n.parent_id as string | null]),
@@ -345,27 +400,28 @@ export async function moveVisaDocument(formData: FormData): Promise<void> {
 
   const index = siblings.findIndex((s) => s.id === row.id);
   const neighbour = siblings[direction === "up" ? index - 1 : index + 1];
-  if (!neighbour) return;
+  // Já está na ponta. Não é erro, e a tela já desabilita o botão.
+  if (!neighbour) return gravou();
 
-  // Posição intermediária antes da troca, para nunca haver duas iguais no meio
-  // do caminho caso um índice único apareça depois.
-  await supabase.from("visa_type_documents").update({ position: -1 }).eq("id", row.id);
-  await supabase
-    .from("visa_type_documents")
-    .update({ position: row.position })
-    .eq("id", neighbour.id);
-  await supabase
-    .from("visa_type_documents")
-    .update({ position: neighbour.position })
-    .eq("id", row.id);
+  const estado = resultadoSemContagem(
+    await supabase.rpc("swap_positions", {
+      p_tabela: "visa_type_documents",
+      p_a: row.id,
+      p_b: neighbour.id,
+    }),
+  );
+  if (estado.error) return estado;
 
   revalidatePath(PATH);
+  return estado;
 }
 
 /** Obrigatoriedade e prazo são do visto, não do catálogo. */
-export async function updateVisaDocument(formData: FormData): Promise<void> {
+export async function updateVisaDocument(
+  formData: FormData,
+): Promise<ActionState> {
   const id = formData.get("id");
-  if (typeof id !== "string") return;
+  if (typeof id !== "string") return falhou("Exigência não informada.");
 
   const patch: Record<string, unknown> = {};
 
@@ -379,10 +435,19 @@ export async function updateVisaDocument(formData: FormData): Promise<void> {
       typeof raw === "string" ? parseWholeNumber(raw) : null;
   }
 
-  if (Object.keys(patch).length === 0) return;
+  // Nada a mudar não é falha; a tela só não precisa fazer nada.
+  if (Object.keys(patch).length === 0) return gravou();
 
   const supabase = await createClient();
-  await supabase.from("visa_type_documents").update(patch).eq("id", id);
+  const estado = resultado(
+    await supabase
+      .from("visa_type_documents")
+      .update(patch)
+      .eq("id", id)
+      .select("id"),
+  );
+  if (estado.error) return estado;
 
   revalidatePath(PATH);
+  return estado;
 }

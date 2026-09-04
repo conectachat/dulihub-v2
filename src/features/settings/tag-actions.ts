@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { gravou, type ActionState } from "@/lib/action-state";
+import { falhou, gravou, type ActionState } from "@/lib/action-state";
+import { traduzirErro } from "@/lib/erros";
+import { resultado } from "@/lib/gravar";
 import { createClient } from "@/lib/supabase/server";
 import { PALETTE } from "@/lib/palette";
 
@@ -17,14 +19,6 @@ const tagSchema = z.object({
     .trim()
     .refine((c) => (PALETTE as readonly string[]).includes(c), "Cor inválida"),
 });
-
-/** Traduz erro do banco para linguagem de quem está usando o app. */
-function humanize(message: string) {
-  if (message.includes("tags_org_name_unique")) {
-    return "Já existe uma tag com esse nome.";
-  }
-  return message;
-}
 
 async function organizationId() {
   const supabase = await createClient();
@@ -44,43 +38,48 @@ export async function createTag(
     name: formData.get("name"),
     color: formData.get("color"),
   });
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return falhou(parsed.error.issues[0].message);
 
   const orgId = await organizationId();
-  if (!orgId) return { error: "Sua conta não está vinculada a nenhuma organização." };
+  if (!orgId) return falhou("Sua conta não está vinculada a nenhuma organização.");
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("tags")
     .insert({ ...parsed.data, organization_id: orgId });
 
-  if (error) return { error: humanize(error.message) };
+  if (error) return falhou(traduzirErro(error));
 
   revalidatePath("/configuracoes/tags");
   revalidatePath("/contatos");
   return gravou();
 }
 
-export async function updateTag(formData: FormData): Promise<void> {
+export async function updateTag(formData: FormData): Promise<ActionState> {
   const id = formData.get("id");
-  if (typeof id !== "string") return;
+  if (typeof id !== "string") return falhou("Tag não informada.");
 
   const parsed = tagSchema.partial().safeParse({
     name: formData.get("name") ?? undefined,
     color: formData.get("color") ?? undefined,
   });
-  if (!parsed.success) return;
+  if (!parsed.success) return falhou(parsed.error.issues[0].message);
 
   const patch: Record<string, string> = {};
   if (parsed.data.name) patch.name = parsed.data.name;
   if (parsed.data.color) patch.color = parsed.data.color;
-  if (Object.keys(patch).length === 0) return;
+  // Nada a mudar não é falha; a tela só não precisa fazer nada.
+  if (Object.keys(patch).length === 0) return gravou();
 
   const supabase = await createClient();
-  await supabase.from("tags").update(patch).eq("id", id);
+  const estado = resultado(
+    await supabase.from("tags").update(patch).eq("id", id).select("id"),
+  );
+  if (estado.error) return estado;
 
   revalidatePath("/configuracoes/tags");
   revalidatePath("/contatos");
+  return estado;
 }
 
 /**
@@ -90,13 +89,17 @@ export async function updateTag(formData: FormData): Promise<void> {
  * não são tocados — só perdem essa marcação. A tela avisa quantos serão
  * afetados antes de confirmar.
  */
-export async function deleteTag(formData: FormData): Promise<void> {
+export async function deleteTag(formData: FormData): Promise<ActionState> {
   const id = formData.get("id");
-  if (typeof id !== "string") return;
+  if (typeof id !== "string") return falhou("Tag não informada.");
 
   const supabase = await createClient();
-  await supabase.from("tags").delete().eq("id", id);
+  const estado = resultado(
+    await supabase.from("tags").delete().eq("id", id).select("id"),
+  );
+  if (estado.error) return estado;
 
   revalidatePath("/configuracoes/tags");
   revalidatePath("/contatos");
+  return estado;
 }

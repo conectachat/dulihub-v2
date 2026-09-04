@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { gravou, type ActionState } from "@/lib/action-state";
+import { falhou, gravou, type ActionState } from "@/lib/action-state";
+import { traduzirErro } from "@/lib/erros";
+import { resultado, resultadoSemContagem } from "@/lib/gravar";
 import { createClient } from "@/lib/supabase/server";
 
 /** @deprecated Use `ActionState` de `@/lib/action-state`. */
@@ -35,13 +37,13 @@ export async function createDocumentType(
   formData: FormData,
 ): Promise<DocTypeState> {
   const parsed = nameSchema.safeParse(formData.get("name"));
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return falhou(parsed.error.issues[0].message);
 
   const rawParent = formData.get("parent_id");
   const parentId = typeof rawParent === "string" && rawParent ? rawParent : null;
 
   const orgId = await organizationId();
-  if (!orgId) return { error: "Sua conta não está vinculada a nenhuma organização." };
+  if (!orgId) return falhou("Sua conta não está vinculada a nenhuma organização.");
 
   const supabase = await createClient();
 
@@ -63,38 +65,54 @@ export async function createDocumentType(
     position: (siblings?.[0]?.position ?? -1) + 1,
   });
 
-  if (error) return { error: error.message };
+  if (error) return falhou(traduzirErro(error));
 
   revalidatePath(PATH);
   return gravou();
 }
 
-export async function renameDocumentType(formData: FormData): Promise<void> {
+export async function renameDocumentType(
+  formData: FormData,
+): Promise<ActionState> {
   const id = formData.get("id");
   const parsed = nameSchema.safeParse(formData.get("name"));
-  if (typeof id !== "string" || !parsed.success) return;
+  if (typeof id !== "string") return falhou("Pasta não informada.");
+  if (!parsed.success) return falhou(parsed.error.issues[0].message);
 
   const supabase = await createClient();
-  await supabase.from("document_types").update({ name: parsed.data }).eq("id", id);
+  const estado = resultado(
+    await supabase
+      .from("document_types")
+      .update({ name: parsed.data })
+      .eq("id", id)
+      .select("id"),
+  );
+  if (estado.error) return estado;
 
   revalidatePath(PATH);
+  return estado;
 }
 
 /** Troca de lugar com o irmão vizinho. Não muda de nível. */
-export async function moveDocumentType(formData: FormData): Promise<void> {
+export async function moveDocumentType(
+  formData: FormData,
+): Promise<ActionState> {
   const id = formData.get("id");
   const direction = formData.get("direction");
-  if (typeof id !== "string" || (direction !== "up" && direction !== "down")) return;
+  if (typeof id !== "string" || (direction !== "up" && direction !== "down")) {
+    return falhou("Movimento não informado.");
+  }
 
   const supabase = await createClient();
 
-  const { data: node } = await supabase
+  const { data: node, error: nodeError } = await supabase
     .from("document_types")
     .select("id, organization_id, parent_id, position")
     .eq("id", id)
     .maybeSingle();
 
-  if (!node) return;
+  if (nodeError) return falhou(traduzirErro(nodeError));
+  if (!node) return falhou("Pasta não encontrada.");
 
   let query = supabase
     .from("document_types")
@@ -107,23 +125,29 @@ export async function moveDocumentType(formData: FormData): Promise<void> {
     ? query.eq("parent_id", node.parent_id)
     : query.is("parent_id", null);
 
-  const { data: neighbour } = await query[direction === "down" ? "gt" : "lt"](
-    "position",
-    node.position,
-  ).maybeSingle();
+  const { data: neighbour, error: neighbourError } = await query[
+    direction === "down" ? "gt" : "lt"
+  ]("position", node.position).maybeSingle();
 
-  if (!neighbour) return;
+  if (neighbourError) return falhou(traduzirErro(neighbourError));
+  // Já está na ponta. Não é erro, e a tela já desabilita o botão.
+  if (!neighbour) return gravou();
 
-  await supabase
-    .from("document_types")
-    .update({ position: neighbour.position })
-    .eq("id", node.id);
-  await supabase
-    .from("document_types")
-    .update({ position: node.position })
-    .eq("id", neighbour.id);
+  // Pela RPC da 0014: as duas gravações soltas que estavam aqui não tinham
+  // transação nem posição sentinela, então falhar entre elas deixava dois
+  // irmãos com a mesma posição — e a consulta de vizinho usa `gt`/`lt`
+  // estrito, então a seta parava de encontrar quem estava empatado.
+  const estado = resultadoSemContagem(
+    await supabase.rpc("swap_positions", {
+      p_tabela: "document_types",
+      p_a: node.id,
+      p_b: neighbour.id,
+    }),
+  );
+  if (estado.error) return estado;
 
   revalidatePath(PATH);
+  return estado;
 }
 
 /**
@@ -132,12 +156,18 @@ export async function moveDocumentType(formData: FormData): Promise<void> {
  * A chave estrangeira tem cascade, então os descendentes vão junto. A tela
  * avisa quantos antes de confirmar.
  */
-export async function deleteDocumentType(formData: FormData): Promise<void> {
+export async function deleteDocumentType(
+  formData: FormData,
+): Promise<ActionState> {
   const id = formData.get("id");
-  if (typeof id !== "string") return;
+  if (typeof id !== "string") return falhou("Pasta não informada.");
 
   const supabase = await createClient();
-  await supabase.from("document_types").delete().eq("id", id);
+  const estado = resultado(
+    await supabase.from("document_types").delete().eq("id", id).select("id"),
+  );
+  if (estado.error) return estado;
 
   revalidatePath(PATH);
+  return estado;
 }

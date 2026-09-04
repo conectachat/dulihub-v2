@@ -17,6 +17,7 @@ import {
   updateVisaStage,
   type VisaState,
 } from "@/features/settings/visa-type-actions";
+import { comAviso } from "@/lib/avisar";
 import { flattenTree, indentStyle } from "@/lib/tree";
 
 export type StageNode = {
@@ -144,7 +145,7 @@ export function VisaStagesEditor({
                   className="w-16 shrink-0"
                 />
 
-                <form action={updateVisaStage}>
+                <form action={comAviso(updateVisaStage)}>
                   <input type="hidden" name="id" value={stage.id} />
                   <input
                     type="hidden"

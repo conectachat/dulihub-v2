@@ -21,6 +21,7 @@ import {
   toggleVisaDocument,
   updateVisaDocument,
 } from "@/features/settings/visa-type-actions";
+import { comAviso } from "@/lib/avisar";
 import { flattenTree, indentStyle } from "@/lib/tree";
 import { cn } from "@/lib/utils";
 
@@ -81,7 +82,7 @@ function SelectBox({
 
   if (!needsConfirmation) {
     return (
-      <form action={toggleVisaDocument} className="flex items-center">
+      <form action={comAviso(toggleVisaDocument)} className="flex items-center">
         {fields}
         <button
           type="submit"
@@ -127,7 +128,7 @@ function SelectBox({
             >
               Cancelar
             </Button>
-            <form action={toggleVisaDocument}>
+            <form action={comAviso(toggleVisaDocument)}>
               {fields}
               <Button type="submit" variant="destructive">
                 Remover as {losing}
@@ -235,7 +236,7 @@ export function VisaDocumentsEditor({
                   </span>
 
                   {/* Obrigatoriedade e prazo são do visto, não do catálogo. */}
-                  <form action={updateVisaDocument}>
+                  <form action={comAviso(updateVisaDocument)}>
                     <input type="hidden" name="id" value={node.selection.id} />
                     <input
                       type="hidden"

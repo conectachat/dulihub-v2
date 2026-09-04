@@ -17,6 +17,7 @@ import {
   updateTag,
   type TagActionState,
 } from "@/features/settings/tag-actions";
+import { comAviso } from "@/lib/avisar";
 import { DEFAULT_COLOR } from "@/lib/palette";
 
 type Tag = {
@@ -49,7 +50,7 @@ function TagRow({ tag }: { tag: Tag }) {
 
   return (
     <li className="flex flex-wrap items-center gap-3 rounded-2xl border p-3">
-      <form ref={colorFormRef} action={updateTag} className="flex">
+      <form ref={colorFormRef} action={comAviso(updateTag)} className="flex">
         <input type="hidden" name="id" value={tag.id} />
         <input type="hidden" name="name" value={tag.name} />
         <input type="hidden" name="color" value={color} />

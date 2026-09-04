@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { gravou, type ActionState } from "@/lib/action-state";
+import { falhou, gravou, type ActionState } from "@/lib/action-state";
+import { traduzirErro } from "@/lib/erros";
+import { resultado, resultadoSemContagem } from "@/lib/gravar";
 import { createClient } from "@/lib/supabase/server";
 
 /** @deprecated Use `ActionState` de `@/lib/action-state` direto. */
@@ -36,16 +38,6 @@ function toCode(label: string) {
   );
 }
 
-function humanize(message: string) {
-  if (message.includes("stage_statuses_org_code_unique")) {
-    return "Já existe um status com esse nome.";
-  }
-  if (message.includes("fábrica")) {
-    return "Os três status de fábrica não podem ser excluídos. Renomeie, se precisar.";
-  }
-  return message;
-}
-
 async function organizationId() {
   const supabase = await createClient();
   const { data } = await supabase
@@ -61,13 +53,13 @@ export async function createStageStatus(
   formData: FormData,
 ): Promise<StageStatusState> {
   const label = labelSchema.safeParse(formData.get("label"));
-  if (!label.success) return { error: label.error.issues[0].message };
+  if (!label.success) return falhou(label.error.issues[0].message);
 
   const color = colorSchema.safeParse(formData.get("color"));
-  if (!color.success) return { error: color.error.issues[0].message };
+  if (!color.success) return falhou(color.error.issues[0].message);
 
   const orgId = await organizationId();
-  if (!orgId) return { error: "Sua conta não está vinculada a nenhuma organização." };
+  if (!orgId) return falhou("Sua conta não está vinculada a nenhuma organização.");
 
   const supabase = await createClient();
 
@@ -87,16 +79,18 @@ export async function createStageStatus(
     position: (last?.position ?? -1) + 1,
   });
 
-  if (error) return { error: humanize(error.message) };
+  if (error) return falhou(traduzirErro(error));
 
   revalidatePath(SECTION);
   return gravou();
 }
 
 /** Nome e cor salvam separado, cada um ao seu gatilho. */
-export async function updateStageStatus(formData: FormData): Promise<void> {
+export async function updateStageStatus(
+  formData: FormData,
+): Promise<ActionState> {
   const id = formData.get("id");
-  if (typeof id !== "string") return;
+  if (typeof id !== "string") return falhou("Status não informado.");
 
   const patch: Record<string, string> = {};
 
@@ -112,12 +106,17 @@ export async function updateStageStatus(formData: FormData): Promise<void> {
     if (color.success) patch.color = color.data;
   }
 
-  if (Object.keys(patch).length === 0) return;
+  // Nada a mudar não é falha; a tela só não precisa fazer nada.
+  if (Object.keys(patch).length === 0) return gravou();
 
   const supabase = await createClient();
-  await supabase.from("stage_statuses").update(patch).eq("id", id);
+  const estado = resultado(
+    await supabase.from("stage_statuses").update(patch).eq("id", id).select("id"),
+  );
+  if (estado.error) return estado;
 
   revalidatePath(SECTION);
+  return estado;
 }
 
 /**
@@ -126,18 +125,27 @@ export async function updateStageStatus(formData: FormData): Promise<void> {
  * É o que alimenta o cálculo de progresso do processo. Vários podem contar —
  * "Concluído" e "Não se aplica", por exemplo, ambos tiram a etapa do caminho.
  */
-export async function toggleStageStatusDone(formData: FormData): Promise<void> {
+export async function toggleStageStatusDone(
+  formData: FormData,
+): Promise<ActionState> {
   const id = formData.get("id");
   const next = formData.get("is_done");
-  if (typeof id !== "string" || typeof next !== "string") return;
+  if (typeof id !== "string" || typeof next !== "string") {
+    return falhou("Status não informado.");
+  }
 
   const supabase = await createClient();
-  await supabase
-    .from("stage_statuses")
-    .update({ is_done: next === "true" })
-    .eq("id", id);
+  const estado = resultado(
+    await supabase
+      .from("stage_statuses")
+      .update({ is_done: next === "true" })
+      .eq("id", id)
+      .select("id"),
+  );
+  if (estado.error) return estado;
 
   revalidatePath(SECTION);
+  return estado;
 }
 
 /**
@@ -147,32 +155,43 @@ export async function toggleStageStatusDone(formData: FormData): Promise<void> {
  * e o índice único não admite os dois marcados ao mesmo tempo. Feito daqui em
  * duas chamadas, uma falha no meio deixaria a organização sem padrão nenhum.
  */
-export async function setDefaultStageStatus(formData: FormData): Promise<void> {
+export async function setDefaultStageStatus(
+  formData: FormData,
+): Promise<ActionState> {
   const id = formData.get("id");
-  if (typeof id !== "string") return;
+  if (typeof id !== "string") return falhou("Status não informado.");
 
   const supabase = await createClient();
-  await supabase.rpc("set_default_stage_status", { p_id: id });
+  // A RPC levanta "Status não encontrado." quando o id não existe. Antes o
+  // resultado inteiro era descartado, e essa exceção não chegava a ninguém.
+  const estado = resultadoSemContagem(
+    await supabase.rpc("set_default_stage_status", { p_id: id }),
+  );
+  if (estado.error) return estado;
 
   revalidatePath(SECTION);
+  return estado;
 }
 
-export async function moveStageStatus(formData: FormData): Promise<void> {
+export async function moveStageStatus(formData: FormData): Promise<ActionState> {
   const id = formData.get("id");
   const direction = formData.get("direction");
-  if (typeof id !== "string" || (direction !== "up" && direction !== "down")) return;
+  if (typeof id !== "string" || (direction !== "up" && direction !== "down")) {
+    return falhou("Movimento não informado.");
+  }
 
   const supabase = await createClient();
 
-  const { data: status } = await supabase
+  const { data: status, error: statusError } = await supabase
     .from("stage_statuses")
     .select("id, organization_id, position")
     .eq("id", id)
     .maybeSingle();
 
-  if (!status) return;
+  if (statusError) return falhou(traduzirErro(statusError));
+  if (!status) return falhou("Status não encontrado.");
 
-  const { data: neighbour } = await supabase
+  const { data: neighbour, error: neighbourError } = await supabase
     .from("stage_statuses")
     .select("id, position")
     .eq("organization_id", status.organization_id)
@@ -181,19 +200,21 @@ export async function moveStageStatus(formData: FormData): Promise<void> {
     .limit(1)
     .maybeSingle();
 
-  if (!neighbour) return;
+  if (neighbourError) return falhou(traduzirErro(neighbourError));
+  // Já está na ponta. Não é erro, e a tela já desabilita o botão.
+  if (!neighbour) return gravou();
 
-  await supabase.from("stage_statuses").update({ position: -1 }).eq("id", status.id);
-  await supabase
-    .from("stage_statuses")
-    .update({ position: status.position })
-    .eq("id", neighbour.id);
-  await supabase
-    .from("stage_statuses")
-    .update({ position: neighbour.position })
-    .eq("id", status.id);
+  const estado = resultadoSemContagem(
+    await supabase.rpc("swap_positions", {
+      p_tabela: "stage_statuses",
+      p_a: status.id,
+      p_b: neighbour.id,
+    }),
+  );
+  if (estado.error) return estado;
 
   revalidatePath(SECTION);
+  return estado;
 }
 
 /**
@@ -202,12 +223,20 @@ export async function moveStageStatus(formData: FormData): Promise<void> {
  * Os três de fábrica são barrados pelo gatilho `stage_statuses_protect_system`
  * no banco — a tela também esconde o botão, mas a garantia real está lá.
  */
-export async function deleteStageStatus(formData: FormData): Promise<void> {
+export async function deleteStageStatus(
+  formData: FormData,
+): Promise<ActionState> {
   const id = formData.get("id");
-  if (typeof id !== "string") return;
+  if (typeof id !== "string") return falhou("Status não informado.");
 
   const supabase = await createClient();
-  await supabase.from("stage_statuses").delete().eq("id", id);
+  // O gatilho de proteção recusa os três de fábrica, em português. Antes essa
+  // mensagem era descartada e o clique simplesmente não fazia nada.
+  const estado = resultado(
+    await supabase.from("stage_statuses").delete().eq("id", id).select("id"),
+  );
+  if (estado.error) return estado;
 
   revalidatePath(SECTION);
+  return estado;
 }
