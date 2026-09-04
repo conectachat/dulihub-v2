@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { gravou, type ActionState } from "@/lib/action-state";
 import { createClient } from "@/lib/supabase/server";
-import { personSchema } from "./schema";
+import { personFromForm } from "./schema";
 
 export type { ActionState };
 
@@ -19,18 +19,6 @@ async function currentOrganizationId(): Promise<string | null> {
   return data?.organization_id ?? null;
 }
 
-function parse(formData: FormData) {
-  return personSchema.safeParse({
-    full_name: formData.get("full_name"),
-    email: formData.get("email"),
-    phone_country_code: formData.get("phone_country_code"),
-    phone: formData.get("phone"),
-    company: formData.get("company"),
-    job_title: formData.get("job_title"),
-    notes: formData.get("notes"),
-  });
-}
-
 /**
  * Cria um contato.
  *
@@ -42,7 +30,7 @@ export async function createPerson(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const parsed = parse(formData);
+  const parsed = personFromForm(formData);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   const organizationId = await currentOrganizationId();
@@ -75,7 +63,7 @@ export async function updatePerson(
   const id = formData.get("id");
   if (typeof id !== "string" || !id) return { error: "Contato não informado." };
 
-  const parsed = parse(formData);
+  const parsed = personFromForm(formData);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   const supabase = await createClient();

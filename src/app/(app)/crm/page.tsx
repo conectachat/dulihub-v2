@@ -3,6 +3,7 @@ import { KanbanSquare, Trash2 } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { formatarMoeda, formatarPorMoeda, juntarMoedas } from "@/lib/totals";
 import { Button } from "@/components/ui/button";
 import { deleteOpportunity } from "@/features/opportunities/actions";
 import { getBoard, listPeopleForPicker } from "@/features/opportunities/queries";
@@ -12,13 +13,6 @@ import { OpportunityDialog } from "./opportunity-dialog";
 
 export const metadata = { title: "CRM — Duli Hub" };
 
-function money(value: number, currency: string) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
 
 export default async function CrmPage() {
   const [board, people] = await Promise.all([getBoard(), listPeopleForPicker()]);
@@ -54,22 +48,31 @@ export default async function CrmPage() {
 
   // Só o que está em negociação. Ganho e perdido já saíram do funil, e somá-los
   // aqui daria um número que não significa nada.
-  const totalAberto = board.stages
-    .filter((s) => !s.is_won && !s.is_lost)
-    .reduce((sum, s) => sum + (board.totalsByStage[s.id]?.value ?? 0), 0);
+  //
+  // Por moeda, e não somado: dólar com real dá um número que não existe.
+  const totalAberto = juntarMoedas(
+    board.stages
+      .filter((s) => !s.is_won && !s.is_lost)
+      .map((s) => board.totalsByStage[s.id]?.porMoeda ?? {}),
+  );
 
   return (
     <main className="space-y-6 p-6">
       <PageHeader
         title="CRM"
-        description={`${board.pipelineName} · ${money(totalAberto, "BRL")} em negociação`}
+        description={`${board.pipelineName}${
+          formatarPorMoeda(totalAberto)
+            ? ` · ${formatarPorMoeda(totalAberto)} em negociação`
+            : ""
+        }`}
         actions={<OpportunityDialog people={people} stages={stageOptions} />}
       />
 
       <div className="flex gap-4 overflow-x-auto pb-4">
         {board.stages.map((stage) => {
           const cards = board.cardsByStage[stage.id] ?? [];
-          const totals = board.totalsByStage[stage.id] ?? { count: 0, value: 0 };
+          const totals = board.totalsByStage[stage.id] ?? { count: 0, porMoeda: {} };
+          const soma = formatarPorMoeda(totals.porMoeda);
 
           return (
             <section
@@ -88,7 +91,7 @@ export default async function CrmPage() {
                 </h2>
                 <p className="text-xs text-muted-foreground">
                   {totals.count}
-                  {totals.value > 0 ? ` · ${money(totals.value, "BRL")}` : ""}
+                  {soma ? ` · ${soma}` : ""}
                 </p>
               </div>
 
@@ -130,7 +133,7 @@ export default async function CrmPage() {
 
                       {card.value != null ? (
                         <p className="text-sm font-semibold tabular-nums">
-                          {money(card.value, card.currency)}
+                          {formatarMoeda(card.value, card.currency)}
                         </p>
                       ) : null}
 

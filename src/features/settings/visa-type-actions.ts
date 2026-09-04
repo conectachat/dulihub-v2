@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { gravou, type ActionState } from "@/lib/action-state";
+import { parseMoney, parseWholeNumber } from "@/lib/numbers";
 import { createClient } from "@/lib/supabase/server";
 
 /** @deprecated Use `ActionState` de `@/lib/action-state`. */
@@ -14,22 +15,13 @@ const PATH = "/configuracoes/tipos-de-visto";
 const visaSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome").max(120),
   description: z.string().trim().optional(),
-  base_price: z
-    .string()
-    .trim()
-    .optional()
-    .transform((v) => {
-      if (!v) return null;
-      // Aceita "12.500,00" e "12500.00": o usuário digita como fala.
-      const n = Number(v.replace(/\./g, "").replace(",", "."));
-      return Number.isFinite(n) ? n : null;
-    }),
+  base_price: z.string().nullish().transform(parseMoney),
   currency: z.enum(["BRL", "USD"]).default("BRL"),
   estimated_days: z
     .string()
     .trim()
     .optional()
-    .transform((v) => (v ? Number(v) || null : null)),
+    .transform(parseWholeNumber),
 });
 
 async function organizationId() {
@@ -106,7 +98,7 @@ const stageSchema = z.object({
     .string()
     .trim()
     .optional()
-    .transform((v) => (v ? Number(v) || null : null)),
+    .transform(parseWholeNumber),
 });
 
 export async function createVisaStage(
@@ -168,7 +160,7 @@ export async function updateVisaStage(formData: FormData): Promise<void> {
   if (formData.has("estimated_days")) {
     const raw = formData.get("estimated_days");
     patch.estimated_days =
-      typeof raw === "string" && raw.trim() ? Number(raw) || null : null;
+      typeof raw === "string" ? parseWholeNumber(raw) : null;
   }
 
   if (Object.keys(patch).length === 0) return;
@@ -384,7 +376,7 @@ export async function updateVisaDocument(formData: FormData): Promise<void> {
   if (formData.has("deadline_days")) {
     const raw = formData.get("deadline_days");
     patch.deadline_days =
-      typeof raw === "string" && raw.trim() ? Number(raw) || null : null;
+      typeof raw === "string" ? parseWholeNumber(raw) : null;
   }
 
   if (Object.keys(patch).length === 0) return;

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { gravou, type ActionState } from "@/lib/action-state";
+import { parseMoney } from "@/lib/numbers";
 import { createClient } from "@/lib/supabase/server";
 
 export type { ActionState };
@@ -12,17 +13,7 @@ const opportunitySchema = z.object({
   person_id: z.string().uuid("Escolha um contato"),
   stage_id: z.string().uuid("Escolha uma etapa"),
   title: z.string().trim().min(1, "Informe um título"),
-  value: z
-    .string()
-    .trim()
-    .optional()
-    .transform((v) => {
-      if (!v) return null;
-      // Aceita "12.500,00" e "12500.00": o usuário digita como fala.
-      const normalized = v.replace(/\./g, "").replace(",", ".");
-      const n = Number(normalized);
-      return Number.isFinite(n) ? n : null;
-    }),
+  value: z.string().nullish().transform(parseMoney),
   currency: z.enum(["BRL", "USD"]).default("BRL"),
   source: z.string().trim().optional(),
 });

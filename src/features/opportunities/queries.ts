@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { somarPorMoeda, type PorMoeda } from "@/lib/totals";
 
 export type Stage = {
   id: string;
@@ -25,7 +26,7 @@ export type Board = {
   pipelineName: string | null;
   stages: Stage[];
   cardsByStage: Record<string, BoardCard[]>;
-  totalsByStage: Record<string, { count: number; value: number }>;
+  totalsByStage: Record<string, { count: number; porMoeda: PorMoeda }>;
   error: string | null;
 };
 
@@ -86,18 +87,22 @@ export async function getBoard(): Promise<Board> {
   const cards = (cardsData ?? []) as unknown as BoardCard[];
 
   const cardsByStage: Record<string, BoardCard[]> = {};
-  const totalsByStage: Record<string, { count: number; value: number }> = {};
+  const totalsByStage: Record<string, { count: number; porMoeda: PorMoeda }> = {};
 
   for (const stage of stages) {
     cardsByStage[stage.id] = [];
-    totalsByStage[stage.id] = { count: 0, value: 0 };
+    totalsByStage[stage.id] = { count: 0, porMoeda: {} };
   }
 
   for (const card of cards) {
     if (!cardsByStage[card.stage_id]) continue;
     cardsByStage[card.stage_id].push(card);
     totalsByStage[card.stage_id].count += 1;
-    totalsByStage[card.stage_id].value += card.value ?? 0;
+  }
+
+  // Por moeda, e nunca somando uma na outra.
+  for (const stage of stages) {
+    totalsByStage[stage.id].porMoeda = somarPorMoeda(cardsByStage[stage.id]);
   }
 
   return {

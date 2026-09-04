@@ -5,6 +5,7 @@ import { ArrowLeft, Mail, Phone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
+import { formatarMoeda } from "@/lib/totals";
 import { LIFECYCLE_LABELS } from "@/features/people/schema";
 import { listTags } from "@/features/people/queries";
 import { getTimeline } from "@/features/people/timeline-queries";
@@ -19,8 +20,7 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
 });
 
-const currencyFormatter = (currency: string) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency });
+
 
 type Opportunity = {
   id: string;
@@ -178,7 +178,7 @@ export default async function PersonPage({
                     <div className="shrink-0 text-right">
                       {op.value != null ? (
                         <p className="font-medium">
-                          {currencyFormatter(op.currency).format(op.value)}
+                          {formatarMoeda(op.value, op.currency)}
                         </p>
                       ) : null}
                       <Badge
