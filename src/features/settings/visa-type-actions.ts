@@ -259,6 +259,19 @@ export async function toggleVisaDocument(
 
   const supabase = await createClient();
 
+  // A organização vem do visto, e não da associação de quem clicou: é ela que
+  // a chave composta exige que bata com a da pasta. Ler daqui em vez de supor
+  // é o que impede um visto de A exigir pasta de B.
+  const { data: visto, error: erroDoVisto } = await supabase
+    .from("visa_types")
+    .select("organization_id")
+    .eq("id", visaTypeId)
+    .maybeSingle();
+
+  if (erroDoVisto) return falhou(traduzirErro(erroDoVisto));
+  if (!visto) return falhou("Tipo de visto não encontrado.");
+  const orgDoVisto = visto.organization_id;
+
   // Descobre o nó e todos abaixo dele.
   //
   // O erro aqui importa mais do que parece: com a leitura falhando, `children`
@@ -314,6 +327,7 @@ export async function toggleVisaDocument(
         affected.map((document_type_id) => ({
           visa_type_id: visaTypeId,
           document_type_id,
+          organization_id: orgDoVisto,
           position: next++,
         })),
         { onConflict: "visa_type_id,document_type_id", ignoreDuplicates: true },

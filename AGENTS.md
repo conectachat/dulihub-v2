@@ -36,6 +36,19 @@ migration.
 raiz; cada parceiro é uma organização com marca própria. Nenhuma query
 confia no `organization_id` vindo do cliente — quem filtra é a RLS.
 
+**A organização vem do registro-pai, nunca da associação de quem clicou.**
+Nota, atividade, negócio e etiqueta herdam a organização **da pessoa**; a
+exigência de documento herda a **do tipo de visto**. São coisas diferentes no
+dia em que um consultor da Duli atender cliente alocado por um parceiro — e a
+RLS não pega o erro, porque a linha resultante é válida. Quem resolve a
+organização atual é `contextoAtual()` de `@/lib/organizacao`, e ela serve para
+decidir permissão, não para carimbar linha.
+
+**Referência cruzada é barrada pelo banco.** Cada tabela tem
+`unique (id, organization_id)` e as estrangeiras são compostas, então pasta de
+A não vira filha de pasta de B. Tabela nova segue o mesmo desenho: `with check`
+valida só a linha gravada, nunca o que ela referencia.
+
 ## Estrutura
 
 ```
@@ -110,6 +123,19 @@ já estão instalados. Componente React renderiza em teste hoje.
 Cada defeito corrigido entra com o teste que o reproduz. Ver
 `src/lib/tree.test.ts`, que cobre os dois casos que ninguém tinha coberto —
 ciclo e nó órfão — e que faziam a linha sumir da tela sem aviso.
+
+### RLS tem suíte própria, e ela não pula
+
+`tests/rls/` entra no Supabase de verdade, com login de verdade, porque
+nenhuma query da aplicação filtra por organização: a separação está inteira na
+policy. Policy que afrouxa não quebra nada — só passa a mostrar a carteira
+alheia.
+
+`bun run test` roda a unidade. `bun run test:rls` roda essa, e **falha** se
+faltar credencial no `.env.local`, em vez de pular. Ver `tests/rls/README.md`.
+
+Toda migration que mexe em policy entra com o teste correspondente, vermelho
+antes.
 
 ### Estado de ação: um tipo só
 

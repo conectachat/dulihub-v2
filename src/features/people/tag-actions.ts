@@ -28,6 +28,18 @@ export async function setPersonTags(formData: FormData): Promise<ActionState> {
 
   const supabase = await createClient();
 
+  // A organização do vínculo é a da pessoa. A chave composta exige que a tag
+  // seja da mesma — é o que impede etiquetar um contato com tag de outra
+  // organização, coisa que a policy nunca olhou: ela confere só a pessoa.
+  const { data: pessoa, error: erroDaPessoa } = await supabase
+    .from("people")
+    .select("organization_id")
+    .eq("id", personId)
+    .maybeSingle();
+
+  if (erroDaPessoa) return falhou(traduzirErro(erroDaPessoa));
+  if (!pessoa) return falhou("Contato não encontrado.");
+
   const { data: existing, error } = await supabase
     .from("person_tags")
     .select("tag_id")
@@ -57,7 +69,13 @@ export async function setPersonTags(formData: FormData): Promise<ActionState> {
     const estado = resultadoSemContagem(
       await supabase
         .from("person_tags")
-        .insert(toAdd.map((tag_id) => ({ person_id: personId, tag_id }))),
+        .insert(
+          toAdd.map((tag_id) => ({
+            person_id: personId,
+            tag_id,
+            organization_id: pessoa.organization_id,
+          })),
+        ),
     );
     if (estado.error) return estado;
   }
