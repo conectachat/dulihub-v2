@@ -75,9 +75,9 @@ describe("flattenTree", () => {
     expect(por("b").isLast).toBe(true);
   });
 
-  it("conta a subárvore inteira, não só os filhos diretos", () => {
-    // É esta contagem que o aviso de exclusão mostra. Contar só os filhos
-    // diretos diria "apaga 1 item" antes de apagar três.
+  it("devolve a subárvore inteira, não só os filhos diretos", () => {
+    // É esta lista que o aviso de exclusão usa. Só os filhos diretos diria
+    // "apaga 1 item" antes de apagar três.
     const saida = flattenTree([
       no("a", null, 0),
       no("b", "a", 0),
@@ -85,9 +85,24 @@ describe("flattenTree", () => {
       no("d", "b", 1),
     ]);
 
-    expect(saida.find((n) => n.id === "a")!.descendants).toBe(3);
-    expect(saida.find((n) => n.id === "b")!.descendants).toBe(2);
-    expect(saida.find((n) => n.id === "c")!.descendants).toBe(0);
+    const por = (id: string) => saida.find((n) => n.id === id)!;
+
+    expect(por("a").descendantIds.sort()).toEqual(["b", "c", "d"]);
+    expect(por("b").descendantIds.sort()).toEqual(["c", "d"]);
+    expect(por("c").descendantIds).toEqual([]);
+  });
+
+  it("não repete id na subárvore quando a hierarquia tem ciclo", () => {
+    // A cascata do banco apaga cada linha uma vez; a lista que a anuncia
+    // precisa concordar com isso, senão o aviso conta duas vezes o mesmo.
+    const saida = flattenTree([no("a", "b", 0), no("b", "a", 0)]);
+    const ids = saida.find((n) => n.id === "a")!.descendantIds;
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("não inclui o próprio nó na subárvore", () => {
+    const saida = flattenTree([no("a", null, 0), no("b", "a", 0)]);
+    expect(saida.find((n) => n.id === "a")!.descendantIds).not.toContain("a");
   });
 
   it("preserva os campos próprios do nó", () => {

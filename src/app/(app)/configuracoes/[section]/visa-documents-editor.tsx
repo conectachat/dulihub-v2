@@ -221,7 +221,7 @@ export function VisaDocumentsEditor({
         ) : (
           <ul className="space-y-1">
             {required.map((node) => {
-              const Icon = node.descendants > 0 ? FolderOpen : Folder;
+              const Icon = node.descendantIds.length > 0 ? FolderOpen : Folder;
 
               return (
                 <li
@@ -303,7 +303,7 @@ export function VisaDocumentsEditor({
         <ul className="space-y-1">
           {catalogTree.map((node) => {
             const isSelected = byDocType.has(node.id);
-            const Icon = node.descendants > 0 ? FolderOpen : Folder;
+            const Icon = node.descendantIds.length > 0 ? FolderOpen : Folder;
 
             return (
               <li

@@ -21,8 +21,15 @@ export type Flattened<T> = T & {
   isFirst: boolean;
   /** Último entre os irmãos — desabilita o botão de descer. */
   isLast: boolean;
-  /** Quantos nós existem abaixo deste. Usado no aviso de exclusão. */
-  descendants: number;
+  /**
+   * Os nós abaixo deste, em qualquer profundidade.
+   *
+   * São ids e não uma contagem porque o aviso de exclusão precisa saber
+   * **quais** — a chave estrangeira tem cascade, então apagar um nó tira
+   * também o que os filhos dele carregavam em outras tabelas, e só dá para
+   * dizer isso cruzando os ids. Para a contagem, `.length`.
+   */
+  descendantIds: string[];
 };
 
 export function flattenTree<T extends TreeNodeBase>(nodes: T[]): Flattened<T>[] {
@@ -36,14 +43,17 @@ export function flattenTree<T extends TreeNodeBase>(nodes: T[]): Flattened<T>[] 
     list.sort((a, b) => a.position - b.position);
   }
 
-  /** `visitados` corta ciclo: sem ele a contagem recorre para sempre. */
-  const countDescendants = (id: string, visitados: Set<string>): number => {
-    if (visitados.has(id)) return 0;
+  /** `visitados` corta ciclo: sem ele a coleta recorre para sempre. */
+  const coletarDescendentes = (
+    id: string,
+    visitados: Set<string>,
+  ): string[] => {
+    if (visitados.has(id)) return [];
     visitados.add(id);
-    return (byParent.get(id) ?? []).reduce(
-      (soma, filho) => soma + 1 + countDescendants(filho.id, visitados),
-      0,
-    );
+    return (byParent.get(id) ?? []).flatMap((filho) => [
+      filho.id,
+      ...coletarDescendentes(filho.id, visitados),
+    ]);
   };
 
   const out: Flattened<T>[] = [];
@@ -59,7 +69,7 @@ export function flattenTree<T extends TreeNodeBase>(nodes: T[]): Flattened<T>[] 
         depth,
         isFirst: index === 0,
         isLast: index === irmaos.length - 1,
-        descendants: countDescendants(node.id, new Set()),
+        descendantIds: coletarDescendentes(node.id, new Set()),
       });
 
       walk(byParent.get(node.id) ?? [], depth + 1);
@@ -88,7 +98,7 @@ export function flattenTree<T extends TreeNodeBase>(nodes: T[]): Flattened<T>[] 
       depth: 0,
       isFirst: index === 0,
       isLast: index === soltos.length - 1,
-      descendants: countDescendants(node.id, new Set()),
+      descendantIds: coletarDescendentes(node.id, new Set()),
     });
   });
 

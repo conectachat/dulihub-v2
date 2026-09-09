@@ -18,6 +18,7 @@ import {
   renameDocumentType,
   type DocTypeState,
 } from "@/features/settings/document-type-actions";
+import { avisoDeExclusaoDePasta } from "@/lib/avisos";
 import { flattenTree, indentStyle } from "@/lib/tree";
 
 export type DocNode = {
@@ -80,9 +81,31 @@ function CreateForm({
   );
 }
 
-export function DocumentTypesEditor({ nodes }: { nodes: DocNode[] }) {
+export function DocumentTypesEditor({
+  nodes,
+  usos = {},
+}: {
+  nodes: DocNode[];
+  /**
+   * Que tipos de visto exigem cada pasta, por id da pasta.
+   *
+   * Serve ao aviso de exclusão, e é ele que justifica a consulta a mais:
+   * `visa_type_documents` tem cascade, então apagar uma pasta tira em silêncio
+   * a exigência, o prazo e a obrigatoriedade dos vistos que a usavam.
+   */
+  usos?: Record<string, string[]>;
+}) {
   const flat = flattenTree(nodes);
   const [addingTo, setAddingTo] = useState<string | null>(null);
+
+  /** A cascata desce a subárvore inteira, então o aviso conta ela inteira. */
+  const vistosAfetados = (id: string, descendentes: string[]) => {
+    const nomes = new Set<string>();
+    for (const alvo of [id, ...descendentes]) {
+      for (const nome of usos[alvo] ?? []) nomes.add(nome);
+    }
+    return [...nomes].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  };
 
   return (
     <div className="space-y-6">
@@ -106,7 +129,7 @@ export function DocumentTypesEditor({ nodes }: { nodes: DocNode[] }) {
           {flat.map((node) => {
             // Pasta cheia e pasta vazia se distinguem pelo que a árvore já
             // sabe. Não existe mais tipo de nó: toda pasta recebe arquivo.
-            const Icon = node.descendants > 0 ? FolderOpen : Folder;
+            const Icon = node.descendantIds.length > 0 ? FolderOpen : Folder;
 
             return (
               <li key={node.id}>
@@ -149,12 +172,12 @@ export function DocumentTypesEditor({ nodes }: { nodes: DocNode[] }) {
                     action={deleteDocumentType}
                     hidden={{ id: node.id }}
                     title={`Excluir “${node.name}”?`}
-                    consequence={`Isso apaga também as ${node.descendants} ${
-                      node.descendants === 1 ? "pasta" : "pastas"
-                    } dentro dela. Tipos de visto que exigiam qualquer uma delas perdem a exigência. Não dá para desfazer.`}
-                    confirmLabel="Excluir tudo"
+                    consequence={avisoDeExclusaoDePasta({
+                      pastas: node.descendantIds.length,
+                      vistos: vistosAfetados(node.id, node.descendantIds),
+                    })}
+                    confirmLabel="Excluir"
                     triggerLabel={`Excluir ${node.name}`}
-                    needsConfirmation={node.descendants > 0}
                   />
                 </div>
 

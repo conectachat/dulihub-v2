@@ -175,7 +175,23 @@ async function DocumentTypesSection() {
   // recriar as pastas, duplicando tudo. É o cenário que a 0011 documentou.
   if (error) return <QueryError detalhe={error.message} />;
 
-  return <DocumentTypesEditor nodes={data ?? []} />;
+  // Quem exige cada pasta. `visa_type_documents` tem cascade: apagar uma pasta
+  // tira a exigência dos vistos que a usavam, e o aviso de exclusão é a única
+  // chance de dizer isso antes de acontecer.
+  const { data: exigencias, error: erroExigencias } = await supabase
+    .from("visa_type_documents")
+    .select("document_type_id, visa_types(name)");
+
+  if (erroExigencias) return <QueryError detalhe={erroExigencias.message} />;
+
+  const usos: Record<string, string[]> = {};
+  for (const linha of exigencias ?? []) {
+    const visto = linha.visa_types as unknown as { name: string } | null;
+    if (!visto) continue;
+    (usos[linha.document_type_id] ??= []).push(visto.name);
+  }
+
+  return <DocumentTypesEditor nodes={data ?? []} usos={usos} />;
 }
 
 /** Status que uma etapa de processo pode assumir. */

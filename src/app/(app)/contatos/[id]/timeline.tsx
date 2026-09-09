@@ -10,12 +10,11 @@ import {
   MessageSquare,
   Phone,
   StickyNote,
-  Trash2,
   Users,
 } from "lucide-react";
 
+import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
-import { comAviso } from "@/lib/avisar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -181,6 +180,7 @@ export function Timeline({
         <ol className="space-y-3">
           {items.map((item) => {
             const Icon = ICONS[item.type] ?? MessageSquare;
+            const rotulo = LABELS[item.type] ?? "Registro";
             const canDelete = !item.system && item.authorId === currentUserId;
 
             return (
@@ -200,26 +200,27 @@ export function Timeline({
                 <div className="min-w-0 flex-1 rounded-2xl border p-3">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-xs text-muted-foreground">
-                      {LABELS[item.type] ?? item.type}
+                      {rotulo}
                       {item.authorName ? ` · ${item.authorName}` : ""} ·{" "}
                       {when.format(new Date(item.occurredAt))}
                     </p>
 
                     {canDelete ? (
-                      <form action={comAviso(deleteEntry)}>
-                        <input type="hidden" name="id" value={item.id} />
-                        <input type="hidden" name="kind" value={item.kind} />
-                        <input type="hidden" name="person_id" value={personId} />
-                        <Button
-                          type="submit"
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
-                          aria-label="Excluir registro"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </form>
+                      <ConfirmAction
+                        action={deleteEntry}
+                        hidden={{
+                          id: item.id,
+                          kind: item.kind,
+                          person_id: personId,
+                        }}
+                        title={`Excluir ${rotulo.toLowerCase()}?`}
+                        consequence={
+                          item.kind === "note"
+                            ? "A nota some com o texto, o autor e a data. Não há lixeira aqui, e não dá para desfazer."
+                            : "O registro some com o texto, o autor e a data — o histórico deste contato deixa de mostrar que isso aconteceu. Não dá para desfazer."
+                        }
+                        triggerLabel={`Excluir ${rotulo.toLowerCase()} de ${when.format(new Date(item.occurredAt))}`}
+                      />
                     ) : null}
                   </div>
 

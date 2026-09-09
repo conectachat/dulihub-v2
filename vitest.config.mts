@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
@@ -12,6 +14,10 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}", "tests/**/*.test.{ts,tsx}"],
   },
   resolve: {
-    alias: { "@": new URL("./src", import.meta.url).pathname },
+    // `fileURLToPath` e não `.pathname`: no Windows o pathname vem como
+    // `/D:/Projetos%20Apps/...` — barra sobrando e espaço codificado —, e o
+    // alias silenciosamente não resolve. Ficou escondido enquanto todo teste
+    // importava por caminho relativo; o primeiro `@/...` derrubou a suíte.
+    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
 });

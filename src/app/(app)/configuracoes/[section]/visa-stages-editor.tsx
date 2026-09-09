@@ -187,10 +187,10 @@ export function VisaStagesEditor({
                   action={deleteVisaStage}
                   hidden={{ id: stage.id }}
                   title={`Excluir “${stage.name}”?`}
-                  consequence={`As ${stage.descendants} sub-etapas dentro dela vão junto. Processos já criados a partir deste molde não são afetados — a cópia dentro do processo é independente.`}
+                  consequence={`As ${stage.descendantIds.length} sub-etapas dentro dela vão junto. Processos já criados a partir deste molde não são afetados — a cópia dentro do processo é independente.`}
                   confirmLabel="Excluir tudo"
                   triggerLabel={`Excluir ${stage.name}`}
-                  needsConfirmation={stage.descendants > 0}
+                  needsConfirmation={stage.descendantIds.length > 0}
                 />
               </div>
 

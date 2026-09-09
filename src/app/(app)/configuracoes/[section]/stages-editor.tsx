@@ -147,8 +147,8 @@ export function StagesEditor({
                       action={deleteStage}
                       hidden={{ id: stage.id }}
                       title={`Excluir “${stage.name}”?`}
+                      consequence="A etapa sai do funil para todo mundo da organização, junto com a posição dela. Só é possível porque não há negócio parado aqui — os que já passaram por ela mantêm o registro no histórico. Não dá para desfazer."
                       triggerLabel={`Excluir ${stage.name}`}
-                      needsConfirmation={false}
                       disabled={hasCards}
                       disabledReason="Mova os negócios desta etapa antes de excluí-la"
                     />

@@ -53,13 +53,14 @@ export async function createOpportunity(
   const { supabase, userId, organizationId } = await context();
   if (!organizationId) return falhou("Sua conta não está vinculada a nenhuma organização.");
 
-  const { data: stage } = await supabase
+  const { data: stage, error: stageError } = await supabase
     .from("pipeline_stages")
     .select("pipeline_id, probability, is_won, is_lost")
     .eq("id", parsed.data.stage_id)
     .maybeSingle();
 
-  if (!stage) return { error: "Etapa não encontrada." };
+  if (stageError) return falhou(traduzirErro(stageError));
+  if (!stage) return falhou("Etapa não encontrada.");
 
   const terminal = stage.is_won || stage.is_lost;
 
@@ -83,11 +84,18 @@ export async function createOpportunity(
   if (error) return falhou(traduzirErro(error));
 
   // Quem tem oportunidade deixa de ser simples contato. Cliente não regride.
-  await supabase
-    .from("people")
-    .update({ lifecycle_stage: stage.is_won ? "client" : "opportunity" })
-    .eq("id", parsed.data.person_id)
-    .neq("lifecycle_stage", "client");
+  //
+  // O `.neq` faz parte do filtro, então zero linhas aqui quer dizer "já era
+  // cliente" — resultado certo, não falha. Por isso a checagem é do erro, e
+  // não da contagem: `resultado()` leria o zero como recusa.
+  const promocao = resultadoSemContagem(
+    await supabase
+      .from("people")
+      .update({ lifecycle_stage: stage.is_won ? "client" : "opportunity" })
+      .eq("id", parsed.data.person_id)
+      .neq("lifecycle_stage", "client"),
+  );
+  if (promocao.error) return promocao;
 
   revalidatePath("/crm");
   revalidatePath("/contatos");
