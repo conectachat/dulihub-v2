@@ -7,7 +7,7 @@ import { falhou, gravou, type ActionState } from "@/lib/action-state";
 import { NADA_GRAVADO, traduzirErro } from "@/lib/erros";
 import { resultado, resultadoSemContagem } from "@/lib/gravar";
 import { parseMoney } from "@/lib/numbers";
-import { createClient } from "@/lib/supabase/server";
+import { contextoAtual } from "@/lib/organizacao";
 
 export type { ActionState };
 
@@ -19,21 +19,6 @@ const opportunitySchema = z.object({
   currency: z.enum(["BRL", "USD"]).default("BRL"),
   source: z.string().trim().optional(),
 });
-
-async function context() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("organization_id")
-    .limit(1)
-    .maybeSingle();
-
-  return { supabase, userId: user?.id ?? null, organizationId: membership?.organization_id ?? null };
-}
 
 export async function createOpportunity(
   _prev: ActionState,
@@ -50,8 +35,21 @@ export async function createOpportunity(
 
   if (!parsed.success) return falhou(parsed.error.issues[0].message);
 
-  const { supabase, userId, organizationId } = await context();
-  if (!organizationId) return falhou("Sua conta não está vinculada a nenhuma organização.");
+  const { supabase, userId, error: erroDoContexto } = await contextoAtual();
+  if (erroDoContexto) return falhou(erroDoContexto);
+
+  // A organização do negócio vem **da pessoa**, não da associação de quem
+  // clicou. São coisas diferentes no dia em que existir parceiro, e usar a
+  // associação carimbaria um contato de uma organização com o id de outra —
+  // sem erro nenhum, porque a RLS aprova a linha resultante.
+  const { data: pessoa, error: erroDaPessoa } = await supabase
+    .from("people")
+    .select("organization_id")
+    .eq("id", parsed.data.person_id)
+    .maybeSingle();
+
+  if (erroDaPessoa) return falhou(traduzirErro(erroDaPessoa));
+  if (!pessoa) return falhou("Contato não encontrado.");
 
   const { data: stage, error: stageError } = await supabase
     .from("pipeline_stages")
@@ -65,7 +63,7 @@ export async function createOpportunity(
   const terminal = stage.is_won || stage.is_lost;
 
   const { error } = await supabase.from("opportunities").insert({
-    organization_id: organizationId,
+    organization_id: pessoa.organization_id,
     person_id: parsed.data.person_id,
     pipeline_id: stage.pipeline_id,
     stage_id: parsed.data.stage_id,
@@ -115,10 +113,8 @@ export async function moveOpportunity(formData: FormData): Promise<ActionState> 
     return falhou("Movimento não informado.");
   }
 
-  const { supabase, userId, organizationId } = await context();
-  if (!organizationId) {
-    return falhou("Sua conta não está vinculada a nenhuma organização.");
-  }
+  const { supabase, userId, error: erroDoContexto } = await contextoAtual();
+  if (erroDoContexto) return falhou(erroDoContexto);
 
   const { data: stage, error: stageError } = await supabase
     .from("pipeline_stages")
@@ -140,7 +136,7 @@ export async function moveOpportunity(formData: FormData): Promise<ActionState> 
       closed_at: terminal ? new Date().toISOString() : null,
     })
     .eq("id", id)
-    .select("person_id")
+    .select("person_id, organization_id")
     .maybeSingle();
 
   if (updateError) return falhou(traduzirErro(updateError));
@@ -155,7 +151,9 @@ export async function moveOpportunity(formData: FormData): Promise<ActionState> 
     // é exatamente o que este bloco existe para preservar.
     const registro = resultadoSemContagem(
       await supabase.from("activities").insert({
-        organization_id: organizationId,
+        // Do próprio negócio, não da associação de quem clicou: o registro
+        // pertence à organização dona da oportunidade.
+        organization_id: updated.organization_id,
         person_id: updated.person_id,
         opportunity_id: id,
         type: "stage_change",
@@ -188,7 +186,7 @@ export async function deleteOpportunity(
   const id = formData.get("id");
   if (typeof id !== "string") return falhou("Oportunidade não informada.");
 
-  const { supabase } = await context();
+  const { supabase } = await contextoAtual();
   const estado = resultado(
     await supabase.from("opportunities").delete().eq("id", id).select("id"),
   );

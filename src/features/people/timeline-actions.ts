@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { falhou, gravou, type ActionState } from "@/lib/action-state";
 import { traduzirErro } from "@/lib/erros";
-import { createClient } from "@/lib/supabase/server";
+import { contextoAtual } from "@/lib/organizacao";
 
 /** @deprecated Use `ActionState` de `@/lib/action-state`. */
 export type TimelineActionState = ActionState;
@@ -19,23 +19,6 @@ const entrySchema = z.object({
   body: z.string().trim().min(1, "Escreva alguma coisa").max(5000),
   occurred_at: z.string().trim().optional(),
 });
-
-async function context() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("organization_id")
-    .limit(1)
-    .maybeSingle();
-  return {
-    supabase,
-    userId: user?.id ?? null,
-    organizationId: membership?.organization_id ?? null,
-  };
-}
 
 /**
  * Registra uma entrada na linha do tempo.
@@ -57,12 +40,23 @@ export async function createEntry(
 
   if (!parsed.success) return falhou(parsed.error.issues[0].message);
 
-  const { supabase, userId, organizationId } = await context();
-  if (!organizationId) {
-    return falhou("Sua conta não está vinculada a nenhuma organização.");
-  }
+  const { supabase, userId, error: erroDoContexto } = await contextoAtual();
+  if (erroDoContexto) return falhou(erroDoContexto);
 
   const { person_id, type, body, occurred_at } = parsed.data;
+
+  // A organização do registro é a da pessoa, não a de quem escreve. Um
+  // consultor da Duli atendendo cliente alocado por um parceiro escreve
+  // dentro da organização do parceiro, que é onde a nota tem de ficar.
+  const { data: pessoa, error: erroDaPessoa } = await supabase
+    .from("people")
+    .select("organization_id")
+    .eq("id", person_id)
+    .maybeSingle();
+
+  if (erroDaPessoa) return falhou(traduzirErro(erroDaPessoa));
+  if (!pessoa) return falhou("Contato não encontrado.");
+  const organizationId = pessoa.organization_id;
 
   if (type === "note") {
     // Nota não aceita data retroativa: ela é do momento em que se escreve.
@@ -113,7 +107,7 @@ export async function deleteEntry(formData: FormData): Promise<ActionState> {
     return falhou("Entrada não informada.");
   }
 
-  const { supabase, userId } = await context();
+  const { supabase, userId } = await contextoAtual();
   if (!userId) return falhou("Sua sessão expirou. Entre de novo.");
 
   // As condições de autoria e de tipo fazem parte do filtro, então zero linhas

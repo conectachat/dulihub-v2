@@ -5,21 +5,11 @@ import { revalidatePath } from "next/cache";
 import { falhou, gravou, type ActionState } from "@/lib/action-state";
 import { traduzirErro } from "@/lib/erros";
 import { resultado } from "@/lib/gravar";
+import { contextoAtual, SEM_ORGANIZACAO } from "@/lib/organizacao";
 import { createClient } from "@/lib/supabase/server";
 import { personFromForm } from "./schema";
 
 export type { ActionState };
-
-/** Organização em que o usuário atual cria registros. */
-async function currentOrganizationId(): Promise<string | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("organization_members")
-    .select("organization_id")
-    .limit(1)
-    .maybeSingle();
-  return data?.organization_id ?? null;
-}
 
 /**
  * Cria um contato.
@@ -35,21 +25,16 @@ export async function createPerson(
   const parsed = personFromForm(formData);
   if (!parsed.success) return falhou(parsed.error.issues[0].message);
 
-  const organizationId = await currentOrganizationId();
-  if (!organizationId) {
-    return falhou("Sua conta não está vinculada a nenhuma organização.");
-  }
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, userId, organizationId, error: erroDoContexto } =
+    await contextoAtual();
+  if (erroDoContexto) return falhou(erroDoContexto);
+  if (!organizationId) return falhou(SEM_ORGANIZACAO);
 
   const { error } = await supabase.from("people").insert({
     ...parsed.data,
     organization_id: organizationId,
     lifecycle_stage: "contact",
-    created_by: user?.id ?? null,
+    created_by: userId,
   });
 
   if (error) return falhou(traduzirErro(error));

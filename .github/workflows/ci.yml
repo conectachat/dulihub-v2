@@ -31,3 +31,17 @@ jobs:
       # custa segundos demais para cobrar a cada commit.
       - name: Testes
         run: bun run test
+
+      # A separação entre a Duli e cada parceiro está inteira na RLS: nenhuma
+      # query da aplicação filtra por organização. Uma policy que afrouxa não
+      # quebra nada — só passa a mostrar a carteira alheia. Por isso este passo
+      # existe, e por isso ele não é condicional: sem os segredos configurados
+      # o CI falha, que é o comportamento certo.
+      - name: Testes de RLS
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          RLS_SENHA_PARCEIRO: ${{ secrets.RLS_SENHA_PARCEIRO }}
+          RLS_SENHA_COLABORADOR: ${{ secrets.RLS_SENHA_COLABORADOR }}
+          RLS_SENHA_CLIENTE: ${{ secrets.RLS_SENHA_CLIENTE }}
+        run: bun run test:rls

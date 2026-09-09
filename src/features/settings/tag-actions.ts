@@ -6,6 +6,7 @@ import { z } from "zod";
 import { falhou, gravou, type ActionState } from "@/lib/action-state";
 import { traduzirErro } from "@/lib/erros";
 import { resultado } from "@/lib/gravar";
+import { contextoAtual, SEM_ORGANIZACAO } from "@/lib/organizacao";
 import { createClient } from "@/lib/supabase/server";
 import { PALETTE } from "@/lib/palette";
 
@@ -20,15 +21,6 @@ const tagSchema = z.object({
     .refine((c) => (PALETTE as readonly string[]).includes(c), "Cor inválida"),
 });
 
-async function organizationId() {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("organization_members")
-    .select("organization_id")
-    .limit(1)
-    .maybeSingle();
-  return data?.organization_id ?? null;
-}
 
 export async function createTag(
   _prev: TagActionState,
@@ -40,10 +32,10 @@ export async function createTag(
   });
   if (!parsed.success) return falhou(parsed.error.issues[0].message);
 
-  const orgId = await organizationId();
-  if (!orgId) return falhou("Sua conta não está vinculada a nenhuma organização.");
-
-  const supabase = await createClient();
+  const { supabase, organizationId: orgId, error: erroDoContexto } =
+    await contextoAtual();
+  if (erroDoContexto) return falhou(erroDoContexto);
+  if (!orgId) return falhou(SEM_ORGANIZACAO);
   const { error } = await supabase
     .from("tags")
     .insert({ ...parsed.data, organization_id: orgId });

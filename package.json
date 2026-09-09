@@ -7,10 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "vitest run src/",
+    "test:rls": "vitest run tests/rls/",
+    "test:watch": "vitest src/",
     "typecheck": "tsc --noEmit",
-    "verify": "bun run typecheck && bun run lint && bun run test"
+    "verify": "bun run typecheck && bun run lint && bun run test && bun run test:rls"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

@@ -57,7 +57,7 @@ export async function getUserContext(): Promise<UserContext | null> {
 
   const { data, error } = await supabase
     .from("organization_members")
-    .select("role, organizations(id, name, slug, type)")
+    .select("role, created_at, organizations(id, name, slug, type)")
     .eq("user_id", user.id);
 
   if (error) {
@@ -71,7 +71,21 @@ export async function getUserContext(): Promise<UserContext | null> {
     };
   }
 
-  const organizations: OrganizationSummary[] = (data ?? [])
+  // A ordem importa: toda tela consumidora pega `organizations[0]`, e sem
+  // ordenar isso é a linha que o Postgres quiser. Mesma regra do
+  // `escolherOrganizacao` das Server Actions — raiz primeiro, depois a
+  // associação mais antiga —, para a tela e a gravação nunca discordarem
+  // sobre em qual organização a pessoa está trabalhando.
+  const ordenadas = [...(data ?? [])].sort((a, b) => {
+    const raiz = (linha: typeof a) =>
+      (linha.organizations as unknown as { type: string } | null)?.type ===
+      "root"
+        ? 0
+        : 1;
+    return raiz(a) - raiz(b) || a.created_at.localeCompare(b.created_at);
+  });
+
+  const organizations: OrganizationSummary[] = ordenadas
     .filter((row) => row.organizations)
     .map((row) => {
       const org = row.organizations as unknown as {

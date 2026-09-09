@@ -6,6 +6,7 @@ import { z } from "zod";
 import { falhou, gravou, type ActionState } from "@/lib/action-state";
 import { traduzirErro } from "@/lib/erros";
 import { resultado, resultadoSemContagem } from "@/lib/gravar";
+import { contextoAtual, SEM_ORGANIZACAO } from "@/lib/organizacao";
 import { createClient } from "@/lib/supabase/server";
 
 /** @deprecated Use `ActionState` de `@/lib/action-state` direto. */
@@ -38,15 +39,6 @@ function toCode(label: string) {
   );
 }
 
-async function organizationId() {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("organization_members")
-    .select("organization_id")
-    .limit(1)
-    .maybeSingle();
-  return data?.organization_id ?? null;
-}
 
 export async function createStageStatus(
   _prev: StageStatusState,
@@ -58,10 +50,10 @@ export async function createStageStatus(
   const color = colorSchema.safeParse(formData.get("color"));
   if (!color.success) return falhou(color.error.issues[0].message);
 
-  const orgId = await organizationId();
-  if (!orgId) return falhou("Sua conta não está vinculada a nenhuma organização.");
-
-  const supabase = await createClient();
+  const { supabase, organizationId: orgId, error: erroDoContexto } =
+    await contextoAtual();
+  if (erroDoContexto) return falhou(erroDoContexto);
+  if (!orgId) return falhou(SEM_ORGANIZACAO);
 
   const { data: last } = await supabase
     .from("stage_statuses")
