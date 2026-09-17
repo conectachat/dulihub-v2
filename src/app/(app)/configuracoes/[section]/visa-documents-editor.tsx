@@ -22,7 +22,7 @@ import {
   updateVisaDocument,
 } from "@/features/settings/visa-type-actions";
 import { comAviso } from "@/lib/avisar";
-import { flattenTree, indentStyle } from "@/lib/tree";
+import { flattenTree, indentStyle, paiVisivel } from "@/lib/tree";
 import { cn } from "@/lib/utils";
 
 export type CatalogNode = {
@@ -154,18 +154,10 @@ export function VisaDocumentsEditor({
   const nameOf = new Map(catalog.map((n) => [n.id, n.name]));
   const parentOf = new Map(catalog.map((n) => [n.id, n.parent_id]));
 
-  /**
-   * Pai visível: sobe até achar um ancestral que este visto também exige.
-   *
-   * Marcar um filho sem o pai é possível, e sem isto ele sumiria da lista —
-   * `flattenTree` começa da raiz e nunca alcançaria um nó pendurado em alguém
-   * que não está ali.
-   */
-  const visibleParent = (docTypeId: string): string | null => {
-    let cursor = parentOf.get(docTypeId) ?? null;
-    while (cursor && !byDocType.has(cursor)) cursor = parentOf.get(cursor) ?? null;
-    return cursor;
-  };
+  // Marcar um filho sem o pai é possível, e sem isto ele sumiria da lista —
+  // `flattenTree` começa da raiz e nunca alcançaria um nó pendurado em alguém
+  // que não está ali. A mesma função decide as irmãs no reordenar, no servidor.
+  const visibleParent = paiVisivel(parentOf, new Set(byDocType.keys()));
 
   // A árvore do que é exigido usa a ordem DO VISTO, não a do catálogo.
   const required = flattenTree(

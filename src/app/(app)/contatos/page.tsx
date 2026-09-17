@@ -4,6 +4,7 @@ import { Briefcase, RotateCcw, Trash2, Users } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { IconAction } from "@/components/icon-action";
 import { PageHeader } from "@/components/page-header";
+import { QueryError } from "@/components/query-error";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -15,32 +16,13 @@ import {
 } from "@/components/ui/table";
 import { restorePerson, softDeletePerson } from "@/features/people/actions";
 import { listPeople, listTags } from "@/features/people/queries";
+import { formatarData, iniciais, telefoneCompleto } from "@/lib/formatar";
 
 import { ContactFilters } from "./filters";
 import { PersonDialog } from "./person-dialog";
 import { TagFilter } from "./tag-filter";
 
 export const metadata = { title: "Contatos — Duli Hub" };
-
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
-}
-
-function fullPhone(ddi: string | null, phone: string | null) {
-  if (!phone) return null;
-  return ddi ? `${ddi} ${phone}` : phone;
-}
-
-const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-});
 
 export default async function ContatosPage({
   searchParams,
@@ -73,13 +55,15 @@ export default async function ContatosPage({
         <TagFilter tags={allTags} />
       </ContactFilters>
 
+      {/*
+        A condição olhava as duas consultas, mas o texto imprimia só a de
+        contatos: com as tags falhando, a caixa vermelha aparecia vazia.
+      */}
       {error ?? tagsError ? (
-        <div className="rounded-2xl border border-destructive/50 p-4 text-sm">
-          <p className="font-medium text-destructive">
-            Não foi possível carregar os contatos.
-          </p>
-          <p className="text-muted-foreground">{error}</p>
-        </div>
+        <QueryError
+          title="Não foi possível carregar os contatos"
+          detalhe={error ?? tagsError}
+        />
       ) : people.length === 0 ? (
         <EmptyState
           icon={Users}
@@ -109,14 +93,14 @@ export default async function ContatosPage({
             </TableHeader>
             <TableBody>
               {people.map((person) => {
-                const phone = fullPhone(person.phone_country_code, person.phone);
+                const phone = telefoneCompleto(person.phone_country_code, person.phone);
 
                 return (
                   <TableRow key={person.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
-                          {initials(person.full_name)}
+                          {iniciais(person.full_name)}
                         </span>
                         <Link
                           href={`/contatos/${person.id}`}
@@ -150,7 +134,7 @@ export default async function ContatosPage({
                     </TableCell>
 
                     <TableCell className="whitespace-nowrap text-muted-foreground">
-                      {dateFormatter.format(new Date(person.created_at))}
+                      {formatarData(person.created_at)}
                     </TableCell>
 
                     <TableCell>

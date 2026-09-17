@@ -9,6 +9,7 @@ import { resultado, resultadoSemContagem } from "@/lib/gravar";
 import { parseMoney, parseWholeNumber } from "@/lib/numbers";
 import { contextoAtual, SEM_ORGANIZACAO } from "@/lib/organizacao";
 import { createClient } from "@/lib/supabase/server";
+import { paiVisivel } from "@/lib/tree";
 
 /** @deprecated Use `ActionState` de `@/lib/action-state`. */
 export type VisaState = ActionState;
@@ -394,12 +395,9 @@ export async function moveVisaDocument(
   );
   const selected = new Set((siblingsRaw ?? []).map((s) => s.document_type_id));
 
-  /** Pai visível: sobe até achar um ancestral que este visto também exige. */
-  const visibleParent = (docTypeId: string): string | null => {
-    let cursor = parentOf.get(docTypeId) ?? null;
-    while (cursor && !selected.has(cursor)) cursor = parentOf.get(cursor) ?? null;
-    return cursor;
-  };
+  // A mesma função que desenha a árvore na tela. Se as duas discordassem sobre
+  // quem é irmão de quem, a seta moveria a linha errada.
+  const visibleParent = paiVisivel(parentOf, selected);
 
   const myParent = visibleParent(row.document_type_id);
   const siblings = (siblingsRaw ?? []).filter(

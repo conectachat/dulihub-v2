@@ -23,6 +23,7 @@ import {
   type TimelineActionState,
 } from "@/features/people/timeline-actions";
 import type { TimelineItem } from "@/features/people/timeline-queries";
+import { formatarDataHora } from "@/lib/formatar";
 import { cn } from "@/lib/utils";
 
 const TYPES = [
@@ -52,14 +53,6 @@ const LABELS: Record<string, string> = {
 };
 
 const initialState: TimelineActionState = { error: null };
-
-const when = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -202,7 +195,7 @@ export function Timeline({
                     <p className="text-xs text-muted-foreground">
                       {rotulo}
                       {item.authorName ? ` · ${item.authorName}` : ""} ·{" "}
-                      {when.format(new Date(item.occurredAt))}
+                      {formatarDataHora(item.occurredAt)}
                     </p>
 
                     {canDelete ? (
@@ -219,7 +212,7 @@ export function Timeline({
                             ? "A nota some com o texto, o autor e a data. Não há lixeira aqui, e não dá para desfazer."
                             : "O registro some com o texto, o autor e a data — o histórico deste contato deixa de mostrar que isso aconteceu. Não dá para desfazer."
                         }
-                        triggerLabel={`Excluir ${rotulo.toLowerCase()} de ${when.format(new Date(item.occurredAt))}`}
+                        triggerLabel={`Excluir ${rotulo.toLowerCase()} de ${formatarDataHora(item.occurredAt)}`}
                       />
                     ) : null}
                   </div>

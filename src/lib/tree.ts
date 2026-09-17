@@ -117,3 +117,31 @@ const MAX_INDENT_LEVEL = 5;
 export function indentStyle(depth: number) {
   return { marginLeft: `${Math.min(depth, MAX_INDENT_LEVEL) * 1.5}rem` };
 }
+
+/**
+ * Pai visível de um nó dentro de uma seleção parcial da árvore.
+ *
+ * Um tipo de visto pode exigir "Passaporte" sem exigir "Identidade", que é o
+ * pai dele no catálogo. Na árvore do visto, Passaporte então sobe até o
+ * primeiro ancestral que também é exigido — ou vira raiz.
+ *
+ * Existia em duas cópias: uma desenhava a lista na tela, a outra decidia quem
+ * são as irmãs no reordenar. Se divergissem, a seta movia a linha errada. As
+ * duas também subiam num `while` sem guarda: com ciclo no catálogo a Server
+ * Action nunca respondia.
+ */
+export function paiVisivel(
+  parentOf: ReadonlyMap<string, string | null>,
+  selecionados: ReadonlySet<string>,
+) {
+  return (id: string): string | null => {
+    const visitados = new Set<string>([id]);
+    let cursor = parentOf.get(id) ?? null;
+    while (cursor && !selecionados.has(cursor)) {
+      if (visitados.has(cursor)) return null;
+      visitados.add(cursor);
+      cursor = parentOf.get(cursor) ?? null;
+    }
+    return cursor;
+  };
+}

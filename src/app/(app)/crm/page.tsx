@@ -4,6 +4,7 @@ import { KanbanSquare } from "lucide-react";
 import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { QueryError } from "@/components/query-error";
 import { formatarMoeda, formatarPorMoeda, juntarMoedas } from "@/lib/totals";
 import { deleteOpportunity } from "@/features/opportunities/actions";
 import { getBoard, listPeopleForPicker } from "@/features/opportunities/queries";
@@ -24,12 +25,10 @@ export default async function CrmPage() {
     return (
       <main className="space-y-4 p-6">
         <PageHeader title="CRM" />
-        <div className="rounded-2xl border border-destructive/50 p-4 text-sm">
-          <p className="font-medium text-destructive">
-            Não foi possível carregar o funil.
-          </p>
-          <p className="text-muted-foreground">{board.error ?? peopleError}</p>
-        </div>
+        <QueryError
+          title="Não foi possível carregar o funil"
+          detalhe={board.error ?? peopleError}
+        />
       </main>
     );
   }

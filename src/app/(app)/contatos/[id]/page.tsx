@@ -14,12 +14,7 @@ import { getTimeline } from "@/features/people/timeline-queries";
 import { PersonDialog } from "../person-dialog";
 import { PersonTags } from "./person-tags";
 import { Timeline } from "./timeline";
-
-const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-});
+import { formatarData, telefoneCompleto } from "@/lib/formatar";
 
 
 
@@ -90,9 +85,7 @@ export default async function PersonPage({
     .map((t) => t.tag)
     .filter((t): t is { id: string; name: string } => t !== null);
 
-  const phone = person.phone
-    ? `${person.phone_country_code ?? ""} ${person.phone}`.trim()
-    : null;
+  const phone = telefoneCompleto(person.phone_country_code, person.phone);
 
   return (
     <main className="space-y-6 p-6">
@@ -145,7 +138,7 @@ export default async function PersonPage({
               )}
             </div>
             <p className="text-muted-foreground">
-              Cadastrado em {dateFormatter.format(new Date(person.created_at))}
+              Cadastrado em {formatarData(person.created_at)}
             </p>
 
             <div className="space-y-2 border-t pt-3">
@@ -182,7 +175,7 @@ export default async function PersonPage({
                       <p className="truncate font-medium">{op.title}</p>
                       <p className="text-xs text-muted-foreground">
                         {op.stage?.name ?? "—"} ·{" "}
-                        {dateFormatter.format(new Date(op.created_at))}
+                        {formatarData(op.created_at)}
                       </p>
                     </div>
                     <div className="shrink-0 text-right">

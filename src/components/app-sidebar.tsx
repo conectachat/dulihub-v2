@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { signOut } from "@/features/auth/actions";
+import { iniciais } from "@/lib/formatar";
 import { usePersistedFlag } from "@/lib/use-persisted-flag";
 import { cn } from "@/lib/utils";
 
@@ -36,15 +37,6 @@ const NAV: NavItem[] = [
 ];
 
 const STORAGE_KEY = "dulihub:sidebar-collapsed";
-
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? "")
-    .join("");
-}
 
 export function AppSidebar({
   userName,
@@ -75,7 +67,7 @@ export function AppSidebar({
         {/* Identidade do usuário */}
         <div className="flex items-center gap-3">
           <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-sm font-semibold text-primary">
-            {initials(userName || userEmail)}
+            {iniciais(userName || userEmail)}
             <span
               className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card bg-success"
               aria-hidden

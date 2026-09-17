@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { flattenTree, indentStyle } from "./tree";
+import { flattenTree, indentStyle, paiVisivel } from "./tree";
 
 /**
  * `flattenTree` decide o que aparece na tela em quatro lugares: catálogo de
@@ -147,5 +147,44 @@ describe("indentStyle", () => {
   it("para de recuar no quinto nível, para a linha não sair da tela", () => {
     expect(indentStyle(5)).toEqual({ marginLeft: "7.5rem" });
     expect(indentStyle(9)).toEqual({ marginLeft: "7.5rem" });
+  });
+});
+
+describe("paiVisivel", () => {
+  // O catálogo: Pessoais > Identidade > Passaporte, e Rendimentos na raiz.
+  const pais = new Map<string, string | null>([
+    ["pessoais", null],
+    ["identidade", "pessoais"],
+    ["passaporte", "identidade"],
+    ["rendimentos", null],
+  ]);
+
+  it("devolve o pai direto quando o visto também o exige", () => {
+    const pai = paiVisivel(pais, new Set(["identidade", "passaporte"]));
+    expect(pai("passaporte")).toBe("identidade");
+  });
+
+  it("pula o pai que o visto não exige e sobe até o avô", () => {
+    // Sem isto, Passaporte ficaria pendurado num nó ausente da lista e
+    // sumiria da árvore do visto.
+    const pai = paiVisivel(pais, new Set(["pessoais", "passaporte"]));
+    expect(pai("passaporte")).toBe("pessoais");
+  });
+
+  it("vira raiz quando nenhum ancestral é exigido", () => {
+    const pai = paiVisivel(pais, new Set(["passaporte"]));
+    expect(pai("passaporte")).toBeNull();
+    expect(pai("rendimentos")).toBeNull();
+  });
+
+  it("não trava quando o catálogo tem ciclo", () => {
+    // O gatilho do banco impede ciclo, mas importação e SQL manual passam por
+    // fora. Aqui era um `while` sem saída: a Server Action nunca respondia.
+    const ciclo = new Map<string, string | null>([
+      ["a", "b"],
+      ["b", "a"],
+    ]);
+    const pai = paiVisivel(ciclo, new Set(["x"]));
+    expect(pai("a")).toBeNull();
   });
 });
