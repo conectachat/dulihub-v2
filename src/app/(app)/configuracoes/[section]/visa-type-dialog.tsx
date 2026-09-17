@@ -1,9 +1,11 @@
 "use client";
 
 import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
 import { Pencil, Plus } from "lucide-react";
 
+import { ESTADO_INICIAL } from "@/lib/action-state";
+import { FieldError } from "@/components/field-error";
+import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import { useDialogOnSuccess } from "@/lib/use-dialog-on-success";
 import {
@@ -17,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { saveVisaType, type VisaState } from "@/features/settings/visa-type-actions";
+import { saveVisaType } from "@/features/settings/visa-type-actions";
 
 export type VisaTypeForm = {
   id: string;
@@ -29,21 +31,10 @@ export type VisaTypeForm = {
   is_active: boolean;
 };
 
-const initialState: VisaState = { error: null };
-
-function SaveButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending ? "Salvando..." : "Salvar"}
-    </Button>
-  );
-}
-
 export function VisaTypeDialog({ visaType }: { visaType?: VisaTypeForm }) {
   const isEdit = Boolean(visaType);
 
-  const [state, formAction] = useActionState(saveVisaType, initialState);
+  const [state, formAction] = useActionState(saveVisaType, ESTADO_INICIAL);
 
   // Fecha só quando a Server Action confirmou que gravou.
   const { open, setOpen } = useDialogOnSuccess(state.token);
@@ -147,17 +138,13 @@ export function VisaTypeDialog({ visaType }: { visaType?: VisaTypeForm }) {
             Ativo — aparece ao criar um processo novo
           </label>
 
-          {state.error ? (
-            <p role="alert" className="text-sm text-destructive">
-              {state.error}
-            </p>
-          ) : null}
+          <FieldError mensagem={state.error} />
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <SaveButton />
+            <SubmitButton pendente="Salvando...">Salvar</SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

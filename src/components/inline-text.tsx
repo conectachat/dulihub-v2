@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 
+import { FieldError } from "@/components/field-error";
 import { Input } from "@/components/ui/input";
 import type { AcaoDeFormulario } from "@/lib/action-state";
 import { cn } from "@/lib/utils";
@@ -91,11 +92,7 @@ export function InlineText({
         className="h-8 rounded-xl border-0 bg-transparent px-2 hover:bg-muted focus-visible:bg-background aria-invalid:bg-destructive/5"
       />
 
-      {erro ? (
-        <p role="alert" className="px-2 pt-0.5 text-xs text-destructive">
-          {erro}
-        </p>
-      ) : null}
+      <FieldError mensagem={erro} pequeno className="px-2 pt-0.5" />
     </form>
   );
 }

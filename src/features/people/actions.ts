@@ -9,8 +9,6 @@ import { contextoAtual, SEM_ORGANIZACAO } from "@/lib/organizacao";
 import { createClient } from "@/lib/supabase/server";
 import { personFromForm } from "./schema";
 
-export type { ActionState };
-
 /**
  * Cria um contato.
  *

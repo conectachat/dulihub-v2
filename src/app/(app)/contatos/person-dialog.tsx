@@ -1,9 +1,11 @@
 "use client";
 
 import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
 import { Pencil, Plus } from "lucide-react";
 
+import { ESTADO_INICIAL } from "@/lib/action-state";
+import { FieldError } from "@/components/field-error";
+import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import { useDialogOnSuccess } from "@/lib/use-dialog-on-success";
 import {
@@ -20,10 +22,7 @@ import { Label } from "@/components/ui/label";
 import {
   createPerson,
   updatePerson,
-  type ActionState,
 } from "@/features/people/actions";
-
-const initialState: ActionState = { error: null };
 
 export type PersonFormValues = {
   id: string;
@@ -35,20 +34,11 @@ export type PersonFormValues = {
   job_title?: string | null;
 };
 
-function SaveButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending ? "Salvando..." : "Salvar"}
-    </Button>
-  );
-}
-
 export function PersonDialog({ person }: { person?: PersonFormValues }) {
   const isEdit = Boolean(person);
   const [state, formAction] = useActionState(
     isEdit ? updatePerson : createPerson,
-    initialState,
+    ESTADO_INICIAL,
   );
 
   // Fecha só quando a Server Action confirmou que gravou.
@@ -146,17 +136,13 @@ export function PersonDialog({ person }: { person?: PersonFormValues }) {
             </div>
           </div>
 
-          {state.error ? (
-            <p role="alert" className="text-sm text-destructive">
-              {state.error}
-            </p>
-          ) : null}
+          <FieldError mensagem={state.error} />
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <SaveButton />
+            <SubmitButton pendente="Salvando...">Salvar</SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

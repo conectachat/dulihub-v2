@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 
+import { FieldError } from "@/components/field-error";
 import { Button } from "@/components/ui/button";
 import type { AcaoDeFormulario } from "@/lib/action-state";
 import { comAviso } from "@/lib/avisar";
@@ -121,11 +122,7 @@ export function ConfirmAction({
               <DialogDescription>{consequence}</DialogDescription>
             ) : null}
           </DialogHeader>
-          {erro ? (
-            <p role="alert" className="text-sm text-destructive">
-              {erro}
-            </p>
-          ) : null}
+          <FieldError mensagem={erro} />
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>

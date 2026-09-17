@@ -9,9 +9,6 @@ import { resultado, resultadoSemContagem } from "@/lib/gravar";
 import { contextoAtual, SEM_ORGANIZACAO } from "@/lib/organizacao";
 import { createClient } from "@/lib/supabase/server";
 
-/** @deprecated Use `ActionState` de `@/lib/action-state` direto. */
-export type StageStatusState = ActionState;
-
 const SECTION = "/configuracoes/status-de-etapas";
 
 const labelSchema = z.string().trim().min(1, "Informe o nome do status").max(40);
@@ -41,9 +38,9 @@ function toCode(label: string) {
 
 
 export async function createStageStatus(
-  _prev: StageStatusState,
+  _prev: ActionState,
   formData: FormData,
-): Promise<StageStatusState> {
+): Promise<ActionState> {
   const label = labelSchema.safeParse(formData.get("label"));
   if (!label.success) return falhou(label.error.issues[0].message);
 

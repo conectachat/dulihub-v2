@@ -11,9 +11,6 @@ import { contextoAtual, SEM_ORGANIZACAO } from "@/lib/organizacao";
 import { createClient } from "@/lib/supabase/server";
 import { paiVisivel } from "@/lib/tree";
 
-/** @deprecated Use `ActionState` de `@/lib/action-state`. */
-export type VisaState = ActionState;
-
 const PATH = "/configuracoes/tipos-de-visto";
 
 const visaSchema = z.object({
@@ -32,9 +29,9 @@ const visaSchema = z.object({
 // ---------------------------------------------------------------- tipo de visto
 
 export async function saveVisaType(
-  _prev: VisaState,
+  _prev: ActionState,
   formData: FormData,
-): Promise<VisaState> {
+): Promise<ActionState> {
   const parsed = visaSchema.safeParse({
     name: formData.get("name"),
     description: formData.get("description"),
@@ -96,9 +93,9 @@ const stageSchema = z.object({
 });
 
 export async function createVisaStage(
-  _prev: VisaState,
+  _prev: ActionState,
   formData: FormData,
-): Promise<VisaState> {
+): Promise<ActionState> {
   const parsed = stageSchema.safeParse({
     name: formData.get("name"),
     estimated_days: formData.get("estimated_days"),

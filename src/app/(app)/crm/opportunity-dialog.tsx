@@ -1,9 +1,11 @@
 "use client";
 
 import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
 import { Plus } from "lucide-react";
 
+import { ESTADO_INICIAL } from "@/lib/action-state";
+import { FieldError } from "@/components/field-error";
+import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import { useDialogOnSuccess } from "@/lib/use-dialog-on-success";
 import {
@@ -19,19 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   createOpportunity,
-  type ActionState,
 } from "@/features/opportunities/actions";
-
-const initialState: ActionState = { error: null };
-
-function SaveButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending ? "Criando..." : "Criar oportunidade"}
-    </Button>
-  );
-}
 
 export function OpportunityDialog({
   people,
@@ -47,7 +37,7 @@ export function OpportunityDialog({
   variant?: "default" | "ghost";
 }) {
 
-  const [state, formAction] = useActionState(createOpportunity, initialState);
+  const [state, formAction] = useActionState(createOpportunity, ESTADO_INICIAL);
 
   // Fecha só quando a Server Action confirmou que gravou.
   const { open, setOpen } = useDialogOnSuccess(state.token);
@@ -143,17 +133,13 @@ export function OpportunityDialog({
             </div>
           </div>
 
-          {state.error ? (
-            <p role="alert" className="text-sm text-destructive">
-              {state.error}
-            </p>
-          ) : null}
+          <FieldError mensagem={state.error} />
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <SaveButton />
+            <SubmitButton pendente="Criando...">Criar oportunidade</SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

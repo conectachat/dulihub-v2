@@ -9,8 +9,6 @@ import { resultado, resultadoSemContagem } from "@/lib/gravar";
 import { parseMoney } from "@/lib/numbers";
 import { contextoAtual } from "@/lib/organizacao";
 
-export type { ActionState };
-
 const opportunitySchema = z.object({
   person_id: z.string().uuid("Escolha um contato"),
   stage_id: z.string().uuid("Escolha uma etapa"),

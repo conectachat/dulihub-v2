@@ -1,13 +1,15 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { useFormStatus } from "react-dom";
 import { Folder, FolderOpen, Plus } from "lucide-react";
 
+import { ESTADO_INICIAL } from "@/lib/action-state";
 import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { InlineText } from "@/components/inline-text";
 import { MoveButtons } from "@/components/move-buttons";
+import { FieldError } from "@/components/field-error";
+import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +18,6 @@ import {
   deleteDocumentType,
   moveDocumentType,
   renameDocumentType,
-  type DocTypeState,
 } from "@/features/settings/document-type-actions";
 import { avisoDeExclusaoDePasta } from "@/lib/avisos";
 import { flattenTree, indentStyle } from "@/lib/tree";
@@ -28,18 +29,6 @@ export type DocNode = {
   position: number;
 };
 
-const initialState: DocTypeState = { error: null };
-
-function AddButton({ label }: { label: string }) {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" size="sm" disabled={pending}>
-      <Plus className="mr-1 h-4 w-4" />
-      {pending ? "Criando..." : label}
-    </Button>
-  );
-}
-
 /** Formulário de criação, usado na raiz e dentro de qualquer pasta. */
 function CreateForm({
   parentId,
@@ -50,7 +39,7 @@ function CreateForm({
   onDone?: () => void;
   label: string;
 }) {
-  const [state, formAction] = useActionState(createDocumentType, initialState);
+  const [state, formAction] = useActionState(createDocumentType, ESTADO_INICIAL);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -70,13 +59,9 @@ function CreateForm({
           required
           className="h-9 min-w-48 flex-1 rounded-xl"
         />
-        <AddButton label={label} />
+        <SubmitButton pendente="Criando..." size="sm" icone={Plus}>{label}</SubmitButton>
       </div>
-      {state.error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
-        </p>
-      ) : null}
+      <FieldError mensagem={state.error} />
     </form>
   );
 }

@@ -1,21 +1,21 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { useFormStatus } from "react-dom";
 import { Plus, Tag as TagIcon } from "lucide-react";
 
+import { ESTADO_INICIAL } from "@/lib/action-state";
 import { ColorPicker } from "@/components/color-picker";
 import { ColorPickerPopover } from "@/components/color-picker-popover";
 import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { InlineText } from "@/components/inline-text";
-import { Button } from "@/components/ui/button";
+import { FieldError } from "@/components/field-error";
+import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import {
   createTag,
   deleteTag,
   updateTag,
-  type TagActionState,
 } from "@/features/settings/tag-actions";
 import { comAviso } from "@/lib/avisar";
 import { DEFAULT_COLOR } from "@/lib/palette";
@@ -27,18 +27,6 @@ type Tag = {
   person_count: number;
 };
 
-const initialState: TagActionState = { error: null };
-
-
-function CreateButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      <Plus className="mr-1 h-4 w-4" />
-      {pending ? "Criando..." : "Criar tag"}
-    </Button>
-  );
-}
 
 /** Nome e cor salvam sozinhos: nome ao sair do campo, cor ao escolher. */
 function TagRow({ tag }: { tag: Tag }) {
@@ -129,13 +117,13 @@ function CreateTagForm({ action }: { action: (formData: FormData) => void }) {
         />
       </div>
 
-      <CreateButton />
+      <SubmitButton pendente="Criando..." icone={Plus}>Criar tag</SubmitButton>
     </form>
   );
 }
 
 export function TagsEditor({ tags }: { tags: Tag[] }) {
-  const [state, formAction] = useActionState(createTag, initialState);
+  const [state, formAction] = useActionState(createTag, ESTADO_INICIAL);
 
   return (
     <div className="space-y-6">
@@ -145,11 +133,7 @@ export function TagsEditor({ tags }: { tags: Tag[] }) {
       */}
       <CreateTagForm key={state.token ?? "novo"} action={formAction} />
 
-      {state.error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
-        </p>
-      ) : null}
+      <FieldError mensagem={state.error} />
 
       {tags.length === 0 ? (
         <EmptyState

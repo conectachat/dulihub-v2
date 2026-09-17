@@ -10,9 +10,6 @@ import { contextoAtual, SEM_ORGANIZACAO } from "@/lib/organizacao";
 import { createClient } from "@/lib/supabase/server";
 import { PALETTE } from "@/lib/palette";
 
-/** @deprecated Use `ActionState` de `@/lib/action-state`. */
-export type TagActionState = ActionState;
-
 const tagSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome da tag").max(40),
   color: z
@@ -23,9 +20,9 @@ const tagSchema = z.object({
 
 
 export async function createTag(
-  _prev: TagActionState,
+  _prev: ActionState,
   formData: FormData,
-): Promise<TagActionState> {
+): Promise<ActionState> {
   const parsed = tagSchema.safeParse({
     name: formData.get("name"),
     color: formData.get("color"),

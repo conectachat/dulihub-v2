@@ -1,15 +1,17 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { useFormStatus } from "react-dom";
 import { Check, CircleDot, Lock, Plus } from "lucide-react";
 
+import { ESTADO_INICIAL } from "@/lib/action-state";
 import { ColorPicker } from "@/components/color-picker";
 import { ColorPickerPopover } from "@/components/color-picker-popover";
 import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { InlineText } from "@/components/inline-text";
 import { MoveButtons } from "@/components/move-buttons";
+import { FieldError } from "@/components/field-error";
+import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,7 +21,6 @@ import {
   setDefaultStageStatus,
   toggleStageStatusDone,
   updateStageStatus,
-  type StageStatusState,
 } from "@/features/settings/stage-status-actions";
 import { comAviso } from "@/lib/avisar";
 import { DEFAULT_COLOR } from "@/lib/palette";
@@ -35,18 +36,6 @@ export type StageStatus = {
   is_done: boolean;
   is_system: boolean;
 };
-
-const initialState: StageStatusState = { error: null };
-
-function CreateButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      <Plus className="mr-1 h-4 w-4" />
-      {pending ? "Criando..." : "Criar status"}
-    </Button>
-  );
-}
 
 function StatusRow({
   status,
@@ -201,13 +190,13 @@ function CreateStatusForm({
         />
       </div>
 
-      <CreateButton />
+      <SubmitButton pendente="Criando..." icone={Plus}>Criar status</SubmitButton>
     </form>
   );
 }
 
 export function StageStatusesEditor({ statuses }: { statuses: StageStatus[] }) {
-  const [state, formAction] = useActionState(createStageStatus, initialState);
+  const [state, formAction] = useActionState(createStageStatus, ESTADO_INICIAL);
 
   return (
     <div className="space-y-6">
@@ -217,11 +206,7 @@ export function StageStatusesEditor({ statuses }: { statuses: StageStatus[] }) {
       */}
       <CreateStatusForm key={state.token ?? 0} action={formAction} />
 
-      {state.error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
-        </p>
-      ) : null}
+      <FieldError mensagem={state.error} />
 
       {statuses.length === 0 ? (
         <EmptyState

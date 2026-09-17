@@ -1,26 +1,16 @@
 "use client";
 
 import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
 
-import { Button } from "@/components/ui/button";
+import { ESTADO_INICIAL } from "@/lib/action-state";
+import { FieldError } from "@/components/field-error";
+import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signIn, type AuthState } from "@/features/auth/actions";
-
-const initialState: AuthState = { error: null };
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" className="w-full" disabled={pending}>
-      {pending ? "Entrando..." : "Entrar"}
-    </Button>
-  );
-}
+import { signIn } from "@/features/auth/actions";
 
 export function LoginForm({ next }: { next?: string }) {
-  const [state, formAction] = useActionState(signIn, initialState);
+  const [state, formAction] = useActionState(signIn, ESTADO_INICIAL);
 
   return (
     <form action={formAction} className="space-y-4">
@@ -49,13 +39,9 @@ export function LoginForm({ next }: { next?: string }) {
         />
       </div>
 
-      {state.error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
-        </p>
-      ) : null}
+      <FieldError mensagem={state.error} />
 
-      <SubmitButton />
+      <SubmitButton pendente="Entrando..." className="w-full">Entrar</SubmitButton>
     </form>
   );
 }

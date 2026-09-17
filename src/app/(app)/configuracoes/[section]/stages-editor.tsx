@@ -1,20 +1,20 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import { useFormStatus } from "react-dom";
 import { Lock, Plus } from "lucide-react";
 
+import { ESTADO_INICIAL } from "@/lib/action-state";
 import { ConfirmAction } from "@/components/confirm-action";
 import { InlineText } from "@/components/inline-text";
 import { MoveButtons } from "@/components/move-buttons";
-import { Button } from "@/components/ui/button";
+import { FieldError } from "@/components/field-error";
+import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import {
   createStage,
   deleteStage,
   moveStage,
   renameStage,
-  type StageActionState,
 } from "@/features/settings/stage-actions";
 import { cn } from "@/lib/utils";
 
@@ -27,18 +27,6 @@ type Stage = {
   opportunity_count: number;
 };
 
-const initialState: StageActionState = { error: null };
-
-function AddButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      <Plus className="mr-1 h-4 w-4" />
-      {pending ? "Criando..." : "Criar etapa"}
-    </Button>
-  );
-}
-
 export function StagesEditor({
   pipelineId,
   stages,
@@ -46,7 +34,7 @@ export function StagesEditor({
   pipelineId: string;
   stages: Stage[];
 }) {
-  const [state, formAction] = useActionState(createStage, initialState);
+  const [state, formAction] = useActionState(createStage, ESTADO_INICIAL);
   const addFormRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -80,14 +68,10 @@ export function StagesEditor({
             className="rounded-xl"
           />
         </div>
-        <AddButton />
+        <SubmitButton pendente="Criando..." icone={Plus}>Criar etapa</SubmitButton>
       </form>
 
-      {state.error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
-        </p>
-      ) : null}
+      <FieldError mensagem={state.error} />
 
       <ul className="space-y-2">
         {stages.map((stage) => {

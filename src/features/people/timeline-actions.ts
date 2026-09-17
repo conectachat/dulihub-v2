@@ -7,9 +7,6 @@ import { falhou, gravou, type ActionState } from "@/lib/action-state";
 import { traduzirErro } from "@/lib/erros";
 import { contextoAtual } from "@/lib/organizacao";
 
-/** @deprecated Use `ActionState` de `@/lib/action-state`. */
-export type TimelineActionState = ActionState;
-
 /** Tipos que o usuário pode lançar. `stage_change` é do sistema e não entra. */
 const USER_TYPES = ["note", "call", "meeting", "email", "other"] as const;
 
@@ -28,9 +25,9 @@ const entrySchema = z.object({
  * mora — escreve e diz o que foi.
  */
 export async function createEntry(
-  _prev: TimelineActionState,
+  _prev: ActionState,
   formData: FormData,
-): Promise<TimelineActionState> {
+): Promise<ActionState> {
   const parsed = entrySchema.safeParse({
     person_id: formData.get("person_id"),
     type: formData.get("type"),

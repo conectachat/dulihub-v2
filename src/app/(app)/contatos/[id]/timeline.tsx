@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
 import {
   ArrowRightLeft,
   CalendarDays,
@@ -13,14 +12,15 @@ import {
   Users,
 } from "lucide-react";
 
+import { ESTADO_INICIAL } from "@/lib/action-state";
 import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
-import { Button } from "@/components/ui/button";
+import { FieldError } from "@/components/field-error";
+import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import {
   createEntry,
   deleteEntry,
-  type TimelineActionState,
 } from "@/features/people/timeline-actions";
 import type { TimelineItem } from "@/features/people/timeline-queries";
 import { formatarDataHora } from "@/lib/formatar";
@@ -51,17 +51,6 @@ const LABELS: Record<string, string> = {
   other: "Outro",
   stage_change: "Movimento no funil",
 };
-
-const initialState: TimelineActionState = { error: null };
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" size="sm" disabled={pending}>
-      {pending ? "Salvando..." : "Registrar"}
-    </Button>
-  );
-}
 
 /**
  * Campo de escrita.
@@ -135,7 +124,7 @@ function Composer({
         ) : null}
 
         <div className="ml-auto">
-          <SubmitButton />
+          <SubmitButton pendente="Salvando..." size="sm">Registrar</SubmitButton>
         </div>
       </div>
     </form>
@@ -151,17 +140,13 @@ export function Timeline({
   items: TimelineItem[];
   currentUserId: string | null;
 }) {
-  const [state, formAction] = useActionState(createEntry, initialState);
+  const [state, formAction] = useActionState(createEntry, ESTADO_INICIAL);
 
   return (
     <div className="space-y-6">
       <Composer key={state.token ?? "novo"} personId={personId} action={formAction} />
 
-      {state.error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
-        </p>
-      ) : null}
+      <FieldError mensagem={state.error} />
 
       {items.length === 0 ? (
         <EmptyState

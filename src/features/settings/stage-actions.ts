@@ -8,9 +8,6 @@ import { traduzirErro } from "@/lib/erros";
 import { resultado, resultadoSemContagem } from "@/lib/gravar";
 import { createClient } from "@/lib/supabase/server";
 
-/** @deprecated Use `ActionState` de `@/lib/action-state`. */
-export type StageActionState = ActionState;
-
 const nameSchema = z.string().trim().min(1, "Informe o nome da etapa").max(60);
 
 /** Toda tela que muda quando o funil muda. */
@@ -26,9 +23,9 @@ function revalidar() {
  * etapa nova caiba antes delas sem precisar reordenar o funil inteiro.
  */
 export async function createStage(
-  _prev: StageActionState,
+  _prev: ActionState,
   formData: FormData,
-): Promise<StageActionState> {
+): Promise<ActionState> {
   const parsedName = nameSchema.safeParse(formData.get("name"));
   if (!parsedName.success) return falhou(parsedName.error.issues[0].message);
 

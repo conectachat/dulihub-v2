@@ -9,9 +9,6 @@ import { resultado, resultadoSemContagem } from "@/lib/gravar";
 import { contextoAtual, SEM_ORGANIZACAO } from "@/lib/organizacao";
 import { createClient } from "@/lib/supabase/server";
 
-/** @deprecated Use `ActionState` de `@/lib/action-state`. */
-export type DocTypeState = ActionState;
-
 const PATH = "/configuracoes/categorias-de-documento";
 
 const nameSchema = z.string().trim().min(1, "Informe o nome").max(120);
@@ -25,9 +22,9 @@ const nameSchema = z.string().trim().min(1, "Informe o nome").max(120);
  * onde a pessoa espera encontrá-lo.
  */
 export async function createDocumentType(
-  _prev: DocTypeState,
+  _prev: ActionState,
   formData: FormData,
-): Promise<DocTypeState> {
+): Promise<ActionState> {
   const parsed = nameSchema.safeParse(formData.get("name"));
   if (!parsed.success) return falhou(parsed.error.issues[0].message);
 

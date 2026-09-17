@@ -1,13 +1,15 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { useFormStatus } from "react-dom";
 import { ListChecks, Plus } from "lucide-react";
 
+import { ESTADO_INICIAL } from "@/lib/action-state";
 import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { InlineText } from "@/components/inline-text";
 import { MoveButtons } from "@/components/move-buttons";
+import { FieldError } from "@/components/field-error";
+import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,7 +17,6 @@ import {
   deleteVisaStage,
   moveVisaStage,
   updateVisaStage,
-  type VisaState,
 } from "@/features/settings/visa-type-actions";
 import { comAviso } from "@/lib/avisar";
 import { flattenTree, indentStyle } from "@/lib/tree";
@@ -29,18 +30,6 @@ export type StageNode = {
   estimated_days: number | null;
 };
 
-const initialState: VisaState = { error: null };
-
-function AddButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" size="sm" disabled={pending}>
-      <Plus className="mr-1 h-4 w-4" />
-      {pending ? "Criando..." : "Adicionar"}
-    </Button>
-  );
-}
-
 function CreateStageForm({
   visaTypeId,
   parentId,
@@ -50,7 +39,7 @@ function CreateStageForm({
   parentId: string | null;
   onDone?: () => void;
 }) {
-  const [state, formAction] = useActionState(createVisaStage, initialState);
+  const [state, formAction] = useActionState(createVisaStage, ESTADO_INICIAL);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -78,13 +67,9 @@ function CreateStageForm({
           className="h-9 w-20 rounded-xl"
           aria-label="Prazo estimado em dias"
         />
-        <AddButton />
+        <SubmitButton pendente="Criando..." size="sm" icone={Plus}>Adicionar</SubmitButton>
       </div>
-      {state.error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
-        </p>
-      ) : null}
+      <FieldError mensagem={state.error} />
     </form>
   );
 }
