@@ -984,6 +984,99 @@ export type Database = {
           },
         ]
       }
+      project_page_updates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: number
+          organization_id: string
+          page_id: string
+          update: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: never
+          organization_id: string
+          page_id: string
+          update: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: never
+          organization_id?: string
+          page_id?: string
+          update?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_page_updates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_page_updates_page_same_org"
+            columns: ["page_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "project_pages"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      project_pages: {
+        Row: {
+          content: Json | null
+          created_at: string
+          id: string
+          kind: string
+          organization_id: string
+          project_id: string
+          snapshot: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          content?: Json | null
+          created_at?: string
+          id?: string
+          kind: string
+          organization_id: string
+          project_id: string
+          snapshot?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          content?: Json | null
+          created_at?: string
+          id?: string
+          kind?: string
+          organization_id?: string
+          project_id?: string
+          snapshot?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_pages_project_same_org"
+            columns: ["project_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "project_pages_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_stages: {
         Row: {
           completed_on: string | null
@@ -1412,6 +1505,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      compactar_pagina: {
+        Args: {
+          p_ate: number
+          p_content: Json
+          p_page: string
+          p_snapshot: string
+        }
+        Returns: undefined
+      }
       criar_processo: {
         Args: {
           p_opportunity?: string
