@@ -159,6 +159,90 @@ describe("processo criado a partir do molde", () => {
     expect(error).not.toBeNull();
   });
 
+  it("não liga o processo a um negócio de outro contato", async () => {
+    // A chave composta só garante a mesma organização. Sem conferir a
+    // pessoa, o processo da Maria podia apontar para o negócio do João — e o
+    // atalho do CRM levaria ao processo errado.
+    const { data: etapa } = await parceiro
+      .from("pipeline_stages")
+      .select("id, pipeline_id")
+      .limit(1)
+      .maybeSingle();
+    const { data: negocio, error: erroNegocio } = await parceiro
+      .from("opportunities")
+      .insert({
+        organization_id: orgParceiro,
+        person_id: pessoaId,
+        pipeline_id: etapa!.pipeline_id,
+        stage_id: etapa!.id,
+        title: "Negócio da suíte",
+      })
+      .select("id")
+      .single();
+    if (erroNegocio) throw new Error(erroNegocio.message);
+
+    const { data: outra, error: erroOutra } = await parceiro
+      .from("people")
+      .insert({ organization_id: orgParceiro, full_name: "Outro da suíte" })
+      .select("id")
+      .single();
+    if (erroOutra) throw new Error(erroOutra.message);
+
+    try {
+      const { data, error } = await parceiro.rpc("criar_processo", {
+        p_person: outra.id,
+        p_visa_type: vistoId,
+        p_title: "Processo trocado",
+        p_opportunity: negocio.id,
+      });
+      expect(data).toBeNull();
+      expect(error?.message).toMatch(/negócio/i);
+    } finally {
+      await parceiro.from("opportunities").delete().eq("id", negocio.id);
+      await parceiro.from("people").delete().eq("id", outra.id);
+    }
+  });
+
+  it("liga o processo ao negócio do próprio contato", async () => {
+    const { data: etapa } = await parceiro
+      .from("pipeline_stages")
+      .select("id, pipeline_id")
+      .limit(1)
+      .maybeSingle();
+    const { data: negocio } = await parceiro
+      .from("opportunities")
+      .insert({
+        organization_id: orgParceiro,
+        person_id: pessoaId,
+        pipeline_id: etapa!.pipeline_id,
+        stage_id: etapa!.id,
+        title: "Negócio certo da suíte",
+      })
+      .select("id")
+      .single();
+
+    let criado: string | null = null;
+    try {
+      const { data, error } = await parceiro.rpc("criar_processo", {
+        p_person: pessoaId,
+        p_visa_type: vistoId,
+        p_title: "Processo do negócio",
+        p_opportunity: negocio!.id,
+      });
+      expect(error).toBeNull();
+      criado = data;
+      const { data: processo } = await parceiro
+        .from("projects")
+        .select("opportunity_id")
+        .eq("id", criado!)
+        .single();
+      expect(processo!.opportunity_id).toBe(negocio!.id);
+    } finally {
+      if (criado) await parceiro.from("projects").delete().eq("id", criado);
+      await parceiro.from("opportunities").delete().eq("id", negocio!.id);
+    }
+  });
+
   describe("arquivos", () => {
     let pastaId: string;
 

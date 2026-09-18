@@ -1,8 +1,3 @@
-// GERADO pelo Supabase a partir do banco. Não edite à mão.
-//
-// Regenere no mesmo commit de toda migration (ver supabase/migrations/README.md).
-// Coluna renomeada no banco vira erro de compilação aqui, em vez de tela vazia.
-
 export type Json =
   | string
   | number
@@ -1144,6 +1139,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "opportunities"
             referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "projects_opportunity_same_person"
+            columns: ["opportunity_id", "person_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id", "person_id"]
           },
           {
             foreignKeyName: "projects_organization_id_fkey"
