@@ -8,11 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run src/",
-    "test:rls": "vitest run tests/rls/",
+    "test:rls": "vitest run tests/rls/ --no-file-parallelism",
     "test:watch": "vitest src/",
     "typecheck": "next typegen && tsc --noEmit",
     "verify": "bun run typecheck && bun run lint && bun run test && bun run test:rls",
-    "test:fumaca": "vitest run tests/fumaca/"
+    "test:fumaca": "vitest run tests/fumaca/ --no-file-parallelism"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

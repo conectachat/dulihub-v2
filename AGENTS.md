@@ -166,6 +166,11 @@ faltar credencial no `.env.local`, em vez de pular. Ver `tests/rls/README.md`.
 Toda migration que mexe em policy entra com o teste correspondente, vermelho
 antes.
 
+Os arquivos rodam **um de cada vez** (`--no-file-parallelism`, também na
+fumaça): todos gravam e leem o mesmo banco. Em paralelo, o contato
+temporário de um arquivo aparecia na contagem exata de outro — o CI de
+`b653195` caiu assim. Teste que grava limpa o que criou, em `finally`.
+
 ### Estado de ação: um tipo só
 
 Toda Server Action devolve `ActionState` de `@/lib/action-state`, e todo
