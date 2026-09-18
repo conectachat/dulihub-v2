@@ -3,7 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { entrarComo } from "./clientes";
+import { entrarComo, fixture } from "./clientes";
 
 /**
  * O portal do cliente é da Fase 6, e o buraco é de hoje.
@@ -34,12 +34,22 @@ describe("o cliente do portal alcança o que é dele, e só isso", () => {
     cliente = await entrarComo("cliente");
     consultor = await entrarComo("parceiro");
 
-    const { data } = await consultor
+    // Pela pessoa da fixture, não pelo texto da nota. Buscar pelo texto fazia
+    // uma execução que deixasse o texto alterado derrubar todas as seguintes
+    // com "não existe" — e o teste que deveria acusar a alteração nem rodava.
+    const pessoa = await fixture(consultor);
+
+    const { data, error } = await consultor
       .from("notes")
       .select("id, person_id")
-      .eq("body", CORPO_ORIGINAL)
+      .eq("person_id", pessoa.id)
+      .order("created_at")
+      .limit(1)
       .maybeSingle();
 
+    // O erro vem antes do "não existe". Descartá-lo foi o que escondeu a
+    // causa real de uma falha no CI em 18/set: a nota estava lá o tempo todo.
+    if (error) throw new Error(`Nota da fixture ilegível: ${error.message}`);
     if (!data) {
       throw new Error(
         "A nota da fixture não existe. Aplique 0015_fixture_de_teste.sql.",
