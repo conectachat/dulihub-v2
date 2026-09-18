@@ -128,6 +128,28 @@ export default async function CrmPage() {
                         </Link>
                       ) : null}
 
+                      {/*
+                        Ganho oferece o processo, não cria: o Renato escolhe o
+                        visto e o título na ficha, onde o processo nasce.
+                      */}
+                      {stage.is_won && card.person ? (
+                        card.processos.length > 0 ? (
+                          <Link
+                            href={`/projetos/${card.processos[0].id}`}
+                            className="block text-xs text-primary hover:underline"
+                          >
+                            Ver processo
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/contatos/${card.person.id}?novo-processo=${card.id}`}
+                            className="block text-xs font-medium text-primary hover:underline"
+                          >
+                            Criar processo →
+                          </Link>
+                        )
+                      ) : null}
+
                       {card.value != null ? (
                         <p className="text-sm font-semibold tabular-nums">
                           {formatarMoeda(card.value, card.currency)}

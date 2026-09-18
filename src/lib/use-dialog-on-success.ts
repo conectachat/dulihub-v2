@@ -14,8 +14,11 @@ import { useState } from "react";
  * Compara `token`, não `ok`: `ok` continua verdadeiro depois do primeiro
  * sucesso, então o segundo não seria percebido e o diálogo ficaria aberto.
  */
-export function useDialogOnSuccess(token: string | undefined) {
-  const [open, setOpen] = useState(false);
+export function useDialogOnSuccess(
+  token: string | undefined,
+  abertoDeInicio = false,
+) {
+  const [open, setOpen] = useState(abertoDeInicio);
   const [ultimoToken, setUltimoToken] = useState(token);
 
   if (token !== ultimoToken) {

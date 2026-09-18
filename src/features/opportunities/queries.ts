@@ -10,7 +10,11 @@ export type Stage = Pick<
 export type BoardCard = Pick<
   Tables<"opportunities">,
   "id" | "title" | "value" | "currency" | "status" | "stage_id" | "created_at"
-> & { person: Pick<Tables<"people">, "id" | "full_name"> | null };
+> & {
+  person: Pick<Tables<"people">, "id" | "full_name"> | null;
+  /** Processos nascidos deste negócio — é o que decide o atalho no Ganho. */
+  processos: Pick<Tables<"projects">, "id">[];
+};
 
 export type Board = {
   pipelineId: string | null;
@@ -71,7 +75,7 @@ export async function getBoard(): Promise<Board> {
       supabase
         .from("opportunities")
         .select(
-          "id, title, value, currency, status, stage_id, created_at, person:people(id, full_name)",
+          "id, title, value, currency, status, stage_id, created_at, person:people(id, full_name), processos:projects!projects_opportunity_same_org(id)",
         )
         .eq("pipeline_id", pipeline.id)
         .order("created_at", { ascending: false }),

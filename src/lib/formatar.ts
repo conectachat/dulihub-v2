@@ -31,6 +31,17 @@ export function formatarData(valor: string | Date): string {
   return DATA.format(new Date(valor));
 }
 
+/**
+ * Coluna `date` do banco (`AAAA-MM-DD`): um dia, não um instante.
+ *
+ * Por `formatarData` ela viraria meia-noite UTC — no fuso de São Paulo, o dia
+ * anterior. Prazo de pasta mostrado um dia antes é prazo errado.
+ */
+export function formatarDia(valor: string): string {
+  const [ano, mes, dia] = valor.slice(0, 10).split("-");
+  return `${dia}/${mes}/${ano}`;
+}
+
 export function formatarDataHora(valor: string | Date): string {
   return DATA_HORA.format(new Date(valor));
 }

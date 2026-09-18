@@ -40,6 +40,7 @@ export function FormDialog({
   descricao,
   salvar = "Salvar",
   pendente = "Salvando...",
+  abertoDeInicio = false,
   children,
 }: {
   acao: (anterior: ActionState, formData: FormData) => Promise<ActionState>;
@@ -49,11 +50,16 @@ export function FormDialog({
   descricao?: string;
   salvar?: string;
   pendente?: string;
+  /**
+   * Abre já na primeira pintura — para links que levam direto ao formulário,
+   * como o atalho do CRM para "Novo processo".
+   */
+  abertoDeInicio?: boolean;
   /** Os campos. */
   children: React.ReactNode;
 }) {
   const [state, formAction] = useActionState(acao, ESTADO_INICIAL);
-  const { open, setOpen } = useDialogOnSuccess(state.token);
+  const { open, setOpen } = useDialogOnSuccess(state.token, abertoDeInicio);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

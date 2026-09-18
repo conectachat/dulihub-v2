@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatarData,
   formatarDataHora,
+  formatarDia,
   iniciais,
   telefoneCompleto,
 } from "./formatar";
@@ -37,6 +38,15 @@ describe("telefoneCompleto", () => {
 describe("formatarData", () => {
   it("usa dia/mês/ano brasileiro", () => {
     expect(formatarData("2026-09-17T12:00:00Z")).toBe("17/09/2026");
+  });
+});
+
+describe("formatarDia", () => {
+  it("mostra a data do banco como ela é, sem andar um dia para trás", () => {
+    // `formatarData("2026-09-18")` lê meia-noite UTC e, no fuso de São Paulo,
+    // mostra 17/09. Prazo de pasta e data de protocolo são dia, não instante.
+    expect(formatarDia("2026-09-18")).toBe("18/09/2026");
+    expect(formatarDia("2027-01-01")).toBe("01/01/2027");
   });
 });
 

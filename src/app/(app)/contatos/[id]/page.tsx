@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Mail, Phone } from "lucide-react";
+import { ArrowLeft, FolderKanban, Mail, Phone } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,20 +10,28 @@ import { formatarMoeda } from "@/lib/totals";
 import { LIFECYCLE_LABELS } from "@/features/people/schema";
 import { listTags } from "@/features/people/queries";
 import { getTimeline } from "@/features/people/timeline-queries";
+import {
+  processosDoContato,
+  vistosParaProcesso,
+} from "@/features/projects/queries";
 
 import { PersonDialog } from "../person-dialog";
+import { BarraDeProgresso, SeloDoStatus } from "../../projetos/partes";
+import { NovoProcessoDialog } from "./novo-processo-dialog";
 import { PersonTags } from "./person-tags";
 import { Timeline } from "./timeline";
-import { formatarData, telefoneCompleto } from "@/lib/formatar";
-
-
+import { formatarData, formatarDia, telefoneCompleto } from "@/lib/formatar";
 
 export default async function PersonPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  /** `novo-processo=<negócio>`: o atalho do CRM abre o diálogo já preenchido. */
+  searchParams: Promise<{ "novo-processo"?: string }>;
 }) {
   const { id } = await params;
+  const { "novo-processo": negocioDoAtalho } = await searchParams;
   const supabase = await createClient();
 
   const { data: person, error: personError } = await supabase
@@ -50,6 +58,8 @@ export default async function PersonPage({
     { tags: allTags, error: tagsError },
     { items: timeline, error: timelineError },
     { data: { user }, error: userError },
+    { processos, error: processosError },
+    { vistos, error: vistosError },
   ] = await Promise.all([
     supabase
       .from("opportunities")
@@ -59,12 +69,19 @@ export default async function PersonPage({
     listTags(),
     getTimeline(id),
     supabase.auth.getUser(),
+    processosDoContato(id),
+    vistosParaProcesso(),
   ]);
 
   // O erro de `getUser` entra junto: sem ele, `user` vem nulo e a linha do
   // tempo inteira parece de outra pessoa, escondendo os botões de excluir.
   const falha =
-    oportunidadesError?.message ?? tagsError ?? timelineError ?? userError?.message;
+    oportunidadesError?.message ??
+    tagsError ??
+    timelineError ??
+    userError?.message ??
+    processosError ??
+    vistosError;
   if (falha) return <QueryError detalhe={falha} />;
 
   // Com os tipos gerados, o cliente sabe que `stage` e `tag` são objetos:
@@ -72,6 +89,14 @@ export default async function PersonPage({
   // precisavam de conversão à força.
   const opportunities = opportunitiesRaw ?? [];
   const tags = person.person_tags.map((t) => t.tag);
+
+  // Negócio ganho que ainda não virou processo: é a oferta do CRM, repetida
+  // aqui onde o processo nasce.
+  const comProcesso = new Set(processos.map((p) => p.opportunity_id));
+  // Só abre sozinho se o negócio do link é mesmo deste contato.
+  const negocioInicial = opportunities.some((o) => o.id === negocioDoAtalho)
+    ? negocioDoAtalho
+    : undefined;
 
   const phone = telefoneCompleto(person.phone_country_code, person.phone);
 
@@ -166,7 +191,7 @@ export default async function PersonPage({
                         {formatarData(op.created_at)}
                       </p>
                     </div>
-                    <div className="shrink-0 text-right">
+                    <div className="shrink-0 space-y-1 text-right">
                       {op.value != null ? (
                         <p className="font-medium">
                           {formatarMoeda(op.value, op.currency)}
@@ -187,6 +212,14 @@ export default async function PersonPage({
                             ? "Perdido"
                             : "Aberta"}
                       </Badge>
+                      {op.status === "won" && !comProcesso.has(op.id) ? (
+                        <Link
+                          href={`/contatos/${person.id}?novo-processo=${op.id}`}
+                          className="block text-xs text-primary hover:underline"
+                        >
+                          Criar processo
+                        </Link>
+                      ) : null}
                     </div>
                   </li>
                 ))}
@@ -195,6 +228,56 @@ export default async function PersonPage({
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+          <CardTitle className="text-base">Processos ({processos.length})</CardTitle>
+          <NovoProcessoDialog
+            // A chave remonta o diálogo quando o atalho muda de negócio.
+            key={negocioInicial ?? "sem-atalho"}
+            personId={person.id}
+            personName={person.full_name}
+            vistos={vistos}
+            negocios={opportunities.map((o) => ({ id: o.id, title: o.title }))}
+            negocioInicial={negocioInicial}
+          />
+        </CardHeader>
+        <CardContent>
+          {processos.length === 0 ? (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <FolderKanban className="h-4 w-4 shrink-0" />
+              Nenhum processo ainda. Ao criar, as etapas e as pastas vêm do tipo
+              de visto.
+            </p>
+          ) : (
+            <ul className="divide-y">
+              {processos.map((p) => (
+                <li
+                  key={p.id}
+                  className="flex flex-wrap items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                >
+                  <div className="min-w-0">
+                    <Link
+                      href={`/projetos/${p.id}`}
+                      className="block truncate font-medium hover:underline"
+                    >
+                      {p.title}
+                    </Link>
+                    <p className="text-xs text-muted-foreground">
+                      {p.visto?.name ?? "Tipo de visto removido"} · desde{" "}
+                      {formatarDia(p.started_on)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <BarraDeProgresso progresso={p.progresso} />
+                    <SeloDoStatus status={p.status} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       {person.notes ? (
         <Card>
