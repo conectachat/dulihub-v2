@@ -36,7 +36,10 @@ export type ResumoDoProcesso = Omit<Linha, "pastas"> & {
   proximoPrazo: string | null;
 };
 
-function resumir({ pastas, ...resto }: Linha): ResumoDoProcesso {
+function resumir<T extends Linha>({
+  pastas,
+  ...resto
+}: T): Omit<T, "pastas"> & Omit<ResumoDoProcesso, keyof Linha> {
   return {
     ...resto,
     progresso: progresso(pastas),
@@ -83,17 +86,47 @@ export async function vistosParaProcesso() {
   return { vistos: data ?? [], error: error?.message ?? null };
 }
 
-/** Um processo, para o cabeçalho da tela dele. Nulo quando a RLS esconde. */
+/**
+ * Um processo inteiro, para a tela dele: cabeçalho, campos do USCIS, etapas e
+ * os status de etapa da organização. Processo nulo quando a RLS esconde.
+ */
 export async function obterProcesso(id: string) {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("projects")
-    .select(COLUNAS)
-    .eq("id", id)
-    .maybeSingle();
+
+  const [processo, etapas, status] = await Promise.all([
+    supabase
+      .from("projects")
+      .select(
+        `${COLUNAS}, organization_id, uscis_receipt_number, priority_date, filed_on,
+         rfe_received_on, rfe_due_on, decided_on, expected_on`,
+      )
+      .eq("id", id)
+      .maybeSingle(),
+    supabase
+      .from("project_stages")
+      .select(
+        "id, parent_id, position, name, is_required, estimated_days, status_id, started_on, completed_on",
+      )
+      .eq("project_id", id),
+    // Filtrado abaixo pela organização do processo: quem pertence a duas
+    // organizações veria os status das duas no seletor, e escolher um da
+    // outra seria recusado pela chave composta.
+    supabase
+      .from("stage_statuses")
+      .select("id, label, color, is_default, is_done, organization_id")
+      .order("position"),
+  ]);
 
   return {
-    processo: data ? resumir(data) : null,
-    error: error?.message ?? null,
+    processo: processo.data ? resumir(processo.data) : null,
+    etapas: etapas.data ?? [],
+    status: (status.data ?? []).filter(
+      (s) => s.organization_id === processo.data?.organization_id,
+    ),
+    error:
+      processo.error?.message ??
+      etapas.error?.message ??
+      status.error?.message ??
+      null,
   };
 }

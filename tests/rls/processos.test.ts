@@ -159,6 +159,68 @@ describe("processo criado a partir do molde", () => {
     expect(error).not.toBeNull();
   });
 
+  it("quem é da organização edita o processo e o status da etapa", async () => {
+    const recibo = await parceiro
+      .from("projects")
+      .update({ uscis_receipt_number: "IOE0912345678", filed_on: "2026-09-18" })
+      .eq("id", processoId)
+      .select("uscis_receipt_number");
+    expect(recibo.error).toBeNull();
+    expect(recibo.data).toEqual([{ uscis_receipt_number: "IOE0912345678" }]);
+
+    const { data: etapa } = await parceiro
+      .from("project_stages")
+      .select("id")
+      .eq("project_id", processoId)
+      .limit(1)
+      .single();
+    const { data: feito } = await parceiro
+      .from("stage_statuses")
+      .select("id")
+      .eq("is_done", true)
+      .single();
+    const mudou = await parceiro
+      .from("project_stages")
+      .update({ status_id: feito!.id, completed_on: "2026-09-18" })
+      .eq("id", etapa!.id)
+      .select("id");
+    expect(mudou.error).toBeNull();
+    expect(mudou.data).toHaveLength(1);
+  });
+
+  it("a Duli não edita o processo do parceiro — e o zero é visível", async () => {
+    const { data, error } = await duli
+      .from("projects")
+      .update({ status: "denied" })
+      .eq("id", processoId)
+      .select("id");
+    expect(error).toBeNull();
+    expect(data).toEqual([]);
+  });
+
+  it("a etapa não recebe status de outra organização", async () => {
+    // A chave composta de `project_stages_status_same_org`: o seletor filtra
+    // pela organização, e o banco garante se o formulário vier adulterado.
+    const { data: statusDaDuli } = await duli
+      .from("stage_statuses")
+      .select("id")
+      .limit(1)
+      .single();
+    const { data: etapa } = await parceiro
+      .from("project_stages")
+      .select("id")
+      .eq("project_id", processoId)
+      .limit(1)
+      .single();
+
+    const { error } = await parceiro
+      .from("project_stages")
+      .update({ status_id: statusDaDuli!.id })
+      .eq("id", etapa!.id)
+      .select("id");
+    expect(error).not.toBeNull();
+  });
+
   it("não liga o processo a um negócio de outro contato", async () => {
     // A chave composta só garante a mesma organização. Sem conferir a
     // pessoa, o processo da Maria podia apontar para o negócio do João — e o

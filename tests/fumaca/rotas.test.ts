@@ -198,6 +198,12 @@ describe("com um processo de verdade", () => {
   ])("%s abre e mostra o processo", async (nome, rota) => {
     const resposta = await pedir(rota(), sessao.cookie);
     expect(resposta.status).toBe(200);
-    if (nome !== "CRM") expect(await resposta.text()).toContain(TITULO);
+    const html = await resposta.text();
+    if (nome !== "CRM") expect(html).toContain(TITULO);
+    if (nome === "tela do processo") {
+      // Etapas copiadas do molde e o bloco do USCIS desenhados de verdade.
+      expect(html).toContain("Sub-etapa A1");
+      expect(html).toContain("Recibo (receipt number)");
+    }
   }, 60_000);
 });

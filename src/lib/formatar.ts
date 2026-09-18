@@ -42,6 +42,18 @@ export function formatarDia(valor: string): string {
   return `${dia}/${mes}/${ano}`;
 }
 
+/**
+ * Hoje em São Paulo, como `AAAA-MM-DD` — o formato das colunas `date`.
+ *
+ * `new Date().toISOString()` dá o dia em UTC: depois das 21h o app já estaria
+ * vivendo amanhã.
+ */
+export function hojeEmSaoPaulo(agora: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+  }).format(agora);
+}
+
 export function formatarDataHora(valor: string | Date): string {
   return DATA_HORA.format(new Date(valor));
 }

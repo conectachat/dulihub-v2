@@ -4,6 +4,7 @@ import {
   formatarData,
   formatarDataHora,
   formatarDia,
+  hojeEmSaoPaulo,
   iniciais,
   telefoneCompleto,
 } from "./formatar";
@@ -47,6 +48,13 @@ describe("formatarDia", () => {
     // mostra 17/09. Prazo de pasta e data de protocolo são dia, não instante.
     expect(formatarDia("2026-09-18")).toBe("18/09/2026");
     expect(formatarDia("2027-01-01")).toBe("01/01/2027");
+  });
+});
+
+describe("hojeEmSaoPaulo", () => {
+  it("às 22h de São Paulo ainda é hoje, não amanhã em UTC", () => {
+    expect(hojeEmSaoPaulo(new Date("2026-09-18T22:30:00-03:00"))).toBe("2026-09-18");
+    expect(hojeEmSaoPaulo(new Date("2026-09-19T01:00:00Z"))).toBe("2026-09-18");
   });
 });
 

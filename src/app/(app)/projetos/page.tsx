@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { listarProcessos } from "@/features/projects/queries";
-import { formatarDia } from "@/lib/formatar";
+import { formatarDia, hojeEmSaoPaulo } from "@/lib/formatar";
 
 import { BarraDeProgresso, SeloDoStatus } from "./partes";
 
@@ -22,10 +22,8 @@ export const metadata = { title: "Projetos — Duli Hub" };
 export default async function ProjetosPage() {
   const { processos, error } = await listarProcessos();
 
-  // Hoje, em São Paulo, como `AAAA-MM-DD`: compara com o prazo como texto.
-  const hoje = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-  }).format(new Date());
+  // Compara com o prazo como texto: os dois são `AAAA-MM-DD`.
+  const hoje = hojeEmSaoPaulo();
 
   return (
     <main className="space-y-6 p-6">
