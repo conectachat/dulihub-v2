@@ -10,7 +10,7 @@
     "test": "vitest run src/",
     "test:rls": "vitest run tests/rls/",
     "test:watch": "vitest src/",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "verify": "bun run typecheck && bun run lint && bun run test && bun run test:rls"
   },
   "dependencies": {

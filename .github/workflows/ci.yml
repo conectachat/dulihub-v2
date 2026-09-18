@@ -10,7 +10,8 @@ jobs:
   verificar:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # v5 roda em Node 24; a v4 está marcada como obsoleta pelo GitHub.
+      - uses: actions/checkout@v5
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -21,6 +22,10 @@ jobs:
       # aqui e não virar "na minha máquina funciona".
       - run: bun install --frozen-lockfile
 
+      # `typecheck` gera antes os tipos de rota do Next (`LayoutProps`,
+      # `PageProps`). Eles moram em `.next/`, que não vai para o repositório:
+      # na máquina existem porque o servidor já rodou, num clone limpo não.
+      # Foi isso que deixou este passo vermelho desde o primeiro push.
       - name: Tipos
         run: bun run typecheck
 
