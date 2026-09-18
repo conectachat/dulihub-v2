@@ -1,9 +1,8 @@
 // @vitest-environment node
 
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { entrarComo } from "./clientes";
+import { entrarComo, type Cliente } from "./clientes";
 
 /**
  * O teste que protege o negócio.
@@ -18,8 +17,8 @@ import { entrarComo } from "./clientes";
  */
 
 describe("uma organização não alcança dado da outra", () => {
-  let parceiro: SupabaseClient;
-  let duli: SupabaseClient;
+  let parceiro: Cliente;
+  let duli: Cliente;
 
   beforeAll(async () => {
     parceiro = await entrarComo("parceiro");
@@ -42,10 +41,17 @@ describe("uma organização não alcança dado da outra", () => {
   });
 
   it("o parceiro não enxerga o catálogo de documentos da Duli", async () => {
-    const { data, error } = await parceiro.from("document_types").select("name");
+    // Afirma o que importa — nenhuma pasta de fora — e não a contagem exata:
+    // a fixture cresce (a 0021 acrescentou três pastas) e o isolamento é o
+    // mesmo. A organização vem de uma pasta que só existe no parceiro.
+    const { data, error } = await parceiro
+      .from("document_types")
+      .select("name, organization_id");
 
     expect(error).toBeNull();
-    expect(data).toEqual([{ name: "Pasta do Parceiro" }]);
+    const dono = data!.find((d) => d.name === "Pasta do Parceiro")!.organization_id;
+    expect(data!.length).toBeGreaterThan(0);
+    expect(data!.every((d) => d.organization_id === dono)).toBe(true);
   });
 
   it("o parceiro não enxerga os tipos de visto da Duli", async () => {
