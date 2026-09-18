@@ -202,7 +202,9 @@ describe("com um processo de verdade", () => {
     if (nome !== "CRM") expect(html).toContain(TITULO);
     if (nome === "tela do processo") {
       // Etapas copiadas do molde e o bloco do USCIS desenhados de verdade.
-      expect(html).toContain("Sub-etapa A1");
+      // A sub-etapa não: o grupo nasce fechado (decisão de 18/set).
+      expect(html).toContain("Etapa A");
+      expect(html).toContain("Data prevista");
       expect(html).toContain("Recibo (receipt number)");
     }
   }, 60_000);

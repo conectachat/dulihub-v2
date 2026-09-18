@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { FieldError } from "@/components/field-error";
 import { NativeSelect } from "@/components/native-select";
 import { Input } from "@/components/ui/input";
-import { atualizarProcesso, mudarStatusDaEtapa } from "@/features/projects/actions";
+import { atualizarProcesso } from "@/features/projects/actions";
 import { STATUS_DO_PROCESSO } from "@/features/projects/schema";
 import type { ActionState } from "@/lib/action-state";
 import { cn } from "@/lib/utils";
@@ -111,51 +111,6 @@ export function StatusDoProcesso({
         {Object.entries(STATUS_DO_PROCESSO).map(([codigo, nome]) => (
           <option key={codigo} value={codigo}>
             {nome}
-          </option>
-        ))}
-      </NativeSelect>
-      <FieldError mensagem={erro} pequeno />
-    </form>
-  );
-}
-
-/** Status de uma etapa. As datas de início e conclusão acompanham no servidor. */
-export function StatusDaEtapa({
-  etapaId,
-  statusId,
-  opcoes,
-  nomeDaEtapa,
-}: {
-  etapaId: string;
-  statusId: string;
-  opcoes: { id: string; label: string; color: string | null }[];
-  nomeDaEtapa: string;
-}) {
-  const ref = useRef<HTMLSelectElement>(null);
-  const { erro, enviar } = useEnvio(mudarStatusDaEtapa, () => {
-    if (ref.current) ref.current.value = statusId;
-  });
-  const cor = opcoes.find((o) => o.id === statusId)?.color;
-
-  return (
-    <form action={enviar} className="flex items-center gap-2">
-      <input type="hidden" name="id" value={etapaId} />
-      <span
-        className="h-2.5 w-2.5 shrink-0 rounded-full bg-muted-foreground/40"
-        style={cor ? { backgroundColor: cor } : undefined}
-        aria-hidden
-      />
-      <NativeSelect
-        ref={ref}
-        name="status_id"
-        defaultValue={statusId}
-        aria-label={`Status de ${nomeDaEtapa}`}
-        onChange={(e) => e.target.form?.requestSubmit()}
-        className="h-8 w-40 rounded-xl text-sm"
-      >
-        {opcoes.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.label}
           </option>
         ))}
       </NativeSelect>

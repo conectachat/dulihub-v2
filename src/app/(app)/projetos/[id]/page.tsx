@@ -4,19 +4,14 @@ import { ArrowLeft } from "lucide-react";
 
 import { EmConstrucao } from "@/components/em-construcao";
 import { QueryError } from "@/components/query-error";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { obterProcesso } from "@/features/projects/queries";
-import { formatarDia } from "@/lib/formatar";
-import { flattenTree, indentStyle } from "@/lib/tree";
+import { formatarDia, hojeEmSaoPaulo } from "@/lib/formatar";
 
 import { BarraDeProgresso } from "../partes";
-import {
-  CampoDoProcesso,
-  StatusDaEtapa,
-  StatusDoProcesso,
-} from "./campos-editaveis";
+import { CampoDoProcesso, StatusDoProcesso } from "./campos-editaveis";
+import { EtapasDoProcesso } from "./etapas";
 
 export const metadata = { title: "Processo — Duli Hub" };
 
@@ -41,7 +36,6 @@ export default async function ProcessoPage({
   if (error) return <QueryError detalhe={error} />;
   if (!processo) notFound();
 
-  const arvore = flattenTree(etapas);
   const concluidas = etapas.filter(
     (e) => status.find((s) => s.id === e.status_id)?.is_done,
   ).length;
@@ -113,53 +107,12 @@ export default async function ProcessoPage({
         </TabsList>
 
         <TabsContent value="etapas" className="pt-4">
-          {arvore.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              O tipo de visto não tinha etapas quando o processo foi criado.
-            </p>
-          ) : (
-            <ul className="space-y-1">
-              {arvore.map((etapa) => (
-                <li
-                  key={etapa.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-3 py-2"
-                  style={indentStyle(etapa.depth)}
-                >
-                  <div className="min-w-0">
-                    <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                      {etapa.name}
-                      {!etapa.is_required ? (
-                        <Badge variant="outline" className="font-normal">
-                          opcional
-                        </Badge>
-                      ) : null}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {[
-                        etapa.estimated_days
-                          ? `previsão de ${etapa.estimated_days} dias`
-                          : null,
-                        etapa.started_on
-                          ? `início ${formatarDia(etapa.started_on)}`
-                          : null,
-                        etapa.completed_on
-                          ? `concluída ${formatarDia(etapa.completed_on)}`
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ") || "não iniciada"}
-                    </p>
-                  </div>
-                  <StatusDaEtapa
-                    etapaId={etapa.id}
-                    statusId={etapa.status_id}
-                    opcoes={status}
-                    nomeDaEtapa={etapa.name}
-                  />
-                </li>
-              ))}
-            </ul>
-          )}
+          <EtapasDoProcesso
+            processoId={processo.id}
+            etapas={etapas}
+            status={status}
+            hoje={hojeEmSaoPaulo()}
+          />
         </TabsContent>
 
         <TabsContent value="documentos" className="pt-4">

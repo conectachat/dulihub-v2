@@ -105,7 +105,7 @@ export async function obterProcesso(id: string) {
     supabase
       .from("project_stages")
       .select(
-        "id, parent_id, position, name, is_required, estimated_days, status_id, started_on, completed_on",
+        "id, parent_id, position, name, is_required, estimated_days, status_id, started_on, completed_on, due_on, source_stage_id",
       )
       .eq("project_id", id),
     // Filtrado abaixo pela organização do processo: quem pertence a duas
