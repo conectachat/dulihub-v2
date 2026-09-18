@@ -188,6 +188,113 @@ describe("processo criado a partir do molde", () => {
     expect(mudou.data).toHaveLength(1);
   });
 
+  describe("etapas editadas no processo", () => {
+    const etapaPor = async (nome: string) => {
+      const { data } = await parceiro
+        .from("project_stages")
+        .select("id, organization_id, position")
+        .eq("project_id", processoId)
+        .eq("name", nome)
+        .single();
+      return data!;
+    };
+
+    it("guarda a data prevista", async () => {
+      const etapa = await etapaPor("Etapa B");
+      const { data, error } = await parceiro
+        .from("project_stages")
+        .update({ due_on: "2026-12-01" })
+        .eq("id", etapa.id)
+        .select("due_on");
+      expect(error).toBeNull();
+      expect(data).toEqual([{ due_on: "2026-12-01" }]);
+    });
+
+    it("cria sub-etapa só deste processo, e apaga", async () => {
+      const mae = await etapaPor("Etapa B");
+      const { data: status } = await parceiro
+        .from("stage_statuses")
+        .select("id")
+        .eq("is_default", true)
+        .single();
+      const { data, error } = await parceiro
+        .from("project_stages")
+        .insert({
+          organization_id: mae.organization_id,
+          project_id: processoId,
+          parent_id: mae.id,
+          name: "Sub-etapa extra",
+          position: 1,
+          status_id: status!.id,
+        })
+        .select("id, source_stage_id")
+        .single();
+      expect(error).toBeNull();
+      expect(data!.source_stage_id).toBeNull();
+
+      const apagou = await parceiro
+        .from("project_stages")
+        .delete()
+        .eq("id", data!.id)
+        .select("id");
+      expect(apagou.data).toHaveLength(1);
+    });
+
+    it("reordena irmãs pela função de troca", async () => {
+      const a = await etapaPor("Etapa A");
+      const b = await etapaPor("Etapa B");
+      const { error } = await parceiro.rpc("swap_positions", {
+        p_tabela: "project_stages",
+        p_a: a.id,
+        p_b: b.id,
+      });
+      expect(error).toBeNull();
+      expect((await etapaPor("Etapa A")).position).toBe(b.position);
+      // Desfaz, para os outros testes lerem a ordem original.
+      await parceiro.rpc("swap_positions", {
+        p_tabela: "project_stages",
+        p_a: a.id,
+        p_b: b.id,
+      });
+    });
+
+    it("a Duli não cria, não apaga e não reordena etapa do parceiro", async () => {
+      const a = await etapaPor("Etapa A");
+      const b = await etapaPor("Etapa B");
+      const { data: statusDaDuli } = await duli
+        .from("stage_statuses")
+        .select("id, organization_id")
+        .eq("is_default", true)
+        .single();
+
+      const criou = await duli
+        .from("project_stages")
+        .insert({
+          organization_id: a.organization_id,
+          project_id: processoId,
+          name: "Invasão",
+          position: 99,
+          status_id: statusDaDuli!.id,
+        })
+        .select("id");
+      expect(criou.error).not.toBeNull();
+
+      const apagou = await duli
+        .from("project_stages")
+        .delete()
+        .eq("id", a.id)
+        .select("id");
+      expect(apagou.data ?? []).toEqual([]);
+
+      const trocou = await duli.rpc("swap_positions", {
+        p_tabela: "project_stages",
+        p_a: a.id,
+        p_b: b.id,
+      });
+      expect(trocou.error).not.toBeNull();
+    });
+  });
+
   it("a Duli não edita o processo do parceiro — e o zero é visível", async () => {
     const { data, error } = await duli
       .from("projects")

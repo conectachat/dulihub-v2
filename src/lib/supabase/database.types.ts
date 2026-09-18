@@ -988,6 +988,7 @@ export type Database = {
         Row: {
           completed_on: string | null
           created_at: string
+          due_on: string | null
           estimated_days: number | null
           id: string
           is_required: boolean
@@ -1004,6 +1005,7 @@ export type Database = {
         Insert: {
           completed_on?: string | null
           created_at?: string
+          due_on?: string | null
           estimated_days?: number | null
           id?: string
           is_required?: boolean
@@ -1020,6 +1022,7 @@ export type Database = {
         Update: {
           completed_on?: string | null
           created_at?: string
+          due_on?: string | null
           estimated_days?: number | null
           id?: string
           is_required?: boolean

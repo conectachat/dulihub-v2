@@ -87,3 +87,77 @@ export function datasDaEtapa(
     completed_on: status.is_done ? (atual.completed_on ?? hoje) : null,
   };
 }
+
+// -------------------------------------------------------------------- etapa
+
+type ResultadoDaEtapa =
+  | { ok: true; campo: "due_on" | "completed_on" | "name"; valor: string | null }
+  | { ok: false; erro: string };
+
+/**
+ * Um campo da etapa, editado no lugar. Mesma lista fechada de
+ * `campoDoProcesso`: o nome vem do navegador.
+ *
+ * A conclusão só se corrige, não se apaga: apagar é reabrir a etapa, e isso
+ * se faz trocando o status — senão ficaria "Concluída" sem data.
+ */
+export function campoDaEtapa(campo: string, bruto: string): ResultadoDaEtapa {
+  const texto = bruto.trim();
+
+  if (campo === "due_on") {
+    if (texto === "") return { ok: true, campo, valor: null };
+    if (!dataValida(texto)) return { ok: false, erro: "Data inválida." };
+    return { ok: true, campo, valor: texto };
+  }
+
+  if (campo === "completed_on") {
+    if (texto === "") {
+      return {
+        ok: false,
+        erro: "Para tirar a conclusão, troque o status da etapa.",
+      };
+    }
+    if (!dataValida(texto)) return { ok: false, erro: "Data inválida." };
+    return { ok: true, campo, valor: texto };
+  }
+
+  if (campo === "name") {
+    if (texto === "") return { ok: false, erro: "Informe o nome da etapa." };
+    return { ok: true, campo, valor: texto };
+  }
+
+  return { ok: false, erro: "Campo não editável." };
+}
+
+/**
+ * Número de cada etapa como índice de livro — 1, 1.1, 1.2, 2 —, na ordem em
+ * que `flattenTree` entrega a árvore.
+ */
+export function numeracao(
+  arvore: { id: string; depth: number }[],
+): Map<string, string> {
+  const contadores: number[] = [];
+  const saida = new Map<string, string>();
+  for (const { id, depth } of arvore) {
+    contadores.length = depth + 1;
+    contadores[depth] = (contadores[depth] ?? 0) + 1;
+    saida.set(id, contadores.slice(0, depth + 1).join("."));
+  }
+  return saida;
+}
+
+/** Filhas diretas concluídas de cada mãe — o "2/3" ao lado do nome. */
+export function resumoDasFilhas(
+  etapas: { id: string; parent_id: string | null; status_id: string }[],
+  statusConcluidos: Set<string>,
+): Map<string, { concluidas: number; total: number }> {
+  const resumo = new Map<string, { concluidas: number; total: number }>();
+  for (const e of etapas) {
+    if (e.parent_id === null) continue;
+    const r = resumo.get(e.parent_id) ?? { concluidas: 0, total: 0 };
+    r.total += 1;
+    if (statusConcluidos.has(e.status_id)) r.concluidas += 1;
+    resumo.set(e.parent_id, r);
+  }
+  return resumo;
+}

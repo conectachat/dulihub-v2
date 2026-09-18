@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { campoDoProcesso, datasDaEtapa } from "./campos";
+import {
+  campoDaEtapa,
+  campoDoProcesso,
+  datasDaEtapa,
+  numeracao,
+  resumoDasFilhas,
+} from "./campos";
 
 /**
  * Edição no lugar dos dados do processo, um campo por vez.
@@ -129,5 +135,76 @@ describe("datasDaEtapa", () => {
         HOJE,
       ),
     ).toEqual({ started_on: null, completed_on: null });
+  });
+});
+
+describe("campoDaEtapa", () => {
+  it("recusa campo fora da lista", () => {
+    for (const campo of ["project_id", "organization_id", "status_id", ""]) {
+      expect(campoDaEtapa(campo, "x").ok).toBe(false);
+    }
+  });
+
+  it("data prevista aceita data e vazio", () => {
+    expect(campoDaEtapa("due_on", "2026-10-01")).toEqual({
+      ok: true,
+      campo: "due_on",
+      valor: "2026-10-01",
+    });
+    expect(campoDaEtapa("due_on", "")).toMatchObject({ ok: true, valor: null });
+    expect(campoDaEtapa("due_on", "2026-13-01").ok).toBe(false);
+  });
+
+  it("data de conclusão não pode ser apagada à mão", () => {
+    // Apagar a conclusão é reabrir a etapa — isso se faz trocando o status,
+    // senão a etapa ficaria "Concluída" sem data.
+    expect(campoDaEtapa("completed_on", "2026-09-10")).toMatchObject({ ok: true });
+    expect(campoDaEtapa("completed_on", "").ok).toBe(false);
+  });
+
+  it("nome é obrigatório e vem aparado", () => {
+    expect(campoDaEtapa("name", "  Análise  ")).toEqual({
+      ok: true,
+      campo: "name",
+      valor: "Análise",
+    });
+    expect(campoDaEtapa("name", "   ").ok).toBe(false);
+  });
+});
+
+describe("numeracao", () => {
+  it("numera como índice: 1, 1.1, 1.2, 2", () => {
+    const arvore = [
+      { id: "a", depth: 0 },
+      { id: "a1", depth: 1 },
+      { id: "a2", depth: 1 },
+      { id: "a2x", depth: 2 },
+      { id: "b", depth: 0 },
+      { id: "b1", depth: 1 },
+    ];
+    expect(Object.fromEntries(numeracao(arvore))).toEqual({
+      a: "1",
+      a1: "1.1",
+      a2: "1.2",
+      a2x: "1.2.1",
+      b: "2",
+      b1: "2.1",
+    });
+  });
+});
+
+describe("resumoDasFilhas", () => {
+  it("conta as filhas diretas concluídas de cada mãe", () => {
+    const etapas = [
+      { id: "a", parent_id: null, status_id: "feito" },
+      { id: "a1", parent_id: "a", status_id: "feito" },
+      { id: "a2", parent_id: "a", status_id: "pendente" },
+      { id: "a3", parent_id: "a", status_id: "feito" },
+      { id: "b", parent_id: null, status_id: "pendente" },
+    ];
+    const resumo = resumoDasFilhas(etapas, new Set(["feito"]));
+    expect(resumo.get("a")).toEqual({ concluidas: 2, total: 3 });
+    // Sem filhas, sem contador.
+    expect(resumo.has("b")).toBe(false);
   });
 });
