@@ -1,28 +1,12 @@
 "use client";
 
-import { useActionState } from "react";
 import { Pencil, Plus } from "lucide-react";
 
-import { ESTADO_INICIAL } from "@/lib/action-state";
-import { FieldError } from "@/components/field-error";
-import { SubmitButton } from "@/components/submit-button";
+import { FormDialog } from "@/components/form-dialog";
 import { Button } from "@/components/ui/button";
-import { useDialogOnSuccess } from "@/lib/use-dialog-on-success";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  createPerson,
-  updatePerson,
-} from "@/features/people/actions";
+import { createPerson, updatePerson } from "@/features/people/actions";
 
 export type PersonFormValues = {
   id: string;
@@ -35,24 +19,18 @@ export type PersonFormValues = {
 };
 
 export function PersonDialog({ person }: { person?: PersonFormValues }) {
-  const isEdit = Boolean(person);
-  const [state, formAction] = useActionState(
-    isEdit ? updatePerson : createPerson,
-    ESTADO_INICIAL,
-  );
-
-  // Fecha só quando a Server Action confirmou que gravou.
-  const { open, setOpen } = useDialogOnSuccess(state.token);
-
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {isEdit ? (
+    <FormDialog
+      acao={person ? updatePerson : createPerson}
+      titulo={person ? "Editar contato" : "Novo contato"}
+      descricao="Só o nome é obrigatório. O resto pode ser completado depois."
+      gatilho={
+        person ? (
           <Button
             variant="ghost"
             size="icon"
             className="text-primary"
-            aria-label={`Editar ${person!.full_name}`}
+            aria-label={`Editar ${person.full_name}`}
           >
             <Pencil className="h-4 w-4" />
           </Button>
@@ -61,91 +39,67 @@ export function PersonDialog({ person }: { person?: PersonFormValues }) {
             <Plus className="mr-1 h-4 w-4" />
             Novo Contato
           </Button>
-        )}
-      </DialogTrigger>
+        )
+      }
+    >
+      {person ? <input type="hidden" name="id" value={person.id} /> : null}
 
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? "Editar contato" : "Novo contato"}</DialogTitle>
-          <DialogDescription>
-            Só o nome é obrigatório. O resto pode ser completado depois.
-          </DialogDescription>
-        </DialogHeader>
+      <div className="space-y-2">
+        <Label htmlFor="full_name">Nome *</Label>
+        <Input
+          id="full_name"
+          name="full_name"
+          defaultValue={person?.full_name ?? ""}
+          required
+          autoFocus
+        />
+      </div>
 
-        <form action={formAction} className="space-y-4">
-          {isEdit ? <input type="hidden" name="id" value={person!.id} /> : null}
+      <div className="grid gap-4 sm:grid-cols-[6rem_1fr]">
+        <div className="space-y-2">
+          <Label htmlFor="phone_country_code">DDI</Label>
+          <Input
+            id="phone_country_code"
+            name="phone_country_code"
+            placeholder="+55"
+            defaultValue={person?.phone_country_code ?? "+55"}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="phone">Telefone</Label>
+          <Input
+            id="phone"
+            name="phone"
+            inputMode="tel"
+            defaultValue={person?.phone ?? ""}
+          />
+        </div>
+      </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="full_name">Nome *</Label>
-            <Input
-              id="full_name"
-              name="full_name"
-              defaultValue={person?.full_name ?? ""}
-              required
-              autoFocus
-            />
-          </div>
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          defaultValue={person?.email ?? ""}
+        />
+      </div>
 
-          <div className="grid gap-4 sm:grid-cols-[6rem_1fr]">
-            <div className="space-y-2">
-              <Label htmlFor="phone_country_code">DDI</Label>
-              <Input
-                id="phone_country_code"
-                name="phone_country_code"
-                placeholder="+55"
-                defaultValue={person?.phone_country_code ?? "+55"}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Telefone</Label>
-              <Input
-                id="phone"
-                name="phone"
-                inputMode="tel"
-                defaultValue={person?.phone ?? ""}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              defaultValue={person?.email ?? ""}
-            />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="company">Empresa</Label>
-              <Input
-                id="company"
-                name="company"
-                defaultValue={person?.company ?? ""}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="job_title">Cargo</Label>
-              <Input
-                id="job_title"
-                name="job_title"
-                defaultValue={person?.job_title ?? ""}
-              />
-            </div>
-          </div>
-
-          <FieldError mensagem={state.error} />
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancelar
-            </Button>
-            <SubmitButton pendente="Salvando...">Salvar</SubmitButton>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="company">Empresa</Label>
+          <Input id="company" name="company" defaultValue={person?.company ?? ""} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="job_title">Cargo</Label>
+          <Input
+            id="job_title"
+            name="job_title"
+            defaultValue={person?.job_title ?? ""}
+          />
+        </div>
+      </div>
+    </FormDialog>
   );
 }

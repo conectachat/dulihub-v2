@@ -6,6 +6,7 @@ import { ConfirmAction } from "@/components/confirm-action";
 import { QueryError } from "@/components/query-error";
 import { EmptyState } from "@/components/empty-state";
 import { SectionHeader } from "@/components/page-header";
+import { EmConstrucao } from "@/components/em-construcao";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -400,37 +401,6 @@ async function VisaTypesSection({ visaId }: { visaId?: string }) {
   );
 }
 
-/** Seção ainda sem conteúdo: diz o que vai ter e em que fase. */
-function PlannedSection({
-  phase,
-  planned,
-}: {
-  phase?: string;
-  planned?: string[];
-}) {
-  return (
-    <div className="space-y-4 rounded-3xl border border-dashed p-5">
-      <div className="flex items-center gap-2">
-        <Badge variant="secondary">Em construção</Badge>
-        {phase ? (
-          <span className="text-sm text-muted-foreground">{phase}</span>
-        ) : null}
-      </div>
-
-      {planned?.length ? (
-        <ul className="space-y-2 text-sm">
-          {planned.map((item) => (
-            <li key={item} className="flex gap-2">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
-  );
-}
-
 export default async function SettingsSectionPage({
   params,
   searchParams,
@@ -459,7 +429,7 @@ export default async function SettingsSectionPage({
       ) : found.slug === "status-de-etapas" ? (
         <StageStatusesSection />
       ) : (
-        <PlannedSection phase={found.phase} planned={found.planned} />
+        <EmConstrucao fase={found.phase} itens={found.planned} />
       )}
     </div>
   );
