@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useState } from "react";
 import { ListChecks, Plus } from "lucide-react";
 
 import { ESTADO_INICIAL } from "@/lib/action-state";
@@ -10,7 +10,8 @@ import { InlineText } from "@/components/inline-text";
 import { MoveButtons } from "@/components/move-buttons";
 import { FieldError } from "@/components/field-error";
 import { SubmitButton } from "@/components/submit-button";
-import { Button } from "@/components/ui/button";
+import { RequiredToggle } from "@/components/required-toggle";
+import { AddChildButton, TreeRow } from "@/components/tree-row";
 import { Input } from "@/components/ui/input";
 import {
   createVisaStage,
@@ -18,8 +19,7 @@ import {
   moveVisaStage,
   updateVisaStage,
 } from "@/features/settings/visa-type-actions";
-import { comAviso } from "@/lib/avisar";
-import { flattenTree, indentStyle } from "@/lib/tree";
+import { flattenTree } from "@/lib/tree";
 
 export type StageNode = {
   id: string;
@@ -30,27 +30,32 @@ export type StageNode = {
   estimated_days: number | null;
 };
 
+/**
+ * O `key` no formulário é o que limpa os campos depois de gravar.
+ *
+ * A versão anterior usava `useEffect(..., [state.ok])`, e isso só funcionava
+ * na primeira vez: `ok` continua verdadeiro depois do primeiro sucesso, o
+ * efeito não roda de novo, e a segunda etapa criada deixava o nome digitado no
+ * campo. `token` muda a cada gravação; remontar devolve o formulário limpo.
+ *
+ * O painel de sub-etapa também deixou de fechar sozinho: quem abre para criar
+ * uma sub-etapa costuma criar duas ou três seguidas.
+ */
 function CreateStageForm({
   visaTypeId,
   parentId,
-  onDone,
 }: {
   visaTypeId: string;
   parentId: string | null;
-  onDone?: () => void;
 }) {
   const [state, formAction] = useActionState(createVisaStage, ESTADO_INICIAL);
-  const formRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    if (state.ok) {
-      formRef.current?.reset();
-      onDone?.();
-    }
-  }, [state.ok, onDone]);
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-2">
+    <form
+      key={state.token ?? "novo"}
+      action={formAction}
+      className="space-y-2"
+    >
       <input type="hidden" name="visa_type_id" value={visaTypeId} />
       {parentId ? <input type="hidden" name="parent_id" value={parentId} /> : null}
       <div className="flex flex-wrap items-center gap-2">
@@ -105,9 +110,12 @@ export function VisaStagesEditor({
         <ul className="space-y-1">
           {flat.map((stage) => (
             <li key={stage.id}>
-              <div
-                className="flex items-center gap-1 rounded-2xl border px-2 py-1"
-                style={indentStyle(stage.depth)}
+              <TreeRow
+                depth={stage.depth}
+                aberto={addingTo === stage.id}
+                painel={
+                  <CreateStageForm visaTypeId={visaTypeId} parentId={stage.id} />
+                }
               >
                 <InlineText
                   action={updateVisaStage}
@@ -130,35 +138,21 @@ export function VisaStagesEditor({
                   className="w-16 shrink-0"
                 />
 
-                <form action={comAviso(updateVisaStage)}>
-                  <input type="hidden" name="id" value={stage.id} />
-                  <input
-                    type="hidden"
-                    name="is_required"
-                    value={String(!stage.is_required)}
-                  />
-                  <Button
-                    type="submit"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 rounded-xl text-xs"
-                    title="Alternar entre obrigatória e opcional"
-                  >
-                    {stage.is_required ? "Obrigatória" : "Opcional"}
-                  </Button>
-                </form>
+                <RequiredToggle
+                  action={updateVisaStage}
+                  hidden={{ id: stage.id }}
+                  obrigatorio={stage.is_required}
+                  genero="feminino"
+                  titulo="Alternar entre obrigatória e opcional"
+                />
 
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setAddingTo(addingTo === stage.id ? null : stage.id)}
-                  aria-label={`Adicionar sub-etapa em ${stage.name}`}
-                  aria-expanded={addingTo === stage.id}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
+                <AddChildButton
+                  aberto={addingTo === stage.id}
+                  onToggle={() =>
+                    setAddingTo(addingTo === stage.id ? null : stage.id)
+                  }
+                  rotulo={`Adicionar sub-etapa em ${stage.name}`}
+                />
 
                 <MoveButtons
                   action={moveVisaStage}
@@ -177,20 +171,7 @@ export function VisaStagesEditor({
                   triggerLabel={`Excluir ${stage.name}`}
                   needsConfirmation={stage.descendantIds.length > 0}
                 />
-              </div>
-
-              {addingTo === stage.id ? (
-                <div
-                  className="mt-1 rounded-2xl border border-dashed p-2"
-                  style={indentStyle(stage.depth + 1)}
-                >
-                  <CreateStageForm
-                    visaTypeId={visaTypeId}
-                    parentId={stage.id}
-                    onDone={() => setAddingTo(null)}
-                  />
-                </div>
-              ) : null}
+              </TreeRow>
             </li>
           ))}
         </ul>

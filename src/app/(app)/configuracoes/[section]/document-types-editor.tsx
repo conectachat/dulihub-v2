@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useState } from "react";
 import { Folder, FolderOpen, Plus } from "lucide-react";
 
 import { ESTADO_INICIAL } from "@/lib/action-state";
@@ -10,7 +10,7 @@ import { InlineText } from "@/components/inline-text";
 import { MoveButtons } from "@/components/move-buttons";
 import { FieldError } from "@/components/field-error";
 import { SubmitButton } from "@/components/submit-button";
-import { Button } from "@/components/ui/button";
+import { AddChildButton, TreeRow } from "@/components/tree-row";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -20,7 +20,7 @@ import {
   renameDocumentType,
 } from "@/features/settings/document-type-actions";
 import { avisoDeExclusaoDePasta } from "@/lib/avisos";
-import { flattenTree, indentStyle } from "@/lib/tree";
+import { flattenTree } from "@/lib/tree";
 
 export type DocNode = {
   id: string;
@@ -32,25 +32,25 @@ export type DocNode = {
 /** Formulário de criação, usado na raiz e dentro de qualquer pasta. */
 function CreateForm({
   parentId,
-  onDone,
   label,
 }: {
   parentId: string | null;
-  onDone?: () => void;
   label: string;
 }) {
   const [state, formAction] = useActionState(createDocumentType, ESTADO_INICIAL);
-  const formRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    if (state.ok) {
-      formRef.current?.reset();
-      onDone?.();
-    }
-  }, [state.ok, onDone]);
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-2">
+    // O `key` é o que limpa o campo depois de gravar. O `useEffect(...,
+    // [state.ok])` que estava aqui só funcionava na primeira vez: `ok`
+    // continua verdadeiro depois do primeiro sucesso, o efeito não roda de
+    // novo, e a segunda pasta criada deixava o nome digitado no campo.
+    // O painel de subpasta também deixou de fechar sozinho — quem abre para
+    // criar uma subpasta costuma criar duas ou três seguidas.
+    <form
+      key={state.token ?? "novo"}
+      action={formAction}
+      className="space-y-2"
+    >
       {parentId ? <input type="hidden" name="parent_id" value={parentId} /> : null}
       <div className="flex flex-wrap items-center gap-2">
         <Input
@@ -118,9 +118,10 @@ export function DocumentTypesEditor({
 
             return (
               <li key={node.id}>
-                <div
-                  className="flex items-center gap-1 rounded-2xl border px-2 py-1"
-                  style={indentStyle(node.depth)}
+                <TreeRow
+                  depth={node.depth}
+                  aberto={addingTo === node.id}
+                  painel={<CreateForm parentId={node.id} label="Adicionar" />}
                 >
                   <Icon className="h-4 w-4 shrink-0 text-brand" aria-hidden />
 
@@ -133,17 +134,13 @@ export function DocumentTypesEditor({
                     className="flex-1"
                   />
 
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-primary"
-                    onClick={() => setAddingTo(addingTo === node.id ? null : node.id)}
-                    aria-label={`Adicionar dentro de ${node.name}`}
-                    aria-expanded={addingTo === node.id}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                  <AddChildButton
+                    aberto={addingTo === node.id}
+                    onToggle={() =>
+                      setAddingTo(addingTo === node.id ? null : node.id)
+                    }
+                    rotulo={`Adicionar dentro de ${node.name}`}
+                  />
 
                   <MoveButtons
                     action={moveDocumentType}
@@ -164,20 +161,7 @@ export function DocumentTypesEditor({
                     confirmLabel="Excluir"
                     triggerLabel={`Excluir ${node.name}`}
                   />
-                </div>
-
-                {addingTo === node.id ? (
-                  <div
-                    className="mt-1 rounded-2xl border border-dashed p-2"
-                    style={indentStyle(node.depth + 1)}
-                  >
-                    <CreateForm
-                      parentId={node.id}
-                      label="Adicionar"
-                      onDone={() => setAddingTo(null)}
-                    />
-                  </div>
-                ) : null}
+                </TreeRow>
               </li>
             );
           })}

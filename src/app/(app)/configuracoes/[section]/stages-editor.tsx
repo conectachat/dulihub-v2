@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState } from "react";
 import { Lock, Plus } from "lucide-react";
 
 import { ESTADO_INICIAL } from "@/lib/action-state";
@@ -35,11 +35,6 @@ export function StagesEditor({
   stages: Stage[];
 }) {
   const [state, formAction] = useActionState(createStage, ESTADO_INICIAL);
-  const addFormRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    if (state.ok) addFormRef.current?.reset();
-  }, [state.ok]);
 
   // Ganho e perdido não se movem, então a vizinhança que importa é a do meio.
   const middle = stages.filter((s) => !s.is_won && !s.is_lost);
@@ -49,9 +44,14 @@ export function StagesEditor({
       {/*
         Criar vem antes da lista de propósito: com o funil cheio, o campo no
         fim obrigaria a rolar até embaixo a cada etapa nova.
+
+        E o `key` é o que limpa o campo depois de gravar. O
+        `useEffect(..., [state.ok])` que estava aqui só funcionava na primeira
+        vez: `ok` continua verdadeiro depois do primeiro sucesso, então a
+        segunda etapa criada deixava o nome digitado no campo.
       */}
       <form
-        ref={addFormRef}
+        key={state.token ?? "novo"}
         action={formAction}
         className="flex flex-wrap items-end gap-2 rounded-3xl border border-dashed p-3"
       >

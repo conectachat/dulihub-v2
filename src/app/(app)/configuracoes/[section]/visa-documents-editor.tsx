@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/empty-state";
 import { InlineText } from "@/components/inline-text";
 import { MoveButtons } from "@/components/move-buttons";
 import { SectionHeader } from "@/components/page-header";
+import { RequiredToggle } from "@/components/required-toggle";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -228,28 +229,13 @@ export function VisaDocumentsEditor({
                   </span>
 
                   {/* Obrigatoriedade e prazo são do visto, não do catálogo. */}
-                  <form action={comAviso(updateVisaDocument)}>
-                    <input type="hidden" name="id" value={node.selection.id} />
-                    <input
-                      type="hidden"
-                      name="is_required"
-                      value={String(!node.selection.is_required)}
-                    />
-                    <Button
-                      type="submit"
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        "h-8 rounded-xl text-xs",
-                        node.selection.is_required
-                          ? "text-primary"
-                          : "text-muted-foreground",
-                      )}
-                      title="Alternar entre obrigatório e opcional neste visto"
-                    >
-                      {node.selection.is_required ? "Obrigatório" : "Opcional"}
-                    </Button>
-                  </form>
+                  <RequiredToggle
+                    action={updateVisaDocument}
+                    hidden={{ id: node.selection.id }}
+                    obrigatorio={node.selection.is_required}
+                    genero="masculino"
+                    titulo="Alternar entre obrigatório e opcional neste visto"
+                  />
 
                   <InlineText
                     action={updateVisaDocument}
