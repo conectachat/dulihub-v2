@@ -13,7 +13,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 # DuliHub — convenções do projeto
 
 App interno da Duli Consulting (consultoria de imigração). Substitui o app
-anterior feito no Lovable. Contexto e fases no plano da reconstrução.
+anterior feito no Lovable. Estado atual, próximos passos, pendências e o porquê
+das decisões de modelagem: **`docs/plano.md`**. Atualize-o no mesmo commit em
+que uma fase fecha ou uma decisão muda.
 
 ## Regras que não se negociam
 
