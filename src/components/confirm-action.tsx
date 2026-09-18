@@ -36,7 +36,7 @@ export function ConfirmAction({
   needsConfirmation = true,
   disabled = false,
   disabledReason,
-  icon: Icon = Trash2,
+  icon = <Trash2 className="h-4 w-4" />,
   size = "icon",
 }: {
   action: AcaoDeFormulario;
@@ -51,7 +51,15 @@ export function ConfirmAction({
   disabled?: boolean;
   /** Explica o bloqueio ao passar o mouse. Obrigatório quando `disabled`. */
   disabledReason?: string;
-  icon?: React.ComponentType<{ className?: string }>;
+  /**
+   * Elemento, não componente: `icon={<Trash2 className="h-4 w-4" />}`.
+   *
+   * Este componente é de cliente, e é usado por páginas de servidor. Componente
+   * é função, e função não atravessa do servidor para o navegador — foi o que
+   * derrubou `/contatos` em produção. Tipado como `ReactNode`, passar
+   * `Trash2` sem os sinais de menor e maior vira erro de compilação.
+   */
+  icon?: React.ReactNode;
   size?: "icon" | "sm";
 }) {
   const [open, setOpen] = useState(false);
@@ -87,7 +95,7 @@ export function ConfirmAction({
           disabled={disabled}
           title={disabled ? disabledReason : undefined}
         >
-          <Icon className="h-4 w-4" />
+          {icon}
         </Button>
       </form>
     );
@@ -105,7 +113,7 @@ export function ConfirmAction({
         disabled={disabled}
         title={disabled ? disabledReason : undefined}
       >
-        <Icon className="h-4 w-4" />
+        {icon}
       </Button>
 
       <Dialog

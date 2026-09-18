@@ -101,6 +101,21 @@ telas incomoda; em trinta, ninguém consegue mais mudar nada.
 
 Falta um? Extraia para `src/components/` na segunda cópia, não na terceira.
 
+### Ícone atravessa para o cliente como elemento, nunca como componente
+
+`icon={<Trash2 className="h-4 w-4" />}`, não `icon={Trash2}`.
+
+Página em `app/` é componente de servidor; `IconAction`, `ConfirmAction` e
+`SubmitButton` são de cliente. Componente é função, e função não atravessa do
+servidor para o navegador — o React recusa na hora de renderizar. `tsc`, lint e
+`next build` passam; o erro só aparece em produção, na tela. Foi assim que
+`/contatos` ficou fora do ar desde a Etapa 2 sem ninguém ver.
+
+Por isso a prop de ícone desses componentes é `React.ReactNode`: passar o
+componente cru vira erro de compilação. Componente de cliente novo que receba
+ícone segue o mesmo tipo. A regra vale para qualquer função — `onClick`,
+formatador, callback: de servidor para cliente só passa dado e Server Action.
+
 ### O portão roda sozinho
 
 `.githooks/pre-commit` roda tipos e lint antes de cada commit; a suíte fica no

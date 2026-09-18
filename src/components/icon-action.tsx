@@ -23,7 +23,7 @@ export function IconAction({
   action,
   hidden,
   label,
-  icon: Icon,
+  icon,
   tone = "primary",
   disabled,
   disabledReason,
@@ -32,7 +32,15 @@ export function IconAction({
   hidden: Record<string, string>;
   /** Rótulo para leitor de tela. */
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  /**
+   * Elemento, não componente: `icon={<Trash2 className="h-4 w-4" />}`.
+   *
+   * Este componente é de cliente, e é usado por páginas de servidor. Componente
+   * é função, e função não atravessa do servidor para o navegador — foi o que
+   * derrubou `/contatos` em produção. Tipado como `ReactNode`, passar
+   * `Trash2` sem os sinais de menor e maior vira erro de compilação.
+   */
+  icon: React.ReactNode;
   /** `destructive` só muda a cor ao passar o mouse — o vermelho fixo convida ao clique acidental. */
   tone?: "primary" | "destructive";
   disabled?: boolean;
@@ -57,7 +65,7 @@ export function IconAction({
         disabled={disabled}
         title={disabled ? disabledReason : undefined}
       >
-        <Icon className="h-4 w-4" />
+        {icon}
       </Button>
     </form>
   );

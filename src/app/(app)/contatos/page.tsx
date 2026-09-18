@@ -159,14 +159,14 @@ export default async function ContatosPage({
                             action={restorePerson}
                             hidden={{ id: person.id }}
                             label={`Restaurar ${person.full_name}`}
-                            icon={RotateCcw}
+                            icon={<RotateCcw className="h-4 w-4" />}
                           />
                         ) : (
                           <IconAction
                             action={softDeletePerson}
                             hidden={{ id: person.id }}
                             label={`Excluir ${person.full_name}`}
-                            icon={Trash2}
+                            icon={<Trash2 className="h-4 w-4" />}
                             tone="destructive"
                           />
                         )}

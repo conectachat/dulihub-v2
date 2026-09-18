@@ -19,14 +19,22 @@ import { Button } from "@/components/ui/button";
 export function SubmitButton({
   children,
   pendente,
-  icone: Icone,
+  icone,
   size,
   className,
 }: {
   children: React.ReactNode;
   /** O que aparece enquanto grava. */
   pendente: string;
-  icone?: React.ComponentType<{ className?: string }>;
+  /**
+   * Elemento, não componente: `icone={<Plus className="h-4 w-4" />}`.
+   *
+   * Este componente é de cliente, e é usado por páginas de servidor. Componente
+   * é função, e função não atravessa do servidor para o navegador — foi o que
+   * derrubou `/contatos` em produção. Tipado como `ReactNode`, passar
+   * `Plus` sem os sinais de menor e maior vira erro de compilação.
+   */
+  icone?: React.ReactNode;
   size?: "sm" | "default";
   className?: string;
 }) {
@@ -34,7 +42,7 @@ export function SubmitButton({
 
   return (
     <Button type="submit" size={size} disabled={pending} className={className}>
-      {Icone ? <Icone className="mr-1 h-4 w-4" aria-hidden /> : null}
+      {icone ? <span className="mr-1 inline-flex" aria-hidden>{icone}</span> : null}
       {pending ? pendente : children}
     </Button>
   );

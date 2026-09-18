@@ -27,7 +27,7 @@ describe("SubmitButton", () => {
   it("aceita ícone sem mudar o nome acessível", () => {
     render(
       <form>
-        <SubmitButton pendente="Criando..." icone={Plus}>
+        <SubmitButton pendente="Criando..." icone={<Plus className="h-4 w-4" />}>
           Criar
         </SubmitButton>
       </form>,

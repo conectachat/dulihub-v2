@@ -68,7 +68,7 @@ export function StagesEditor({
             className="rounded-xl"
           />
         </div>
-        <SubmitButton pendente="Criando..." icone={Plus}>Criar etapa</SubmitButton>
+        <SubmitButton pendente="Criando..." icone={<Plus className="h-4 w-4" />}>Criar etapa</SubmitButton>
       </form>
 
       <FieldError mensagem={state.error} />

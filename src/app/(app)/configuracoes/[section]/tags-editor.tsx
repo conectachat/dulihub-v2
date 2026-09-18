@@ -117,7 +117,7 @@ function CreateTagForm({ action }: { action: (formData: FormData) => void }) {
         />
       </div>
 
-      <SubmitButton pendente="Criando..." icone={Plus}>Criar tag</SubmitButton>
+      <SubmitButton pendente="Criando..." icone={<Plus className="h-4 w-4" />}>Criar tag</SubmitButton>
     </form>
   );
 }

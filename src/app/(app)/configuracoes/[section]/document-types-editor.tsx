@@ -59,7 +59,7 @@ function CreateForm({
           required
           className="h-9 min-w-48 flex-1 rounded-xl"
         />
-        <SubmitButton pendente="Criando..." size="sm" icone={Plus}>{label}</SubmitButton>
+        <SubmitButton pendente="Criando..." size="sm" icone={<Plus className="h-4 w-4" />}>{label}</SubmitButton>
       </div>
       <FieldError mensagem={state.error} />
     </form>

@@ -72,7 +72,7 @@ function CreateStageForm({
           className="h-9 w-20 rounded-xl"
           aria-label="Prazo estimado em dias"
         />
-        <SubmitButton pendente="Criando..." size="sm" icone={Plus}>Adicionar</SubmitButton>
+        <SubmitButton pendente="Criando..." size="sm" icone={<Plus className="h-4 w-4" />}>Adicionar</SubmitButton>
       </div>
       <FieldError mensagem={state.error} />
     </form>
