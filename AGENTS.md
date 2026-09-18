@@ -243,6 +243,23 @@ muda o app inteiro, inclusive o modo escuro; um hex espalhado pelas telas não.
 Tracejado marca **espaço que ainda vai ser preenchido**: estado vazio e área de
 criação. Não é decoração de cartão comum.
 
+### Editor das Observações: Plate vendorizado, sincronia nossa
+
+Os componentes do Plate vieram do registro shadcn e moram em
+`src/components/ui/*-node.tsx`, `*-toolbar*.tsx` e
+`src/components/editor/plugins/`. São código nosso a partir daí: traduzidos,
+sem IA, comentários e sugestões. Reinstalar pelo registro **nunca** com
+`--overwrite` — sobrescreveria `button`, `dropdown-menu` e outros
+componentes base do app, e desfaria a tradução. Arquivo que veio do Plate e
+não passa no lint leva no topo o `eslint-disable` da regra, com o motivo.
+
+Tempo real: `src/features/pages/sincronia.ts` tem a lógica (testada sem
+rede); `provedor-supabase.ts` só traduz para tabelas e canal. O banco é a
+fonte da verdade — o canal só adianta. Mudou a sincronia, o teste de
+convergência vem antes. Arquivo colado na página vai para o bucket
+`observacoes` e o nó guarda `/api/observacoes/arquivo?c=…`, nunca URL
+assinada (expira).
+
 ## Antes de dar algo por pronto
 
 `bun run build`, `bun x tsc --noEmit` e `bun test` passando. Para mudança de

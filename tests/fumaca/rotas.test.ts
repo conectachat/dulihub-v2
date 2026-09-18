@@ -205,6 +205,9 @@ describe("com um processo de verdade", () => {
       // A sub-etapa não: o grupo nasce fechado (decisão de 18/set).
       expect(html).toContain("Etapa A");
       expect(html).toContain("Data prevista");
+      // A aba existe e a página de observações foi criada sem erro — o
+      // editor em si é do navegador e não vem no HTML.
+      expect(html).toContain("Observações");
       expect(html).toContain("Recibo (receipt number)");
     }
   }, 60_000);

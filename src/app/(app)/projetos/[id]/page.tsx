@@ -6,12 +6,15 @@ import { EmConstrucao } from "@/components/em-construcao";
 import { QueryError } from "@/components/query-error";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { equipeDaOrganizacao, paginaDoProcesso } from "@/features/pages/queries";
 import { obterProcesso } from "@/features/projects/queries";
+import { createClient } from "@/lib/supabase/server";
 import { formatarDia, hojeEmSaoPaulo } from "@/lib/formatar";
 
 import { BarraDeProgresso } from "../partes";
 import { CampoDoProcesso, StatusDoProcesso } from "./campos-editaveis";
 import { EtapasDoProcesso } from "./etapas";
+import { Observacoes } from "./observacoes";
 
 export const metadata = { title: "Processo — Duli Hub" };
 
@@ -35,6 +38,25 @@ export default async function ProcessoPage({
 
   if (error) return <QueryError detalhe={error} />;
   if (!processo) notFound();
+
+  const supabase = await createClient();
+  const [{ pagina, error: erroPagina }, { equipe, error: erroEquipe }, { data: sessao }] =
+    await Promise.all([
+      paginaDoProcesso(processo.id, processo.organization_id),
+      equipeDaOrganizacao(processo.organization_id),
+      supabase.auth.getUser(),
+    ]);
+  const falha = erroPagina ?? erroEquipe;
+  if (falha) return <QueryError detalhe={falha} />;
+
+  const usuarioId = sessao.user?.id ?? "";
+  const usuario = {
+    id: usuarioId,
+    nome:
+      equipe.find((m) => m.id === usuarioId)?.nome ??
+      sessao.user?.email ??
+      "Você",
+  };
 
   const concluidas = etapas.filter(
     (e) => status.find((s) => s.id === e.status_id)?.is_done,
@@ -104,6 +126,9 @@ export default async function ProcessoPage({
           <TabsTrigger value="documentos" className="rounded-xl">
             Documentos ({processo.progresso.resolvidas}/{processo.progresso.total})
           </TabsTrigger>
+          <TabsTrigger value="observacoes" className="rounded-xl">
+            Observações
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="etapas" className="pt-4">
@@ -124,6 +149,20 @@ export default async function ProcessoPage({
               "Enviar, abrir, aprovar e recusar arquivos com motivo",
             ]}
           />
+        </TabsContent>
+
+        <TabsContent value="observacoes" className="pt-4">
+          {pagina ? (
+            <Observacoes
+              paginaId={pagina.id}
+              organizationId={processo.organization_id}
+              projectId={processo.id}
+              usuario={usuario}
+              equipe={equipe}
+              editadoEm={pagina.editada ? pagina.updated_at : null}
+              editadoPor={pagina.autor}
+            />
+          ) : null}
         </TabsContent>
       </Tabs>
     </main>

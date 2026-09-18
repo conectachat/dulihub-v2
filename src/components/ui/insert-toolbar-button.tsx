@@ -1,0 +1,269 @@
+'use client';
+
+import * as React from 'react';
+
+import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu';
+
+import {
+  CalendarIcon,
+  ChevronRightIcon,
+  Code2,
+  Columns3Icon,
+  FileCodeIcon,
+  FilmIcon,
+  Heading1Icon,
+  Heading2Icon,
+  Heading3Icon,
+  ImageIcon,
+  Link2Icon,
+  ListIcon,
+  ListOrderedIcon,
+  MinusIcon,
+  PenToolIcon,
+  PilcrowIcon,
+  PlusIcon,
+  QuoteIcon,
+  RadicalIcon,
+  SquareIcon,
+  SuperscriptIcon,
+  TableIcon,
+  TableOfContentsIcon,
+} from 'lucide-react';
+import { KEYS } from 'platejs';
+import { type PlateEditor, useEditorRef } from 'platejs/react';
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  insertBlock,
+  insertInlineElement,
+} from '@/components/editor/transforms';
+
+import { ToolbarButton, ToolbarMenuGroup } from './toolbar';
+
+type Group = {
+  group: string;
+  items: Item[];
+};
+
+type Item = {
+  icon: React.ReactNode;
+  value: string;
+  onSelect: (editor: PlateEditor, value: string) => void;
+  focusEditor?: boolean;
+  label?: string;
+};
+
+const groups: Group[] = [
+  {
+    group: 'Blocos básicos',
+    items: [
+      {
+        icon: <PilcrowIcon />,
+        label: 'Texto',
+        value: KEYS.p,
+      },
+      {
+        icon: <Heading1Icon />,
+        label: 'Título 1',
+        value: 'h1',
+      },
+      {
+        icon: <Heading2Icon />,
+        label: 'Título 2',
+        value: 'h2',
+      },
+      {
+        icon: <Heading3Icon />,
+        label: 'Título 3',
+        value: 'h3',
+      },
+      {
+        icon: <TableIcon />,
+        label: 'Tabela',
+        value: KEYS.table,
+      },
+      {
+        icon: <FileCodeIcon />,
+        label: 'Código',
+        value: KEYS.codeBlock,
+      },
+      {
+        icon: <QuoteIcon />,
+        label: 'Citação',
+        value: KEYS.blockquote,
+      },
+      {
+        icon: <MinusIcon />,
+        label: 'Divisor',
+        value: KEYS.hr,
+      },
+    ].map((item) => ({
+      ...item,
+      onSelect: (editor, value) => {
+        insertBlock(editor, value);
+      },
+    })),
+  },
+  {
+    group: 'Listas',
+    items: [
+      {
+        icon: <ListIcon />,
+        label: 'Lista com marcadores',
+        value: KEYS.ul,
+      },
+      {
+        icon: <ListOrderedIcon />,
+        label: 'Lista numerada',
+        value: KEYS.ol,
+      },
+      {
+        icon: <SquareIcon />,
+        label: 'Lista de tarefas',
+        value: KEYS.listTodo,
+      },
+      {
+        icon: <ChevronRightIcon />,
+        label: 'Toggle (recolhível)',
+        value: KEYS.toggle,
+      },
+    ].map((item) => ({
+      ...item,
+      onSelect: (editor, value) => {
+        insertBlock(editor, value);
+      },
+    })),
+  },
+  {
+    group: 'Mídia',
+    items: [
+      {
+        icon: <ImageIcon />,
+        label: 'Imagem',
+        value: KEYS.img,
+      },
+      {
+        icon: <FilmIcon />,
+        label: 'Incorporar',
+        value: KEYS.mediaEmbed,
+      },
+    ].map((item) => ({
+      ...item,
+      onSelect: (editor, value) => {
+        insertBlock(editor, value);
+      },
+    })),
+  },
+  {
+    group: 'Blocos avançados',
+    items: [
+      {
+        icon: <TableOfContentsIcon />,
+        label: 'Sumário',
+        value: KEYS.toc,
+      },
+      {
+        icon: <Columns3Icon />,
+        label: '3 colunas',
+        value: 'action_three_columns',
+      },
+      {
+        focusEditor: false,
+        icon: <RadicalIcon />,
+        label: 'Equação',
+        value: KEYS.equation,
+      },
+      {
+        icon: <PenToolIcon />,
+        label: 'Excalidraw',
+        value: KEYS.excalidraw,
+      },
+      {
+        icon: <Code2 />,
+        label: 'Diagrama de código',
+        value: KEYS.codeDrawing,
+      },
+    ].map((item) => ({
+      ...item,
+      onSelect: (editor, value) => {
+        insertBlock(editor, value);
+      },
+    })),
+  },
+  {
+    group: 'Em linha',
+    items: [
+      {
+        icon: <Link2Icon />,
+        label: 'Link',
+        value: KEYS.link,
+      },
+      {
+        focusEditor: true,
+        icon: <CalendarIcon />,
+        label: 'Data',
+        value: KEYS.date,
+      },
+      {
+        focusEditor: true,
+        icon: <SuperscriptIcon />,
+        label: 'Nota de rodapé',
+        value: 'action_footnote',
+      },
+      {
+        focusEditor: false,
+        icon: <RadicalIcon />,
+        label: 'Equação em linha',
+        value: KEYS.inlineEquation,
+      },
+    ].map((item) => ({
+      ...item,
+      onSelect: (editor, value) => {
+        insertInlineElement(editor, value);
+      },
+    })),
+  },
+];
+
+export function InsertToolbarButton(props: DropdownMenuProps) {
+  const editor = useEditorRef();
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <DropdownMenu open={open} onOpenChange={setOpen} modal={false} {...props}>
+      <DropdownMenuTrigger asChild>
+        <ToolbarButton pressed={open} tooltip="Inserir" isDropdown>
+          <PlusIcon />
+        </ToolbarButton>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent
+        className="flex max-h-[500px] min-w-0 flex-col overflow-y-auto"
+        align="start"
+      >
+        {groups.map(({ group, items: nestedItems }) => (
+          <ToolbarMenuGroup key={group} label={group}>
+            {nestedItems.map(({ icon, label, value, onSelect }) => (
+              <DropdownMenuItem
+                key={value}
+                className="min-w-[180px]"
+                onSelect={() => {
+                  onSelect(editor, value);
+                  editor.tf.focus();
+                }}
+              >
+                {icon}
+                {label}
+              </DropdownMenuItem>
+            ))}
+          </ToolbarMenuGroup>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}

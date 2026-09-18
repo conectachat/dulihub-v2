@@ -47,6 +47,8 @@ export class Sincronia {
   private readonly limite: number;
   private readonly espera: number;
   private readonly avisar: (e: Estado) => void;
+  /** Presença criada aqui é destruída aqui; a de fora, quem criou destrói. */
+  private readonly presencaPropria: boolean;
 
   constructor(
     private readonly doc: Y.Doc,
@@ -57,9 +59,12 @@ export class Sincronia {
       /** Espera antes de tentar gravar de novo, em ms. */
       esperaRetentativa?: number;
       aoMudarEstado?: (e: Estado) => void;
+      /** Presença já criada por quem monta o editor (o Plate cria a dele). */
+      awareness?: Awareness;
     } = {},
   ) {
-    this.awareness = new Awareness(doc);
+    this.presencaPropria = !opcoes.awareness;
+    this.awareness = opcoes.awareness ?? new Awareness(doc);
     this.limite = opcoes.limiteCompactacao ?? 50;
     this.espera = opcoes.esperaRetentativa ?? 3_000;
     this.avisar = opcoes.aoMudarEstado ?? (() => {});
@@ -118,7 +123,7 @@ export class Sincronia {
     // Avisa os outros que saiu, antes de desligar a presença.
     removeAwarenessStates(this.awareness, [this.doc.clientID], "saiu");
     this.awareness.off("update", this.aoMudarPresenca);
-    this.awareness.destroy();
+    if (this.presencaPropria) this.awareness.destroy();
   }
 
   // ------------------------------------------------------------------------

@@ -17,6 +17,10 @@ export default defineConfig({
     // `VITE_`. É de lá que saem a URL do projeto e as senhas de teste — que
     // nunca entram no repositório.
     env: loadEnv("", process.cwd(), ""),
+    // Bibliotecas do editor (Plate) importam CSS de dentro do pacote. O Node
+    // não sabe carregar `.css`; processadas pelo Vite, o CSS vira vazio no
+    // teste — como o Next faz no build.
+    server: { deps: { inline: [/@platejs/, /react-tweet/, /katex/] } },
   },
   resolve: {
     // `fileURLToPath` e não `.pathname`: no Windows o pathname vem como
