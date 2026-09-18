@@ -1,25 +1,16 @@
+import type { Tables } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { somarPorMoeda, type PorMoeda } from "@/lib/totals";
 
-export type Stage = {
-  id: string;
-  name: string;
-  position: number;
-  probability: number | null;
-  is_won: boolean;
-  is_lost: boolean;
-};
+export type Stage = Pick<
+  Tables<"pipeline_stages">,
+  "id" | "name" | "position" | "probability" | "is_won" | "is_lost"
+>;
 
-export type BoardCard = {
-  id: string;
-  title: string;
-  value: number | null;
-  currency: string;
-  status: "open" | "won" | "lost";
-  stage_id: string;
-  created_at: string;
-  person: { id: string; full_name: string } | null;
-};
+export type BoardCard = Pick<
+  Tables<"opportunities">,
+  "id" | "title" | "value" | "currency" | "status" | "stage_id" | "created_at"
+> & { person: Pick<Tables<"people">, "id" | "full_name"> | null };
 
 export type Board = {
   pipelineId: string | null;
@@ -86,8 +77,8 @@ export async function getBoard(): Promise<Board> {
         .order("created_at", { ascending: false }),
     ]);
 
-  const stages = (stagesData ?? []) as Stage[];
-  const cards = (cardsData ?? []) as unknown as BoardCard[];
+  const stages: Stage[] = stagesData ?? [];
+  const cards: BoardCard[] = cardsData ?? [];
 
   const cardsByStage: Record<string, BoardCard[]> = {};
   const totalsByStage: Record<string, { count: number; porMoeda: PorMoeda }> = {};
@@ -137,7 +128,7 @@ export async function listPeopleForPicker() {
     .limit(500);
 
   return {
-    people: (data ?? []) as { id: string; full_name: string }[],
+    people: data ?? [],
     error: error?.message ?? null,
   };
 }

@@ -1,9 +1,8 @@
 // @vitest-environment node
 
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { entrarComo, fixture } from "./clientes";
+import { entrarComo, fixture, type Cliente } from "./clientes";
 
 /**
  * O portal do cliente é da Fase 6, e o buraco é de hoje.
@@ -25,8 +24,8 @@ const CORPO_ORIGINAL =
   "Nota escrita pelo consultor. O cliente não pode reescrever nem apagar.";
 
 describe("o cliente do portal alcança o que é dele, e só isso", () => {
-  let cliente: SupabaseClient;
-  let consultor: SupabaseClient;
+  let cliente: Cliente;
+  let consultor: Cliente;
   let notaId: string;
   let pessoaId: string;
 
@@ -171,13 +170,27 @@ describe("o cliente do portal alcança o que é dele, e só isso", () => {
       .limit(1)
       .maybeSingle();
 
+    const { data: pessoa } = await cliente
+      .from("people")
+      .select("organization_id")
+      .eq("id", pessoaId)
+      .maybeSingle();
+
+    // A linha vai completa, com a organização certa. Antes ela ia sem
+    // `organization_id` — obrigatório desde a 0016 — e o banco recusava por
+    // falta de coluna: o teste passava sem nunca chegar na policy. Os tipos
+    // gerados apontaram isso em 18/set.
     const resposta = await cliente
       .from("person_tags")
-      .insert({ person_id: pessoaId, tag_id: tag!.id })
+      .insert({
+        person_id: pessoaId,
+        tag_id: tag!.id,
+        organization_id: pessoa!.organization_id,
+      })
       .select("person_id");
 
-    expect(resposta.error !== null || (resposta.data ?? []).length === 0).toBe(
-      true,
-    );
+    // Recusa pela policy de escrita: código 42501, não violação de coluna.
+    expect(resposta.data ?? []).toEqual([]);
+    expect(resposta.error?.code).toBe("42501");
   });
 });

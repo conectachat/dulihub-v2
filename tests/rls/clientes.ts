@@ -1,5 +1,9 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import type { Database } from "@/lib/supabase/database.types";
+
+export type Cliente = SupabaseClient<Database>;
+
 /**
  * Clientes autenticados de verdade, para a suíte de RLS.
  *
@@ -19,8 +23,8 @@ export { EMAILS, type Papel };
  * Um cliente por papel, logado. Cada chamada cria uma sessão própria: sessão
  * compartilhada entre testes esconderia vazamento por cache.
  */
-export async function entrarComo(papel: Papel): Promise<SupabaseClient> {
-  const supabase = createClient(
+export async function entrarComo(papel: Papel): Promise<Cliente> {
+  const supabase = createClient<Database>(
     obrigatorio("NEXT_PUBLIC_SUPABASE_URL"),
     obrigatorio("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"),
     { auth: { persistSession: false, autoRefreshToken: false } },
@@ -43,7 +47,7 @@ export async function entrarComo(papel: Papel): Promise<SupabaseClient> {
 }
 
 /** Ids da fixture, buscados uma vez por arquivo de teste. */
-export async function fixture(supabase: SupabaseClient) {
+export async function fixture(supabase: Cliente) {
   const { data: pessoa, error } = await supabase
     .from("people")
     .select("id, organization_id, full_name")

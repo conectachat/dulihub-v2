@@ -187,9 +187,7 @@ async function DocumentTypesSection() {
 
   const usos: Record<string, string[]> = {};
   for (const linha of exigencias ?? []) {
-    const visto = linha.visa_types as unknown as { name: string } | null;
-    if (!visto) continue;
-    (usos[linha.document_type_id] ??= []).push(visto.name);
+    (usos[linha.document_type_id] ??= []).push(linha.visa_types.name);
   }
 
   return <DocumentTypesEditor nodes={data ?? []} usos={usos} />;

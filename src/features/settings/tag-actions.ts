@@ -7,6 +7,7 @@ import { falhou, gravou, type ActionState } from "@/lib/action-state";
 import { traduzirErro } from "@/lib/erros";
 import { resultado } from "@/lib/gravar";
 import { contextoAtual, SEM_ORGANIZACAO } from "@/lib/organizacao";
+import type { TablesUpdate } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { PALETTE } from "@/lib/palette";
 
@@ -54,7 +55,7 @@ export async function updateTag(formData: FormData): Promise<ActionState> {
   });
   if (!parsed.success) return falhou(parsed.error.issues[0].message);
 
-  const patch: Record<string, string> = {};
+  const patch: TablesUpdate<"tags"> = {};
   if (parsed.data.name) patch.name = parsed.data.name;
   if (parsed.data.color) patch.color = parsed.data.color;
   // Nada a mudar não é falha; a tela só não precisa fazer nada.

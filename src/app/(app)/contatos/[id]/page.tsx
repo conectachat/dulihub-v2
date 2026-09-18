@@ -18,16 +18,6 @@ import { formatarData, telefoneCompleto } from "@/lib/formatar";
 
 
 
-type Opportunity = {
-  id: string;
-  title: string;
-  status: "open" | "won" | "lost";
-  value: number | null;
-  currency: string;
-  created_at: string;
-  stage: { name: string } | null;
-};
-
 export default async function PersonPage({
   params,
 }: {
@@ -77,13 +67,11 @@ export default async function PersonPage({
     oportunidadesError?.message ?? tagsError ?? timelineError ?? userError?.message;
   if (falha) return <QueryError detalhe={falha} />;
 
-  const opportunities = (opportunitiesRaw ?? []) as unknown as Opportunity[];
-  // Sem os tipos gerados do banco, o cliente Supabase infere a relação
-  // aninhada como lista. Em runtime `tag` é objeto, porque tags é to-one.
-  type TagRow = { tag: { id: string; name: string } | null };
-  const tags = ((person.person_tags ?? []) as unknown as TagRow[])
-    .map((t) => t.tag)
-    .filter((t): t is { id: string; name: string } => t !== null);
+  // Com os tipos gerados, o cliente sabe que `stage` e `tag` são objetos:
+  // as duas relações são para-um. Antes eram inferidas como lista e
+  // precisavam de conversão à força.
+  const opportunities = opportunitiesRaw ?? [];
+  const tags = person.person_tags.map((t) => t.tag);
 
   const phone = telefoneCompleto(person.phone_country_code, person.phone);
 

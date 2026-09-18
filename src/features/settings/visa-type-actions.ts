@@ -8,6 +8,7 @@ import { traduzirErro } from "@/lib/erros";
 import { resultado, resultadoSemContagem } from "@/lib/gravar";
 import { parseMoney, parseWholeNumber } from "@/lib/numbers";
 import { contextoAtual, SEM_ORGANIZACAO } from "@/lib/organizacao";
+import type { TablesUpdate } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { paiVisivel } from "@/lib/tree";
 
@@ -103,7 +104,7 @@ export async function createVisaStage(
   if (!parsed.success) return falhou(parsed.error.issues[0].message);
 
   const visaTypeId = formData.get("visa_type_id");
-  if (typeof visaTypeId !== "string") return { error: "Tipo de visto não informado." };
+  if (typeof visaTypeId !== "string") return falhou("Tipo de visto não informado.");
 
   const rawParent = formData.get("parent_id");
   const parentId = typeof rawParent === "string" && rawParent ? rawParent : null;
@@ -139,7 +140,7 @@ export async function updateVisaStage(formData: FormData): Promise<ActionState> 
   const id = formData.get("id");
   if (typeof id !== "string") return falhou("Etapa não informada.");
 
-  const patch: Record<string, unknown> = {};
+  const patch: TablesUpdate<"visa_stages"> = {};
 
   const name = formData.get("name");
   if (typeof name === "string" && name.trim()) patch.name = name.trim();
@@ -388,7 +389,7 @@ export async function moveVisaDocument(
   if (arvoreFalhou) return falhou(traduzirErro(arvoreFalhou));
 
   const parentOf = new Map(
-    (catalog ?? []).map((n) => [n.id as string, n.parent_id as string | null]),
+    (catalog ?? []).map((n) => [n.id, n.parent_id]),
   );
   const selected = new Set((siblingsRaw ?? []).map((s) => s.document_type_id));
 
@@ -426,7 +427,7 @@ export async function updateVisaDocument(
   const id = formData.get("id");
   if (typeof id !== "string") return falhou("Exigência não informada.");
 
-  const patch: Record<string, unknown> = {};
+  const patch: TablesUpdate<"visa_type_documents"> = {};
 
   if (formData.has("is_required")) {
     patch.is_required = formData.get("is_required") === "true";

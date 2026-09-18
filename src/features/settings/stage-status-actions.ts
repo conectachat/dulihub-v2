@@ -7,6 +7,7 @@ import { falhou, gravou, type ActionState } from "@/lib/action-state";
 import { traduzirErro } from "@/lib/erros";
 import { resultado, resultadoSemContagem } from "@/lib/gravar";
 import { contextoAtual, SEM_ORGANIZACAO } from "@/lib/organizacao";
+import type { TablesUpdate } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
 const SECTION = "/configuracoes/status-de-etapas";
@@ -81,7 +82,7 @@ export async function updateStageStatus(
   const id = formData.get("id");
   if (typeof id !== "string") return falhou("Status não informado.");
 
-  const patch: Record<string, string> = {};
+  const patch: TablesUpdate<"stage_statuses"> = {};
 
   const rawLabel = formData.get("label");
   if (typeof rawLabel === "string") {

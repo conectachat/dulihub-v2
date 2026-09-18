@@ -262,3 +262,9 @@ trabalhar no projeto. É dívida que só aparece no pior momento.
 
 Ver `supabase/migrations/README.md` para o estado atual e o desencontro
 conhecido da 0001/0002.
+
+**E os tipos junto.** `src/lib/supabase/database.types.ts` é regenerado no mesmo
+commit de toda migration. Os três clientes (`server.ts`, `client.ts`,
+`proxy.ts`) são `<Database>`: tipo de linha se deriva de `Tables<"…">` e
+`Enums<"…">`, nunca se reescreve à mão, e `as unknown as` sobre dado do banco
+não entra — se o compilador reclama, o formato mudou e a tela quebraria.

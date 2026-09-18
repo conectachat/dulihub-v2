@@ -1,4 +1,5 @@
 import { traduzirErro } from "@/lib/erros";
+import type { Enums } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -15,14 +16,8 @@ import { createClient } from "@/lib/supabase/server";
  * features, e feature não importa de feature.
  */
 
-export type PapelNaOrganizacao = "owner" | "admin" | "staff";
-
-type Associacao = {
-  organization_id: string;
-  role: PapelNaOrganizacao;
-  created_at: string;
-  organizations: { type: "root" | "partner" } | null;
-};
+/** O papel vem do enum do banco — acrescentar um papel lá aparece aqui. */
+export type PapelNaOrganizacao = Enums<"member_role">;
 
 /**
  * A regra de desempate, explícita e com motivo.
@@ -89,9 +84,7 @@ export async function contextoAtual() {
     };
   }
 
-  const escolhida = escolherOrganizacao(
-    (data ?? []) as unknown as Associacao[],
-  );
+  const escolhida = escolherOrganizacao(data ?? []);
 
   return {
     supabase,

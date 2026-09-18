@@ -28,3 +28,14 @@ enquanto as migrations forem aplicadas em sequência a partir de um banco vazio.
 A lista de arquivos deve bater com o que o banco tem registrado. Para conferir,
 comparar `ls` desta pasta com a lista de migrations do projeto Supabase,
 lembrando do desencontro conhecido da 0001 e 0002 acima.
+
+## Tipos gerados
+
+`src/lib/supabase/database.types.ts` é gerado a partir do banco e **não se
+edita à mão**. Toda migration que muda tabela, coluna, enum ou função
+regenera o arquivo **no mesmo commit** — pelo conector do Supabase
+(`generate_typescript_types`).
+
+É ele que transforma coluna renomeada em erro de compilação em vez de tela
+vazia. Em 18/set, na primeira geração, apontou um teste de RLS que passava
+por falta de coluna sem nunca chegar na policy.

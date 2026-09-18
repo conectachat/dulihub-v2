@@ -1,12 +1,10 @@
+import type { Enums, Tables } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
-export type OrganizationSummary = {
-  id: string;
-  name: string;
-  slug: string;
-  type: "root" | "partner";
-  role: "owner" | "admin" | "staff";
-};
+export type OrganizationSummary = Pick<
+  Tables<"organizations">,
+  "id" | "name" | "slug" | "type"
+> & { role: Enums<"member_role"> };
 
 export type UserContext = {
   userId: string;
@@ -77,25 +75,13 @@ export async function getUserContext(): Promise<UserContext | null> {
   // associação mais antiga —, para a tela e a gravação nunca discordarem
   // sobre em qual organização a pessoa está trabalhando.
   const ordenadas = [...(data ?? [])].sort((a, b) => {
-    const raiz = (linha: typeof a) =>
-      (linha.organizations as unknown as { type: string } | null)?.type ===
-      "root"
-        ? 0
-        : 1;
+    const raiz = (linha: typeof a) => (linha.organizations?.type === "root" ? 0 : 1);
     return raiz(a) - raiz(b) || a.created_at.localeCompare(b.created_at);
   });
 
-  const organizations: OrganizationSummary[] = ordenadas
-    .filter((row) => row.organizations)
-    .map((row) => {
-      const org = row.organizations as unknown as {
-        id: string;
-        name: string;
-        slug: string;
-        type: "root" | "partner";
-      };
-      return { ...org, role: row.role as OrganizationSummary["role"] };
-    });
+  const organizations: OrganizationSummary[] = ordenadas.flatMap((row) =>
+    row.organizations ? [{ ...row.organizations, role: row.role }] : [],
+  );
 
   return {
     userId: user.id,

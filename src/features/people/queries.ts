@@ -1,16 +1,19 @@
+import type { Tables } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
-export type PersonTag = { id: string; name: string; color: string | null };
+export type PersonTag = Pick<Tables<"tags">, "id" | "name" | "color">;
 
-export type PersonListItem = {
-  id: string;
-  full_name: string;
-  email: string | null;
-  phone: string | null;
-  phone_country_code: string | null;
-  lifecycle_stage: "contact" | "opportunity" | "client";
-  created_at: string;
-  deleted_at: string | null;
+export type PersonListItem = Pick<
+  Tables<"people">,
+  | "id"
+  | "full_name"
+  | "email"
+  | "phone"
+  | "phone_country_code"
+  | "lifecycle_stage"
+  | "created_at"
+  | "deleted_at"
+> & {
   tags: PersonTag[];
   /** Quantas oportunidades a pessoa tem. É o número do ícone de maleta. */
   opportunity_count: number;
@@ -68,20 +71,7 @@ export async function listPeople({
 
   if (error) return { people: [], error: error.message };
 
-  let people: PersonListItem[] = (data ?? []).map((row) => {
-    const r = row as unknown as {
-      id: string;
-      full_name: string;
-      email: string | null;
-      phone: string | null;
-      phone_country_code: string | null;
-      lifecycle_stage: PersonListItem["lifecycle_stage"];
-      created_at: string;
-      deleted_at: string | null;
-      person_tags: { tag: PersonTag | null }[] | null;
-      opportunities: { count: number }[] | null;
-    };
-
+  let people: PersonListItem[] = (data ?? []).map((r) => {
     return {
       id: r.id,
       full_name: r.full_name,
@@ -91,8 +81,8 @@ export async function listPeople({
       lifecycle_stage: r.lifecycle_stage,
       created_at: r.created_at,
       deleted_at: r.deleted_at,
-      tags: (r.person_tags ?? []).map((t) => t.tag).filter((t): t is PersonTag => !!t),
-      opportunity_count: r.opportunities?.[0]?.count ?? 0,
+      tags: r.person_tags.map((t) => t.tag),
+      opportunity_count: r.opportunities[0]?.count ?? 0,
     };
   });
 
@@ -120,5 +110,5 @@ export async function listTags(): Promise<{
   // Sem o canal de erro, tag sumia da tela e parecia que ninguém marcou nada.
   if (error) return { tags: [], error: error.message };
 
-  return { tags: (data as PersonTag[] | null) ?? [], error: null };
+  return { tags: data ?? [], error: null };
 }

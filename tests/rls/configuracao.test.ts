@@ -1,9 +1,8 @@
 // @vitest-environment node
 
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { entrarComo } from "./clientes";
+import { entrarComo, type Cliente } from "./clientes";
 
 /**
  * Configuração é estrutura, não conteúdo do dia a dia.
@@ -17,13 +16,24 @@ import { entrarComo } from "./clientes";
  * diferença.
  */
 
-/** Recusa da RLS na escrita: erro `42501`, e nada gravado. */
-function recusou(resposta: { data: unknown; error: { code?: string } | null }) {
-  return resposta.error !== null || (resposta.data as unknown[])?.length === 0;
+/**
+ * Recusa **da RLS**, e só dela.
+ *
+ * Inserir contra a policy dá erro `42501`; apagar ou alterar o que a policy
+ * esconde não dá erro nenhum, só zero linhas. Qualquer outro erro — coluna
+ * faltando, chave estrangeira — NÃO conta: aceitar "qualquer erro" deixou um
+ * teste do portal passando por falta de coluna, sem nunca chegar na policy.
+ */
+function recusou(resposta: {
+  data: unknown[] | null;
+  error: { code?: string } | null;
+}) {
+  if (resposta.error) return resposta.error.code === "42501";
+  return (resposta.data ?? []).length === 0;
 }
 
 describe("colaborador lê a configuração, e não a altera", () => {
-  let staff: SupabaseClient;
+  let staff: Cliente;
   let organizationId: string;
 
   beforeAll(async () => {
@@ -106,7 +116,7 @@ describe("colaborador lê a configuração, e não a altera", () => {
 });
 
 describe("organização nova nasce utilizável", () => {
-  let parceiro: SupabaseClient;
+  let parceiro: Cliente;
 
   beforeAll(async () => {
     parceiro = await entrarComo("parceiro");

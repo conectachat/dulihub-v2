@@ -62,18 +62,10 @@ export async function getTimeline(personId: string): Promise<{
   const falha = notesError ?? activitiesError;
   if (falha) return { items: [], error: falha.message };
 
-  type AuthorRow = { full_name: string | null; email: string } | null;
-  const nameOf = (author: AuthorRow) =>
+  const nameOf = (author: { full_name: string | null; email: string } | null) =>
     author?.full_name ?? author?.email ?? null;
 
-  const fromNotes: TimelineItem[] = (notes ?? []).map((row) => {
-    const r = row as unknown as {
-      id: string;
-      body: string;
-      created_at: string;
-      created_by: string | null;
-      author: AuthorRow;
-    };
+  const fromNotes: TimelineItem[] = (notes ?? []).map((r) => {
     return {
       id: r.id,
       kind: "note",
@@ -86,15 +78,7 @@ export async function getTimeline(personId: string): Promise<{
     };
   });
 
-  const fromActivities: TimelineItem[] = (activities ?? []).map((row) => {
-    const r = row as unknown as {
-      id: string;
-      type: string;
-      description: string | null;
-      occurred_at: string;
-      created_by: string | null;
-      author: AuthorRow;
-    };
+  const fromActivities: TimelineItem[] = (activities ?? []).map((r) => {
     return {
       id: r.id,
       kind: "activity",
