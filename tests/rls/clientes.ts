@@ -8,42 +8,12 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  * rápido e provaria menos: o app não fala com o Postgres, fala com o
  * PostgREST, e é lá que `select`, `update` e `delete` viram filtro.
  *
- * Nenhuma senha mora no repositório. Elas vêm do `.env.local`, que o `git`
- * ignora, e são digitadas por quem tem as contas.
+ * Contas e senhas em `tests/contas.ts`, comum à suíte de fumaça.
  */
 
-/** Faltando credencial, a suíte **falha**. Não pula. */
-function obrigatorio(nome: string): string {
-  const valor = process.env[nome];
-  if (!valor) {
-    throw new Error(
-      [
-        `Falta ${nome}.`,
-        "",
-        "A suíte de RLS precisa das contas de teste. Sem elas ela não roda —",
-        "e não pode passar calada, porque foi exatamente assim que o portão",
-        "ficou verde por nove dias sem executar um teste sequer.",
-        "",
-        "Ver tests/rls/README.md.",
-      ].join("\n"),
-    );
-  }
-  return valor;
-}
+import { EMAILS, obrigatorio, SENHAS, type Papel } from "../contas";
 
-export const EMAILS = {
-  parceiro: "teste-parceiro@duliconsulting.com",
-  colaborador: "teste-colaborador@duliconsulting.com",
-  cliente: "teste-cliente@duliconsulting.com",
-} as const;
-
-export type Papel = keyof typeof EMAILS;
-
-const SENHAS: Record<Papel, string> = {
-  parceiro: "RLS_SENHA_PARCEIRO",
-  colaborador: "RLS_SENHA_COLABORADOR",
-  cliente: "RLS_SENHA_CLIENTE",
-};
+export { EMAILS, type Papel };
 
 /**
  * Um cliente por papel, logado. Cada chamada cria uma sessão própria: sessão

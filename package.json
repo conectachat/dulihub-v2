@@ -11,7 +11,8 @@
     "test:rls": "vitest run tests/rls/",
     "test:watch": "vitest src/",
     "typecheck": "next typegen && tsc --noEmit",
-    "verify": "bun run typecheck && bun run lint && bun run test && bun run test:rls"
+    "verify": "bun run typecheck && bun run lint && bun run test && bun run test:rls",
+    "test:fumaca": "vitest run tests/fumaca/"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

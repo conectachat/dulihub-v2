@@ -9,6 +9,15 @@ on:
 jobs:
   verificar:
     runs-on: ubuntu-latest
+    # No nível do job: o build precisa das chaves públicas, e RLS e fumaça
+    # precisam das contas de teste. Sem os segredos, os passos que dependem
+    # deles falham — de propósito.
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      RLS_SENHA_PARCEIRO: ${{ secrets.RLS_SENHA_PARCEIRO }}
+      RLS_SENHA_COLABORADOR: ${{ secrets.RLS_SENHA_COLABORADOR }}
+      RLS_SENHA_CLIENTE: ${{ secrets.RLS_SENHA_CLIENTE }}
     steps:
       # v5 roda em Node 24; a v4 está marcada como obsoleta pelo GitHub.
       - uses: actions/checkout@v5
@@ -43,10 +52,22 @@ jobs:
       # existe, e por isso ele não é condicional: sem os segredos configurados
       # o CI falha, que é o comportamento certo.
       - name: Testes de RLS
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-          RLS_SENHA_PARCEIRO: ${{ secrets.RLS_SENHA_PARCEIRO }}
-          RLS_SENHA_COLABORADOR: ${{ secrets.RLS_SENHA_COLABORADOR }}
-          RLS_SENHA_CLIENTE: ${{ secrets.RLS_SENHA_CLIENTE }}
         run: bun run test:rls
+
+      # Cada tela abre com sessão de verdade. Tipos, lint, build e os testes
+      # acima passavam enquanto /contatos estava fora do ar em produção (18/set):
+      # o erro só existe quando a página é desenhada. Aqui ela é desenhada.
+      - name: Build
+        run: bun run build
+
+      - name: Subir o app
+        run: |
+          bun run start &
+          for i in $(seq 1 60); do
+            curl -s -o /dev/null http://localhost:3000 && exit 0
+            sleep 1
+          done
+          echo "O app não respondeu em 60 s" && exit 1
+
+      - name: Fumaça
+        run: bun run test:fumaca

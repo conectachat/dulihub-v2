@@ -139,6 +139,18 @@ Cada defeito corrigido entra com o teste que o reproduz. Ver
 `src/lib/tree.test.ts`, que cobre os dois casos que ninguém tinha coberto —
 ciclo e nó órfão — e que faziam a linha sumir da tela sem aviso.
 
+### Fumaça: cada tela abre com sessão
+
+`tests/fumaca/` entra com a conta `teste-colaborador` e pede cada rota principal
+ao servidor, exigindo `200` — as seções de configuração vêm de `ALL_SECTIONS`,
+então seção nova entra sozinha. Existe porque em 18/set `/contatos` ficou fora do
+ar em produção com tipos, lint, build e todos os testes verdes: o erro só existe
+quando a página é desenhada.
+
+Precisa de servidor rodando, por isso fica fora do `verify`:
+`bun run dev` num terminal, `bun run test:fumaca` no outro. No CI roda sempre,
+depois do build. Tela nova de nível superior entra na lista `TOPO` do teste.
+
 ### RLS tem suíte própria, e ela não pula
 
 `tests/rls/` entra no Supabase de verdade, com login de verdade, porque
