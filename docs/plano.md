@@ -9,7 +9,7 @@ Convenções de código ficam no `AGENTS.md`.
 
 ---
 
-## 1. Estado atual (18/set/2026)
+## 1. Estado atual (19/set/2026)
 
 ### No ar
 
@@ -21,65 +21,57 @@ real.
 |---|---|
 | Início | Resumo da organização |
 | Contatos | Lista, busca, filtro por tag, criar, editar, excluir e restaurar (lixeira) |
-| Ficha do contato | Dados, tags, oportunidades e linha do tempo (notas e atividades) |
-| CRM | Quadro do funil por etapa; criar, mover e excluir oportunidade; totais por moeda |
-| Configurações | Etapas do funil, tags, catálogo de documentos (árvore de pastas livres), tipos de visto (etapas e documentos exigidos, ordem por visto), status de etapa |
-| Projetos, Financeiro | "Em construção", com o que cada uma vai ter |
+| Ficha do contato | Dados, tags, oportunidades, processos, linha do tempo; "Novo processo" |
+| CRM | Quadro do funil; negócio em Ganho oferece "Criar processo" |
+| Projetos | Lista de processos: cliente, visto, status, pastas resolvidas, próximo prazo |
+| Processo | Status e campos do USCIS; abas **Etapas** (tabela com status, data prevista e de conclusão, sub-etapas em grupo), **Documentos** (pastas, envio, visualizar, aprovar, recusar com motivo, resolver) e **Observações** (editor estilo Notion, várias pessoas ao mesmo tempo) |
+| Configurações | Etapas do funil, tags, catálogo de pastas, tipos de visto, status de etapa |
+| Financeiro | "Em construção" |
 
 ### Dados
 
 | | |
 |---|---|
-| Contatos | 76, importados do app antigo sem duplicata (eram 157 linhas em três tabelas) |
+| Contatos | 76, importados do app antigo sem duplicata |
 | Organizações | Duli (raiz) e "Parceiro de Teste" (só para a suíte de testes) |
-| Banco | Supabase `xigmtofpmfqeehhcdasf`, migrations `0001` a `0019` em `supabase/migrations/` |
+| Banco | Supabase `xigmtofpmfqeehhcdasf`, migrations `0001` a `0026` em `supabase/migrations/` |
+| Arquivos | Buckets privados `documentos` (pastas do processo) e `observacoes` (colados no editor), 20 MB |
 
 ### Rede de proteção
 
-Tudo roda sozinho em cada push; o CI está verde desde 18/set.
+Tudo roda sozinho em cada push.
 
 | Camada | O que pega |
 |---|---|
 | Trava de commit (`.githooks/pre-commit`) | Erro de tipo e de lint — o commit nem acontece |
-| 87 testes de unidade | Regras e funções puras: árvore, dinheiro, avisos, formatação, componentes |
-| 23 testes de RLS | Uma organização não enxerga nem altera dado da outra; colaborador não mexe em configuração; cliente do portal lê o que é dele e não reescreve o que o consultor escreveu |
-| 22 testes de fumaça | Cada tela principal abre com login de verdade |
-
-### Endurecimento — concluído
-
-Entre 03 e 18/set o código foi revisado inteiro antes de qualquer
-funcionalidade nova. Mais de 40 defeitos, entre eles: criar contato nunca tinha
-funcionado pela tela; `2000.00` virava `200000`; o CRM somava real com dólar;
-26 ações desistiam sem avisar; leitura que falhava aparecia como lista vazia;
-qualquer membro apagava a configuração inteira; o cliente do futuro portal
-poderia reescrever as notas do consultor; e `/contatos` esteve fora do ar em
-produção sem ninguém ver.
-
-**Um item aberto:** gerar os tipos TypeScript a partir do banco, para eliminar
-os 10 `as unknown as` que ainda existem. Depende do conector do Supabase no
-claude.ai (ver pendências).
+| 176 testes de unidade e componente | Regras, formatação, telas de etapas e documentos, sincronização em tempo real, editor montado sobre Supabase falso |
+| 63 testes de RLS | Uma organização não enxerga nem altera dado da outra — tabelas, arquivos e o canal em tempo real; regras de negócio no banco (pasta só resolve com tudo aprovado, processo só se liga a negócio do mesmo contato) |
+| 28 testes de fumaça | Cada tela abre com login de verdade, inclusive com um processo real |
 
 ---
 
-## 2. Próximo — Fase 2, Processos
+## 2. Fase 2, Processos — pronta para uso
 
-A planejar. É para ela que a configuração existe: criar o processo de um
-cliente a partir do tipo de visto, com etapas e pastas copiadas do molde; o
-cliente sobe arquivos; o Renato aprova ou recusa cada um, e a recusa exige
-motivo.
+Entregue entre 18 e 19/set: criar processo a partir do tipo de visto (etapas e
+pastas copiadas numa transação), acompanhar etapas, revisar documentos e
+anotar em conjunto.
 
-Já decidido para ela:
+Decisões da fase:
 
 | Pergunta | Resposta |
 |---|---|
 | Documentos são do processo ou da etapa? | Do processo inteiro |
-| Sub-etapas existem? | Sim, hierarquia mantida |
 | Mudar o molde afeta processo em andamento? | Não — nada muda sozinho |
-| Pasta do catálogo nomeia o documento ("IRPF")? | Não. É pasta, e o cliente sobe o que tiver |
-| Quando a pasta conta como resolvida? | Quando o Renato marca. Não é automático |
-| Arquivo enviado entra como? | Em análise. Aprovado ou recusado com motivo, que o cliente lê |
-| Dá para criar pasta só naquele processo? | Sim, além das que vêm do molde |
+| Quem sobe arquivo agora? | Só a equipe. O cliente ganha a porta na Fase 6 |
+| Arquivo enviado entra como? | Em análise. Aprovado ou recusado com motivo (mín. 10 letras), que o cliente vai ler |
+| Quando a pasta conta como resolvida? | Quando o Renato marca — e **só com todos os arquivos aprovados**. Arquivo novo ou recusado depois reabre a pasta |
 | Barra de progresso mede o quê? | Pastas obrigatórias resolvidas ÷ pastas obrigatórias |
+| Etapa: data prevista | Nasce vazia; conclusão automática ao concluir, e corrigível |
+| Observações | Plate (grátis, a cara do app) + sincronização própria pelo Supabase — o texto não sai do banco da Duli |
+
+Falta, se o Renato pedir: aba **Lista de Evidências** (mesmo editor das
+Observações, rápido) e **Tarefas** (prevista para a Fase 4). Na Observações,
+ficaram de fora IA, comentários em trechos e sub-páginas.
 
 ---
 
@@ -89,7 +81,6 @@ Coisas que dependem dele, fora do código.
 
 | O quê | Por quê |
 |---|---|
-| **Reconectar o Supabase** em claude.ai → Configurações → Conectores | Destrava os tipos do banco, último item do endurecimento |
 | **Itaú** — credenciais via gerente de conta | Processo de semanas; vira gargalo da Fase 3 se começar tarde |
 | **C6** — cadastro no portal do desenvolvedor | Idem |
 | **Provedor de nota fiscal** — e confirmar com o contador como fatura em dólar | NFS-e ou invoice muda o desenho da Fase 3 |
