@@ -2,17 +2,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
-import { EmConstrucao } from "@/components/em-construcao";
 import { QueryError } from "@/components/query-error";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { equipeDaOrganizacao, paginaDoProcesso } from "@/features/pages/queries";
-import { obterProcesso } from "@/features/projects/queries";
+import { obterProcesso, pastasDoProcesso } from "@/features/projects/queries";
 import { createClient } from "@/lib/supabase/server";
 import { formatarDia, hojeEmSaoPaulo } from "@/lib/formatar";
 
 import { BarraDeProgresso } from "../partes";
 import { CampoDoProcesso, StatusDoProcesso } from "./campos-editaveis";
+import { DocumentosDoProcesso } from "./documentos";
 import { EtapasDoProcesso } from "./etapas";
 import { Observacoes } from "./observacoes";
 
@@ -40,13 +40,18 @@ export default async function ProcessoPage({
   if (!processo) notFound();
 
   const supabase = await createClient();
-  const [{ pagina, error: erroPagina }, { equipe, error: erroEquipe }, { data: sessao }] =
-    await Promise.all([
-      paginaDoProcesso(processo.id, processo.organization_id),
-      equipeDaOrganizacao(processo.organization_id),
-      supabase.auth.getUser(),
-    ]);
-  const falha = erroPagina ?? erroEquipe;
+  const [
+    { pagina, error: erroPagina },
+    { equipe, error: erroEquipe },
+    { pastas, error: erroPastas },
+    { data: sessao },
+  ] = await Promise.all([
+    paginaDoProcesso(processo.id, processo.organization_id),
+    equipeDaOrganizacao(processo.organization_id),
+    pastasDoProcesso(processo.id),
+    supabase.auth.getUser(),
+  ]);
+  const falha = erroPagina ?? erroEquipe ?? erroPastas;
   if (falha) return <QueryError detalhe={falha} />;
 
   const usuarioId = sessao.user?.id ?? "";
@@ -141,13 +146,11 @@ export default async function ProcessoPage({
         </TabsContent>
 
         <TabsContent value="documentos" className="pt-4">
-          <EmConstrucao
-            fase="Fase 2 — próximo passo"
-            itens={[
-              "Pastas exigidas pelo visto, com prazo e marcação de resolvida",
-              "Pasta extra só neste processo",
-              "Enviar, abrir, aprovar e recusar arquivos com motivo",
-            ]}
+          <DocumentosDoProcesso
+            processoId={processo.id}
+            organizationId={processo.organization_id}
+            pastas={pastas}
+            hoje={hojeEmSaoPaulo()}
           />
         </TabsContent>
 

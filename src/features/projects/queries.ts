@@ -130,3 +130,35 @@ export async function obterProcesso(id: string) {
       null,
   };
 }
+
+/** As pastas do processo com os arquivos de cada uma — a aba Documentos. */
+export async function pastasDoProcesso(projectId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("project_documents")
+    .select(
+      `id, parent_id, position, name, is_required, deadline_on, resolved_at,
+       source_document_type_id,
+       arquivos:document_files!document_files_folder_same_project(
+         id, file_name, mime_type, size_bytes, review_status, rejection_reason,
+         uploaded_at, reviewed_at,
+         enviou:profiles!document_files_uploaded_by_fkey(full_name, email)
+       )`,
+    )
+    .eq("project_id", projectId);
+
+  return {
+    pastas: (data ?? []).map(({ arquivos, ...pasta }) => ({
+      ...pasta,
+      arquivos: [...arquivos]
+        .sort((a, b) => b.uploaded_at.localeCompare(a.uploaded_at))
+        .map(({ enviou, ...arquivo }) => ({
+          ...arquivo,
+          enviadoPor: enviou?.full_name || enviou?.email || null,
+        })),
+    })),
+    error: error?.message ?? null,
+  };
+}
+
+export type PastaDoProcesso = Awaited<ReturnType<typeof pastasDoProcesso>>["pastas"][number];
