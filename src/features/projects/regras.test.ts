@@ -3,9 +3,13 @@ import { describe, expect, it } from "vitest";
 import {
   caminhoDoArquivo,
   caminhoPertence,
+  arquivoAceito,
   motivoDeRecusa,
+  podeResolver,
   prazoDaPasta,
   progresso,
+  resumoDosArquivos,
+  tipoDeVisualizacao,
 } from "./regras";
 
 /**
@@ -131,6 +135,91 @@ describe("motivoDeRecusa", () => {
     expect(motivoDeRecusa("  Documento ilegível, envie foto com mais luz  ")).toEqual({
       ok: true,
       motivo: "Documento ilegível, envie foto com mais luz",
+    });
+  });
+});
+
+describe("resumoDosArquivos", () => {
+  it("conta por estado — o selo da linha da pasta", () => {
+    expect(
+      resumoDosArquivos([
+        { review_status: "pending" },
+        { review_status: "pending" },
+        { review_status: "approved" },
+        { review_status: "rejected" },
+      ]),
+    ).toEqual({ pendentes: 2, aprovados: 1, recusados: 1, total: 4 });
+  });
+});
+
+describe("podeResolver", () => {
+  const a = (review_status: string) => ({ review_status });
+
+  it("pasta vazia ou toda aprovada resolve", () => {
+    expect(podeResolver([])).toEqual({ ok: true });
+    expect(podeResolver([a("approved"), a("approved")])).toEqual({ ok: true });
+  });
+
+  it("bloqueia e diz quantos faltam, em português de gente", () => {
+    // Mesma regra do gatilho da 0026; aqui é para a tela explicar antes do
+    // clique, em vez de mostrar o erro do banco depois.
+    expect(podeResolver([a("pending"), a("pending"), a("rejected")])).toEqual({
+      ok: false,
+      motivo: "Falta revisar: 2 em análise e 1 recusado.",
+    });
+    expect(podeResolver([a("pending")])).toEqual({
+      ok: false,
+      motivo: "Falta revisar: 1 em análise.",
+    });
+    expect(podeResolver([a("rejected"), a("rejected")])).toEqual({
+      ok: false,
+      motivo: "Falta revisar: 2 recusados.",
+    });
+  });
+});
+
+describe("tipoDeVisualizacao", () => {
+  it("PDF e imagem abrem no app; o resto baixa", () => {
+    expect(tipoDeVisualizacao("application/pdf", "a.pdf")).toBe("pdf");
+    expect(tipoDeVisualizacao("image/png", "a.png")).toBe("imagem");
+    expect(tipoDeVisualizacao("image/jpeg", "a.jpg")).toBe("imagem");
+    expect(
+      tipoDeVisualizacao(
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "a.docx",
+      ),
+    ).toBe("baixar");
+  });
+
+  it("HEIC do iPhone baixa — o navegador não desenha", () => {
+    expect(tipoDeVisualizacao("image/heic", "foto.heic")).toBe("baixar");
+  });
+
+  it("sem tipo, decide pela extensão", () => {
+    expect(tipoDeVisualizacao(null, "Passaporte.PDF")).toBe("pdf");
+    expect(tipoDeVisualizacao("", "rg.jpeg")).toBe("imagem");
+  });
+});
+
+describe("arquivoAceito", () => {
+  const mb = 1024 * 1024;
+
+  it("aceita PDF, imagem e Office até 20 MB", () => {
+    expect(arquivoAceito({ name: "a.pdf", type: "application/pdf", size: 5 * mb })).toEqual({ ok: true });
+    expect(arquivoAceito({ name: "a.xlsx", type: "", size: mb })).toEqual({ ok: true });
+  });
+
+  it("recusa acima de 20 MB, dizendo o tamanho", () => {
+    expect(arquivoAceito({ name: "scan.pdf", type: "application/pdf", size: 25 * mb })).toEqual({
+      ok: false,
+      erro: "scan.pdf tem 25 MB — o limite é 20 MB.",
+    });
+  });
+
+  it("recusa tipo fora da lista", () => {
+    expect(arquivoAceito({ name: "video.mp4", type: "video/mp4", size: mb })).toEqual({
+      ok: false,
+      erro: "video.mp4: tipo não aceito. Use PDF, imagem, Word ou Excel.",
     });
   });
 });

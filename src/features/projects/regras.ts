@@ -146,3 +146,82 @@ export function motivoDeRecusa(
   }
   return { ok: true, motivo };
 }
+
+// ------------------------------------------------------------- arquivos
+
+type ComEstado = { review_status: string };
+
+/** Quantos arquivos em cada estado — o selo na linha da pasta. */
+export function resumoDosArquivos(arquivos: ComEstado[]) {
+  let pendentes = 0;
+  let aprovados = 0;
+  let recusados = 0;
+  for (const a of arquivos) {
+    if (a.review_status === "pending") pendentes += 1;
+    else if (a.review_status === "approved") aprovados += 1;
+    else if (a.review_status === "rejected") recusados += 1;
+  }
+  return { pendentes, aprovados, recusados, total: arquivos.length };
+}
+
+/**
+ * A pasta pode ser marcada como resolvida? Só sem nada em análise ou
+ * recusado — decisão do Renato (19/set), a mesma do gatilho da 0026. Aqui é
+ * para a tela explicar **antes** do clique.
+ */
+export function podeResolver(
+  arquivos: ComEstado[],
+): { ok: true } | { ok: false; motivo: string } {
+  const { pendentes, recusados } = resumoDosArquivos(arquivos);
+  if (pendentes === 0 && recusados === 0) return { ok: true };
+
+  const partes = [
+    pendentes ? `${pendentes} em análise` : null,
+    recusados ? `${recusados} ${recusados === 1 ? "recusado" : "recusados"}` : null,
+  ].filter(Boolean);
+  return { ok: false, motivo: `Falta revisar: ${partes.join(" e ")}.` };
+}
+
+const extensao = (nome: string) => nome.slice(nome.lastIndexOf(".") + 1).toLowerCase();
+
+/**
+ * Como o arquivo abre. PDF e imagem, dentro do app; o resto baixa. HEIC (foto
+ * do iPhone) baixa: o navegador não desenha.
+ */
+export function tipoDeVisualizacao(
+  mime: string | null,
+  nome: string,
+): "pdf" | "imagem" | "baixar" {
+  const ext = extensao(nome);
+  if (mime === "application/pdf" || ext === "pdf") return "pdf";
+  if (mime === "image/heic" || ext === "heic") return "baixar";
+  if (mime?.startsWith("image/") || ["jpg", "jpeg", "png", "webp", "gif"].includes(ext)) {
+    return "imagem";
+  }
+  return "baixar";
+}
+
+/** Os mesmos limites do bucket `documentos` (0020), conferidos antes de enviar. */
+const LIMITE_MB = 20;
+const EXTENSOES = ["pdf", "jpg", "jpeg", "png", "webp", "heic", "doc", "docx", "xls", "xlsx"];
+
+export function arquivoAceito(arquivo: {
+  name: string;
+  type: string;
+  size: number;
+}): { ok: true } | { ok: false; erro: string } {
+  if (!EXTENSOES.includes(extensao(arquivo.name))) {
+    return {
+      ok: false,
+      erro: `${arquivo.name}: tipo não aceito. Use PDF, imagem, Word ou Excel.`,
+    };
+  }
+  const mb = arquivo.size / (1024 * 1024);
+  if (mb > LIMITE_MB) {
+    return {
+      ok: false,
+      erro: `${arquivo.name} tem ${Math.round(mb)} MB — o limite é ${LIMITE_MB} MB.`,
+    };
+  }
+  return { ok: true };
+}
