@@ -86,7 +86,12 @@ describe("colaborador lê a configuração, e não a altera", () => {
 
     const resposta = await staff
       .from("pipeline_stages")
-      .insert({ pipeline_id: funil!.id, name: "Etapa do colaborador", position: 50 })
+      .insert({
+        organization_id: organizationId,
+        pipeline_id: funil!.id,
+        name: "Etapa do colaborador",
+        position: 50,
+      })
       .select("id");
 
     expect(recusou(resposta)).toBe(true);

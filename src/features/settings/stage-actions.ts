@@ -34,6 +34,17 @@ export async function createStage(
 
   const supabase = await createClient();
 
+  // A organização vem do funil, não de quem clicou (regra do AGENTS.md), e
+  // desde a 0027 a coluna existe e é obrigatória.
+  const { data: funil, error: erroDoFunil } = await supabase
+    .from("pipelines")
+    .select("organization_id")
+    .eq("id", pipelineId)
+    .maybeSingle();
+
+  if (erroDoFunil) return falhou(traduzirErro(erroDoFunil));
+  if (!funil) return falhou("Funil não encontrado.");
+
   const { data: siblings, error: siblingsError } = await supabase
     .from("pipeline_stages")
     .select("position")
@@ -53,6 +64,7 @@ export async function createStage(
   const resposta = await supabase
     .from("pipeline_stages")
     .insert({
+      organization_id: funil.organization_id,
       pipeline_id: pipelineId,
       name: parsedName.data,
       position: nextPosition,

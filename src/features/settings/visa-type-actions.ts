@@ -111,6 +111,17 @@ export async function createVisaStage(
 
   const supabase = await createClient();
 
+  // A organização vem do tipo de visto (regra do AGENTS.md); obrigatória na
+  // coluna desde a 0027.
+  const { data: visto, error: erroDoVisto } = await supabase
+    .from("visa_types")
+    .select("organization_id")
+    .eq("id", visaTypeId)
+    .maybeSingle();
+
+  if (erroDoVisto) return falhou(traduzirErro(erroDoVisto));
+  if (!visto) return falhou("Tipo de visto não encontrado.");
+
   let query = supabase
     .from("visa_stages")
     .select("position")
@@ -123,6 +134,7 @@ export async function createVisaStage(
   const { data: siblings } = await query;
 
   const { error } = await supabase.from("visa_stages").insert({
+    organization_id: visto.organization_id,
     visa_type_id: visaTypeId,
     parent_id: parentId,
     name: parsed.data.name,

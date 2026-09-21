@@ -25,6 +25,7 @@ export type Database = {
           organization_id: string
           person_id: string
           type: string
+          updated_at: string
         }
         Insert: {
           created_at?: string
@@ -36,6 +37,7 @@ export type Database = {
           organization_id: string
           person_id: string
           type: string
+          updated_at?: string
         }
         Update: {
           created_at?: string
@@ -47,6 +49,7 @@ export type Database = {
           organization_id?: string
           person_id?: string
           type?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -79,6 +82,27 @@ export type Database = {
           },
         ]
       }
+      deleted_rows: {
+        Row: {
+          deleted_at: string
+          id: string
+          organization_id: string
+          tabela: string
+        }
+        Insert: {
+          deleted_at?: string
+          id: string
+          organization_id: string
+          tabela: string
+        }
+        Update: {
+          deleted_at?: string
+          id?: string
+          organization_id?: string
+          tabela?: string
+        }
+        Relationships: []
+      }
       document_files: {
         Row: {
           file_name: string
@@ -93,6 +117,7 @@ export type Database = {
           reviewed_by: string | null
           size_bytes: number | null
           storage_path: string
+          updated_at: string
           uploaded_at: string
           uploaded_by: string | null
         }
@@ -109,6 +134,7 @@ export type Database = {
           reviewed_by?: string | null
           size_bytes?: number | null
           storage_path: string
+          updated_at?: string
           uploaded_at?: string
           uploaded_by?: string | null
         }
@@ -125,6 +151,7 @@ export type Database = {
           reviewed_by?: string | null
           size_bytes?: number | null
           storage_path?: string
+          updated_at?: string
           uploaded_at?: string
           uploaded_by?: string | null
         }
@@ -219,6 +246,7 @@ export type Database = {
           path: string
           person_id: string
           size_bytes: number | null
+          updated_at: string
           uploaded_by: string | null
         }
         Insert: {
@@ -232,6 +260,7 @@ export type Database = {
           path: string
           person_id: string
           size_bytes?: number | null
+          updated_at?: string
           uploaded_by?: string | null
         }
         Update: {
@@ -245,6 +274,7 @@ export type Database = {
           path?: string
           person_id?: string
           size_bytes?: number | null
+          updated_at?: string
           uploaded_by?: string | null
         }
         Relationships: [
@@ -452,27 +482,33 @@ export type Database = {
           currency: string
           id: string
           opportunity_id: string
+          organization_id: string
           product_id: string
           quantity: number
           unit_price: number
+          updated_at: string
         }
         Insert: {
           created_at?: string
           currency?: string
           id?: string
           opportunity_id: string
+          organization_id: string
           product_id: string
           quantity?: number
           unit_price: number
+          updated_at?: string
         }
         Update: {
           created_at?: string
           currency?: string
           id?: string
           opportunity_id?: string
+          organization_id?: string
           product_id?: string
           quantity?: number
           unit_price?: number
+          updated_at?: string
         }
         Relationships: [
           {
@@ -481,6 +517,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "opportunities"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_products_opportunity_same_org"
+            columns: ["opportunity_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id", "organization_id"]
           },
           {
             foreignKeyName: "opportunity_products_product_id_fkey"
@@ -497,6 +540,7 @@ export type Database = {
           id: string
           organization_id: string
           role: Database["public"]["Enums"]["member_role"]
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -504,6 +548,7 @@ export type Database = {
           id?: string
           organization_id: string
           role?: Database["public"]["Enums"]["member_role"]
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -511,6 +556,7 @@ export type Database = {
           id?: string
           organization_id?: string
           role?: Database["public"]["Enums"]["member_role"]
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -724,18 +770,21 @@ export type Database = {
           organization_id: string
           person_id: string
           tag_id: string
+          updated_at: string
         }
         Insert: {
           created_at?: string
           organization_id: string
           person_id: string
           tag_id: string
+          updated_at?: string
         }
         Update: {
           created_at?: string
           organization_id?: string
           person_id?: string
           tag_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -761,9 +810,11 @@ export type Database = {
           is_lost: boolean
           is_won: boolean
           name: string
+          organization_id: string
           pipeline_id: string
           position: number
           probability: number | null
+          updated_at: string
         }
         Insert: {
           created_at?: string
@@ -771,9 +822,11 @@ export type Database = {
           is_lost?: boolean
           is_won?: boolean
           name: string
+          organization_id: string
           pipeline_id: string
           position?: number
           probability?: number | null
+          updated_at?: string
         }
         Update: {
           created_at?: string
@@ -781,9 +834,11 @@ export type Database = {
           is_lost?: boolean
           is_won?: boolean
           name?: string
+          organization_id?: string
           pipeline_id?: string
           position?: number
           probability?: number | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -792,6 +847,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "pipelines"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pipeline_stages_pipeline_same_org"
+            columns: ["pipeline_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "pipelines"
+            referencedColumns: ["id", "organization_id"]
           },
         ]
       }
@@ -1323,6 +1385,7 @@ export type Database = {
           id: string
           name: string
           organization_id: string
+          updated_at: string
         }
         Insert: {
           color?: string | null
@@ -1330,6 +1393,7 @@ export type Database = {
           id?: string
           name: string
           organization_id: string
+          updated_at?: string
         }
         Update: {
           color?: string | null
@@ -1337,6 +1401,7 @@ export type Database = {
           id?: string
           name?: string
           organization_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -1356,6 +1421,7 @@ export type Database = {
           id: string
           is_required: boolean
           name: string
+          organization_id: string
           parent_id: string | null
           position: number
           updated_at: string
@@ -1368,6 +1434,7 @@ export type Database = {
           id?: string
           is_required?: boolean
           name: string
+          organization_id: string
           parent_id?: string | null
           position?: number
           updated_at?: string
@@ -1380,6 +1447,7 @@ export type Database = {
           id?: string
           is_required?: boolean
           name?: string
+          organization_id?: string
           parent_id?: string | null
           position?: number
           updated_at?: string
@@ -1392,6 +1460,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "visa_stages"
             referencedColumns: ["id", "visa_type_id"]
+          },
+          {
+            foreignKeyName: "visa_stages_visa_same_org"
+            columns: ["visa_type_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "visa_types"
+            referencedColumns: ["id", "organization_id"]
           },
           {
             foreignKeyName: "visa_stages_visa_type_id_fkey"
@@ -1411,6 +1486,7 @@ export type Database = {
           is_required: boolean
           organization_id: string
           position: number
+          updated_at: string
           visa_type_id: string
         }
         Insert: {
@@ -1421,6 +1497,7 @@ export type Database = {
           is_required?: boolean
           organization_id: string
           position?: number
+          updated_at?: string
           visa_type_id: string
         }
         Update: {
@@ -1431,6 +1508,7 @@ export type Database = {
           is_required?: boolean
           organization_id?: string
           position?: number
+          updated_at?: string
           visa_type_id?: string
         }
         Relationships: [
@@ -1523,10 +1601,22 @@ export type Database = {
         }
         Returns: string
       }
+      reordenar_irmaos: {
+        Args: { p_ids: string[]; p_tabela: string }
+        Returns: undefined
+      }
       set_default_stage_status: { Args: { p_id: string }; Returns: undefined }
       swap_positions: {
         Args: { p_a: string; p_b: string; p_tabela: string }
         Returns: undefined
+      }
+      sync_manifesto: {
+        Args: never
+        Returns: {
+          linhas: number
+          maximo_updated_at: string
+          tabela: string
+        }[]
       }
     }
     Enums: {
