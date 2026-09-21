@@ -64,9 +64,13 @@ function transporte(servidor: Servidor): TransporteDoEspelho {
         {
           tabela: "deleted_rows",
           linhas: servidor.lapides.length,
-          // Horizonte: a lápide mais antiga guardada.
+          // Horizonte: a lápide mais antiga guardada. Sem lápide nenhuma, o
+          // `sync_manifesto` devolve `now()` — e é por isso que este falso
+          // devolve `now()` também. Um falso mais generoso que o servidor
+          // esconde exatamente o defeito que o teste abaixo pega.
           maximo_updated_at:
-            servidor.lapides.map((l) => l.deleted_at).sort()[0] ?? "1970-01-01T00:00:00Z",
+            servidor.lapides.map((l) => l.deleted_at).sort()[0] ??
+            new Date().toISOString(),
         },
       ];
     },
@@ -194,6 +198,23 @@ describe("sincronizar", () => {
 
     expect(resultado.recarregadas).toEqual(["tags"]);
     expect(local.dados.tags.size).toBe(0);
+  });
+
+  it("sem exclusão nenhuma no servidor, não recarrega nada", async () => {
+    // O `sync_manifesto` devolve `now()` como horizonte quando a tabela de
+    // lápides está vazia — organização nova, ou depois que a limpeza de 90
+    // dias esvaziou a tabela. Marca d'água < agora é sempre verdade, então
+    // o aparelho se declarava cego e recarregava **as dez tabelas a cada
+    // minuto**. Sem lápide nenhuma não há o que ter perdido: a contagem do
+    // manifesto já basta.
+    servidor.linhas.tags = [linha("t1", "2026-09-21T10:00:00Z")];
+    await rodar();
+
+    // Aparelho que sincronizou faz tempo, servidor que nunca apagou nada.
+    await local.definirMarca(MARCA_DAS_LAPIDES, "2026-01-02T00:00:00Z");
+
+    const resultado = await rodar();
+    expect(resultado.recarregadas).toEqual([]);
   });
 
   it("aparelho parado além do horizonte das lápides recarrega tudo", async () => {

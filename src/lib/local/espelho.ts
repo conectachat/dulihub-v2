@@ -99,11 +99,20 @@ export async function sincronizar(
     // 3. Conferência. Vem depois de propósito: ela precisa ver o estado
     //    final, não o do meio da sincronia.
     const manifesto = await transporte.manifesto();
-    const horizonte = manifesto.find((m) => m.tabela === "deleted_rows")?.maximo_updated_at;
+    const doServidor = manifesto.find((m) => m.tabela === "deleted_rows");
+    const horizonte = doServidor?.maximo_updated_at;
 
     // Parado mais tempo que a retenção das lápides: as que faltaram já
     // sumiram do servidor, e nenhuma conta salva isso — recarrega tudo.
-    const cego = Boolean(desdeLapides && horizonte && desdeLapides < horizonte);
+    //
+    // `linhas > 0` não é detalhe: sem lápide nenhuma o servidor devolve
+    // `now()` como horizonte, que é maior que qualquer marca — o aparelho se
+    // declarava cego e recarregava as dez tabelas **a cada minuto**. Não
+    // havendo exclusão alguma, não há o que se ter perdido.
+    const cego = Boolean(
+      doServidor && doServidor.linhas > 0 && desdeLapides && horizonte &&
+        desdeLapides < horizonte,
+    );
 
     for (const tabela of tabelas) {
       const noServidor = manifesto.find((m) => m.tabela === tabela)?.linhas;
