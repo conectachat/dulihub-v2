@@ -7,6 +7,7 @@ import {
   Handshake,
   ListChecks,
   Plug,
+  RefreshCw,
   Stamp,
   Tag,
   User,
@@ -42,6 +43,13 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         label: "Geral",
         icon: User,
         description: "Seu perfil e a organização em que você trabalha.",
+      },
+      {
+        slug: "sincronizacao",
+        label: "Sincronização",
+        icon: RefreshCw,
+        description:
+          "O que este aparelho gravou e o servidor ainda não recebeu — e o que ele recusou.",
       },
     ],
   },

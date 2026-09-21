@@ -15,10 +15,10 @@ import {
 } from "lucide-react";
 
 import { EstadoDaSincronia } from "@/components/estado-da-sincronia";
+import { Sair } from "@/components/sair";
 import { useUsuarioLocal } from "@/lib/local/usuario";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { signOut } from "@/features/auth/actions";
 import { iniciais } from "@/lib/formatar";
 import { usePersistedFlag } from "@/lib/use-persisted-flag";
 import { cn } from "@/lib/utils";
@@ -176,16 +176,7 @@ export function AppSidebar({
               <EstadoDaSincronia />
             </>
           )}
-          <form action={signOut}>
-            <Button
-              type="submit"
-              variant="ghost"
-              size={collapsed ? "icon" : "sm"}
-              className={cn("rounded-2xl", collapsed ? "mx-auto" : "w-full")}
-            >
-              {collapsed ? "⏻" : "Sair"}
-            </Button>
-          </form>
+          <Sair collapsed={collapsed} />
         </div>
       </div>
     </aside>

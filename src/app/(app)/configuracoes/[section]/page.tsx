@@ -6,6 +6,7 @@ import { getUserContext } from "@/features/organizations/queries";
 import { ALL_SECTIONS, findSection } from "@/features/settings/sections";
 import { VERSAO } from "@/lib/versao";
 
+import { Bandeja } from "./bandeja";
 import { SecoesDoAparelho } from "./secoes-locais";
 import { VersaoDoApp } from "./versao-do-app";
 
@@ -102,6 +103,8 @@ export default async function SettingsSectionPage({
 
       {found.slug === "geral" ? (
         <GeneralSection />
+      ) : found.slug === "sincronizacao" ? (
+        <Bandeja />
       ) : ESPELHADAS.includes(found.slug) ? (
         <SecoesDoAparelho slug={found.slug} visa={visa} />
       ) : (
