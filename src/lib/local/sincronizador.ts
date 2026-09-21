@@ -1,6 +1,7 @@
 "use client";
 
 import { armazemDo, BancoLocal, TABELAS_ESPELHADAS } from "./banco";
+import { BancoDaFila } from "./banco-da-fila";
 import { aplicarResultado, definirEstado } from "./estado";
 import { sincronizar } from "./espelho";
 import { transporteSupabase } from "./transporte-supabase";
@@ -20,6 +21,7 @@ import { transporteSupabase } from "./transporte-supabase";
 const INTERVALO_MS = 60_000;
 
 let banco: BancoLocal | null = null;
+let fila: BancoDaFila | null = null;
 let rodando = false;
 
 export function bancoDoUsuario(userId: string) {
@@ -28,6 +30,15 @@ export function bancoDoUsuario(userId: string) {
     banco = new BancoLocal(userId);
   }
   return banco;
+}
+
+/** A fila deste usuário. Banco separado: ver `banco-da-fila.ts`. */
+export function filaDoUsuario(userId: string) {
+  if (!fila || fila.name !== `dulihub-fila-${userId}`) {
+    fila?.close();
+    fila = new BancoDaFila(userId);
+  }
+  return fila;
 }
 
 export async function sincronizarAgora(userId: string) {

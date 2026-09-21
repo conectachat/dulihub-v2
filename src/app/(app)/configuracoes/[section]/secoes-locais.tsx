@@ -27,7 +27,7 @@ import {
   tipoDeVistoLocal,
 } from "@/features/settings/consultas-locais";
 import { useSincronia } from "@/lib/local/estado";
-import { bancoDoUsuario } from "@/lib/local/sincronizador";
+import { bancoDoUsuario, filaDoUsuario } from "@/lib/local/sincronizador";
 import { useUsuarioLocal } from "@/lib/local/usuario";
 
 import { DocumentTypesEditor } from "./document-types-editor";
@@ -121,9 +121,24 @@ function Esperando() {
   );
 }
 
-/** O espelho deste usuário, observado. `undefined` enquanto o Dexie responde. */
-function useEspelho<T>(userId: string, consulta: (banco: ReturnType<typeof bancoDoUsuario>) => Promise<T>) {
-  return useLiveQuery(() => consulta(bancoDoUsuario(userId)), [userId]);
+/**
+ * O espelho deste usuário **mais a fila**, observados. `undefined` enquanto o
+ * Dexie responde.
+ *
+ * `useLiveQuery` acompanha os dois bancos: gravar na fila redesenha a tela na
+ * hora, e a sincronia redesenha de novo quando o item sai da fila confirmado.
+ */
+function useEspelho<T>(
+  userId: string,
+  consulta: (
+    banco: ReturnType<typeof bancoDoUsuario>,
+    fila: ReturnType<typeof filaDoUsuario>,
+  ) => Promise<T>,
+) {
+  return useLiveQuery(
+    () => consulta(bancoDoUsuario(userId), filaDoUsuario(userId)),
+    [userId],
+  );
 }
 
 export function SecaoEtapasDoFunil({ userId }: { userId: string }) {
@@ -267,7 +282,7 @@ export function SecaoTiposDeVisto({ userId }: { userId: string }) {
 
 /** Um tipo de visto: etapas e documentos exigidos. */
 export function SecaoTipoDeVisto({ userId, visaId }: { userId: string; visaId: string }) {
-  const dados = useEspelho(userId, (banco) => tipoDeVistoLocal(banco, visaId));
+  const dados = useEspelho(userId, (banco, fila) => tipoDeVistoLocal(banco, fila, visaId));
 
   if (!dados) return <Esperando />;
   const { visto, etapas, catalogo, exigencias } = dados;

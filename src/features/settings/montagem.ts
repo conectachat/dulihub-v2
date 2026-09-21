@@ -1,3 +1,4 @@
+import type { Pendencia } from "@/lib/local/sobreposicao";
 import type { Tables } from "@/lib/supabase/database.types";
 
 /**
@@ -9,36 +10,44 @@ import type { Tables } from "@/lib/supabase/database.types";
  * (`consultas-locais.ts`). Uma cópia em cada lado mostraria números
  * diferentes com e sem internet, e ninguém desconfiaria — o tipo de
  * divergência que a Fase 2.5 existe para evitar.
+ *
+ * Os tipos carregam `Pendencia`: a linha sabe dizer se ainda não subiu, ou se
+ * foi recusada e por quê. Fica no tipo, e não num paralelo qualquer, para que
+ * uma tela nova não consiga esquecer de mostrar isso.
  */
 
 export type EtapaDoFunil = Pick<
   Tables<"pipeline_stages">,
   "id" | "name" | "position" | "is_won" | "is_lost"
-> & { opportunity_count: number };
+> &
+  Pendencia & { opportunity_count: number };
 
-export type TagComContagem = Pick<Tables<"tags">, "id" | "name" | "color"> & {
-  person_count: number;
-};
+export type TagComContagem = Pick<Tables<"tags">, "id" | "name" | "color"> &
+  Pendencia & { person_count: number };
 
 export type PastaDoCatalogo = Pick<
   Tables<"document_types">,
   "id" | "parent_id" | "name" | "position"
->;
+> &
+  Pendencia;
 
 export type StatusDeEtapa = Pick<
   Tables<"stage_statuses">,
   "id" | "code" | "label" | "color" | "position" | "is_default" | "is_done" | "is_system"
->;
+> &
+  Pendencia;
 
 export type EtapaDoVisto = Pick<
   Tables<"visa_stages">,
   "id" | "parent_id" | "name" | "position" | "is_required" | "estimated_days"
->;
+> &
+  Pendencia;
 
 export type ExigenciaDoVisto = Pick<
   Tables<"visa_type_documents">,
   "id" | "document_type_id" | "is_required" | "deadline_days" | "position"
->;
+> &
+  Pendencia;
 
 function contarPor<T>(linhas: T[], chave: (linha: T) => string) {
   const mapa = new Map<string, number>();

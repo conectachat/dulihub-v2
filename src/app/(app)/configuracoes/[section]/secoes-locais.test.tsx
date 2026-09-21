@@ -4,6 +4,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { BancoLocal } from "@/lib/local/banco";
+import { BancoDaFila } from "@/lib/local/banco-da-fila";
 import { definirEstado } from "@/lib/local/estado";
 
 /**
@@ -31,16 +32,21 @@ vi.mock("@/features/settings/tag-actions", () => ({
 const { SecaoTags } = await import("./secoes-locais");
 
 let banco: BancoLocal;
+let fila: BancoDaFila;
 
 beforeEach(async () => {
   banco = new BancoLocal(USUARIO);
   await banco.open();
+  fila = new BancoDaFila(USUARIO);
+  await fila.open();
   definirEstado({ em: null, sincronizando: true, error: null, online: true });
 });
 
 afterEach(async () => {
   banco.close();
+  fila.close();
   await BancoLocal.delete(`dulihub-${USUARIO}`);
+  await BancoDaFila.delete(`dulihub-fila-${USUARIO}`);
 });
 
 async function semear() {
@@ -99,6 +105,49 @@ describe("Configuração lendo do espelho", () => {
 
     await waitFor(() =>
       expect(screen.getAllByDisplayValue("Chegou agora")).not.toHaveLength(0),
+    );
+  });
+
+  it("o que está na fila aparece na tela, e some quando sobe", async () => {
+    await semear();
+    // O que uma gravação offline deixa: a linha **não** entra na tabela
+    // espelhada — entra na fila, e a leitura a põe por cima.
+    await fila.fila.put({
+      id: "f1",
+      alvo: "t9",
+      depende: [],
+      passos: [
+        {
+          tipo: "insert",
+          tabela: "tags",
+          linha: { id: "t9", organization_id: ORG, name: "Feita no avião", color: null },
+        },
+      ],
+      rotulo: "Criar a tag Feita no avião",
+      criada_em: "2026-09-21T11:00:00Z",
+      estado: "pendente",
+      enviada_em: null,
+      motivo: null,
+    });
+
+    render(<SecaoTags userId={USUARIO} />);
+    const naFila = (await screen.findAllByDisplayValue("Feita no avião")).length;
+    expect(naFila).toBeGreaterThan(0);
+
+    // Subiu: a sincronia traz a linha de verdade e o item sai da fila. A
+    // linha tem o mesmo id nos dois lados — é o id gerado no aparelho —,
+    // então ela troca de lugar sem duplicar na tela.
+    await banco.tabela("tags").put({
+      id: "t9",
+      organization_id: ORG,
+      name: "Feita no avião",
+      color: null,
+      updated_at: "2026-09-21T11:05:00Z",
+    });
+    await fila.fila.delete("f1");
+
+    await waitFor(() =>
+      expect(screen.getAllByDisplayValue("Feita no avião")).toHaveLength(naFila),
     );
   });
 });
