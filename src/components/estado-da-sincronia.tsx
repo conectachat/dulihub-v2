@@ -5,6 +5,7 @@ import { CloudOff, RefreshCw, TriangleAlert } from "lucide-react";
 
 import { useSincronia } from "@/lib/local/estado";
 import { ligarSincronia } from "@/lib/local/sincronizador";
+import { useUsuarioLocal } from "@/lib/local/usuario";
 import { formatarDataHora } from "@/lib/formatar";
 import { cn } from "@/lib/utils";
 
@@ -17,11 +18,17 @@ import { cn } from "@/lib/utils";
  * distingue **sem internet** (espera) de **sessão expirada** (entre de novo)
  * — as ações são diferentes.
  */
-export function EstadoDaSincronia({ userId }: { userId: string }) {
+export function EstadoDaSincronia() {
   const { em, sincronizando, error, online } = useSincronia();
+  const { userId } = useUsuarioLocal();
   const [agora, setAgora] = useState(() => Date.now());
 
-  useEffect(() => ligarSincronia(userId), [userId]);
+  // De quem é o aparelho vem da sessão guardada aqui, não do HTML: offline a
+  // casca pode ser a que ficou em cache de outra pessoa.
+  useEffect(() => {
+    if (!userId) return;
+    return ligarSincronia(userId);
+  }, [userId]);
 
   // Relógio próprio: sem ele o carimbo envelhece só quando algo mais
   // redesenha a tela, e "há 2 minutos" fica parado por meia hora.

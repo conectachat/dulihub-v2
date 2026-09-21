@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ArrowLeft, ChevronRight, CloudOff, FileStack, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronRight,
+  CloudOff,
+  FileStack,
+  Loader2,
+  TriangleAlert,
+} from "lucide-react";
 
 import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
@@ -21,6 +28,7 @@ import {
 } from "@/features/settings/consultas-locais";
 import { useSincronia } from "@/lib/local/estado";
 import { bancoDoUsuario } from "@/lib/local/sincronizador";
+import { useUsuarioLocal } from "@/lib/local/usuario";
 
 import { DocumentTypesEditor } from "./document-types-editor";
 import { StageStatusesEditor } from "./stage-statuses-editor";
@@ -42,6 +50,50 @@ import { VisaStagesEditor } from "./visa-stages-editor";
  * `useLiveQuery` observa o Dexie: quando a sincronia traz novidade, a tela se
  * redesenha sozinha, sem recarregar.
  */
+
+/**
+ * A seção pedida, para o dono **deste** aparelho.
+ *
+ * Quem responde de quem é o aparelho é a sessão guardada no navegador, não a
+ * casca: o service worker guarda essa rota para abrir offline, e casca com
+ * `userId` dentro abriria o banco local de outra pessoa num computador
+ * compartilhado.
+ */
+export function SecoesDoAparelho({ slug, visa }: { slug: string; visa?: string }) {
+  const { userId, carregado } = useUsuarioLocal();
+
+  if (!carregado) {
+    return (
+      <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Abrindo...
+      </p>
+    );
+  }
+
+  if (!userId) {
+    return (
+      <p className="flex items-center gap-2 py-6 text-sm text-destructive">
+        <TriangleAlert className="h-4 w-4" />
+        Sua sessão terminou neste aparelho. Entre de novo para ver a
+        configuração.
+      </p>
+    );
+  }
+
+  if (slug === "etapas-do-funil") return <SecaoEtapasDoFunil userId={userId} />;
+  if (slug === "tags") return <SecaoTags userId={userId} />;
+  if (slug === "categorias-de-documento") return <SecaoCatalogo userId={userId} />;
+  if (slug === "status-de-etapas") return <SecaoStatusDeEtapa userId={userId} />;
+  if (slug === "tipos-de-visto") {
+    return visa ? (
+      <SecaoTipoDeVisto userId={userId} visaId={visa} />
+    ) : (
+      <SecaoTiposDeVisto userId={userId} />
+    );
+  }
+  return null;
+}
 
 /** Enquanto o espelho não tem nada, diz por quê — e nunca "não existe". */
 function Esperando() {

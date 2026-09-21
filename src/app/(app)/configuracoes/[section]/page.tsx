@@ -4,18 +4,24 @@ import { SectionHeader } from "@/components/page-header";
 import { EmConstrucao } from "@/components/em-construcao";
 import { getUserContext } from "@/features/organizations/queries";
 import { ALL_SECTIONS, findSection } from "@/features/settings/sections";
-import { contextoAtual } from "@/lib/organizacao";
 import { VERSAO } from "@/lib/versao";
 
-import {
-  SecaoCatalogo,
-  SecaoEtapasDoFunil,
-  SecaoStatusDeEtapa,
-  SecaoTags,
-  SecaoTipoDeVisto,
-  SecaoTiposDeVisto,
-} from "./secoes-locais";
+import { SecoesDoAparelho } from "./secoes-locais";
 import { VersaoDoApp } from "./versao-do-app";
+
+/**
+ * As seções que já desenham do espelho no aparelho.
+ *
+ * A casca delas não traz dado nenhum — nem de qual usuário é — e é isso que
+ * permite ao service worker guardá-la e abrir a tela sem internet.
+ */
+const ESPELHADAS = [
+  "etapas-do-funil",
+  "tags",
+  "categorias-de-documento",
+  "tipos-de-visto",
+  "status-de-etapas",
+];
 
 export function generateStaticParams() {
   return ALL_SECTIONS.map((s) => ({ section: s.slug }));
@@ -90,30 +96,14 @@ export default async function SettingsSectionPage({
   const found = findSection(section);
   if (!found) notFound();
 
-  // O espelho é por usuário; a casca desta rota não traz dado nenhum, e é
-  // isso que permite ao service worker guardá-la e abrir a tela offline.
-  const { userId } = await contextoAtual();
-
   return (
     <div className="space-y-6 p-6">
       <SectionHeader title={found.label} description={found.description} />
 
       {found.slug === "geral" ? (
         <GeneralSection />
-      ) : !userId ? null : found.slug === "etapas-do-funil" ? (
-        <SecaoEtapasDoFunil userId={userId} />
-      ) : found.slug === "tags" ? (
-        <SecaoTags userId={userId} />
-      ) : found.slug === "categorias-de-documento" ? (
-        <SecaoCatalogo userId={userId} />
-      ) : found.slug === "tipos-de-visto" ? (
-        visa ? (
-          <SecaoTipoDeVisto userId={userId} visaId={visa} />
-        ) : (
-          <SecaoTiposDeVisto userId={userId} />
-        )
-      ) : found.slug === "status-de-etapas" ? (
-        <SecaoStatusDeEtapa userId={userId} />
+      ) : ESPELHADAS.includes(found.slug) ? (
+        <SecoesDoAparelho slug={found.slug} visa={visa} />
       ) : (
         <EmConstrucao fase={found.phase} itens={found.planned} />
       )}

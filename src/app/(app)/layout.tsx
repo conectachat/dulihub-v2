@@ -19,7 +19,7 @@ export default async function AppLayout({
   return (
     <div className="flex min-h-svh bg-muted/40">
       <AppSidebar
-        userId={context?.userId ?? ""}
+        cascaDe={context?.userId ?? ""}
         userName={context?.fullName ?? ""}
         userEmail={context?.email ?? ""}
         organizationName={organization?.name ?? "—"}

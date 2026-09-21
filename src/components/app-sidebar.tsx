@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { EstadoDaSincronia } from "@/components/estado-da-sincronia";
+import { useUsuarioLocal } from "@/lib/local/usuario";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { signOut } from "@/features/auth/actions";
@@ -44,17 +45,29 @@ export function AppSidebar({
   userEmail,
   organizationName,
   roleLabel,
-  userId,
+  cascaDe,
 }: {
   userName: string;
   userEmail: string;
   organizationName: string;
   roleLabel: string;
-  /** Quem está logado: o espelho offline é por usuário. */
-  userId: string;
+  /**
+   * Para quem este HTML foi desenhado.
+   *
+   * Não serve para abrir nada — quem decide isso é a sessão no aparelho. Serve
+   * para desconfiar: a casca desta rota fica guardada pelo service worker, e
+   * num aparelho compartilhado a segunda pessoa a receberia com o nome da
+   * primeira no canto. Divergiu, o menu cala o que não pode confirmar.
+   */
+  cascaDe: string;
 }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = usePersistedFlag(STORAGE_KEY);
+  const { userId: doAparelho, email, carregado } = useUsuarioLocal();
+
+  const outraConta = carregado && doAparelho !== null && doAparelho !== cascaDe;
+  const nome = outraConta ? (email ?? "Outra conta") : userName || userEmail;
+  const papel = outraConta ? "Reconectando..." : roleLabel;
 
   function toggle() {
     setCollapsed(!collapsed);
@@ -71,7 +84,7 @@ export function AppSidebar({
         {/* Identidade do usuário */}
         <div className="flex items-center gap-3">
           <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-sm font-semibold text-primary">
-            {iniciais(userName || userEmail)}
+            {iniciais(nome)}
             <span
               className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card bg-success"
               aria-hidden
@@ -80,10 +93,8 @@ export function AppSidebar({
 
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">
-                {userName || userEmail}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">{roleLabel}</p>
+              <p className="truncate text-sm font-semibold">{nome}</p>
+              <p className="truncate text-xs text-muted-foreground">{papel}</p>
             </div>
           )}
 
@@ -157,10 +168,12 @@ export function AppSidebar({
         <div className="space-y-2 border-t pt-3">
           {!collapsed && (
             <>
-              <p className="truncate px-1 text-xs text-muted-foreground">
-                {organizationName}
-              </p>
-              {userId ? <EstadoDaSincronia userId={userId} /> : null}
+              {outraConta ? null : (
+                <p className="truncate px-1 text-xs text-muted-foreground">
+                  {organizationName}
+                </p>
+              )}
+              <EstadoDaSincronia />
             </>
           )}
           <form action={signOut}>
