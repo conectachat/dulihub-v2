@@ -14,6 +14,7 @@ import {
   Wallet,
 } from "lucide-react";
 
+import { EstadoDaSincronia } from "@/components/estado-da-sincronia";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { signOut } from "@/features/auth/actions";
@@ -43,11 +44,14 @@ export function AppSidebar({
   userEmail,
   organizationName,
   roleLabel,
+  userId,
 }: {
   userName: string;
   userEmail: string;
   organizationName: string;
   roleLabel: string;
+  /** Quem está logado: o espelho offline é por usuário. */
+  userId: string;
 }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = usePersistedFlag(STORAGE_KEY);
@@ -152,9 +156,12 @@ export function AppSidebar({
 
         <div className="space-y-2 border-t pt-3">
           {!collapsed && (
-            <p className="truncate px-1 text-xs text-muted-foreground">
-              {organizationName}
-            </p>
+            <>
+              <p className="truncate px-1 text-xs text-muted-foreground">
+                {organizationName}
+              </p>
+              {userId ? <EstadoDaSincronia userId={userId} /> : null}
+            </>
           )}
           <form action={signOut}>
             <Button
