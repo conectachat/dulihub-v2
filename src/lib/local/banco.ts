@@ -28,10 +28,17 @@ import type { Armazem, Linha } from "./espelho";
  *   dito em `docs/plano.md`.
  */
 
-export const VERSAO_DO_ESPELHO = 1;
+export const VERSAO_DO_ESPELHO = 2;
 
 /** As tabelas espelhadas neste estágio: a Configuração e o que ela usa. */
 export const TABELAS_ESPELHADAS = [
+  // As duas primeiras respondem "de qual organização é esta gravação" sem
+  // servidor (`organizacao-local.ts`). `organizations` fica de fora da
+  // conferência do manifesto de propósito — não está na lista da 0030 —, e
+  // isso é seguro: quem se confere é o vínculo, e a linha da organização só
+  // fornece o `type` do desempate.
+  "organizations",
+  "organization_members",
   "tags",
   "person_tags",
   "document_types",

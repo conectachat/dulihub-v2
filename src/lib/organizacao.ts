@@ -1,6 +1,9 @@
+import { escolherOrganizacao } from "@/lib/escolher-organizacao";
 import { traduzirErro } from "@/lib/erros";
 import type { Enums } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
+
+export { escolherOrganizacao };
 
 /**
  * De qual organização é a ação que está acontecendo.
@@ -18,30 +21,6 @@ import { createClient } from "@/lib/supabase/server";
 
 /** O papel vem do enum do banco — acrescentar um papel lá aparece aqui. */
 export type PapelNaOrganizacao = Enums<"member_role">;
-
-/**
- * A regra de desempate, explícita e com motivo.
- *
- * A raiz manda: quem trabalha na Duli e também foi convidado por um parceiro
- * opera pela Duli — o contrário gravaria a operação da casa dentro do
- * parceiro. Sem raiz, a associação mais antiga, que é a organização de origem
- * da pessoa.
- *
- * Pura e sem efeito na lista recebida: a mesma lista alimenta o seletor de
- * organização na tela.
- */
-export function escolherOrganizacao<
-  T extends { created_at: string; organizations: { type: string } | null },
->(associacoes: T[]): T | null {
-  if (associacoes.length === 0) return null;
-
-  const raiz = associacoes.filter((a) => a.organizations?.type === "root");
-  const candidatas = raiz.length > 0 ? raiz : associacoes;
-
-  return [...candidatas].sort((a, b) =>
-    a.created_at.localeCompare(b.created_at),
-  )[0];
-}
 
 export type ContextoDaAcao = Awaited<ReturnType<typeof contextoAtual>>;
 

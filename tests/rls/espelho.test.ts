@@ -18,7 +18,14 @@ import { entrarComo, type Cliente } from "./clientes";
  * O espelho é um `Armazem` em memória: aqui não há IndexedDB.
  */
 
-const TABELAS = ["tags", "visa_types", "document_types", "stage_statuses"];
+const TABELAS = [
+  "tags",
+  "visa_types",
+  "document_types",
+  "stage_statuses",
+  "organizations",
+  "organization_members",
+];
 
 function armazemEmMemoria(): Armazem & { dados: Record<string, Map<string, Linha>> } {
   const dados: Record<string, Map<string, Linha>> = {};
@@ -87,6 +94,22 @@ describe("espelho contra o banco", () => {
     expect(vistosDoParceiro).toEqual(["Visto do Parceiro"]);
     expect(vistosDaDuli).not.toContain("Visto do Parceiro");
     expect(daDuli.dados.visa_types.size).toBeGreaterThan(0);
+  }, 60_000);
+
+  it("o vínculo que o aparelho guarda é o que aquele login enxerga", async () => {
+    // É deste par que sai a organização das gravações feitas offline. Se o
+    // espelho do parceiro trouxesse a organização da Duli, uma tag criada no
+    // avião poderia nascer na organização errada — e a RLS não recusaria,
+    // porque a linha é válida.
+    const doParceiro = armazemEmMemoria();
+    await sincronizar(transporteSupabase(parceiro), doParceiro, TABELAS);
+
+    const orgs = [...doParceiro.dados.organizations.values()].map((o) => o.id);
+    const vinculos = [...doParceiro.dados.organization_members.values()];
+
+    expect(orgs).toEqual([org]);
+    expect(vinculos.length).toBeGreaterThan(0);
+    expect(vinculos.every((v) => v.organization_id === org)).toBe(true);
   }, 60_000);
 
   it("a segunda sincronia traz o que mudou no meio", async () => {
