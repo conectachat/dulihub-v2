@@ -52,7 +52,14 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/login") ||
     pathname.startsWith("/auth") ||
     pathname.startsWith("/proposta") || // link de proposta para o lead
-    pathname.startsWith("/agendar"); // página pública de agendamento
+    pathname.startsWith("/agendar") || // página pública de agendamento
+    // Do app instalável: o service worker entrega `/offline` sem rede, e
+    // offline não há como conferir sessão — cair no login com os dados no
+    // aparelho seria pior que a tela de erro do navegador.
+    pathname === "/offline" ||
+    pathname === "/sw.js" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/api/versao";
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();

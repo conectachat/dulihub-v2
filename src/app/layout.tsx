@@ -1,8 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, Lora, Open_Sans } from "next/font/google";
 import "./globals.css";
 
+import { RegistrarSW } from "@/components/registrar-sw";
 import { Toaster } from "@/components/ui/sonner";
+import { VERSAO } from "@/lib/versao";
 
 /**
  * Tipografia da marca, do Manual de Identidade Visual:
@@ -34,6 +36,21 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Duli Hub",
   description: "Sistema de gestão — Duli Consulting",
+  // Instalável: o manifesto é gerado por `src/app/manifest.ts`.
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "Duli Hub", statusBarStyle: "default" },
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-icon.png",
+  },
+};
+
+/** Azul da marca na barra do sistema quando o app está instalado. */
+export const viewport: Viewport = {
+  themeColor: "#022b64",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -46,6 +63,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {children}
         {/* Canal de aviso para ação de linha, que não tem onde escrever. */}
         <Toaster position="bottom-right" />
+        <RegistrarSW versao={VERSAO} />
       </body>
     </html>
   );

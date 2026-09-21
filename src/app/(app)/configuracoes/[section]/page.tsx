@@ -14,8 +14,10 @@ import { getUserContext } from "@/features/organizations/queries";
 import { deleteVisaType } from "@/features/settings/visa-type-actions";
 import { ALL_SECTIONS, findSection } from "@/features/settings/sections";
 import { createClient } from "@/lib/supabase/server";
+import { VERSAO } from "@/lib/versao";
 
 import { DocumentTypesEditor } from "./document-types-editor";
+import { VersaoDoApp } from "./versao-do-app";
 import { StageStatusesEditor } from "./stage-statuses-editor";
 import { StagesEditor } from "./stages-editor";
 import { TagsEditor } from "./tags-editor";
@@ -74,6 +76,8 @@ async function GeneralSection() {
           </div>
         ))}
       </dl>
+
+      <VersaoDoApp versao={VERSAO} />
 
       <p className="text-sm text-muted-foreground">
         Editar nome e trocar senha entram junto com a gestão de usuários, na

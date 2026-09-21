@@ -81,12 +81,17 @@ beforeAll(async () => {
 
   // Uma ficha e um visto reais: as telas de detalhe têm caminho de código
   // próprio, e são as que mais carregam junção.
-  const [{ data: pessoa }, { data: visto }] = await Promise.all([
+  const [pessoa, visto] = await Promise.all([
     supabase.from("people").select("id").is("deleted_at", null).limit(1).maybeSingle(),
     supabase.from("visa_types").select("id").limit(1).maybeSingle(),
   ]);
-  pessoaId = pessoa?.id ?? null;
-  vistoId = visto?.id ?? null;
+  // O erro vem antes do "não existe". Descartá-lo já escondeu a causa de uma
+  // falha intermitente em 21/set: a suíte acusava "nenhum contato visível"
+  // quando o problema era a leitura, não a ausência de contato.
+  const falha = pessoa.error ?? visto.error;
+  if (falha) throw new Error(`Fixture da fumaça ilegível: ${falha.message}`);
+  pessoaId = pessoa.data?.id ?? null;
+  vistoId = visto.data?.id ?? null;
 }, 60_000);
 
 const pedir = (rota: string, comSessao: boolean | string = true) =>
@@ -98,6 +103,7 @@ const pedir = (rota: string, comSessao: boolean | string = true) =>
 
 const TOPO = [
   "/",
+  "/offline",
   "/contatos",
   "/contatos?view=excluidos",
   "/crm",
@@ -140,6 +146,31 @@ describe("cada tela abre com sessão", () => {
     const resposta = await pedir(`/configuracoes/tipos-de-visto?visa=${vistoId}`);
     expect(resposta.status).toBe(200);
   }, 60_000);
+});
+
+describe("app instalável", () => {
+  // Sem estas três respostas o app não instala, e o que o Estágio 2 guardar
+  // no celular não sobrevive — o iPhone só preserva os dados de app que está
+  // na tela de início.
+  it("o manifesto abre sem sessão", async () => {
+    const resposta = await pedir("/manifest.webmanifest", false);
+    expect(resposta.status).toBe(200);
+    const manifesto = await resposta.json();
+    expect(manifesto.display).toBe("standalone");
+    expect(manifesto.icons.some((i: { purpose: string }) => i.purpose === "maskable")).toBe(true);
+  });
+
+  it("a tela de sem conexão abre sem sessão", async () => {
+    // O service worker a entrega offline, quando não há como conferir login.
+    expect((await pedir("/offline", false)).status).toBe(200);
+  });
+
+  it("o service worker nunca é guardado em cache", async () => {
+    // O defeito do app antigo: `sw.js` em cache nunca se atualiza.
+    const resposta = await pedir("/sw.js", false);
+    expect(resposta.status).toBe(200);
+    expect(resposta.headers.get("cache-control")).toContain("no-store");
+  });
 });
 
 describe("sem sessão", () => {

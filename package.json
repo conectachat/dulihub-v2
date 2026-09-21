@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "bun run sw && next dev",
+    "build": "bun run sw && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run src/",
@@ -12,7 +12,8 @@
     "test:watch": "vitest src/",
     "typecheck": "next typegen && tsc --noEmit",
     "verify": "bun run typecheck && bun run lint && bun run test && bun run test:rls",
-    "test:fumaca": "vitest run tests/fumaca/ --no-file-parallelism"
+    "test:fumaca": "vitest run tests/fumaca/ --no-file-parallelism",
+    "sw": "bun build src/sw/sw.ts --outfile public/sw.js --target browser"
   },
   "dependencies": {
     "@ariakit/react": "^0.4.40",
@@ -103,6 +104,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.2",
     "jsdom": "^30.0.1",
+    "sharp": "^0.35.4",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.11"
