@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 
 import { falhou, gravou, type ActionState } from "@/lib/action-state";
 import { traduzirErro } from "@/lib/erros";
@@ -9,9 +8,10 @@ import { resultado, resultadoSemContagem } from "@/lib/gravar";
 import { contextoAtual, SEM_ORGANIZACAO } from "@/lib/organizacao";
 import { createClient } from "@/lib/supabase/server";
 
+import { documentTypeNameSchema } from "./schema";
+
 const PATH = "/configuracoes/categorias-de-documento";
 
-const nameSchema = z.string().trim().min(1, "Informe o nome").max(120);
 
 
 /**
@@ -25,7 +25,7 @@ export async function createDocumentType(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const parsed = nameSchema.safeParse(formData.get("name"));
+  const parsed = documentTypeNameSchema.safeParse(formData.get("name"));
   if (!parsed.success) return falhou(parsed.error.issues[0].message);
 
   const rawParent = formData.get("parent_id");
@@ -64,7 +64,7 @@ export async function renameDocumentType(
   formData: FormData,
 ): Promise<ActionState> {
   const id = formData.get("id");
-  const parsed = nameSchema.safeParse(formData.get("name"));
+  const parsed = documentTypeNameSchema.safeParse(formData.get("name"));
   if (typeof id !== "string") return falhou("Pasta não informada.");
   if (!parsed.success) return falhou(parsed.error.issues[0].message);
 

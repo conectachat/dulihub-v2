@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 
 import { falhou, gravou, type ActionState } from "@/lib/action-state";
 import { traduzirErro } from "@/lib/erros";
@@ -9,16 +8,8 @@ import { resultado } from "@/lib/gravar";
 import { contextoAtual, SEM_ORGANIZACAO } from "@/lib/organizacao";
 import type { TablesUpdate } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
-import { PALETTE } from "@/lib/palette";
 
-const tagSchema = z.object({
-  name: z.string().trim().min(1, "Informe o nome da tag").max(40),
-  color: z
-    .string()
-    .trim()
-    .refine((c) => (PALETTE as readonly string[]).includes(c), "Cor inválida"),
-});
-
+import { tagSchema } from "./schema";
 
 export async function createTag(
   _prev: ActionState,

@@ -1,30 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 
 import { falhou, gravou, type ActionState } from "@/lib/action-state";
 import { traduzirErro } from "@/lib/erros";
 import { resultado, resultadoSemContagem } from "@/lib/gravar";
-import { parseMoney, parseWholeNumber } from "@/lib/numbers";
+import { parseWholeNumber } from "@/lib/numbers";
 import { contextoAtual, SEM_ORGANIZACAO } from "@/lib/organizacao";
 import type { TablesUpdate } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { paiVisivel } from "@/lib/tree";
 
-const PATH = "/configuracoes/tipos-de-visto";
+import { visaStageSchema, visaTypeSchema } from "./schema";
 
-const visaSchema = z.object({
-  name: z.string().trim().min(1, "Informe o nome").max(120),
-  description: z.string().trim().optional(),
-  base_price: z.string().nullish().transform(parseMoney),
-  currency: z.enum(["BRL", "USD"]).default("BRL"),
-  estimated_days: z
-    .string()
-    .trim()
-    .optional()
-    .transform(parseWholeNumber),
-});
+const PATH = "/configuracoes/tipos-de-visto";
 
 
 // ---------------------------------------------------------------- tipo de visto
@@ -33,7 +22,7 @@ export async function saveVisaType(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const parsed = visaSchema.safeParse({
+  const parsed = visaTypeSchema.safeParse({
     name: formData.get("name"),
     description: formData.get("description"),
     base_price: formData.get("base_price"),
@@ -84,20 +73,11 @@ export async function deleteVisaType(formData: FormData): Promise<ActionState> {
 
 // ------------------------------------------------------------- etapas do molde
 
-const stageSchema = z.object({
-  name: z.string().trim().min(1, "Informe o nome da etapa").max(120),
-  estimated_days: z
-    .string()
-    .trim()
-    .optional()
-    .transform(parseWholeNumber),
-});
-
 export async function createVisaStage(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const parsed = stageSchema.safeParse({
+  const parsed = visaStageSchema.safeParse({
     name: formData.get("name"),
     estimated_days: formData.get("estimated_days"),
   });

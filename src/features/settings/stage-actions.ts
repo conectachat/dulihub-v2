@@ -1,14 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 
 import { falhou, gravou, type ActionState } from "@/lib/action-state";
 import { traduzirErro } from "@/lib/erros";
 import { resultado, resultadoSemContagem } from "@/lib/gravar";
 import { createClient } from "@/lib/supabase/server";
 
-const nameSchema = z.string().trim().min(1, "Informe o nome da etapa").max(60);
+import { pipelineStageNameSchema } from "./schema";
+
 
 /** Toda tela que muda quando o funil muda. */
 function revalidar() {
@@ -26,7 +26,7 @@ export async function createStage(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const parsedName = nameSchema.safeParse(formData.get("name"));
+  const parsedName = pipelineStageNameSchema.safeParse(formData.get("name"));
   if (!parsedName.success) return falhou(parsedName.error.issues[0].message);
 
   const pipelineId = formData.get("pipeline_id");
@@ -80,7 +80,7 @@ export async function createStage(
 
 export async function renameStage(formData: FormData): Promise<ActionState> {
   const id = formData.get("id");
-  const parsedName = nameSchema.safeParse(formData.get("name"));
+  const parsedName = pipelineStageNameSchema.safeParse(formData.get("name"));
   if (typeof id !== "string") return falhou("Etapa não informada.");
   if (!parsedName.success) return falhou(parsedName.error.issues[0].message);
 

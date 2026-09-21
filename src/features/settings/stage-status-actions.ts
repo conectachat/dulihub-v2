@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 
 import { falhou, gravou, type ActionState } from "@/lib/action-state";
 import { traduzirErro } from "@/lib/erros";
@@ -10,42 +9,23 @@ import { contextoAtual, SEM_ORGANIZACAO } from "@/lib/organizacao";
 import type { TablesUpdate } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
+import {
+  stageStatusColorSchema,
+  stageStatusLabelSchema,
+  toCode,
+} from "./schema";
+
 const SECTION = "/configuracoes/status-de-etapas";
-
-const labelSchema = z.string().trim().min(1, "Informe o nome do status").max(40);
-const colorSchema = z
-  .string()
-  .trim()
-  .regex(/^#[0-9a-fA-F]{6}$/, "Cor inválida");
-
-/**
- * Identificador estável, derivado do nome só na criação.
- *
- * O `code` é o que o resto do sistema referencia; renomear "Pendente" para
- * "A fazer" não pode mudá-lo, senão relatório e integração passam a apontar
- * para o vazio. Por isso a geração acontece uma vez, aqui, e nunca no rename.
- */
-function toCode(label: string) {
-  return (
-    label
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "")
-      .slice(0, 30) || "status"
-  );
-}
 
 
 export async function createStageStatus(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const label = labelSchema.safeParse(formData.get("label"));
+  const label = stageStatusLabelSchema.safeParse(formData.get("label"));
   if (!label.success) return falhou(label.error.issues[0].message);
 
-  const color = colorSchema.safeParse(formData.get("color"));
+  const color = stageStatusColorSchema.safeParse(formData.get("color"));
   if (!color.success) return falhou(color.error.issues[0].message);
 
   const { supabase, organizationId: orgId, error: erroDoContexto } =
@@ -86,13 +66,13 @@ export async function updateStageStatus(
 
   const rawLabel = formData.get("label");
   if (typeof rawLabel === "string") {
-    const label = labelSchema.safeParse(rawLabel);
+    const label = stageStatusLabelSchema.safeParse(rawLabel);
     if (label.success) patch.label = label.data;
   }
 
   const rawColor = formData.get("color");
   if (typeof rawColor === "string") {
-    const color = colorSchema.safeParse(rawColor);
+    const color = stageStatusColorSchema.safeParse(rawColor);
     if (color.success) patch.color = color.data;
   }
 
