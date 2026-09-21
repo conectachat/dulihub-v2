@@ -1,3 +1,5 @@
+import { novoId } from "./id";
+
 /**
  * O que toda Server Action devolve para a tela.
  *
@@ -38,12 +40,12 @@ export const ESTADO_INICIAL: ActionState = { error: null };
  * o clique não chegou a acontecer.
  */
 export function falhou(error: string): ActionState {
-  return { error, token: crypto.randomUUID() };
+  return { error, token: novoId() };
 }
 
 /** Sucesso, com marca nova. */
 export function gravou(): ActionState {
-  return { error: null, ok: true, token: crypto.randomUUID() };
+  return { error: null, ok: true, token: novoId() };
 }
 
 /**

@@ -1,0 +1,156 @@
+import "fake-indexeddb/auto";
+
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { BancoLocal } from "@/lib/local/banco";
+import { BancoDaFila } from "@/lib/local/banco-da-fila";
+import { esquecerUsuarioLocal } from "@/lib/local/usuario";
+
+/**
+ * Gravar sem internet.
+ *
+ * A gravação não vai ao servidor: ela entra na fila deste aparelho e sobe
+ * depois. O que se prova aqui é que ela entra **completa** — com id gerado
+ * aqui (a chave de idempotência do replay), com a organização certa, e
+ * recusando na hora o que o servidor recusaria horas depois.
+ */
+
+const USUARIO = "11111111-1111-4111-8111-111111111111";
+const ORG = "22222222-2222-4222-8222-222222222222";
+
+vi.mock("@/lib/supabase/client", () => ({
+  createClient: () => ({
+    auth: { getSession: async () => ({ data: { session: { user: { id: USUARIO } } } }) },
+  }),
+}));
+
+vi.mock("@/lib/local/sincronizador", async (original) => ({
+  ...(await original<typeof import("@/lib/local/sincronizador")>()),
+  // A drenagem tem teste próprio; aqui interessa o que fica guardado.
+  sincronizarAgora: vi.fn(),
+}));
+
+const { createTag, deleteTag, updateTag } = await import("./escritas-locais");
+
+let banco: BancoLocal;
+let fila: BancoDaFila;
+
+function formulario(campos: Record<string, string>) {
+  const dados = new FormData();
+  for (const [k, v] of Object.entries(campos)) dados.set(k, v);
+  return dados;
+}
+
+beforeEach(async () => {
+  esquecerUsuarioLocal();
+  banco = new BancoLocal(USUARIO);
+  await banco.open();
+  fila = new BancoDaFila(USUARIO);
+  await fila.open();
+
+  await banco.tabela("organizations").put({
+    id: ORG,
+    name: "Duli",
+    slug: "duli",
+    type: "root",
+    updated_at: "2026-09-21T10:00:00Z",
+  });
+  await banco.tabela("organization_members").put({
+    id: "m1",
+    user_id: USUARIO,
+    organization_id: ORG,
+    role: "admin",
+    created_at: "2024-01-01T00:00:00Z",
+    updated_at: "2026-09-21T10:00:00Z",
+  });
+});
+
+afterEach(async () => {
+  banco.close();
+  fila.close();
+  await BancoLocal.delete(`dulihub-${USUARIO}`);
+  await BancoDaFila.delete(`dulihub-fila-${USUARIO}`);
+});
+
+describe("createTag no aparelho", () => {
+  it("entra na fila com id daqui e a organização do aparelho", async () => {
+    const estado = await createTag({ error: null }, formulario({ name: "EB-1A", color: "#ff6600" }));
+
+    expect(estado.error).toBeNull();
+    const [item] = await fila.fila.toArray();
+    expect(item.passos).toHaveLength(1);
+    expect(item.passos[0]).toMatchObject({
+      tipo: "insert",
+      tabela: "tags",
+      linha: { organization_id: ORG, name: "EB-1A", color: "#ff6600" },
+    });
+    // O id é gerado aqui: é ele que faz o replay bater na chave primária em
+    // vez de criar uma segunda linha.
+    expect(item.alvo).toMatch(/^[0-9a-f-]{36}$/);
+    expect(item.rotulo).toContain("EB-1A");
+  });
+
+  it("nome repetido é recusado na hora, não horas depois", async () => {
+    await banco.tabela("tags").put({
+      id: "t1",
+      organization_id: ORG,
+      name: "EB-1A",
+      color: null,
+      updated_at: "2026-09-21T10:00:00Z",
+    });
+
+    const estado = await createTag({ error: null }, formulario({ name: "eb-1a", color: "#ff6600" }));
+
+    expect(estado.error).toMatch(/já existe/i);
+    expect(await fila.fila.count()).toBe(0);
+  });
+
+  it("aparelho que ainda não baixou nada não grava no escuro", async () => {
+    await banco.tabela("organization_members").clear();
+
+    const estado = await createTag({ error: null }, formulario({ name: "EB-1A", color: "#ff6600" }));
+
+    expect(estado.error).toMatch(/ainda não baixou/i);
+    expect(await fila.fila.count()).toBe(0);
+  });
+
+  it("entrada inválida não encosta na fila", async () => {
+    const estado = await createTag({ error: null }, formulario({ name: "  ", color: "#ff6600" }));
+
+    expect(estado.error).toBeTruthy();
+    expect(await fila.fila.count()).toBe(0);
+  });
+});
+
+describe("alterar o que ainda não subiu", () => {
+  it("renomear uma tag criada offline fica dependendo dela", async () => {
+    // Sem esta dependência, a recusa da criação deixaria o rename subir
+    // sozinho contra uma linha que nunca existiu.
+    await createTag({ error: null }, formulario({ name: "Rascunho", color: "#ff6600" }));
+    const [criacao] = await fila.fila.toArray();
+
+    await updateTag(formulario({ id: criacao.alvo, name: "Pronta", color: "#ff6600" }));
+
+    const itens = await fila.fila.orderBy("criada_em").toArray();
+    expect(itens).toHaveLength(2);
+    expect(itens[1].depende).toEqual([criacao.alvo]);
+    expect(itens[1].passos[0]).toMatchObject({ tipo: "update", tabela: "tags" });
+  });
+
+  it("apagar tag que já está no servidor não depende de ninguém", async () => {
+    await banco.tabela("tags").put({
+      id: "t1",
+      organization_id: ORG,
+      name: "Antiga",
+      color: null,
+      updated_at: "2026-09-21T10:00:00Z",
+    });
+
+    await deleteTag(formulario({ id: "t1" }));
+
+    const [item] = await fila.fila.toArray();
+    expect(item.depende).toEqual([]);
+    expect(item.passos[0]).toMatchObject({ tipo: "delete", tabela: "tags", id: "t1" });
+    expect(item.rotulo).toContain("Antiga");
+  });
+});

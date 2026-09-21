@@ -21,6 +21,10 @@ export type EstadoDaSincronia = {
   error: string | null;
   /** Nulo até a primeira tentativa; depois, o que o navegador informa. */
   online: boolean;
+  /** Gravações feitas no aparelho que o servidor ainda não recebeu. */
+  pendentes: number;
+  /** Gravações que o servidor recusou e esperam alguém decidir. */
+  conflitos: number;
 };
 
 let estado: EstadoDaSincronia = {
@@ -28,6 +32,8 @@ let estado: EstadoDaSincronia = {
   sincronizando: false,
   error: null,
   online: true,
+  pendentes: 0,
+  conflitos: 0,
 };
 
 const ouvintes = new Set<() => void>();

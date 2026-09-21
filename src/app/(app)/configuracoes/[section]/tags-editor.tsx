@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { Plus, Tag as TagIcon } from "lucide-react";
+import { CloudOff, Plus, Tag as TagIcon, TriangleAlert } from "lucide-react";
 
 import { ESTADO_INICIAL } from "@/lib/action-state";
 import { ColorPicker } from "@/components/color-picker";
@@ -16,7 +16,7 @@ import {
   createTag,
   deleteTag,
   updateTag,
-} from "@/features/settings/tag-actions";
+} from "@/features/settings/escritas-locais";
 import { comAviso } from "@/lib/avisar";
 import { DEFAULT_COLOR } from "@/lib/palette";
 
@@ -25,6 +25,10 @@ type Tag = {
   name: string;
   color: string | null;
   person_count: number;
+  /** Gravada aqui e ainda não confirmada pelo servidor. */
+  pendente?: boolean;
+  /** Recusada pelo servidor: continua visível, com o motivo. */
+  conflito?: string | null;
 };
 
 
@@ -66,6 +70,26 @@ function TagRow({ tag }: { tag: Tag }) {
       <span className="w-24 shrink-0 text-right text-xs text-muted-foreground">
         {affected}
       </span>
+
+      {/*
+        O selo some sozinho quando o item sai da fila. Enquanto está aqui, a
+        pessoa sabe que o servidor ainda não tem isso — e recusa nunca
+        desaparece calada: fica em vermelho, com o motivo.
+      */}
+      {tag.conflito ? (
+        <span
+          className="flex shrink-0 items-center gap-1 text-xs text-destructive"
+          title={tag.conflito}
+        >
+          <TriangleAlert className="h-3 w-3" />
+          Não aceita
+        </span>
+      ) : tag.pendente ? (
+        <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+          <CloudOff className="h-3 w-3" />
+          Só neste aparelho
+        </span>
+      ) : null}
 
       <ConfirmAction
         action={deleteTag}

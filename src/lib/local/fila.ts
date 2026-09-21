@@ -1,4 +1,5 @@
 import { NADA_GRAVADO, traduzirErro } from "@/lib/erros";
+import { novoId } from "@/lib/id";
 
 import type { Linha } from "./espelho";
 
@@ -72,6 +73,42 @@ export interface ArmazemDaFila {
   listar(): Promise<ItemDaFila[]>;
   gravar(item: ItemDaFila): Promise<void>;
   apagar(id: string): Promise<void>;
+}
+
+/**
+ * Põe uma gravação na fila.
+ *
+ * `depende` vem de `dependeDe`: alterar algo que ainda não subiu amarra um
+ * item ao outro, e é isso que impede o segundo de ser enviado sozinho se o
+ * primeiro for recusado.
+ */
+export async function enfileirar(
+  armazem: ArmazemDaFila,
+  nova: {
+    alvo: string;
+    passos: Operacao[];
+    rotulo: string;
+    depende?: string[];
+  },
+): Promise<ItemDaFila> {
+  const item: ItemDaFila = {
+    id: novoId(),
+    alvo: nova.alvo,
+    depende: nova.depende ?? [],
+    passos: nova.passos,
+    rotulo: nova.rotulo,
+    criada_em: new Date().toISOString(),
+    estado: "pendente",
+    enviada_em: null,
+    motivo: null,
+  };
+  await armazem.gravar(item);
+  return item;
+}
+
+/** O alvo ainda está na fila? Então quem o altera depende dele. */
+export function dependeDe(itens: ItemDaFila[], alvo: string): string[] {
+  return itens.some((i) => i.alvo === alvo) ? [alvo] : [];
 }
 
 export type ResultadoDaDrenagem = {

@@ -58,6 +58,12 @@ export function esquecerUsuarioLocal() {
   estado = { userId: null, email: null, carregado: false };
 }
 
+/** Fora de componente: quem grava precisa saber de quem é o aparelho. */
+export async function usuarioLocal(): Promise<EstadoDoUsuario> {
+  await buscar();
+  return estado;
+}
+
 export function useUsuarioLocal(): EstadoDoUsuario {
   return useSyncExternalStore(
     (cb) => {

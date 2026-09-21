@@ -33,7 +33,9 @@ vi.mock("@/lib/supabase/client", () => ({
   }),
 }));
 
-vi.mock("@/features/settings/tag-actions", () => ({
+// As gravações têm teste próprio (`escritas-locais.test.ts`); aqui o que
+// importa é o que a tela desenha.
+vi.mock("@/features/settings/escritas-locais", () => ({
   createTag: vi.fn(),
   updateTag: vi.fn(),
   deleteTag: vi.fn(),

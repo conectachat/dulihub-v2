@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
  * — as ações são diferentes.
  */
 export function EstadoDaSincronia() {
-  const { em, sincronizando, error, online } = useSincronia();
+  const { em, sincronizando, error, online, pendentes, conflitos } = useSincronia();
   const { userId } = useUsuarioLocal();
   const [agora, setAgora] = useState(() => Date.now());
 
@@ -60,13 +60,40 @@ export function EstadoDaSincronia() {
             };
 
   return (
-    <p
-      className={cn("flex items-center gap-1.5 px-2 text-xs", classe)}
-      title={error ?? undefined}
-      role="status"
-    >
-      <Icone className={cn("h-3 w-3 shrink-0", sincronizando && "animate-spin")} />
-      <span className="truncate">{texto}</span>
-    </p>
+    <div className="space-y-1">
+      <p
+        className={cn("flex items-center gap-1.5 px-2 text-xs", classe)}
+        title={error ?? undefined}
+        role="status"
+      >
+        <Icone className={cn("h-3 w-3 shrink-0", sincronizando && "animate-spin")} />
+        <span className="truncate">{texto}</span>
+      </p>
+
+      {/*
+        O que foi gravado aqui e o servidor ainda não tem. Fica à vista porque
+        é a única diferença entre "está tudo salvo" e "está salvo neste
+        aparelho" — e é ela que decide se dá para fechar o notebook.
+      */}
+      {conflitos > 0 ? (
+        <p className="flex items-center gap-1.5 px-2 text-xs text-destructive">
+          <TriangleAlert className="h-3 w-3 shrink-0" />
+          <span className="truncate">
+            {conflitos === 1
+              ? "1 alteração não aceita"
+              : `${conflitos} alterações não aceitas`}
+          </span>
+        </p>
+      ) : null}
+
+      {pendentes > 0 ? (
+        <p className="flex items-center gap-1.5 px-2 text-xs text-muted-foreground">
+          <CloudOff className="h-3 w-3 shrink-0" />
+          <span className="truncate">
+            {pendentes === 1 ? "1 alteração para subir" : `${pendentes} alterações para subir`}
+          </span>
+        </p>
+      ) : null}
+    </div>
   );
 }

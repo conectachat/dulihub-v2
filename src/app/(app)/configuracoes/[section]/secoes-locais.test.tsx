@@ -23,7 +23,9 @@ import { definirEstado } from "@/lib/local/estado";
 const USUARIO = "11111111-1111-4111-8111-111111111111";
 const ORG = "22222222-2222-4222-8222-222222222222";
 
-vi.mock("@/features/settings/tag-actions", () => ({
+// As gravações têm teste próprio (`escritas-locais.test.ts`); aqui o que
+// importa é o que a tela desenha.
+vi.mock("@/features/settings/escritas-locais", () => ({
   createTag: vi.fn(),
   updateTag: vi.fn(),
   deleteTag: vi.fn(),
@@ -133,6 +135,8 @@ describe("Configuração lendo do espelho", () => {
     render(<SecaoTags userId={USUARIO} />);
     const naFila = (await screen.findAllByDisplayValue("Feita no avião")).length;
     expect(naFila).toBeGreaterThan(0);
+    // E a linha diz o que é: está aqui, não está no servidor.
+    expect(screen.getByText("Só neste aparelho")).toBeTruthy();
 
     // Subiu: a sincronia traz a linha de verdade e o item sai da fila. A
     // linha tem o mesmo id nos dois lados — é o id gerado no aparelho —,
@@ -147,7 +151,8 @@ describe("Configuração lendo do espelho", () => {
     await fila.fila.delete("f1");
 
     await waitFor(() =>
-      expect(screen.getAllByDisplayValue("Feita no avião")).toHaveLength(naFila),
+      expect(screen.queryByText("Só neste aparelho")).toBeNull(),
     );
+    expect(screen.getAllByDisplayValue("Feita no avião")).toHaveLength(naFila);
   });
 });

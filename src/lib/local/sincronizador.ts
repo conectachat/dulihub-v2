@@ -1,7 +1,9 @@
 "use client";
 
 import { armazemDo, BancoLocal, TABELAS_ESPELHADAS } from "./banco";
-import { BancoDaFila } from "./banco-da-fila";
+import { armazemDaFila, BancoDaFila } from "./banco-da-fila";
+import { drenar } from "./fila";
+import { transporteDaFila } from "./transporte-da-fila";
 import { aplicarResultado, definirEstado } from "./estado";
 import { sincronizar } from "./espelho";
 import { transporteSupabase } from "./transporte-supabase";
@@ -41,12 +43,38 @@ export function filaDoUsuario(userId: string) {
   return fila;
 }
 
+/**
+ * Sobe o que este aparelho gravou.
+ *
+ * Roda **antes** do pull: o que acabou de ser feito precisa estar no servidor
+ * antes de a conferência comparar as contagens. E tem `try` próprio porque o
+ * carimbo "Sincronizado" fala da leitura — um erro da fila aparece na
+ * bandeja, com o item e o motivo, não numa data em vermelho.
+ */
+async function drenarFila(userId: string) {
+  const armazem = armazemDaFila(filaDoUsuario(userId));
+
+  try {
+    if (navigator.onLine) await drenar(transporteDaFila(), armazem);
+  } catch {
+    // Os itens continuam na fila, que é onde a tela os mostra.
+  }
+
+  const itens = await armazem.listar();
+  definirEstado({
+    pendentes: itens.filter((i) => i.estado === "pendente").length,
+    conflitos: itens.filter((i) => i.estado === "conflito").length,
+  });
+}
+
 export async function sincronizarAgora(userId: string) {
   if (rodando) return;
   rodando = true;
   definirEstado({ sincronizando: true, online: navigator.onLine });
 
   try {
+    await drenarFila(userId);
+
     const resultado = await sincronizar(
       transporteSupabase(),
       armazemDo(bancoDoUsuario(userId)),
