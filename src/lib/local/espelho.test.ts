@@ -82,13 +82,15 @@ function armazem(): Armazem & { dados: Record<string, Map<string, Linha>> } {
   return {
     dados,
     async gravar(t, linhas) {
-      for (const l of linhas) tabela(t).set(l.id, l);
+      // Neste armazém de teste a chave é o `id`; `person_tags`, que não tem
+      // um, não entra em nenhum destes testes.
+      for (const l of linhas) tabela(t).set(String(l.id), l);
     },
     async apagar(t, ids) {
       for (const id of ids) tabela(t).delete(id);
     },
     async substituir(t, linhas) {
-      dados[t] = new Map(linhas.map((l) => [l.id, l]));
+      dados[t] = new Map(linhas.map((l) => [String(l.id), l]));
     },
     async contar(t) {
       return tabela(t).size;

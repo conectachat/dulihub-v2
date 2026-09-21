@@ -21,6 +21,18 @@ export type Estrategia =
   | { estrategia: "cache-primeiro" }
   | { estrategia: "rede-primeiro"; reserva: string };
 
+/**
+ * Rotas que já desenham do espelho no aparelho — o HTML delas é uma casca
+ * sem dado, igual para todo mundo. Só por isso podem ficar em cache: o que o
+ * app antigo prendia era página **com** conteúdo, e por isso servia dado
+ * velho como atual. A casca só envelhece de versão, e o `activate` apaga as
+ * das versões anteriores.
+ *
+ * Tela que ainda lê do servidor **não** entra aqui: guardá-la seria guardar
+ * uma tela vazia e chamá-la de app.
+ */
+export const ROTAS_COM_CASCA = ["/configuracoes"];
+
 /** O shell offline e o que ele precisa para desenhar. */
 export const DO_SHELL = [
   "/offline",
@@ -49,7 +61,12 @@ export function decidirEstrategia(
     return { estrategia: "ignorar" };
   }
 
-  if (modo === "navigate") return { estrategia: "rede-primeiro", reserva: "/offline" };
+  if (modo === "navigate") {
+    const migrada = ROTAS_COM_CASCA.some(
+      (rota) => pathname === rota || pathname.startsWith(`${rota}/`),
+    );
+    return { estrategia: "rede-primeiro", reserva: migrada ? pathname : "/offline" };
+  }
 
   if (pathname.startsWith("/_next/static/") || DO_SHELL.includes(pathname)) {
     return { estrategia: "cache-primeiro" };

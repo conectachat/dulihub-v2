@@ -71,13 +71,24 @@ sw.addEventListener("fetch", (evento) => {
     return;
   }
 
-  // Rede primeiro. Sem rede, o shell — que não tem dado nenhum e monta o app
+  // Rede primeiro. Sem rede, a casca — que não tem dado nenhum e monta o app
   // no navegador, que lê o que estiver guardado no aparelho.
   evento.respondWith(
-    fetch(pedido).catch(async () => {
+    fetch(pedido)
+      .then((resposta) => {
+        // Guarda a casca das rotas que já desenham do espelho (a reserva é a
+        // própria rota). Sem isto, a navegação offline não tem o que abrir.
+        if (resposta.ok && decisao.reserva !== "/offline") {
+          const copia = resposta.clone();
+          void caches.open(CACHE).then((cache) => cache.put(decisao.reserva, copia));
+        }
+        return resposta;
+      })
+      .catch(async () => {
       const shell = await caches.match(decisao.reserva);
       return (
         shell ??
+        (await caches.match("/offline")) ??
         new Response("Sem conexão.", {
           status: 503,
           headers: { "Content-Type": "text/plain; charset=utf-8" },

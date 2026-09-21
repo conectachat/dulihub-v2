@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 export const metadata = { title: "Sem conexão — Duli Hub" };
 
@@ -30,9 +31,20 @@ export default function OfflinePage() {
         </p>
       </div>
 
+      <div className="space-y-2">
+        <p className="text-sm font-medium">O que funciona sem internet</p>
+        <Link
+          href="/configuracoes/tags"
+          className="inline-block rounded-2xl border px-4 py-2 text-sm hover:bg-muted"
+        >
+          Configuração
+        </Link>
+      </div>
+
       <p className="max-w-sm text-xs text-muted-foreground">
-        Em breve as telas que você já abriu vão funcionar sem internet. Para
-        isso valer no celular, instale o app na tela de início.
+        As demais telas ainda precisam de conexão — estão sendo migradas uma a
+        uma. No celular, instale o app na tela de início: é o que faz o
+        aparelho guardar os dados.
       </p>
     </main>
   );

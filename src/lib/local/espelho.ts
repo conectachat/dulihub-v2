@@ -19,7 +19,13 @@
  *    anteriores, inclusive acesso revogado.
  */
 
-export type Linha = { id: string } & Record<string, unknown>;
+/**
+ * Uma linha do espelho. `id` é opcional porque `person_tags` não tem: a
+ * chave dela é o par (pessoa, etiqueta) — a mesma razão de ela ficar fora
+ * das lápides (0029b). Tabela sem `id` não recebe lápide; o espelho a relê
+ * inteira, e a conferência do manifesto pega qualquer diferença.
+ */
+export type Linha = Record<string, unknown> & { id?: string };
 
 export type Lapide = { tabela: string; id: string; deleted_at: string };
 

@@ -28,13 +28,15 @@ function armazemEmMemoria(): Armazem & { dados: Record<string, Map<string, Linha
   return {
     dados,
     async gravar(tabela, linhas) {
-      for (const l of linhas) t(tabela).set(l.id, l);
+      // Neste armazém de teste a chave é o `id`; `person_tags`, que não tem
+      // um, não entra em nenhum destes testes.
+      for (const l of linhas) t(tabela).set(String(l.id), l);
     },
     async apagar(tabela, ids) {
       for (const id of ids) t(tabela).delete(id);
     },
     async substituir(tabela, linhas) {
-      dados[tabela] = new Map(linhas.map((l) => [l.id, l]));
+      dados[tabela] = new Map(linhas.map((l) => [String(l.id), l]));
     },
     async contar(tabela) {
       return t(tabela).size;

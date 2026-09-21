@@ -129,6 +129,7 @@ describe("editor das Observações", () => {
       () => expect(document.querySelector("[data-slate-editor]")).not.toBeNull(),
       { timeout: 8_000 },
     );
-    // Carregar o Plate inteiro no jsdom leva dezenas de segundos.
-  }, 90_000);
+    // Carregar o Plate inteiro no jsdom leva dezenas de segundos sozinho, e
+    // mais quando a suíte roda vários arquivos em paralelo — daí a folga.
+  }, 240_000);
 });

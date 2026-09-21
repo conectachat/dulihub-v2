@@ -23,11 +23,27 @@ describe("decidirEstrategia", () => {
   it("navegação é rede primeiro, com o shell como reserva — nunca cache primeiro", () => {
     // A regra que impede repetir o defeito do app antigo: uma página
     // guardada aponta para pedaços de código que o deploy seguinte apagou.
-    expect(decidirEstrategia(`${origem}/projetos`, "navigate", origem)).toEqual({
+    expect(decidirEstrategia(`${origem}/`, "navigate", origem)).toEqual({
       estrategia: "rede-primeiro",
       reserva: "/offline",
     });
-    expect(decidirEstrategia(`${origem}/`, "navigate", origem)).toEqual({
+  });
+
+  it("rota migrada guarda a própria casca como reserva", () => {
+    // A Configuração não traz mais dado no HTML: a casca é igual para todo
+    // mundo e muda de nome a cada versão publicada. Guardá-la é o que faz a
+    // tela abrir sem internet — e não repete o erro do app antigo, que
+    // prendia página **com** conteúdo.
+    expect(decidirEstrategia(`${origem}/configuracoes/tags`, "navigate", origem)).toEqual({
+      estrategia: "rede-primeiro",
+      reserva: "/configuracoes/tags",
+    });
+  });
+
+  it("rota que ainda não migrou cai na tela de sem conexão", () => {
+    // Guardar a casca de uma tela que só desenha no servidor seria guardar
+    // uma tela vazia e chamá-la de app.
+    expect(decidirEstrategia(`${origem}/projetos`, "navigate", origem)).toEqual({
       estrategia: "rede-primeiro",
       reserva: "/offline",
     });
