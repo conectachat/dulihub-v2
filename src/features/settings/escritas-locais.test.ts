@@ -30,7 +30,15 @@ vi.mock("@/lib/local/sincronizador", async (original) => ({
   sincronizarAgora: vi.fn(),
 }));
 
-const { createTag, deleteTag, updateTag } = await import("./escritas-locais");
+const {
+  createStageStatus,
+  createTag,
+  deleteStageStatus,
+  deleteTag,
+  moveStageStatus,
+  setDefaultStageStatus,
+  updateTag,
+} = await import("./escritas-locais");
 
 let banco: BancoLocal;
 let fila: BancoDaFila;
@@ -152,5 +160,113 @@ describe("alterar o que ainda não subiu", () => {
     expect(item.depende).toEqual([]);
     expect(item.passos[0]).toMatchObject({ tipo: "delete", tabela: "tags", id: "t1" });
     expect(item.rotulo).toContain("Antiga");
+  });
+});
+
+describe("status de etapa no aparelho", () => {
+  async function semearStatus() {
+    await banco.tabela("stage_statuses").bulkPut([
+      {
+        id: "s1",
+        organization_id: ORG,
+        code: "pendente",
+        label: "Pendente",
+        color: "#8a97aa",
+        position: 0,
+        is_default: true,
+        is_done: false,
+        is_system: true,
+        updated_at: "2026-09-21T10:00:00Z",
+      },
+      {
+        id: "s2",
+        organization_id: ORG,
+        code: "em_analise",
+        label: "Em análise",
+        color: "#ff6600",
+        position: 1,
+        is_default: false,
+        is_done: false,
+        is_system: false,
+        updated_at: "2026-09-21T10:00:00Z",
+      },
+    ]);
+  }
+
+  it("nasce com código derivado do nome e na última posição", async () => {
+    await semearStatus();
+
+    await createStageStatus(
+      { error: null },
+      formulario({ label: "Aguardando cliente", color: "#0e7c6b" }),
+    );
+
+    const [item] = await fila.fila.toArray();
+    expect(item.passos[0]).toMatchObject({
+      tipo: "insert",
+      tabela: "stage_statuses",
+      linha: { code: "aguardando_cliente", position: 2, organization_id: ORG },
+    });
+  });
+
+  it("nome que normaliza para código já existente é recusado na hora", async () => {
+    await semearStatus();
+
+    const estado = await createStageStatus(
+      { error: null },
+      formulario({ label: "em  análise!", color: "#0e7c6b" }),
+    );
+
+    expect(estado.error).toMatch(/já existe/i);
+    expect(await fila.fila.count()).toBe(0);
+  });
+
+  it("status de fábrica não é enfileirado para exclusão", async () => {
+    await semearStatus();
+
+    const estado = await deleteStageStatus(formulario({ id: "s1" }));
+
+    expect(estado.error).toMatch(/fábrica/i);
+    expect(await fila.fila.count()).toBe(0);
+  });
+
+  it("trocar o padrão vai por RPC, não por dois updates", async () => {
+    // Dois updates enfileirados, falhando no meio, deixariam a organização
+    // sem padrão nenhum — e o índice único recusa os dois ao mesmo tempo.
+    await semearStatus();
+
+    await setDefaultStageStatus(formulario({ id: "s2" }));
+
+    const [item] = await fila.fila.toArray();
+    expect(item.passos).toEqual([
+      { tipo: "rpc", nome: "set_default_stage_status", args: { p_id: "s2" } },
+    ]);
+  });
+
+  it("reordenar manda a lista inteira, e o segundo clique substitui o primeiro", async () => {
+    await semearStatus();
+
+    await moveStageStatus(formulario({ id: "s2", direction: "up" }));
+    expect(await fila.fila.count()).toBe(1);
+    expect((await fila.fila.toArray())[0].passos[0]).toMatchObject({
+      tipo: "rpc",
+      nome: "reordenar_irmaos",
+      args: { p_tabela: "stage_statuses", p_ids: ["s2", "s1"] },
+    });
+
+    // Volta ao lugar: a fila continua com um item, agora com a ordem final.
+    await moveStageStatus(formulario({ id: "s2", direction: "down" }));
+
+    const itens = await fila.fila.toArray();
+    expect(itens).toHaveLength(1);
+    expect(itens[0].passos[0]).toMatchObject({ args: { p_ids: ["s1", "s2"] } });
+  });
+
+  it("subir quem já é o primeiro não enfileira nada", async () => {
+    await semearStatus();
+
+    await moveStageStatus(formulario({ id: "s1", direction: "up" }));
+
+    expect(await fila.fila.count()).toBe(0);
   });
 });

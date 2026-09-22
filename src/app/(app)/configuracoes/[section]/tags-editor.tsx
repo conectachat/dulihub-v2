@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { CloudOff, Plus, Tag as TagIcon, TriangleAlert } from "lucide-react";
+import { Plus, Tag as TagIcon } from "lucide-react";
 
 import { ESTADO_INICIAL } from "@/lib/action-state";
 import { ColorPicker } from "@/components/color-picker";
@@ -10,6 +10,7 @@ import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { InlineText } from "@/components/inline-text";
 import { FieldError } from "@/components/field-error";
+import { SeloPendente } from "@/components/selo-pendente";
 import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import {
@@ -71,25 +72,7 @@ function TagRow({ tag }: { tag: Tag }) {
         {affected}
       </span>
 
-      {/*
-        O selo some sozinho quando o item sai da fila. Enquanto está aqui, a
-        pessoa sabe que o servidor ainda não tem isso — e recusa nunca
-        desaparece calada: fica em vermelho, com o motivo.
-      */}
-      {tag.conflito ? (
-        <span
-          className="flex shrink-0 items-center gap-1 text-xs text-destructive"
-          title={tag.conflito}
-        >
-          <TriangleAlert className="h-3 w-3" />
-          Não aceita
-        </span>
-      ) : tag.pendente ? (
-        <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-          <CloudOff className="h-3 w-3" />
-          Só neste aparelho
-        </span>
-      ) : null}
+      <SeloPendente pendente={tag.pendente} conflito={tag.conflito} />
 
       <ConfirmAction
         action={deleteTag}

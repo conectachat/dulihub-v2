@@ -116,6 +116,32 @@ describe("sobrepor", () => {
     expect(linhas[0].conflito).toBe("Você não tem permissão para isto.");
   });
 
+  it("trocar o status padrão offline não deixa dois padrões na tela", () => {
+    // A troca vai por RPC, porque são dois passos e o índice único não admite
+    // os dois marcados ao mesmo tempo. A RPC não diz à tela o que mudou, então
+    // ela tem um gêmeo aqui — e a lista é curta de propósito.
+    const linhas = sobrepor(
+      "stage_statuses",
+      [
+        { id: "s1", label: "Pendente", is_default: true },
+        { id: "s2", label: "Em análise", is_default: false },
+      ],
+      [item([{ tipo: "rpc", nome: "set_default_stage_status", args: { p_id: "s2" } }])],
+    );
+
+    expect(linhas.find((l) => l.id === "s1")!.is_default).toBe(false);
+    expect(linhas.find((l) => l.id === "s2")!.is_default).toBe(true);
+    expect(linhas.filter((l) => l.is_default)).toHaveLength(1);
+  });
+
+  it("RPC sem gêmeo local não inventa mudança nenhuma", () => {
+    const linhas = sobrepor("tags", [t1], [
+      item([{ tipo: "rpc", nome: "compactar_pagina", args: { p_page: "x" } }]),
+    ]);
+
+    expect(linhas).toEqual([t1]);
+  });
+
   it("reordenação feita offline já aparece na ordem nova", () => {
     const linhas = sobrepor("document_types", [
       { id: "a", position: 0 },

@@ -25,7 +25,17 @@ export type Pendencia = {
 
 export type LinhaLocal = Linha & Pendencia;
 
+/**
+ * As RPCs que mudam o que a tela mostra, e o que cada uma faz no aparelho.
+ *
+ * Uma RPC não diz à tela o que mudou — ela roda no servidor. Enquanto o item
+ * está na fila, quem tem de saber é este arquivo. A lista é curta de
+ * propósito: só entra aqui a RPC que existe **porque** a operação não cabe em
+ * um update só (as duas atuais são reordenar e trocar o padrão, ambas
+ * atômicas por necessidade).
+ */
 const REORDENAR = "reordenar_irmaos";
+const PADRAO = "set_default_stage_status";
 
 export function sobrepor(
   tabela: string,
@@ -48,12 +58,25 @@ export function sobrepor(
 
     for (const passo of item.passos) {
       if (passo.tipo === "rpc") {
-        if (passo.nome !== REORDENAR || passo.args.p_tabela !== tabela) continue;
-        const ids = (passo.args.p_ids as string[]) ?? [];
-        ids.forEach((id, ordem) => {
-          const linha = porId.get(id);
-          if (linha) porId.set(id, { ...linha, position: ordem, ...marca });
-        });
+        if (passo.nome === REORDENAR && passo.args.p_tabela === tabela) {
+          const ids = (passo.args.p_ids as string[]) ?? [];
+          ids.forEach((id, ordem) => {
+            const linha = porId.get(id);
+            if (linha) porId.set(id, { ...linha, position: ordem, ...marca });
+          });
+        }
+
+        if (passo.nome === PADRAO && tabela === "stage_statuses") {
+          // Um padrão só: é o que o índice único garante no servidor, e a
+          // tela não pode mostrar dois enquanto o item espera.
+          const escolhido = passo.args.p_id;
+          for (const [id, linha] of porId) {
+            const vira = id === escolhido;
+            if (linha.is_default === vira) continue;
+            porId.set(id, { ...linha, is_default: vira, ...(vira ? marca : {}) });
+          }
+        }
+
         continue;
       }
 

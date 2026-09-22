@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/empty-state";
 import { InlineText } from "@/components/inline-text";
 import { MoveButtons } from "@/components/move-buttons";
 import { FieldError } from "@/components/field-error";
+import { SeloPendente } from "@/components/selo-pendente";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +22,7 @@ import {
   setDefaultStageStatus,
   toggleStageStatusDone,
   updateStageStatus,
-} from "@/features/settings/stage-status-actions";
+} from "@/features/settings/escritas-locais";
 import { comAviso } from "@/lib/avisar";
 import { DEFAULT_COLOR } from "@/lib/palette";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,10 @@ export type StageStatus = {
   is_default: boolean;
   is_done: boolean;
   is_system: boolean;
+  /** Gravado aqui e ainda não confirmado pelo servidor. */
+  pendente?: boolean;
+  /** Recusado pelo servidor: continua visível, com o motivo. */
+  conflito?: string | null;
 };
 
 function StatusRow({
@@ -93,6 +98,8 @@ function StatusRow({
           {status.is_done ? "Conclui a etapa" : "Não conclui"}
         </Button>
       </form>
+
+      <SeloPendente pendente={status.pendente} conflito={status.conflito} />
 
       {status.is_default ? (
         <span
