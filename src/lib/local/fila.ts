@@ -89,10 +89,17 @@ export async function enfileirar(
     passos: Operacao[];
     rotulo: string;
     depende?: string[];
+    /**
+     * Substitui um item que já está na fila, em vez de acrescentar.
+     *
+     * Só a reordenação usa: dez cliques no mesmo grupo de irmãos viram uma
+     * chamada com a ordem final. Ver `ordem.ts`.
+     */
+    id?: string;
   },
 ): Promise<ItemDaFila> {
   const item: ItemDaFila = {
-    id: novoId(),
+    id: nova.id ?? novoId(),
     alvo: nova.alvo,
     depende: nova.depende ?? [],
     passos: nova.passos,

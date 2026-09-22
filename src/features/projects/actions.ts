@@ -295,6 +295,11 @@ export async function moverEtapa(formData: FormData): Promise<ActionState> {
   if (!outra) return gravou();
 
   const estado = resultadoSemContagem(
+    // `swap_positions` e não `reordenar_irmaos`: esta tela ainda grava pelo
+    // servidor, com a resposta na mão. A troca pela ordem absoluta acontece
+    // quando o processo for para o espelho — antes disso não há fila para
+    // reproduzir nada, e mudar as duas coisas de uma vez esconderia qual
+    // delas quebrou.
     await supabase.rpc("swap_positions", {
       p_tabela: "project_stages",
       p_a: etapa.id,
