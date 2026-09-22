@@ -9,7 +9,7 @@ Convenções de código ficam no `AGENTS.md`.
 
 ---
 
-## 1. Estado atual (19/set/2026)
+## 1. Estado atual (22/set/2026)
 
 ### No ar
 
@@ -25,7 +25,8 @@ real.
 | CRM | Quadro do funil; negócio em Ganho oferece "Criar processo" |
 | Projetos | Lista de processos: cliente, visto, status, pastas resolvidas, próximo prazo |
 | Processo | Status e campos do USCIS; abas **Etapas** (tabela com status, data prevista e de conclusão, sub-etapas em grupo), **Documentos** (pastas, envio, visualizar, aprovar, recusar com motivo, resolver) e **Observações** (editor estilo Notion, várias pessoas ao mesmo tempo) |
-| Configurações | Etapas do funil, tags, catálogo de pastas, tipos de visto, status de etapa |
+| Configurações | Etapas do funil, tags, catálogo de pastas, tipos de visto, status de etapa — **abre e grava sem internet**, e sincroniza sozinha |
+| Sincronização | O que este aparelho gravou e o servidor ainda não recebeu; o que ele recusou, com o motivo |
 | Financeiro | "Em construção" |
 
 ### Dados
@@ -34,8 +35,9 @@ real.
 |---|---|
 | Contatos | 76, importados do app antigo sem duplicata |
 | Organizações | Duli (raiz) e "Parceiro de Teste" (só para a suíte de testes) |
-| Banco | Supabase `xigmtofpmfqeehhcdasf`, migrations `0001` a `0026` em `supabase/migrations/` |
+| Banco | Supabase `xigmtofpmfqeehhcdasf`, migrations `0001` a `0032` em `supabase/migrations/` |
 | Arquivos | Buckets privados `documentos` (pastas do processo) e `observacoes` (colados no editor), 20 MB |
+| No aparelho | Cópia das tabelas de configuração e do que ela usa, por usuário (IndexedDB), mais a fila do que ainda não subiu |
 
 ### Rede de proteção
 
@@ -44,9 +46,9 @@ Tudo roda sozinho em cada push.
 | Camada | O que pega |
 |---|---|
 | Trava de commit (`.githooks/pre-commit`) | Erro de tipo e de lint — o commit nem acontece |
-| 176 testes de unidade e componente | Regras, formatação, telas de etapas e documentos, sincronização em tempo real, editor montado sobre Supabase falso |
-| 63 testes de RLS | Uma organização não enxerga nem altera dado da outra — tabelas, arquivos e o canal em tempo real; regras de negócio no banco (pasta só resolve com tudo aprovado, processo só se liga a negócio do mesmo contato) |
-| 28 testes de fumaça | Cada tela abre com login de verdade, inclusive com um processo real |
+| 289 testes de unidade e componente | Regras, formatação, telas de etapas e documentos, sincronização em tempo real, editor montado sobre Supabase falso, fila de gravações offline e sobreposição do que está nela |
+| 86 testes de RLS | Uma organização não enxerga nem altera dado da outra — tabelas, arquivos e o canal em tempo real; regras de negócio no banco (pasta só resolve com tudo aprovado, processo só se liga a negócio do mesmo contato); e que a fila, ao subir, passa pela mesma RLS |
+| 33 testes de fumaça | Cada tela abre com login de verdade, inclusive com um processo real |
 
 ---
 
@@ -72,6 +74,53 @@ Decisões da fase:
 Falta, se o Renato pedir: aba **Lista de Evidências** (mesmo editor das
 Observações, rápido) e **Tarefas** (prevista para a Fase 4). Na Observações,
 ficaram de fora IA, comentários em trechos e sub-páginas.
+
+---
+
+## 2b. Fase 2.5, app instalável e offline — Configuração pronta
+
+Pedido do Renato em 21/set, com a frase que rege a fase: *"o app deve
+funcionar 100% quando estiver offline, e ao conectar fazer a sincronização.
+Offline funciona 100% igual online."* Não é um subconjunto — é paridade.
+
+### O que já funciona sem internet
+
+| | |
+|---|---|
+| Instalar | O app entra na tela de início do celular e no menu do computador, com ícone e janela próprios. No iPhone, instalar é o que impede o sistema de apagar os dados guardados depois de 7 dias sem uso |
+| Abrir | A Configuração abre sem rede, com os dados do aparelho, e navega entre as seções |
+| Gravar | As cinco seções da Configuração gravam offline: criar, renomear, reordenar, excluir, marcar |
+| Subir | Ao voltar a internet, o que foi gravado sobe sozinho, na ordem em que foi feito |
+| Ver o estado | "Sincronizado às 14:32" na barra lateral, que envelhece à vista; quantas alterações estão para subir; e a linha marcada "Só neste aparelho" até o servidor confirmar |
+| Recusa | O que o servidor não aceitar fica visível, com o motivo, em Configuração › Sincronização. Nada é desfeito sozinho |
+
+Sem Electron: a PWA dá janela e ícone próprios sem um segundo pacote para
+manter. O app antigo tinha os dois.
+
+### Decisões da fase
+
+| Pergunta | Resposta |
+|---|---|
+| Quem guarda o dado no aparelho | Dexie (IndexedDB) e sincronização escrita por nós. PowerSync e ElectricSQL foram descartados: põem a regra de quem-vê-o-quê fora do Postgres, e a RLS é a segurança real |
+| O que o aparelho guarda | Cópia do que o servidor **devolveu àquele login** — nada além. Se a policy esconde, o espelho não recebe |
+| Onde fica o que ainda não subiu | Numa fila separada, **fora** do espelho. Espelho é só cópia do servidor; misturar faria a conferência de contagens apagar o que a pessoa acabou de criar |
+| Servidor recusa algo feito offline | **Guardar e perguntar.** Continua visível e marcado, com motivo, e quem decide é o Renato |
+| Sair com gravação pendente | Avisa e segura. Sair mesmo assim exige confirmar a perda |
+| Arquivos offline | Por processo, quando o Renato pedir. Tráfego do plano gratuito, e passaporte não fica em todo celular |
+| Aparelho parado | Recusa gravar depois de 7 dias sem sincronizar, e mostrar depois de 14 |
+
+### O que ainda não funciona offline
+
+Primeiro login num aparelho novo; renovar sessão depois de muito tempo; abrir
+arquivo que ainda não foi baixado; ver quem está junto nas Observações; e as
+telas que ainda não migraram — Contatos, CRM e Processos, que offline não
+abrem. A tela "Sem conexão" lista o que já funciona e leva até lá.
+
+### O que vem
+
+Contatos e CRM, depois Processos e arquivos por processo; a fila de
+notificações ao cliente, que hoje não existe; e o Financeiro, que já nasce
+assim.
 
 ---
 

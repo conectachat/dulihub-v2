@@ -21,14 +21,33 @@ que uma fase fecha ou uma decisão muda.
 
 **Gerenciador de pacote: `bun`.** Nunca `npm`.
 
-**Leitura de dado acontece no servidor.** Server Components e Server Actions
-usam `@/lib/supabase/server`. O cliente de navegador (`@/lib/supabase/client`)
-só entra onde a interatividade exige — realtime, upload com progresso. Este app
-carrega passaporte, comprovante de renda e contrato: dado sensível não passa
-pelo navegador sem motivo.
+**Leitura e escrita: depende da tela.**
+
+*Tela que ainda não migrou* lê e grava no servidor. Server Components e Server
+Actions usam `@/lib/supabase/server`; o cliente de navegador
+(`@/lib/supabase/client`) só entra onde a interatividade exige.
+
+*Tela migrada para o espelho* — hoje a Configuração inteira — lê do banco
+dentro do aparelho e grava na fila dele (`src/lib/local/`), com o cliente de
+navegador. **Um caminho só, com e sem internet**: é o que faz offline ser
+igual a online em vez de uma segunda implementação que diverge em silêncio.
+A RLS continua sendo a segurança real — todo pull é `select` com policy, todo
+push é `insert`/`update` com policy, e nenhum caminho novo de leitura ou de
+escrita foi criado.
+
+O que **não** vai ao aparelho: arquivo de cliente (passaporte, comprovante de
+renda, contrato) só desce por escolha explícita, processo a processo; e
+`profiles` e o conteúdo de outras organizações nunca. O espelho é texto claro
+no disco — a proteção é a cifra do aparelho mais o prazo de validade do
+espelho, e isso está dito em `docs/plano.md`.
+
+Tela nova nasce migrada, e o Financeiro é a primeira.
 
 **`getUser()`, nunca `getSession()`** para decidir permissão. `getSession()`
 apenas lê o cookie, que o cliente pode forjar. `getUser()` revalida no servidor.
+A exceção é `src/lib/local/usuario.ts`, que usa `getSession` para saber **qual
+banco local abrir** — offline não há a quem perguntar, e ali não se decide
+permissão nenhuma: quem decide continua sendo a RLS, a cada linha que sobe.
 
 **RLS é a segurança real.** Verificação na interface é conveniência, não
 proteção. Toda tabela nova nasce com RLS ligada e policy escrita na mesma
@@ -57,13 +76,21 @@ valida só a linha gravada, nunca o que ela referencia.
 src/
   app/                    rotas e layouts, nada de lógica de negócio
   features/<dominio>/
-    actions.ts            Server Actions ("use server")
-    queries.ts            leitura no servidor
-    schema.ts             validação Zod
+    actions.ts            Server Actions ("use server") — tela não migrada
+    queries.ts            leitura no servidor — tela não migrada
+    consultas-locais.ts   leitura do espelho — tela migrada
+    escritas-locais.ts    gravação pela fila — tela migrada
+    montagem.ts           contagens e junções puras, usadas pelos dois lados
+    schema.ts             validação Zod, pura e compartilhada
     components/           componentes do domínio
   components/ui/          shadcn/ui, não editar à mão
+  lib/local/              espelho, fila, sobreposição e sincronia
   lib/supabase/           os três clientes
 ```
+
+Tela migrada não tem `actions.ts` nem `queries.ts`: quando a última tela de um
+domínio migra, os dois são **apagados**. Código morto diverge do que roda, e
+divergir em silêncio é o defeito que esta base persegue.
 
 Uma feature não importa de outra feature. Se precisar, o compartilhado sobe
 para `lib/`.
