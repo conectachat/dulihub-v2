@@ -7,6 +7,7 @@ import { ESTADO_INICIAL } from "@/lib/action-state";
 import { ConfirmAction } from "@/components/confirm-action";
 import { InlineText } from "@/components/inline-text";
 import { MoveButtons } from "@/components/move-buttons";
+import { SeloPendente } from "@/components/selo-pendente";
 import { FieldError } from "@/components/field-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,7 @@ import {
   deleteStage,
   moveStage,
   renameStage,
-} from "@/features/settings/stage-actions";
+} from "@/features/settings/escritas-locais";
 import { cn } from "@/lib/utils";
 
 type Stage = {
@@ -25,6 +26,10 @@ type Stage = {
   is_won: boolean;
   is_lost: boolean;
   opportunity_count: number;
+  /** Gravada aqui e ainda não confirmada pelo servidor. */
+  pendente?: boolean;
+  /** Recusada pelo servidor: continua visível, com o motivo. */
+  conflito?: string | null;
 };
 
 export function StagesEditor({
@@ -109,6 +114,8 @@ export function StagesEditor({
                   ? "1 negócio"
                   : `${stage.opportunity_count} negócios`}
               </span>
+
+              <SeloPendente pendente={stage.pendente} conflito={stage.conflito} />
 
               <div className="flex shrink-0 items-center gap-0.5">
                 {terminal ? (

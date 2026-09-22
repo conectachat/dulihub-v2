@@ -31,10 +31,13 @@ vi.mock("@/lib/local/sincronizador", async (original) => ({
 }));
 
 const {
+  createStage,
   createStageStatus,
+  deleteStage,
   createTag,
   deleteStageStatus,
   deleteTag,
+  moveStage,
   moveStageStatus,
   setDefaultStageStatus,
   updateTag,
@@ -267,6 +270,77 @@ describe("status de etapa no aparelho", () => {
 
     await moveStageStatus(formulario({ id: "s1", direction: "up" }));
 
+    expect(await fila.fila.count()).toBe(0);
+  });
+});
+
+describe("etapas do funil no aparelho", () => {
+  const FUNIL = "p1";
+
+  async function semearFunil() {
+    await banco.tabela("pipelines").put({
+      id: FUNIL,
+      organization_id: ORG,
+      name: "Padrão",
+      is_default: true,
+      position: 0,
+      updated_at: "2026-09-21T10:00:00Z",
+    });
+    await banco.tabela("pipeline_stages").bulkPut([
+      { id: "e1", organization_id: ORG, pipeline_id: FUNIL, name: "Novo", position: 0, is_won: false, is_lost: false, updated_at: "2026-09-21T10:00:00Z" },
+      { id: "e2", organization_id: ORG, pipeline_id: FUNIL, name: "Proposta", position: 1, is_won: false, is_lost: false, updated_at: "2026-09-21T10:00:00Z" },
+      { id: "ganho", organization_id: ORG, pipeline_id: FUNIL, name: "Ganho", position: 98, is_won: true, is_lost: false, updated_at: "2026-09-21T10:00:00Z" },
+    ]);
+  }
+
+  it("nasce antes das terminais, com a organização do funil", async () => {
+    await semearFunil();
+
+    await createStage({ error: null }, formulario({ name: "Negociação", pipeline_id: FUNIL }));
+
+    const [item] = await fila.fila.toArray();
+    expect(item.passos[0]).toMatchObject({
+      tipo: "insert",
+      tabela: "pipeline_stages",
+      linha: { pipeline_id: FUNIL, organization_id: ORG, position: 2, is_won: false },
+    });
+  });
+
+  it("ganho e perdido não reordenam", async () => {
+    await semearFunil();
+
+    const estado = await moveStage(formulario({ id: "ganho", direction: "up" }));
+
+    expect(estado.error).toMatch(/fim do funil/i);
+    expect(await fila.fila.count()).toBe(0);
+  });
+
+  it("a reordenação leva só as etapas do meio", async () => {
+    await semearFunil();
+
+    await moveStage(formulario({ id: "e2", direction: "up" }));
+
+    const [item] = await fila.fila.toArray();
+    expect(item.passos[0]).toMatchObject({
+      args: { p_tabela: "pipeline_stages", p_ids: ["e2", "e1"] },
+    });
+  });
+
+  it("etapa com negócio dentro avisa antes de enfileirar", async () => {
+    await semearFunil();
+    await banco.tabela("opportunities").put({
+      id: "o1",
+      organization_id: ORG,
+      person_id: "x",
+      pipeline_id: FUNIL,
+      stage_id: "e1",
+      title: "Caso",
+      updated_at: "2026-09-21T10:00:00Z",
+    });
+
+    const estado = await deleteStage(formulario({ id: "e1" }));
+
+    expect(estado.error).toMatch(/1 negócio/);
     expect(await fila.fila.count()).toBe(0);
   });
 });

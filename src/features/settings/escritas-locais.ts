@@ -11,8 +11,13 @@ import { organizacaoLocal } from "@/lib/local/organizacao-local";
 import { bancoDoUsuario, filaDoUsuario, sincronizarAgora } from "@/lib/local/sincronizador";
 import { usuarioLocal } from "@/lib/local/usuario";
 
-import { statusDeEtapaLocal, tagsLocais } from "./consultas-locais";
 import {
+  etapasDoFunilLocal,
+  statusDeEtapaLocal,
+  tagsLocais,
+} from "./consultas-locais";
+import {
+  pipelineStageNameSchema,
   stageStatusColorSchema,
   stageStatusLabelSchema,
   tagSchema,
@@ -406,5 +411,148 @@ export async function deleteStageStatus(formData: FormData): Promise<ActionState
     depende: dependeDe(await naFila(ctx), id),
     rotulo: `Excluir o status ${atual?.label ?? ""}`.trim(),
     passos: [{ tipo: "delete", tabela: "stage_statuses", id }],
+  });
+}
+
+// ------------------------------------------------------- etapas do funil
+
+/** Só as do meio reordenam: ganho e perdido moram no fim, em 98 e 99. */
+const doMeio = <T extends { is_won: boolean; is_lost: boolean }>(etapas: T[]) =>
+  etapas.filter((e) => !e.is_won && !e.is_lost);
+
+/**
+ * Cria uma etapa antes das terminais.
+ *
+ * Ganho e perdido vivem nas posições 98 e 99 justamente para que qualquer
+ * etapa nova caiba antes delas sem reordenar o funil inteiro.
+ */
+export async function createStage(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsedName = pipelineStageNameSchema.safeParse(formData.get("name"));
+  if (!parsedName.success) return falhou(parsedName.error.issues[0].message);
+
+  const pipelineId = formData.get("pipeline_id");
+  if (typeof pipelineId !== "string") return falhou("Funil não informado.");
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  const { funil, etapas } = await etapasDoFunilLocal(ctx.banco, ctx.fila);
+  if (!funil) return falhou("Funil não encontrado neste aparelho.");
+
+  const proxima = (doMeio(etapas).at(-1)?.position ?? -1) + 1;
+  if (proxima >= 98) {
+    return falhou("Limite de etapas atingido. Junte ou remova alguma antes.");
+  }
+
+  const id = novoId();
+  return gravarLocal(ctx, {
+    alvo: id,
+    rotulo: `Criar a etapa ${parsedName.data}`,
+    passos: [
+      {
+        tipo: "insert",
+        tabela: "pipeline_stages",
+        linha: {
+          id,
+          // A organização vem do funil, não de quem clicou — regra do
+          // AGENTS.md, e o espelho tem as duas coisas.
+          organization_id: ctx.organizationId,
+          pipeline_id: pipelineId,
+          name: parsedName.data,
+          position: proxima,
+          is_won: false,
+          is_lost: false,
+        },
+      },
+    ],
+  });
+}
+
+export async function renameStage(formData: FormData): Promise<ActionState> {
+  const id = formData.get("id");
+  if (typeof id !== "string") return falhou("Etapa não informada.");
+
+  const parsedName = pipelineStageNameSchema.safeParse(formData.get("name"));
+  if (!parsedName.success) return falhou(parsedName.error.issues[0].message);
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  return gravarLocal(ctx, {
+    alvo: id,
+    depende: dependeDe(await naFila(ctx), id),
+    rotulo: `Renomear a etapa para ${parsedName.data}`,
+    passos: [
+      { tipo: "update", tabela: "pipeline_stages", id, patch: { name: parsedName.data } },
+    ],
+  });
+}
+
+export async function moveStage(formData: FormData): Promise<ActionState> {
+  const id = formData.get("id");
+  const direction = formData.get("direction");
+  if (typeof id !== "string" || (direction !== "up" && direction !== "down")) {
+    return falhou("Movimento não informado.");
+  }
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  const { funil, etapas } = await etapasDoFunilLocal(ctx.banco, ctx.fila);
+  const etapa = etapas.find((e) => e.id === id);
+  if (!etapa) return falhou("Etapa não encontrada neste aparelho.");
+  if (etapa.is_won || etapa.is_lost) {
+    return falhou("Ganho e perdido ficam sempre no fim do funil.");
+  }
+
+  return reordenar(ctx, {
+    tabela: "pipeline_stages",
+    pai: funil?.id ?? null,
+    irmaos: doMeio(etapas),
+    id,
+    direcao: direction,
+    rotulo: "Reordenar as etapas do funil",
+  });
+}
+
+/**
+ * Remove uma etapa do meio.
+ *
+ * Duas garantias, e elas são do banco: o gatilho
+ * `pipeline_stages_protect_terminal` recusa ganho e perdido, e a chave
+ * `opportunities_stage_same_pipeline` (sem `on delete`) recusa etapa com
+ * negócio dentro, com `23503`. A contagem daqui é para avisar **antes** —
+ * lida do espelho, que é o que este aparelho enxerga.
+ */
+export async function deleteStage(formData: FormData): Promise<ActionState> {
+  const id = formData.get("id");
+  if (typeof id !== "string") return falhou("Etapa não informada.");
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  const { etapas } = await etapasDoFunilLocal(ctx.banco, ctx.fila);
+  const etapa = etapas.find((e) => e.id === id);
+  if (etapa?.is_won || etapa?.is_lost) {
+    return falhou("Ganho e perdido não podem ser excluídos.");
+  }
+
+  const negocios = etapa?.opportunity_count ?? 0;
+  if (negocios > 0) {
+    return falhou(
+      negocios === 1
+        ? "Há 1 negócio nesta etapa. Mova-o antes de excluí-la."
+        : `Há ${negocios} negócios nesta etapa. Mova-os antes de excluí-la.`,
+    );
+  }
+
+  return gravarLocal(ctx, {
+    alvo: id,
+    depende: dependeDe(await naFila(ctx), id),
+    rotulo: `Excluir a etapa ${etapa?.name ?? ""}`.trim(),
+    passos: [{ tipo: "delete", tabela: "pipeline_stages", id }],
   });
 }
