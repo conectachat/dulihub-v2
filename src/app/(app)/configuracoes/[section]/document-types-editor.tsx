@@ -8,6 +8,7 @@ import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { InlineText } from "@/components/inline-text";
 import { MoveButtons } from "@/components/move-buttons";
+import { SeloPendente } from "@/components/selo-pendente";
 import { FieldError } from "@/components/field-error";
 import { SubmitButton } from "@/components/submit-button";
 import { AddChildButton, TreeRow } from "@/components/tree-row";
@@ -18,7 +19,7 @@ import {
   deleteDocumentType,
   moveDocumentType,
   renameDocumentType,
-} from "@/features/settings/document-type-actions";
+} from "@/features/settings/escritas-locais";
 import { avisoDeExclusaoDePasta } from "@/lib/avisos";
 import { flattenTree } from "@/lib/tree";
 
@@ -27,6 +28,10 @@ export type DocNode = {
   parent_id: string | null;
   name: string;
   position: number;
+  /** Gravada aqui e ainda não confirmada pelo servidor. */
+  pendente?: boolean;
+  /** Recusada pelo servidor: continua visível, com o motivo. */
+  conflito?: string | null;
 };
 
 /** Formulário de criação, usado na raiz e dentro de qualquer pasta. */
@@ -133,6 +138,8 @@ export function DocumentTypesEditor({
                     label={`Nome de ${node.name}`}
                     className="flex-1"
                   />
+
+                  <SeloPendente pendente={node.pendente} conflito={node.conflito} />
 
                   <AddChildButton
                     aberto={addingTo === node.id}

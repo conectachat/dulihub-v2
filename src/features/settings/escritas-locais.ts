@@ -10,13 +10,16 @@ import { alvoDaOrdem, coalescerOrdem, novaOrdem, RPC_ORDEM } from "@/lib/local/o
 import { organizacaoLocal } from "@/lib/local/organizacao-local";
 import { bancoDoUsuario, filaDoUsuario, sincronizarAgora } from "@/lib/local/sincronizador";
 import { usuarioLocal } from "@/lib/local/usuario";
+import { flattenTree } from "@/lib/tree";
 
 import {
+  catalogoLocal,
   etapasDoFunilLocal,
   statusDeEtapaLocal,
   tagsLocais,
 } from "./consultas-locais";
 import {
+  documentTypeNameSchema,
   pipelineStageNameSchema,
   stageStatusColorSchema,
   stageStatusLabelSchema,
@@ -554,5 +557,130 @@ export async function deleteStage(formData: FormData): Promise<ActionState> {
     depende: dependeDe(await naFila(ctx), id),
     rotulo: `Excluir a etapa ${etapa?.name ?? ""}`.trim(),
     passos: [{ tipo: "delete", tabela: "pipeline_stages", id }],
+  });
+}
+
+// -------------------------------------------------------- catálogo de pastas
+
+export async function createDocumentType(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = documentTypeNameSchema.safeParse(formData.get("name"));
+  if (!parsed.success) return falhou(parsed.error.issues[0].message);
+
+  const rawParent = formData.get("parent_id");
+  const parentId = typeof rawParent === "string" && rawParent ? rawParent : null;
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  const { pastas } = await catalogoLocal(ctx.banco, ctx.fila);
+  const irmas = pastas.filter((p) => p.parent_id === parentId);
+
+  const id = novoId();
+  return gravarLocal(ctx, {
+    alvo: id,
+    // A pasta-mãe pode ela própria estar na fila: sem esta amarra, a filha
+    // subiria sozinha contra um pai que nunca existiu.
+    depende: parentId ? dependeDe(await naFila(ctx), parentId) : [],
+    rotulo: `Criar a pasta ${parsed.data}`,
+    passos: [
+      {
+        tipo: "insert",
+        tabela: "document_types",
+        linha: {
+          id,
+          organization_id: ctx.organizationId,
+          parent_id: parentId,
+          name: parsed.data,
+          position: (irmas.at(-1)?.position ?? -1) + 1,
+        },
+      },
+    ],
+  });
+}
+
+export async function renameDocumentType(formData: FormData): Promise<ActionState> {
+  const id = formData.get("id");
+  if (typeof id !== "string") return falhou("Pasta não informada.");
+
+  const parsed = documentTypeNameSchema.safeParse(formData.get("name"));
+  if (!parsed.success) return falhou(parsed.error.issues[0].message);
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  return gravarLocal(ctx, {
+    alvo: id,
+    depende: dependeDe(await naFila(ctx), id),
+    rotulo: `Renomear a pasta para ${parsed.data}`,
+    passos: [
+      { tipo: "update", tabela: "document_types", id, patch: { name: parsed.data } },
+    ],
+  });
+}
+
+export async function moveDocumentType(formData: FormData): Promise<ActionState> {
+  const id = formData.get("id");
+  const direction = formData.get("direction");
+  if (typeof id !== "string" || (direction !== "up" && direction !== "down")) {
+    return falhou("Movimento não informado.");
+  }
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  const { pastas } = await catalogoLocal(ctx.banco, ctx.fila);
+  const pasta = pastas.find((p) => p.id === id);
+  if (!pasta) return falhou("Pasta não encontrada neste aparelho.");
+
+  return reordenar(ctx, {
+    tabela: "document_types",
+    pai: pasta.parent_id,
+    irmaos: pastas.filter((p) => p.parent_id === pasta.parent_id),
+    id,
+    direcao: direction,
+    rotulo: "Reordenar o catálogo de pastas",
+  });
+}
+
+/**
+ * Exclui a pasta e o que está abaixo dela.
+ *
+ * **A cascata é escrita à mão.** No servidor a chave estrangeira apaga os
+ * descendentes sozinha; o Dexie não apaga nada em cascata, então sem os
+ * passos das filhas a tela mostraria subpastas órfãs até a próxima sincronia
+ * — e offline isso pode ser um dia inteiro.
+ *
+ * Das folhas para a raiz, num item só: se a mãe for recusada, nada some. E
+ * mandar o delete de uma filha que o cascade do servidor já levou é
+ * inofensivo — zero linhas, a linha não existe, a fila conta como aplicada.
+ */
+export async function deleteDocumentType(formData: FormData): Promise<ActionState> {
+  const id = formData.get("id");
+  if (typeof id !== "string") return falhou("Pasta não informada.");
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  const { pastas } = await catalogoLocal(ctx.banco, ctx.fila);
+  const pasta = flattenTree(pastas).find((p) => p.id === id);
+  if (!pasta) return falhou("Pasta não encontrada neste aparelho.");
+
+  const passos: Operacao[] = [
+    ...[...pasta.descendantIds].reverse().map((filha) => ({
+      tipo: "delete" as const,
+      tabela: "document_types",
+      id: filha,
+    })),
+    { tipo: "delete", tabela: "document_types", id },
+  ];
+
+  return gravarLocal(ctx, {
+    alvo: id,
+    depende: dependeDe(await naFila(ctx), id),
+    rotulo: `Excluir a pasta ${pasta.name}`,
+    passos,
   });
 }

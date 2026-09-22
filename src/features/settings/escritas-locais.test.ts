@@ -31,12 +31,15 @@ vi.mock("@/lib/local/sincronizador", async (original) => ({
 }));
 
 const {
+  createDocumentType,
   createStage,
   createStageStatus,
+  deleteDocumentType,
   deleteStage,
   createTag,
   deleteStageStatus,
   deleteTag,
+  moveDocumentType,
   moveStage,
   moveStageStatus,
   setDefaultStageStatus,
@@ -342,5 +345,66 @@ describe("etapas do funil no aparelho", () => {
 
     expect(estado.error).toMatch(/1 negócio/);
     expect(await fila.fila.count()).toBe(0);
+  });
+});
+
+describe("catálogo de pastas no aparelho", () => {
+  async function semearCatalogo() {
+    await banco.tabela("document_types").bulkPut([
+      { id: "mae", organization_id: ORG, parent_id: null, name: "Identidade", position: 0, updated_at: "2026-09-21T10:00:00Z" },
+      { id: "filha", organization_id: ORG, parent_id: "mae", name: "Passaporte", position: 0, updated_at: "2026-09-21T10:00:00Z" },
+      { id: "neta", organization_id: ORG, parent_id: "filha", name: "Páginas", position: 0, updated_at: "2026-09-21T10:00:00Z" },
+      { id: "outra", organization_id: ORG, parent_id: null, name: "Diplomas", position: 1, updated_at: "2026-09-21T10:00:00Z" },
+    ]);
+  }
+
+  it("subpasta nasce dentro da mãe, na última posição entre as irmãs", async () => {
+    await semearCatalogo();
+
+    await createDocumentType({ error: null }, formulario({ name: "Visto anterior", parent_id: "mae" }));
+
+    const [item] = await fila.fila.toArray();
+    expect(item.passos[0]).toMatchObject({
+      tipo: "insert",
+      tabela: "document_types",
+      linha: { parent_id: "mae", position: 1, organization_id: ORG },
+    });
+  });
+
+  it("subpasta de pasta que ainda não subiu depende dela", async () => {
+    await createDocumentType({ error: null }, formulario({ name: "Nova", parent_id: "" }));
+    const [mae] = await fila.fila.toArray();
+
+    await createDocumentType({ error: null }, formulario({ name: "Dentro", parent_id: mae.alvo }));
+
+    const itens = await fila.fila.orderBy("criada_em").toArray();
+    expect(itens[1].depende).toEqual([mae.alvo]);
+  });
+
+  it("excluir leva as descendentes, das folhas para a raiz, num item só", async () => {
+    // O Postgres apaga em cascata; o Dexie não. Sem estes passos, as
+    // subpastas ficariam órfãs na tela até a próxima sincronia.
+    await semearCatalogo();
+
+    await deleteDocumentType(formulario({ id: "mae" }));
+
+    const itens = await fila.fila.toArray();
+    expect(itens).toHaveLength(1);
+    expect(itens[0].passos.map((p) => (p as { id: string }).id)).toEqual([
+      "neta",
+      "filha",
+      "mae",
+    ]);
+  });
+
+  it("reordenar leva só as irmãs do mesmo nível", async () => {
+    await semearCatalogo();
+
+    await moveDocumentType(formulario({ id: "outra", direction: "up" }));
+
+    const [item] = await fila.fila.toArray();
+    expect(item.passos[0]).toMatchObject({
+      args: { p_tabela: "document_types", p_ids: ["outra", "mae"] },
+    });
   });
 });
