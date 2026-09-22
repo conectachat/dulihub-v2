@@ -8,6 +8,7 @@ import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { InlineText } from "@/components/inline-text";
 import { MoveButtons } from "@/components/move-buttons";
+import { SeloPendente } from "@/components/selo-pendente";
 import { FieldError } from "@/components/field-error";
 import { SubmitButton } from "@/components/submit-button";
 import { RequiredToggle } from "@/components/required-toggle";
@@ -18,7 +19,7 @@ import {
   deleteVisaStage,
   moveVisaStage,
   updateVisaStage,
-} from "@/features/settings/visa-type-actions";
+} from "@/features/settings/escritas-locais";
 import { flattenTree } from "@/lib/tree";
 
 export type StageNode = {
@@ -28,6 +29,10 @@ export type StageNode = {
   position: number;
   is_required: boolean;
   estimated_days: number | null;
+  /** Gravada aqui e ainda não confirmada pelo servidor. */
+  pendente?: boolean;
+  /** Recusada pelo servidor: continua visível, com o motivo. */
+  conflito?: string | null;
 };
 
 /**
@@ -153,6 +158,8 @@ export function VisaStagesEditor({
                   }
                   rotulo={`Adicionar sub-etapa em ${stage.name}`}
                 />
+
+                <SeloPendente pendente={stage.pendente} conflito={stage.conflito} />
 
                 <MoveButtons
                   action={moveVisaStage}

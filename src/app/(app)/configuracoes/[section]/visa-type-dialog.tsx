@@ -7,7 +7,7 @@ import { NativeSelect } from "@/components/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { saveVisaType } from "@/features/settings/visa-type-actions";
+import { saveVisaType } from "@/features/settings/escritas-locais";
 
 export type VisaTypeForm = {
   id: string;

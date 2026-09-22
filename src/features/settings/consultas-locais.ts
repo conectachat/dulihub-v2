@@ -62,6 +62,24 @@ async function ler(
 
 type Com<T> = T & Pendencia;
 
+/**
+ * Uma linha crua do espelho, com a fila por cima.
+ *
+ * Existe para a gravação descobrir a que visto pertence uma etapa ou uma
+ * exigência sem obrigar cada tela a carregar esse dado num campo escondido:
+ * o aparelho já sabe, e perguntar a ele é mais difícil de errar do que
+ * lembrar de preencher o formulário.
+ */
+export async function linhaLocal(
+  banco: BancoLocal,
+  fila: BancoDaFila,
+  tabela: string,
+  id: string,
+): Promise<(Record<string, unknown> & Pendencia) | null> {
+  const linhas = await ler(banco, tabela, await pendentes(fila));
+  return linhas.find((l) => l.id === id) ?? null;
+}
+
 export async function etapasDoFunilLocal(
   banco: BancoLocal,
   fila: BancoDaFila,

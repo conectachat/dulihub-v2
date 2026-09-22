@@ -13,10 +13,11 @@ import {
 
 import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
+import { SeloPendente } from "@/components/selo-pendente";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { deleteVisaType } from "@/features/settings/visa-type-actions";
+import { deleteVisaType } from "@/features/settings/escritas-locais";
 
 import {
   catalogoLocal,
@@ -242,6 +243,8 @@ export function SecaoTiposDeVisto({ userId }: { userId: string }) {
               </div>
 
               {!type.is_active ? <Badge variant="secondary">Inativo</Badge> : null}
+
+              <SeloPendente pendente={type.pendente} conflito={type.conflito} />
 
               {/*
                 Botão com rótulo, não o nome virando link: o molde de etapas e

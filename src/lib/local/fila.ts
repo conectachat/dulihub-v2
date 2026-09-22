@@ -29,7 +29,22 @@ import type { Linha } from "./espelho";
  */
 
 export type Operacao =
-  | { tipo: "insert"; tabela: string; linha: Linha }
+  | {
+      tipo: "insert";
+      tabela: string;
+      linha: Linha;
+      /**
+       * A linha já estar lá conta como sucesso, mesmo batendo num unique que
+       * não é a chave primária.
+       *
+       * Existe para a marcação de exigência do visto: `visa_type_documents`
+       * tem unique `(visa_type_id, document_type_id)`, e marcar de novo o que
+       * já está marcado é intenção repetida, não erro. Fica explícito na
+       * operação, e não numa heurística sobre a mensagem do banco — por
+       * padrão, unique violado continua sendo conflito.
+       */
+      seJaExistir?: "ok";
+    }
   | { tipo: "update"; tabela: string; id: string; patch: Linha }
   | { tipo: "delete"; tabela: string; id: string }
   | { tipo: "rpc"; nome: string; args: Record<string, unknown> };
@@ -160,6 +175,7 @@ async function aplicar(
     // A linha já está lá, e foi este item que a pôs: a resposta é que se
     // perdeu.
     if (ehChavePrimaria(error)) return { ok: true };
+    if (passo.seJaExistir === "ok" && error.code === "23505") return { ok: true };
     return recusa(error);
   }
 

@@ -43,6 +43,7 @@ const {
   moveStage,
   moveStageStatus,
   setDefaultStageStatus,
+  toggleVisaDocument,
   updateTag,
 } = await import("./escritas-locais");
 
@@ -406,5 +407,73 @@ describe("catálogo de pastas no aparelho", () => {
     expect(item.passos[0]).toMatchObject({
       args: { p_tabela: "document_types", p_ids: ["outra", "mae"] },
     });
+  });
+});
+
+describe("documentos exigidos pelo visto", () => {
+  const VISTO = "v1";
+
+  async function semearVisto() {
+    await banco.tabela("visa_types").put({
+      id: VISTO,
+      organization_id: ORG,
+      name: "EB-1A",
+      position: 0,
+      is_active: true,
+      currency: "BRL",
+      updated_at: "2026-09-21T10:00:00Z",
+    });
+    await banco.tabela("document_types").bulkPut([
+      { id: "mae", organization_id: ORG, parent_id: null, name: "Pessoais", position: 0, updated_at: "2026-09-21T10:00:00Z" },
+      { id: "filha", organization_id: ORG, parent_id: "mae", name: "Passaporte", position: 0, updated_at: "2026-09-21T10:00:00Z" },
+    ]);
+  }
+
+  it("marcar uma pasta marca a subárvore, e a repetição não é erro", async () => {
+    await semearVisto();
+
+    await toggleVisaDocument(
+      formulario({ visa_type_id: VISTO, document_type_id: "mae", selected: "false" }),
+    );
+
+    const [item] = await fila.fila.toArray();
+    expect(item.passos).toHaveLength(2);
+    expect(item.passos[0]).toMatchObject({
+      tipo: "insert",
+      tabela: "visa_type_documents",
+      seJaExistir: "ok",
+      linha: { document_type_id: "mae", organization_id: ORG, position: 0 },
+    });
+    expect(item.passos[1]).toMatchObject({ linha: { document_type_id: "filha", position: 1 } });
+  });
+
+  it("desmarcar tira a subárvore inteira, pelos ids que o aparelho tem", async () => {
+    await semearVisto();
+    await banco.tabela("visa_type_documents").bulkPut([
+      { id: "x1", organization_id: ORG, visa_type_id: VISTO, document_type_id: "mae", position: 0, is_required: true, updated_at: "2026-09-21T10:00:00Z" },
+      { id: "x2", organization_id: ORG, visa_type_id: VISTO, document_type_id: "filha", position: 1, is_required: true, updated_at: "2026-09-21T10:00:00Z" },
+    ]);
+
+    await toggleVisaDocument(
+      formulario({ visa_type_id: VISTO, document_type_id: "mae", selected: "true" }),
+    );
+
+    const [item] = await fila.fila.toArray();
+    expect(item.passos.map((p) => (p as { id: string }).id)).toEqual(["x1", "x2"]);
+  });
+
+  it("marcar o que já está marcado não enfileira nada", async () => {
+    await semearVisto();
+    await banco.tabela("visa_type_documents").bulkPut([
+      { id: "x1", organization_id: ORG, visa_type_id: VISTO, document_type_id: "mae", position: 0, is_required: true, updated_at: "2026-09-21T10:00:00Z" },
+      { id: "x2", organization_id: ORG, visa_type_id: VISTO, document_type_id: "filha", position: 1, is_required: true, updated_at: "2026-09-21T10:00:00Z" },
+    ]);
+
+    const estado = await toggleVisaDocument(
+      formulario({ visa_type_id: VISTO, document_type_id: "mae", selected: "false" }),
+    );
+
+    expect(estado.error).toBeNull();
+    expect(await fila.fila.count()).toBe(0);
   });
 });

@@ -150,6 +150,27 @@ describe("drenar", () => {
     expect(fila.itens).toEqual([]);
   });
 
+  it("marcar de novo o que já está marcado não é erro, quando a operação diz", async () => {
+    // `visa_type_documents` tem unique próprio. Marcar duas vezes a mesma
+    // pasta é intenção repetida — mas só onde a operação declara isso.
+    const fila = armazem([
+      item("a", [
+        {
+          tipo: "insert",
+          tabela: "visa_type_documents",
+          linha: { id: "v1" },
+          seJaExistir: "ok",
+        },
+      ]),
+    ]);
+    const rede = transporte({ erros: [{ code: "23505", message: NOME_REPETIDO }] });
+
+    const resultado = await drenar(rede, fila);
+
+    expect(resultado.subiram).toBe(1);
+    expect(resultado.conflitos).toBe(0);
+  });
+
   it("nome repetido é conflito de verdade, com a frase de quem usa", async () => {
     const fila = armazem([
       item("a", [{ tipo: "insert", tabela: "tags", linha: { id: "t1", name: "A" } }]),

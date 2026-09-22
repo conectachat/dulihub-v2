@@ -10,13 +10,17 @@ import { alvoDaOrdem, coalescerOrdem, novaOrdem, RPC_ORDEM } from "@/lib/local/o
 import { organizacaoLocal } from "@/lib/local/organizacao-local";
 import { bancoDoUsuario, filaDoUsuario, sincronizarAgora } from "@/lib/local/sincronizador";
 import { usuarioLocal } from "@/lib/local/usuario";
-import { flattenTree } from "@/lib/tree";
+import { parseWholeNumber } from "@/lib/numbers";
+import { flattenTree, paiVisivel } from "@/lib/tree";
 
 import {
   catalogoLocal,
   etapasDoFunilLocal,
+  linhaLocal,
   statusDeEtapaLocal,
   tagsLocais,
+  tipoDeVistoLocal,
+  tiposDeVistoLocais,
 } from "./consultas-locais";
 import {
   documentTypeNameSchema,
@@ -25,6 +29,8 @@ import {
   stageStatusLabelSchema,
   tagSchema,
   toCode,
+  visaStageSchema,
+  visaTypeSchema,
 } from "./schema";
 
 /**
@@ -682,5 +688,390 @@ export async function deleteDocumentType(formData: FormData): Promise<ActionStat
     depende: dependeDe(await naFila(ctx), id),
     rotulo: `Excluir a pasta ${pasta.name}`,
     passos,
+  });
+}
+
+// ---------------------------------------------------------- tipos de visto
+
+export async function saveVisaType(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = visaTypeSchema.safeParse({
+    name: formData.get("name"),
+    description: formData.get("description"),
+    base_price: formData.get("base_price"),
+    currency: formData.get("currency") ?? "BRL",
+    estimated_days: formData.get("estimated_days"),
+  });
+  if (!parsed.success) return falhou(parsed.error.issues[0].message);
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  const rawId = formData.get("id");
+  const is_active = formData.get("is_active") === "on";
+  const campos = { ...parsed.data, is_active };
+
+  if (typeof rawId === "string" && rawId) {
+    return gravarLocal(ctx, {
+      alvo: rawId,
+      depende: dependeDe(await naFila(ctx), rawId),
+      rotulo: `Alterar o tipo de visto ${parsed.data.name}`,
+      passos: [{ tipo: "update", tabela: "visa_types", id: rawId, patch: campos }],
+    });
+  }
+
+  const { tipos } = await tiposDeVistoLocais(ctx.banco, ctx.fila);
+  if (
+    tipos.some(
+      (t) => t.name.localeCompare(parsed.data.name, "pt-BR", { sensitivity: "base" }) === 0,
+    )
+  ) {
+    return falhou("Já existe um tipo de visto com esse nome.");
+  }
+
+  const id = novoId();
+  return gravarLocal(ctx, {
+    alvo: id,
+    rotulo: `Criar o tipo de visto ${parsed.data.name}`,
+    passos: [
+      {
+        tipo: "insert",
+        tabela: "visa_types",
+        linha: {
+          id,
+          organization_id: ctx.organizationId,
+          ...campos,
+          position: (tipos.at(-1)?.position ?? -1) + 1,
+        },
+      },
+    ],
+  });
+}
+
+/**
+ * Exclui o molde inteiro.
+ *
+ * Mesma razão da cascata do catálogo: o servidor apaga etapas e exigências
+ * sozinho, o Dexie não. Sem os passos, a tela do visto continuaria mostrando
+ * as etapas de um molde que já não existe.
+ */
+export async function deleteVisaType(formData: FormData): Promise<ActionState> {
+  const id = formData.get("id");
+  if (typeof id !== "string") return falhou("Tipo de visto não informado.");
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  const { visto, etapas, exigencias } = await tipoDeVistoLocal(ctx.banco, ctx.fila, id);
+
+  return gravarLocal(ctx, {
+    alvo: id,
+    depende: dependeDe(await naFila(ctx), id),
+    rotulo: `Excluir o tipo de visto ${visto?.name ?? ""}`.trim(),
+    passos: [
+      ...exigencias.map((e) => ({
+        tipo: "delete" as const,
+        tabela: "visa_type_documents",
+        id: e.id,
+      })),
+      ...[...flattenTree(etapas)].reverse().map((e) => ({
+        tipo: "delete" as const,
+        tabela: "visa_stages",
+        id: e.id,
+      })),
+      { tipo: "delete", tabela: "visa_types", id },
+    ],
+  });
+}
+
+// --------------------------------------------------------- etapas do molde
+
+export async function createVisaStage(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = visaStageSchema.safeParse({
+    name: formData.get("name"),
+    estimated_days: formData.get("estimated_days"),
+  });
+  if (!parsed.success) return falhou(parsed.error.issues[0].message);
+
+  const visaTypeId = formData.get("visa_type_id");
+  if (typeof visaTypeId !== "string") return falhou("Tipo de visto não informado.");
+
+  const rawParent = formData.get("parent_id");
+  const parentId = typeof rawParent === "string" && rawParent ? rawParent : null;
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  const { visto, etapas } = await tipoDeVistoLocal(ctx.banco, ctx.fila, visaTypeId);
+  if (!visto) return falhou("Tipo de visto não encontrado neste aparelho.");
+  const irmas = etapas.filter((e) => e.parent_id === parentId);
+
+  const id = novoId();
+  return gravarLocal(ctx, {
+    alvo: id,
+    depende: parentId ? dependeDe(await naFila(ctx), parentId) : [],
+    rotulo: `Criar a etapa ${parsed.data.name}`,
+    passos: [
+      {
+        tipo: "insert",
+        tabela: "visa_stages",
+        linha: {
+          id,
+          // A organização é a do visto, não a de quem clicou.
+          organization_id: visto.organization_id,
+          visa_type_id: visaTypeId,
+          parent_id: parentId,
+          name: parsed.data.name,
+          estimated_days: parsed.data.estimated_days,
+          position: (irmas.at(-1)?.position ?? -1) + 1,
+          is_required: true,
+        },
+      },
+    ],
+  });
+}
+
+export async function updateVisaStage(formData: FormData): Promise<ActionState> {
+  const id = formData.get("id");
+  if (typeof id !== "string") return falhou("Etapa não informada.");
+
+  const patch: Record<string, unknown> = {};
+
+  const name = formData.get("name");
+  if (typeof name === "string" && name.trim()) patch.name = name.trim();
+
+  if (formData.has("is_required")) {
+    patch.is_required = formData.get("is_required") === "true";
+  }
+
+  if (formData.has("estimated_days")) {
+    const raw = formData.get("estimated_days");
+    patch.estimated_days = typeof raw === "string" ? parseWholeNumber(raw) : null;
+  }
+
+  if (Object.keys(patch).length === 0) return gravou();
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  return gravarLocal(ctx, {
+    alvo: id,
+    depende: dependeDe(await naFila(ctx), id),
+    rotulo: "Alterar uma etapa do molde",
+    passos: [{ tipo: "update", tabela: "visa_stages", id, patch }],
+  });
+}
+
+export async function moveVisaStage(formData: FormData): Promise<ActionState> {
+  const id = formData.get("id");
+  const direction = formData.get("direction");
+  if (typeof id !== "string" || (direction !== "up" && direction !== "down")) {
+    return falhou("Movimento não informado.");
+  }
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  // De qual visto é esta etapa: o aparelho sabe, e perguntar a ele é mais
+  // difícil de errar do que lembrar de pôr o campo escondido no formulário.
+  const linha = await linhaLocal(ctx.banco, ctx.fila, "visa_stages", id);
+  if (!linha) return falhou("Etapa não encontrada neste aparelho.");
+
+  const { etapas } = await tipoDeVistoLocal(
+    ctx.banco,
+    ctx.fila,
+    String(linha.visa_type_id),
+  );
+  const etapa = etapas.find((e) => e.id === id);
+  if (!etapa) return falhou("Etapa não encontrada neste aparelho.");
+
+  return reordenar(ctx, {
+    tabela: "visa_stages",
+    pai: etapa.parent_id,
+    irmaos: etapas.filter((e) => e.parent_id === etapa.parent_id),
+    id,
+    direcao: direction,
+    rotulo: "Reordenar as etapas do molde",
+  });
+}
+
+export async function deleteVisaStage(formData: FormData): Promise<ActionState> {
+  const id = formData.get("id");
+  if (typeof id !== "string") return falhou("Etapa não informada.");
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  const linha = await linhaLocal(ctx.banco, ctx.fila, "visa_stages", id);
+  if (!linha) return falhou("Etapa não encontrada neste aparelho.");
+
+  const { etapas } = await tipoDeVistoLocal(
+    ctx.banco,
+    ctx.fila,
+    String(linha.visa_type_id),
+  );
+  const etapa = flattenTree(etapas).find((e) => e.id === id);
+  if (!etapa) return falhou("Etapa não encontrada neste aparelho.");
+
+  return gravarLocal(ctx, {
+    alvo: id,
+    depende: dependeDe(await naFila(ctx), id),
+    rotulo: `Excluir a etapa ${etapa.name}`,
+    passos: [
+      ...[...etapa.descendantIds].reverse().map((filha) => ({
+        tipo: "delete" as const,
+        tabela: "visa_stages",
+        id: filha,
+      })),
+      { tipo: "delete", tabela: "visa_stages", id },
+    ],
+  });
+}
+
+// ---------------------------------------------------- documentos exigidos
+
+/**
+ * Marca ou desmarca uma pasta do catálogo neste visto — com a subárvore.
+ *
+ * Marcar "Documentos pessoais" marca o que está dentro: é o que a tela
+ * mostra, e é como o molde é copiado para o processo.
+ *
+ * Marcar de novo o que já está marcado não é erro (`seJaExistir`), porque
+ * duas pessoas podem ter clicado no mesmo lugar offline — mas isso vale só
+ * aqui, e não para todo unique violado.
+ */
+export async function toggleVisaDocument(formData: FormData): Promise<ActionState> {
+  const visaTypeId = formData.get("visa_type_id");
+  const documentTypeId = formData.get("document_type_id");
+  if (typeof visaTypeId !== "string" || typeof documentTypeId !== "string") {
+    return falhou("Pasta não informada.");
+  }
+  const marcada = formData.get("selected") === "true";
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  const { visto, catalogo, exigencias } = await tipoDeVistoLocal(
+    ctx.banco,
+    ctx.fila,
+    visaTypeId,
+  );
+  if (!visto) return falhou("Tipo de visto não encontrado neste aparelho.");
+
+  const naArvore = flattenTree(catalogo).find((p) => p.id === documentTypeId);
+  if (!naArvore) return falhou("Pasta não encontrada neste aparelho.");
+  const afetadas = [documentTypeId, ...naArvore.descendantIds];
+
+  if (marcada) {
+    const remover = exigencias.filter((e) => afetadas.includes(e.document_type_id));
+    if (remover.length === 0) return gravou();
+
+    return gravarLocal(ctx, {
+      alvo: `${visaTypeId}:${documentTypeId}`,
+      rotulo: `Desmarcar ${naArvore.name} neste visto`,
+      passos: remover.map((e) => ({
+        tipo: "delete" as const,
+        tabela: "visa_type_documents",
+        id: e.id,
+      })),
+    });
+  }
+
+  const jaMarcadas = new Set(exigencias.map((e) => e.document_type_id));
+  const novas = afetadas.filter((d) => !jaMarcadas.has(d));
+  if (novas.length === 0) return gravou();
+
+  // Entra no fim da lista deste visto: a ordem é do visto, não do catálogo.
+  let posicao = (exigencias.at(-1)?.position ?? -1) + 1;
+
+  return gravarLocal(ctx, {
+    alvo: `${visaTypeId}:${documentTypeId}`,
+    rotulo: `Marcar ${naArvore.name} neste visto`,
+    passos: novas.map((document_type_id) => ({
+      tipo: "insert" as const,
+      tabela: "visa_type_documents",
+      seJaExistir: "ok" as const,
+      linha: {
+        id: novoId(),
+        visa_type_id: visaTypeId,
+        document_type_id,
+        organization_id: visto.organization_id,
+        position: posicao++,
+      },
+    })),
+  });
+}
+
+/**
+ * Reordena uma exigência entre as irmãs, dentro deste visto.
+ *
+ * Irmãs são as exigências que compartilham o **pai visível** — `paiVisivel`,
+ * a mesma função que desenha a árvore. Se as duas discordassem sobre quem é
+ * irmão de quem, a seta moveria a linha errada.
+ */
+export async function moveVisaDocument(formData: FormData): Promise<ActionState> {
+  const id = formData.get("id");
+  const direction = formData.get("direction");
+  if (typeof id !== "string" || (direction !== "up" && direction !== "down")) {
+    return falhou("Movimento não informado.");
+  }
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  const crua = await linhaLocal(ctx.banco, ctx.fila, "visa_type_documents", id);
+  if (!crua) return falhou("Exigência não encontrada neste aparelho.");
+  const visaTypeId = String(crua.visa_type_id);
+
+  const { catalogo, exigencias } = await tipoDeVistoLocal(ctx.banco, ctx.fila, visaTypeId);
+  const linha = exigencias.find((e) => e.id === id);
+  if (!linha) return falhou("Exigência não encontrada neste aparelho.");
+
+  const paiDe = new Map(catalogo.map((n) => [n.id, n.parent_id]));
+  const marcadas = new Set(exigencias.map((e) => e.document_type_id));
+  const visivel = paiVisivel(paiDe, marcadas);
+  const meuPai = visivel(linha.document_type_id);
+
+  return reordenar(ctx, {
+    tabela: "visa_type_documents",
+    pai: `${visaTypeId}:${meuPai ?? "raiz"}`,
+    irmaos: exigencias.filter((e) => visivel(e.document_type_id) === meuPai),
+    id,
+    direcao: direction,
+    rotulo: "Reordenar os documentos do visto",
+  });
+}
+
+/** Obrigatoriedade e prazo são do visto, não do catálogo. */
+export async function updateVisaDocument(formData: FormData): Promise<ActionState> {
+  const id = formData.get("id");
+  if (typeof id !== "string") return falhou("Exigência não informada.");
+
+  const patch: Record<string, unknown> = {};
+
+  if (formData.has("is_required")) {
+    patch.is_required = formData.get("is_required") === "true";
+  }
+
+  if (formData.has("deadline_days")) {
+    const raw = formData.get("deadline_days");
+    patch.deadline_days = typeof raw === "string" ? parseWholeNumber(raw) : null;
+  }
+
+  if (Object.keys(patch).length === 0) return gravou();
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  return gravarLocal(ctx, {
+    alvo: id,
+    depende: dependeDe(await naFila(ctx), id),
+    rotulo: "Alterar uma exigência do visto",
+    passos: [{ tipo: "update", tabela: "visa_type_documents", id, patch }],
   });
 }

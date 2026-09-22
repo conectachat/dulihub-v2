@@ -21,7 +21,7 @@ import {
   moveVisaDocument,
   toggleVisaDocument,
   updateVisaDocument,
-} from "@/features/settings/visa-type-actions";
+} from "@/features/settings/escritas-locais";
 import { comAviso } from "@/lib/avisar";
 import { flattenTree, indentStyle, paiVisivel } from "@/lib/tree";
 import { cn } from "@/lib/utils";
