@@ -107,4 +107,10 @@ describe("nomeDoCache", () => {
     expect(nomeDoCache("")).toBe("dulihub-dev");
     expect(nomeDoCache(null)).toBe("dulihub-dev");
   });
+
+  it("o financeiro também abre sem internet", () => {
+    expect(
+      decidirEstrategia("https://app.duli/financeiro", "navigate", "https://app.duli"),
+    ).toEqual({ estrategia: "rede-primeiro", reserva: "/financeiro" });
+  });
 });

@@ -33,12 +33,20 @@ export default function OfflinePage() {
 
       <div className="space-y-2">
         <p className="text-sm font-medium">O que funciona sem internet</p>
-        <Link
-          href="/configuracoes/tags"
-          className="inline-block rounded-2xl border px-4 py-2 text-sm hover:bg-muted"
-        >
-          Configuração
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/financeiro"
+            className="inline-block rounded-2xl border px-4 py-2 text-sm hover:bg-muted"
+          >
+            Financeiro
+          </Link>
+          <Link
+            href="/configuracoes/tags"
+            className="inline-block rounded-2xl border px-4 py-2 text-sm hover:bg-muted"
+          >
+            Configuração
+          </Link>
+        </div>
       </div>
 
       <p className="max-w-sm text-xs text-muted-foreground">

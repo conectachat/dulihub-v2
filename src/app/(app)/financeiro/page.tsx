@@ -1,20 +1,25 @@
-import { ComingSoon } from "@/components/coming-soon";
+import { SectionHeader } from "@/components/page-header";
+
+import { ListaDoFinanceiro } from "./lista";
 
 export const metadata = { title: "Financeiro — Duli Hub" };
 
+/**
+ * Casca sem dado nenhum: o conteúdo é montado no navegador, a partir do
+ * aparelho.
+ *
+ * É o que permite ao service worker guardar esta rota e abri-la sem
+ * internet — e é o oposto do que derrubou o app antigo, que guardava página
+ * **com** conteúdo e servia versão velha como atual.
+ */
 export default function FinanceiroPage() {
   return (
-    <ComingSoon
-      title="Financeiro"
-      description="Receita por processo e gestão financeira da empresa."
-      phase="Fase 3"
-      items={[
-        "Contas a pagar, despesas, fornecedores e fluxo de caixa — sem depender de banco",
-        "Link de proposta que gera cadastro, contrato no ZapSign e acesso do cliente",
-        "Cobrança por link C6 e boleto Itaú, com baixa automática",
-        "Emissão de nota fiscal ou invoice após o pagamento",
-        "Projeção de recebimentos e pagamentos",
-      ]}
-    />
+    <div className="space-y-6 p-6">
+      <SectionHeader
+        title="Financeiro"
+        description="O que os clientes devem, o que venceu e o que entrou no mês."
+      />
+      <ListaDoFinanceiro />
+    </div>
   );
 }

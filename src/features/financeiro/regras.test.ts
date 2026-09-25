@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   emReais,
+  recebidoNoMes,
   gerarParcelas,
   resumoDoRecebivel,
   situacaoDaParcela,
@@ -194,5 +195,33 @@ describe("resumoDoRecebivel", () => {
       parcelas: 0,
       pagas: 0,
     });
+  });
+});
+
+describe("recebidoNoMes", () => {
+  const parcelas = [
+    { amount: 1000, paid_on: "2026-10-03", paid_rate: 5.4, currency: "USD" },
+    { amount: 2000, paid_on: "2026-10-28", paid_rate: null, currency: "BRL" },
+    { amount: 500, paid_on: "2026-09-30", paid_rate: null, currency: "BRL" },
+    { amount: 300, paid_on: null, paid_rate: null, currency: "BRL" },
+  ];
+
+  it("soma só o que entrou no mês, convertendo pela cotação de cada um", () => {
+    expect(recebidoNoMes(parcelas, "2026-10")).toEqual({ total: 7400, semCotacao: 0 });
+  });
+
+  it("conta pela data do pagamento, não pela do vencimento", () => {
+    expect(recebidoNoMes(parcelas, "2026-09")).toEqual({ total: 500, semCotacao: 0 });
+  });
+
+  it("dólar sem cotação fica de fora e é contado à parte", () => {
+    // Somar mil dólares como se fossem mil reais é pior do que a tela dizer
+    // que há uma parcela sem cotação.
+    const r = recebidoNoMes(
+      [{ amount: 1000, paid_on: "2026-10-03", paid_rate: null, currency: "USD" }],
+      "2026-10",
+    );
+
+    expect(r).toEqual({ total: 0, semCotacao: 1 });
   });
 });

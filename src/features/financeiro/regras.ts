@@ -179,3 +179,33 @@ export function resumoDoRecebivel(
     pagas,
   };
 }
+
+/**
+ * O que entrou num mês, em reais.
+ *
+ * Regime de caixa: conta pela data do pagamento, não pela da cobrança. O app
+ * antigo tinha as duas contas convivendo — o painel somava o valor combinado
+ * por data de cadastro, o financeiro somava parcela paga por data de
+ * pagamento — e os dois números nunca batiam.
+ *
+ * Parcela em dólar sem cotação **não entra na soma** e é contada à parte: é
+ * melhor a tela dizer "uma parcela sem cotação" do que somar mil dólares
+ * como se fossem mil reais.
+ */
+export function recebidoNoMes(
+  parcelas: { amount: number; paid_on: string | null; paid_rate: number | null; currency: string }[],
+  mes: string,
+): { total: number; semCotacao: number } {
+  let centavos = 0;
+  let semCotacao = 0;
+
+  for (const p of parcelas) {
+    if (!p.paid_on || !p.paid_on.startsWith(mes)) continue;
+
+    const reais = emReais(p.amount, p.currency, p.paid_rate);
+    if (reais === null) semCotacao += 1;
+    else centavos += emCentavos(reais);
+  }
+
+  return { total: emMoeda(centavos), semCotacao };
+}

@@ -31,7 +31,7 @@ export type Estrategia =
  * Tela que ainda lê do servidor **não** entra aqui: guardá-la seria guardar
  * uma tela vazia e chamá-la de app.
  */
-export const ROTAS_COM_CASCA = ["/configuracoes"];
+export const ROTAS_COM_CASCA = ["/configuracoes", "/financeiro"];
 
 /** O shell offline e o que ele precisa para desenhar. */
 export const DO_SHELL = [
