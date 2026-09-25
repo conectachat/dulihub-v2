@@ -308,6 +308,59 @@ export type Database = {
           },
         ]
       }
+      installments: {
+        Row: {
+          amount: number
+          created_at: string
+          due_on: string
+          id: string
+          method: string
+          notes: string | null
+          number: number
+          organization_id: string
+          paid_on: string | null
+          paid_rate: number | null
+          receivable_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_on: string
+          id?: string
+          method?: string
+          notes?: string | null
+          number: number
+          organization_id: string
+          paid_on?: string | null
+          paid_rate?: number | null
+          receivable_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_on?: string
+          id?: string
+          method?: string
+          notes?: string | null
+          number?: number
+          organization_id?: string
+          paid_on?: string | null
+          paid_rate?: number | null
+          receivable_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "installments_receivable_same_org"
+            columns: ["receivable_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "receivables"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
       notes: {
         Row: {
           body: string
@@ -1324,6 +1377,80 @@ export type Database = {
             columns: ["visa_type_id", "organization_id"]
             isOneToOne: false
             referencedRelation: "visa_types"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      receivables: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          id: string
+          list_amount: number | null
+          notes: string | null
+          organization_id: string
+          person_id: string
+          project_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          list_amount?: number | null
+          notes?: string | null
+          organization_id: string
+          person_id: string
+          project_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          list_amount?: number | null
+          notes?: string | null
+          organization_id?: string
+          person_id?: string
+          project_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receivables_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivables_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivables_person_same_org"
+            columns: ["person_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "receivables_project_same_org"
+            columns: ["project_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id", "organization_id"]
           },
         ]
