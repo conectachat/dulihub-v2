@@ -4,8 +4,9 @@ import { armazemDo, BancoLocal, TABELAS_ESPELHADAS } from "./banco";
 import { armazemDaFila, BancoDaFila } from "./banco-da-fila";
 import { drenar } from "./fila";
 import { transporteDaFila } from "./transporte-da-fila";
-import { aplicarResultado, definirEstado } from "./estado";
+import { aplicarResultado, definirEstado, estadoAtual } from "./estado";
 import { sincronizar } from "./espelho";
+import { MARCA_DA_SINCRONIA } from "./sessao";
 import { transporteSupabase } from "./transporte-supabase";
 
 /**
@@ -88,20 +89,37 @@ export async function sincronizarAgora(userId: string) {
   try {
     await drenarFila(userId);
 
-    const resultado = await sincronizar(
-      transporteSupabase(),
-      armazemDo(bancoDoUsuario(userId)),
-      [...TABELAS_ESPELHADAS],
-    );
+    const armazem = armazemDo(bancoDoUsuario(userId));
+    const resultado = await sincronizar(transporteSupabase(), armazem, [
+      ...TABELAS_ESPELHADAS,
+    ]);
     aplicarResultado(resultado);
+
+    // Guardado no próprio espelho, e só quando o servidor respondeu. Em
+    // memória, esta data zerava a cada recarga: um aparelho parado há um mês
+    // abria parecendo recém-sincronizado, que é justamente o que o prazo de
+    // validade (`sessao.ts`) existe para impedir.
+    if (!resultado.error) await armazem.definirMarca(MARCA_DA_SINCRONIA, resultado.em);
   } finally {
     rodando = false;
   }
 }
 
+/** Quando o servidor respondeu pela última vez, segundo o disco. */
+export async function ultimaSincronia(userId: string): Promise<string | null> {
+  return armazemDo(bancoDoUsuario(userId)).marca(MARCA_DA_SINCRONIA);
+}
+
 /** Liga os gatilhos de sincronia. Devolve a função que desliga. */
 export function ligarSincronia(userId: string): () => void {
   const agora = () => void sincronizarAgora(userId);
+
+  // O carimbo da barra lateral começa com o que está no disco, não em branco:
+  // sem isto, recarregar a página faria o aparelho parecer que nunca
+  // sincronizou, e ninguém saberia há quanto tempo está parado.
+  void ultimaSincronia(userId).then((em) => {
+    if (em && !estadoAtual().em) definirEstado({ em });
+  });
 
   agora();
 

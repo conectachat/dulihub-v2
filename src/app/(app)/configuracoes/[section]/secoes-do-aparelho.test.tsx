@@ -93,4 +93,15 @@ describe("de quem é o aparelho", () => {
     expect(await screen.findByText(/Entre de novo/)).toBeTruthy();
     expect(screen.queryByDisplayValue("Tag da Ana")).toBeNull();
   });
+
+  it("espelho de duas semanas atrás não é mostrado como se fosse o de hoje", async () => {
+    await semear(BRUNO, "Tag do Bruno");
+    const quinze = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString();
+    definirEstado({ em: quinze, sincronizando: false, error: null, online: false });
+
+    render(<SecoesDoAparelho slug="tags" />);
+
+    expect(await screen.findByText(/sem sincronizar/i)).toBeTruthy();
+    expect(screen.queryByDisplayValue("Tag do Bruno")).toBeNull();
+  });
 });

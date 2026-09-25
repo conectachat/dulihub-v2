@@ -30,6 +30,8 @@ vi.mock("@/lib/local/sincronizador", async (original) => ({
   sincronizarAgora: vi.fn(),
 }));
 
+const { MARCA_DA_SINCRONIA } = await import("@/lib/local/sessao");
+
 const {
   createDocumentType,
   createStage,
@@ -78,6 +80,7 @@ beforeEach(async () => {
     created_at: "2024-01-01T00:00:00Z",
     updated_at: "2026-09-21T10:00:00Z",
   });
+  await banco.marcas.put({ tabela: MARCA_DA_SINCRONIA, valor: new Date().toISOString() });
 });
 
 afterEach(async () => {
@@ -475,5 +478,29 @@ describe("documentos exigidos pelo visto", () => {
 
     expect(estado.error).toBeNull();
     expect(await fila.fila.count()).toBe(0);
+  });
+});
+
+describe("aparelho parado demais", () => {
+  it("passados sete dias sem sincronizar, a gravação é recusada", async () => {
+    // Gravar sobre uma cópia velha sobe valores que já não valem, por cima do
+    // trabalho de quem continuou trabalhando.
+    const oito = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+    await banco.marcas.put({ tabela: MARCA_DA_SINCRONIA, valor: oito });
+
+    const estado = await createTag({ error: null }, formulario({ name: "Nova", color: "#ff6600" }));
+
+    expect(estado.error).toMatch(/sem sincronizar/i);
+    expect(await fila.fila.count()).toBe(0);
+  });
+
+  it("seis dias ainda grava", async () => {
+    const seis = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString();
+    await banco.marcas.put({ tabela: MARCA_DA_SINCRONIA, valor: seis });
+
+    const estado = await createTag({ error: null }, formulario({ name: "Nova", color: "#ff6600" }));
+
+    expect(estado.error).toBeNull();
+    expect(await fila.fila.count()).toBe(1);
   });
 });

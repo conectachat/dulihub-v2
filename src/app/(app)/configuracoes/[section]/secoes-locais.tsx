@@ -29,6 +29,7 @@ import {
 } from "@/features/settings/consultas-locais";
 import { useSincronia } from "@/lib/local/estado";
 import { bancoDoUsuario, filaDoUsuario } from "@/lib/local/sincronizador";
+import { motivoDoPrazo, validadeDoEspelho } from "@/lib/local/sessao";
 import { useUsuarioLocal } from "@/lib/local/usuario";
 
 import { DocumentTypesEditor } from "./document-types-editor";
@@ -62,6 +63,7 @@ import { VisaStagesEditor } from "./visa-stages-editor";
  */
 export function SecoesDoAparelho({ slug, visa }: { slug: string; visa?: string }) {
   const { userId, carregado } = useUsuarioLocal();
+  const { em } = useSincronia();
 
   if (!carregado) {
     return (
@@ -78,6 +80,19 @@ export function SecoesDoAparelho({ slug, visa }: { slug: string; visa?: string }
         <TriangleAlert className="h-4 w-4" />
         Sua sessão terminou neste aparelho. Entre de novo para ver a
         configuração.
+      </p>
+    );
+  }
+
+  // Espelho velho demais não é mostrado. O modo de falha desta arquitetura
+  // não é perder dado — é mostrar dado de duas semanas atrás como se fosse o
+  // de hoje, sem nada na tela que permita desconfiar.
+  const validade = validadeDoEspelho(em);
+  if (!validade.podeLer) {
+    return (
+      <p className="flex items-start gap-2 py-6 text-sm text-destructive">
+        <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+        {motivoDoPrazo(validade, "ler")}
       </p>
     );
   }

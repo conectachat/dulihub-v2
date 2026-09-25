@@ -8,7 +8,13 @@ import { armazemDaFila } from "@/lib/local/banco-da-fila";
 import { dependeDe, enfileirar, type ItemDaFila, type Operacao } from "@/lib/local/fila";
 import { alvoDaOrdem, coalescerOrdem, novaOrdem, RPC_ORDEM } from "@/lib/local/ordem";
 import { organizacaoLocal } from "@/lib/local/organizacao-local";
-import { bancoDoUsuario, filaDoUsuario, sincronizarAgora } from "@/lib/local/sincronizador";
+import { motivoDoPrazo, validadeDoEspelho } from "@/lib/local/sessao";
+import {
+  bancoDoUsuario,
+  filaDoUsuario,
+  sincronizarAgora,
+  ultimaSincronia,
+} from "@/lib/local/sincronizador";
 import { usuarioLocal } from "@/lib/local/usuario";
 import { parseWholeNumber } from "@/lib/numbers";
 import { flattenTree, paiVisivel } from "@/lib/tree";
@@ -71,6 +77,11 @@ async function contexto(): Promise<Contexto | { erro: string }> {
   const fila = filaDoUsuario(userId);
   const organizationId = await organizacaoLocal(banco, userId);
   if (!organizationId) return { erro: SEM_ESPELHO };
+
+  // Cópia velha demais não recebe gravação: o que subiria são valores que já
+  // não valem, por cima do trabalho de quem continuou trabalhando.
+  const validade = validadeDoEspelho(await ultimaSincronia(userId));
+  if (!validade.podeGravar) return { erro: motivoDoPrazo(validade, "gravar") };
 
   return { userId, organizationId, banco, fila };
 }
