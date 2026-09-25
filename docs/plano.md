@@ -27,7 +27,7 @@ real.
 | Processo | Status e campos do USCIS; abas **Etapas** (tabela com status, data prevista e de conclusão, sub-etapas em grupo), **Documentos** (pastas, envio, visualizar, aprovar, recusar com motivo, resolver) e **Observações** (editor estilo Notion, várias pessoas ao mesmo tempo) |
 | Configurações | Etapas do funil, tags, catálogo de pastas, tipos de visto, status de etapa — **abre e grava sem internet**, e sincroniza sozinha |
 | Sincronização | O que este aparelho gravou e o servidor ainda não recebeu; o que ele recusou, com o motivo |
-| Financeiro | "Em construção" |
+| Financeiro | **A receber**: cobrança por cliente, parcelas com vencimento, baixa com a cotação do dia, e o que venceu. Abre e grava sem internet |
 
 ### Dados
 
@@ -35,7 +35,7 @@ real.
 |---|---|
 | Contatos | 76, importados do app antigo sem duplicata |
 | Organizações | Duli (raiz) e "Parceiro de Teste" (só para a suíte de testes) |
-| Banco | Supabase `xigmtofpmfqeehhcdasf`, migrations `0001` a `0032` em `supabase/migrations/` |
+| Banco | Supabase `xigmtofpmfqeehhcdasf`, migrations `0001` a `0033` em `supabase/migrations/` |
 | Arquivos | Buckets privados `documentos` (pastas do processo) e `observacoes` (colados no editor), 20 MB |
 | No aparelho | Cópia das tabelas de configuração e do que ela usa, por usuário (IndexedDB), mais a fila do que ainda não subiu |
 
@@ -46,8 +46,8 @@ Tudo roda sozinho em cada push.
 | Camada | O que pega |
 |---|---|
 | Trava de commit (`.githooks/pre-commit`) | Erro de tipo e de lint — o commit nem acontece |
-| 312 testes de unidade e componente | Regras, formatação, telas de etapas e documentos, sincronização em tempo real, editor montado sobre Supabase falso, fila de gravações offline e sobreposição do que está nela |
-| 86 testes de RLS | Uma organização não enxerga nem altera dado da outra — tabelas, arquivos e o canal em tempo real; regras de negócio no banco (pasta só resolve com tudo aprovado, processo só se liga a negócio do mesmo contato); e que a fila, ao subir, passa pela mesma RLS |
+| 355 testes de unidade e componente | Regras, formatação, telas de etapas e documentos, sincronização em tempo real, editor montado sobre Supabase falso, fila de gravações offline, e as contas do a receber — arredondamento de parcela, vencimento que não pula de mês, conversão que exige cotação |
+| 95 testes de RLS | Uma organização não enxerga nem altera dado da outra — tabelas, arquivos e o canal em tempo real; regras de negócio no banco (pasta só resolve com tudo aprovado, processo só se liga a negócio do mesmo contato); e que a fila, ao subir, passa pela mesma RLS; cobrança e parcela isoladas por organização |
 | 33 testes de fumaça | Cada tela abre com login de verdade, inclusive com um processo real |
 
 ---
@@ -126,6 +126,45 @@ assim.
 
 ---
 
+## 2c. Fase 3, Financeiro — a receber está pronto
+
+Renato parou a expansão do offline em 25/set: o que desliga o app do Lovable é
+Financeiro → Tarefas → virada, e offline é qualidade do app novo, não etapa
+da substituição. O Financeiro nasceu já lendo e gravando do aparelho, porque
+com o motor pronto isso custa quase o mesmo.
+
+### Decisões da fase
+
+| Pergunta | Resposta |
+|---|---|
+| A cobrança mora onde | **No cliente**, não no processo. O `project_id` fica anulável, só para dizer de onde veio |
+| Fechamento do mês | **Um número em real**, com a cotação **da data do pagamento** guardada na parcela |
+| Primeiro corte | A receber: valor, parcelas, vencimento, baixa e atraso |
+| Dados do app antigo | Não migrar. O que está lançado termina lá |
+
+### O que o app antigo ensinou a não repetir
+
+Seis defeitos observados no código dele, cada um virou uma decisão:
+
+1. Parcela sem moeda, e a tela formatando R$ fixo — um caso em dólar aparecia
+   rotulado como real. Aqui a moeda é da cobrança, e a tela nunca escolhe
+   símbolo sozinha.
+2. Cotação no cabeçalho: o histórico inteiro mudava quando o dólar mudava.
+   Agora ela fica na parcela paga.
+3. Saldos mantidos por gatilho (`valor_pago`, `valor_pendente`), que divergiam
+   das parcelas. Aqui não há saldo guardado: soma-se das parcelas.
+4. Duas contas de receita que nunca batiam. Uma só, por regime de caixa.
+5. "Vencido" calculado em dois lugares, de dois jeitos. Uma função pura.
+6. Soma de real com dólar sem converter no resumo do cliente.
+
+### O que falta para fechar a fase
+
+Contas a pagar, despesas, fornecedores e fluxo de caixa. Depois: contrato no
+ZapSign, boleto do Itaú, link do C6 e nota fiscal — estas quatro dependem das
+credenciais que ainda estão com o Renato.
+
+---
+
 ## 3. Pendências do Renato
 
 Coisas que dependem dele, fora do código.
@@ -193,7 +232,7 @@ leitor de tela; numa árvore, soltar entre dois níveis é ambíguo.
 
 | Fase | Objetivo | Portão |
 |---|---|---|
-| 3 — Financeiro | Receita por processo, contas a pagar, fluxo de caixa; depois contrato no ZapSign, cobrança C6/Itaú e nota fiscal | Fechar um mês inteiro no app, sem planilha |
+| 3 — Financeiro | **A receber: feito.** Falta contas a pagar, despesas, fornecedores e fluxo de caixa; depois contrato no ZapSign, cobrança C6/Itaú e nota fiscal | Fechar um mês inteiro no app, sem planilha |
 | 4 — Tarefas e integrações | Tarefas da equipe, usuários e permissões, notificações; porta Calendly, Gmail e n8n do app antigo | Equipe trabalha sem abrir o app antigo para essas coisas |
 | 5 — Virada | Dados finais migrados, domínio `login.duliconsulting.com` aponta para a Vercel, 25 usuários redefinem senha. App antigo intacto por 30 dias | Equipe trabalha um dia inteiro no app novo |
 | 6 — Portal do cliente | Acompanhar etapas, subir documentos, ver financeiro, contratar tradução | — |

@@ -53,6 +53,13 @@ permissão nenhuma: quem decide continua sendo a RLS, a cada linha que sobe.
 proteção. Toda tabela nova nasce com RLS ligada e policy escrita na mesma
 migration.
 
+**Dinheiro não se converte sem cotação e sem data.** `totals.ts` soma por
+moeda e nunca uma na outra; a única conversão do sistema é `emReais`
+(`features/financeiro/regras.ts`), e ela exige a cotação junto — devolve nulo
+quando falta, em vez de somar mil dólares como se fossem mil reais. A cotação
+usada fica gravada na parcela paga, porque o que entrou no caixa depende do
+dia em que entrou.
+
 **Todo dado de negócio carrega `organization_id`.** A Duli é a organização
 raiz; cada parceiro é uma organização com marca própria. Nenhuma query
 confia no `organization_id` vindo do cliente — quem filtra é a RLS.
