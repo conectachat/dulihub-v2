@@ -198,6 +198,16 @@ export function MobileNav() {
           className="h-7 w-7 object-contain"
         />
         <span className="font-semibold text-primary">Duli Hub</span>
+
+        {/*
+          Estado e saída também aqui: o celular é o aparelho que mais fica sem
+          internet, e era o único sem jeito de ver a sincronia nem de sair —
+          sem sair, não havia como tirar os dados do aparelho.
+        */}
+        <div className="ml-auto flex items-center gap-1">
+          <EstadoDaSincronia />
+          <Sair collapsed />
+        </div>
       </div>
       <nav className="flex gap-1 overflow-x-auto px-3 pb-3">
         {NAV.map((item) => {

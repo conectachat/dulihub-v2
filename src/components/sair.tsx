@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { signOut } from "@/features/auth/actions";
 import { armazemDaFila } from "@/lib/local/banco-da-fila";
+import { apagarDadosDoUsuario } from "@/lib/local/limpeza";
 import { filaDoUsuario } from "@/lib/local/sincronizador";
 import { useUsuarioLocal } from "@/lib/local/usuario";
 import { cn } from "@/lib/utils";
@@ -27,10 +28,19 @@ import { cn } from "@/lib/utils";
  * possível, mas dita por extenso.
  *
  * Sem nada pendente, é o botão de antes: um clique e pronto.
+ *
+ * Sair **apaga mesmo**: o espelho e a fila deste usuário saem do aparelho
+ * antes de a sessão acabar. `signOut` é Server Action e redireciona, então
+ * nada de navegador roda depois dela — a limpeza tem de vir antes.
  */
 export function Sair({ collapsed }: { collapsed: boolean }) {
   const { userId } = useUsuarioLocal();
   const [avisando, setAvisando] = useState(false);
+
+  async function sairEApagar() {
+    if (userId) await apagarDadosDoUsuario(userId);
+    await signOut();
+  }
 
   const pendentes = useLiveQuery(
     async () =>
@@ -44,7 +54,7 @@ export function Sair({ collapsed }: { collapsed: boolean }) {
 
   if (!pendentes) {
     return (
-      <form action={signOut}>
+      <form action={sairEApagar}>
         <Button type="submit" variant="ghost" size={collapsed ? "icon" : "sm"} className={classe}>
           {rotulo}
         </Button>
@@ -88,7 +98,7 @@ export function Sair({ collapsed }: { collapsed: boolean }) {
             >
               Continuar conectado
             </Button>
-            <form action={signOut}>
+            <form action={sairEApagar}>
               <Button type="submit" variant="destructive" className="rounded-xl">
                 Sair e perder as alterações
               </Button>

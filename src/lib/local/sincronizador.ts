@@ -34,6 +34,19 @@ export function bancoDoUsuario(userId: string) {
   return banco;
 }
 
+/**
+ * Fecha as conexões abertas com os bancos deste aparelho.
+ *
+ * Apagar um banco do IndexedDB **espera** enquanto houver conexão aberta com
+ * aquele nome — sem limite. Quem apaga (`limpeza.ts`) chama isto antes.
+ */
+export function fecharBancos() {
+  banco?.close();
+  fila?.close();
+  banco = null;
+  fila = null;
+}
+
 /** A fila deste usuário. Banco separado: ver `banco-da-fila.ts`. */
 export function filaDoUsuario(userId: string) {
   if (!fila || fila.name !== `dulihub-fila-${userId}`) {

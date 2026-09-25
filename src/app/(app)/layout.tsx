@@ -1,4 +1,5 @@
 import { AppSidebar, MobileNav } from "@/components/app-sidebar";
+import { SincroniaLigada } from "@/components/sincronia-ligada";
 import { QueryError } from "@/components/query-error";
 import { getUserContext } from "@/features/organizations/queries";
 
@@ -18,6 +19,9 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-svh bg-muted/40">
+      {/* O motor da sincronia: uma vez, fora de qualquer tela. */}
+      <SincroniaLigada />
+
       <AppSidebar
         cascaDe={context?.userId ?? ""}
         userName={context?.fullName ?? ""}

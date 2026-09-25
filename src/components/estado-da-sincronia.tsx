@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { CloudOff, RefreshCw, TriangleAlert } from "lucide-react";
 
 import { useSincronia } from "@/lib/local/estado";
-import { ligarSincronia } from "@/lib/local/sincronizador";
-import { useUsuarioLocal } from "@/lib/local/usuario";
 import { formatarDataHora } from "@/lib/formatar";
 import { cn } from "@/lib/utils";
 
@@ -17,18 +15,15 @@ import { cn } from "@/lib/utils";
  * é justamente o risco desta arquitetura. Por isso ele envelhece à vista, e
  * distingue **sem internet** (espera) de **sessão expirada** (entre de novo)
  * — as ações são diferentes.
+ *
+ * Só mostra. Quem liga a sincronia é `SincroniaLigada`, montado uma vez no
+ * layout: este indicador aparece em dois lugares (barra e menu do celular) e
+ * some quando a barra é recolhida, e nada disso pode decidir se o aparelho
+ * sincroniza.
  */
 export function EstadoDaSincronia() {
   const { em, sincronizando, error, online, pendentes, conflitos } = useSincronia();
-  const { userId } = useUsuarioLocal();
   const [agora, setAgora] = useState(() => Date.now());
-
-  // De quem é o aparelho vem da sessão guardada aqui, não do HTML: offline a
-  // casca pode ser a que ficou em cache de outra pessoa.
-  useEffect(() => {
-    if (!userId) return;
-    return ligarSincronia(userId);
-  }, [userId]);
 
   // Relógio próprio: sem ele o carimbo envelhece só quando algo mais
   // redesenha a tela, e "há 2 minutos" fica parado por meia hora.

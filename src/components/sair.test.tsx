@@ -3,6 +3,7 @@ import "fake-indexeddb/auto";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { BancoLocal } from "@/lib/local/banco";
 import { BancoDaFila } from "@/lib/local/banco-da-fila";
 import { esquecerUsuarioLocal } from "@/lib/local/usuario";
 
@@ -80,5 +81,25 @@ describe("sair", () => {
 
     expect(await screen.findByText("1 alteração ainda não subiu")).toBeTruthy();
     expect(screen.getByRole("button", { name: /continuar conectado/i })).toBeTruthy();
+  });
+
+  it("sair apaga o espelho e a fila deste aparelho", async () => {
+    // O comentário deste componente prometia isso desde o primeiro dia, e
+    // nada no código fazia. Num computador compartilhado, a carteira de quem
+    // saiu continuava no disco.
+    const espelho = new BancoLocal(USUARIO);
+    await espelho.open();
+    await espelho.tabela("tags").put({ id: "t1", organization_id: "o1", name: "EB-1A" });
+    espelho.close();
+
+    render(<Sair collapsed={false} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Sair" }));
+
+    await waitFor(async () => {
+      const nomes = (await indexedDB.databases()).map((d) => d.name);
+      expect(nomes).not.toContain(`dulihub-${USUARIO}`);
+      expect(nomes).not.toContain(`dulihub-fila-${USUARIO}`);
+    });
+    expect(signOut).toHaveBeenCalled();
   });
 });
