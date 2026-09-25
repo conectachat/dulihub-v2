@@ -17,6 +17,8 @@ import {
 } from "@/features/financeiro/consultas-locais";
 import {
   criarCobranca,
+  darBaixa,
+  desfazerBaixa,
   excluirCobranca,
   renomearCobranca,
 } from "@/features/financeiro/escritas-locais";
@@ -41,6 +43,74 @@ import { cn } from "@/lib/utils";
  */
 
 const PARCELAS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 18, 24];
+
+/**
+ * Dar baixa numa parcela.
+ *
+ * Pede a data — quase nunca é hoje, e a data certa é o que faz o fechamento
+ * do mês bater — e, em dólar, a cotação daquele dia. Digitada, e não buscada:
+ * a baixa pode acontecer sem internet, e é esse o ponto.
+ */
+function Baixa({
+  parcela,
+  moeda,
+  ultimaCotacao,
+}: {
+  parcela: Cobranca["parcelas"][number];
+  moeda: string;
+  ultimaCotacao: number | null;
+}) {
+  return (
+    <FormDialog
+      acao={darBaixa}
+      titulo={`Dar baixa na parcela ${parcela.number}`}
+      descricao="A data é a do dinheiro na conta, não a de hoje."
+      gatilho={
+        <Button variant="outline" size="sm" className="rounded-xl">
+          Dar baixa
+        </Button>
+      }
+      salvar="Confirmar recebimento"
+      pendente="Gravando..."
+    >
+      <input type="hidden" name="id" value={parcela.id} />
+      <input type="hidden" name="moeda" value={moeda} />
+
+      <div className="space-y-1">
+        <Label htmlFor={`baixa-data-${parcela.id}`}>Data do pagamento</Label>
+        <Input
+          id={`baixa-data-${parcela.id}`}
+          name="paid_on"
+          type="date"
+          defaultValue={hojeEmSaoPaulo()}
+          required
+          className="rounded-xl"
+        />
+      </div>
+
+      {moeda === "BRL" ? null : (
+        <div className="space-y-1">
+          <Label htmlFor={`baixa-cotacao-${parcela.id}`}>
+            Cotação do dólar no dia
+          </Label>
+          <Input
+            id={`baixa-cotacao-${parcela.id}`}
+            name="paid_rate"
+            inputMode="decimal"
+            placeholder="Ex.: 5,42"
+            defaultValue={ultimaCotacao ? String(ultimaCotacao).replace(".", ",") : ""}
+            required
+            className="rounded-xl"
+          />
+          <p className="text-xs text-muted-foreground">
+            É ela que diz quanto entrou em real. Fica guardada nesta parcela —
+            mudar o dólar amanhã não muda o que entrou hoje.
+          </p>
+        </div>
+      )}
+    </FormDialog>
+  );
+}
 
 function Situacao({ parcela, hoje }: { parcela: Cobranca["parcelas"][number]; hoje: string }) {
   const situacao = situacaoDaParcela(parcela, hoje);
@@ -217,6 +287,15 @@ export function Cobrancas({ personId }: { personId: string }) {
 
   if (!cobrancas) return null;
 
+  // A cotação mais recente já usada neste aparelho, só para sugerir. O valor
+  // que vale é o que a pessoa confirmar na hora da baixa.
+  const ultimaCotacao =
+    cobrancas
+      .flatMap((c) => c.parcelas)
+      .filter((p) => p.paid_on && p.paid_rate)
+      .sort((a, b) => (a.paid_on ?? "").localeCompare(b.paid_on ?? ""))
+      .at(-1)?.paid_rate ?? null;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
@@ -274,10 +353,27 @@ export function Cobrancas({ personId }: { personId: string }) {
                         {ROTULO_DO_METODO[p.method as keyof typeof ROTULO_DO_METODO] ?? p.method}
                       </span>
                     </span>
-                    <span className="flex items-center gap-3">
+                    <span className="flex flex-wrap items-center gap-3">
                       <Situacao parcela={p} hoje={hoje} />
                       <strong className="text-sm">{formatarMoeda(p.amount, c.currency)}</strong>
                       <SeloPendente pendente={p.pendente} conflito={p.conflito} />
+                      {p.paid_on ? (
+                        <ConfirmAction
+                          action={desfazerBaixa}
+                          hidden={{ id: p.id }}
+                          title={`Desfazer a baixa da parcela ${p.number}?`}
+                          consequence="Ela volta a aparecer em aberto, e sai do recebido do mês."
+                          confirmLabel="Desfazer a baixa"
+                          triggerLabel={`Desfazer a baixa da parcela ${p.number}`}
+                          needsConfirmation
+                        />
+                      ) : (
+                        <Baixa
+                          parcela={p}
+                          moeda={c.currency}
+                          ultimaCotacao={ultimaCotacao}
+                        />
+                      )}
                     </span>
                   </li>
                 ))}

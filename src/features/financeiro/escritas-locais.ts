@@ -14,11 +14,11 @@ import {
   ultimaSincronia,
 } from "@/lib/local/sincronizador";
 import { usuarioLocal } from "@/lib/local/usuario";
-import { hojeEmSaoPaulo } from "@/lib/formatar";
+import { formatarDia, hojeEmSaoPaulo } from "@/lib/formatar";
 
 import { cobrancasDoContato } from "./consultas-locais";
 import { gerarParcelas } from "./regras";
-import { cobrancaSchema } from "./schema";
+import { baixaSchema, cobrancaSchema } from "./schema";
 
 /**
  * As gravações do a receber, feitas **no aparelho**.
@@ -208,6 +208,74 @@ export async function excluirCobranca(formData: FormData): Promise<ActionState> 
         id: p.id,
       })),
       { tipo: "delete", tabela: "receivables", id },
+    ],
+  });
+}
+
+/**
+ * Dar baixa: o que entrou, quando, e por quanto estava o câmbio.
+ *
+ * A cotação fica **na parcela**, não no cabeçalho da cobrança. O que entrou
+ * no caixa depende do dia em que entrou; guardar a cotação em cima faz o
+ * histórico inteiro mudar quando o dólar muda — foi o que aconteceu no app
+ * antigo.
+ *
+ * Em dólar sem cotação a baixa é recusada: sem ela não há como dizer quanto
+ * entrou, e o fechamento do mês somaria dólar como se fosse real.
+ */
+export async function darBaixa(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = baixaSchema.safeParse({
+    id: formData.get("id"),
+    paid_on: formData.get("paid_on"),
+    paid_rate: formData.get("paid_rate"),
+    moeda: formData.get("moeda"),
+  });
+  if (!parsed.success) return falhou(parsed.error.issues[0].message);
+
+  const { id, paid_on, paid_rate, moeda } = parsed.data;
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  return gravarLocal(ctx, {
+    alvo: id,
+    depende: dependeDe(await naFila(ctx), id),
+    rotulo: `Dar baixa na parcela de ${formatarDia(paid_on)}`,
+    passos: [
+      {
+        tipo: "update",
+        tabela: "installments",
+        id,
+        // Em real a cotação é nula, e o banco recusa cotação sem pagamento.
+        patch: { paid_on, paid_rate: moeda === "BRL" ? null : paid_rate },
+      },
+    ],
+  });
+}
+
+/** Desfaz a baixa — a parcela volta a aparecer em aberto. */
+export async function desfazerBaixa(formData: FormData): Promise<ActionState> {
+  const id = formData.get("id");
+  if (typeof id !== "string") return falhou("Parcela não informada.");
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  return gravarLocal(ctx, {
+    alvo: id,
+    depende: dependeDe(await naFila(ctx), id),
+    rotulo: "Desfazer a baixa de uma parcela",
+    passos: [
+      {
+        tipo: "update",
+        tabela: "installments",
+        id,
+        // A cotação sai junto: ela só faz sentido com pagamento, e o banco
+        // tem um check dizendo isso.
+        patch: { paid_on: null, paid_rate: null },
+      },
     ],
   });
 }

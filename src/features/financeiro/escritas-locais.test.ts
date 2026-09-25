@@ -31,7 +31,9 @@ vi.mock("@/lib/local/sincronizador", async (original) => ({
 }));
 
 const { MARCA_DA_SINCRONIA } = await import("@/lib/local/sessao");
-const { criarCobranca, excluirCobranca } = await import("./escritas-locais");
+const { criarCobranca, darBaixa, desfazerBaixa, excluirCobranca } = await import(
+  "./escritas-locais",
+);
 
 let banco: BancoLocal;
 let fila: BancoDaFila;
@@ -180,5 +182,82 @@ describe("excluirCobranca", () => {
 
     const [item] = await fila.fila.toArray();
     expect(item.passos.map((p) => (p as { id: string }).id)).toEqual(["p1", "p2", "c1"]);
+  });
+});
+
+describe("dar baixa", () => {
+  // Id de verdade: os ids da fila são gerados por `novoId()`, e o schema
+  // recusa qualquer coisa que não seja um uuid.
+  const PARCELA = "55555555-5555-4555-8555-555555555555";
+
+  beforeEach(async () => {
+    await banco.tabela("receivables").put({
+      id: "c1",
+      organization_id: ORG,
+      person_id: ERICK,
+      title: "EB-1A",
+      amount: 1000,
+      currency: "USD",
+      updated_at: "2026-10-01T10:00:00Z",
+    });
+    await banco.tabela("installments").put({
+      id: PARCELA,
+      organization_id: ORG,
+      receivable_id: "c1",
+      number: 1,
+      amount: 1000,
+      due_on: "2026-10-01",
+      paid_on: null,
+      paid_rate: null,
+      method: "pix",
+      updated_at: "2026-10-01T10:00:00Z",
+    });
+  });
+
+  it("grava a data e a cotação daquele dia", async () => {
+    await darBaixa(
+      { error: null },
+      formulario({ id: PARCELA, paid_on: "2026-10-03", paid_rate: "5,42", moeda: "USD" }),
+    );
+
+    const [item] = await fila.fila.toArray();
+    expect(item.passos[0]).toMatchObject({
+      tipo: "update",
+      tabela: "installments",
+      id: PARCELA,
+      patch: { paid_on: "2026-10-03", paid_rate: 5.42 },
+    });
+  });
+
+  it("em dólar sem cotação, recusa", async () => {
+    // Sem cotação não há como dizer quanto entrou, e o fechamento do mês
+    // somaria dólar como se fosse real.
+    const estado = await darBaixa(
+      { error: null },
+      formulario({ id: PARCELA, paid_on: "2026-10-03", paid_rate: "", moeda: "USD" }),
+    );
+
+    expect(estado.error).toMatch(/cotação/i);
+    expect(await fila.fila.count()).toBe(0);
+  });
+
+  it("em real, a cotação vai nula — o banco recusa cotação sem sentido", async () => {
+    const estado = await darBaixa(
+      { error: null },
+      formulario({ id: PARCELA, paid_on: "2026-10-03", moeda: "BRL" }),
+    );
+
+    expect(estado.error).toBeNull();
+    const [item] = await fila.fila.toArray();
+    expect(item.passos[0]).toMatchObject({ patch: { paid_on: "2026-10-03", paid_rate: null } });
+  });
+
+  it("desfazer a baixa limpa data e cotação juntas", async () => {
+    await desfazerBaixa(formulario({ id: PARCELA }));
+
+    const [item] = await fila.fila.toArray();
+    expect(item.passos[0]).toMatchObject({
+      patch: { paid_on: null, paid_rate: null },
+    });
   });
 });
