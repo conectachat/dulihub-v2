@@ -46,7 +46,7 @@ Tudo roda sozinho em cada push.
 | Camada | O que pega |
 |---|---|
 | Trava de commit (`.githooks/pre-commit`) | Erro de tipo e de lint — o commit nem acontece |
-| 289 testes de unidade e componente | Regras, formatação, telas de etapas e documentos, sincronização em tempo real, editor montado sobre Supabase falso, fila de gravações offline e sobreposição do que está nela |
+| 312 testes de unidade e componente | Regras, formatação, telas de etapas e documentos, sincronização em tempo real, editor montado sobre Supabase falso, fila de gravações offline e sobreposição do que está nela |
 | 86 testes de RLS | Uma organização não enxerga nem altera dado da outra — tabelas, arquivos e o canal em tempo real; regras de negócio no banco (pasta só resolve com tudo aprovado, processo só se liga a negócio do mesmo contato); e que a fila, ao subir, passa pela mesma RLS |
 | 33 testes de fumaça | Cada tela abre com login de verdade, inclusive com um processo real |
 
@@ -93,6 +93,8 @@ Offline funciona 100% igual online."* Não é um subconjunto — é paridade.
 | Subir | Ao voltar a internet, o que foi gravado sobe sozinho, na ordem em que foi feito |
 | Ver o estado | "Sincronizado às 14:32" na barra lateral, que envelhece à vista; quantas alterações estão para subir; e a linha marcada "Só neste aparelho" até o servidor confirmar |
 | Recusa | O que o servidor não aceitar fica visível, com o motivo, em Configuração › Sincronização. Nada é desfeito sozinho |
+| Sair | Apaga a cópia e a fila deste aparelho, depois de avisar o que ainda não subiu. Entrar com outra conta apaga o que ficou da anterior |
+| Aparelho parado | Recusa gravar após 7 dias sem sincronizar, e recusa mostrar após 14 — cópia velha exibida como atual é o defeito que esta fase persegue |
 
 Sem Electron: a PWA dá janela e ícone próprios sem um segundo pacote para
 manter. O app antigo tinha os dois.
