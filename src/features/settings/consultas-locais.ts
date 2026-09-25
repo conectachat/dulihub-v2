@@ -3,7 +3,8 @@
 import type { BancoDaFila } from "@/lib/local/banco-da-fila";
 import type { BancoLocal } from "@/lib/local/banco";
 import type { ItemDaFila } from "@/lib/local/fila";
-import { sobrepor, type Pendencia } from "@/lib/local/sobreposicao";
+import { lerTabela, pendentesDaFila } from "@/lib/local/leitura";
+import type { Pendencia } from "@/lib/local/sobreposicao";
 import type { Tables } from "@/lib/supabase/database.types";
 
 import {
@@ -41,24 +42,10 @@ const porPosicao = <T extends { position: number }>(linhas: T[]) =>
 
 type Linhas = (Record<string, unknown> & Pendencia)[];
 
-/** O que está na fila deste aparelho, para a leitura enxergar. */
-async function pendentes(fila: BancoDaFila): Promise<ItemDaFila[]> {
-  return fila.fila.orderBy("criada_em").toArray();
-}
+const pendentes = pendentesDaFila;
 
-/** Lê uma tabela do espelho, com a fila por cima. */
-async function ler(
-  banco: BancoLocal,
-  tabela: string,
-  itens: ItemDaFila[],
-): Promise<Linhas> {
-  // Fora do tipo gerado: o Dexie guarda linha crua.
-  const linhas = (await banco.tabela(tabela).toArray()) as unknown as Record<
-    string,
-    unknown
-  >[];
-  return sobrepor(tabela, linhas, itens) as Linhas;
-}
+const ler = (banco: BancoLocal, tabela: string, itens: ItemDaFila[]) =>
+  lerTabela(banco, tabela, itens) as Promise<Linhas>;
 
 type Com<T> = T & Pendencia;
 

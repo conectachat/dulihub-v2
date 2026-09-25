@@ -28,7 +28,7 @@ import type { Armazem, Linha } from "./espelho";
  *   dito em `docs/plano.md`.
  */
 
-export const VERSAO_DO_ESPELHO = 2;
+export const VERSAO_DO_ESPELHO = 3;
 
 /** As tabelas espelhadas neste estágio: a Configuração e o que ela usa. */
 export const TABELAS_ESPELHADAS = [
@@ -49,6 +49,12 @@ export const TABELAS_ESPELHADAS = [
   "pipelines",
   "pipeline_stages",
   "opportunities",
+  // As pessoas descem junto com o Financeiro: as telas de cobrança precisam
+  // do nome do cliente. Espelhar a tabela não arrasta a tela de Contatos —
+  // ela continua lendo do servidor até migrar.
+  "people",
+  "receivables",
+  "installments",
 ] as const;
 
 export type TabelaEspelhada = (typeof TABELAS_ESPELHADAS)[number];
