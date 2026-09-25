@@ -21,6 +21,7 @@ import { NovoProcessoDialog } from "./novo-processo-dialog";
 import { PersonTags } from "./person-tags";
 import { Timeline } from "./timeline";
 import { formatarData, formatarDia, telefoneCompleto } from "@/lib/formatar";
+import { Cobrancas } from "./cobrancas";
 
 export default async function PersonPage({
   params,
@@ -276,6 +277,19 @@ export default async function PersonPage({
               ))}
             </ul>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Financeiro</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/*
+            Lê do aparelho, não daqui: é o caminho que funciona com e sem
+            internet, e o mesmo nos dois casos.
+          */}
+          <Cobrancas personId={person.id} />
         </CardContent>
       </Card>
 
