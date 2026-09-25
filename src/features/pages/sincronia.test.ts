@@ -9,6 +9,7 @@ import {
   paraBase64,
   paraBytea,
   Sincronia,
+  type Deposito,
   type Pedaco,
   type Transporte,
 } from "./sincronia";
@@ -83,11 +84,36 @@ function transporte(
   return t;
 }
 
+/** Depósito falso: o que o IndexedDB do aparelho faria. */
+function deposito(): Deposito & { guardados: Map<string, Uint8Array> } {
+  const guardados = new Map<string, Uint8Array>();
+  let proxima = 1;
+
+  return {
+    guardados,
+    async guardar(update) {
+      const chave = String(proxima++);
+      guardados.set(chave, update);
+      return chave;
+    },
+    async pendentes() {
+      return [...guardados].map(([chave, update]) => ({ chave, update }));
+    },
+    async limpar(chaves) {
+      for (const chave of chaves) guardados.delete(chave);
+    },
+  };
+}
+
 /** Uma pessoa com o editor aberto: documento, sincronia e transporte. */
 async function abrir(
   banco: Banco,
   canal: ReturnType<typeof novoCanal>,
-  opcoes: { falhas?: { gravar: number }; limiteCompactacao?: number } = {},
+  opcoes: {
+    falhas?: { gravar: number };
+    limiteCompactacao?: number;
+    deposito?: Deposito;
+  } = {},
 ) {
   const doc = new Y.Doc();
   const ref: { s?: Sincronia } = {};
@@ -97,6 +123,7 @@ async function abrir(
     limiteCompactacao: opcoes.limiteCompactacao ?? 50,
     esperaRetentativa: 0,
     aoMudarEstado: (e) => estados.push(e),
+    deposito: opcoes.deposito,
   });
   ref.s = s;
   canal.pontas.push(s);
@@ -255,5 +282,83 @@ describe("Sincronia", () => {
 
     const estados = [...bia.s.awareness.getStates().values()];
     expect(estados).toContainEqual({ user: { name: "Renato", color: "#f60" } });
+  });
+
+  it("o que a pessoa digitou fica no aparelho antes de ir ao banco", async () => {
+    // Toda a durabilidade dependia de um array em memória. Fechar a aba com o
+    // banco fora do ar perdia o texto, e o aviso na tela dizia só "tentando
+    // de novo" — a pessoa via o problema e perdia mesmo assim.
+    const banco = novoBanco();
+    const canal = novoCanal();
+    const dep = deposito();
+    const ana = await abrir(banco, canal, { falhas: { gravar: 99 }, deposito: dep });
+
+    ana.doc.getText("t").insert(0, "não pode sumir");
+    await assentar();
+
+    expect(dep.guardados.size).toBeGreaterThan(0);
+    expect(banco.pedacos).toHaveLength(0);
+  });
+
+  it("o depósito esvazia quando o banco confirma", async () => {
+    const banco = novoBanco();
+    const canal = novoCanal();
+    const dep = deposito();
+    const ana = await abrir(banco, canal, { deposito: dep });
+
+    ana.doc.getText("t").insert(0, "subiu");
+    await assentar();
+
+    expect(banco.pedacos).toHaveLength(1);
+    expect(dep.guardados.size).toBe(0);
+  });
+
+  it("fechar a aba e reabrir traz de volta o que não tinha subido", async () => {
+    const banco = novoBanco();
+    const canal = novoCanal();
+    const dep = deposito();
+
+    const antes = await abrir(banco, canal, { falhas: { gravar: 99 }, deposito: dep });
+    antes.doc.getText("t").insert(0, "escrito no avião");
+    await assentar();
+    antes.s.destruir();
+
+    // Aba nova, banco de volta: o texto reaparece e sobe.
+    const depois = await abrir(banco, canal, { deposito: dep });
+    await assentar();
+
+    expect(depois.texto()).toBe("escrito no avião");
+    expect(banco.pedacos.length).toBeGreaterThan(0);
+    expect(dep.guardados.size).toBe(0);
+  });
+
+  it("o lote em voo não some se a gravação falhar", async () => {
+    // A fila era esvaziada ANTES do await da rede: morrer nessa janela
+    // perdia o lote sem deixar rastro em lugar nenhum.
+    const banco = novoBanco();
+    const canal = novoCanal();
+    const dep = deposito();
+    const ana = await abrir(banco, canal, { falhas: { gravar: 1 }, deposito: dep });
+
+    ana.doc.getText("t").insert(0, "primeiro");
+    await assentar();
+    await assentar();
+
+    expect(ana.texto()).toBe("primeiro");
+    const caio = await abrir(banco, canal);
+    expect(caio.texto()).toBe("primeiro");
+  });
+
+  it("sem depósito, continua funcionando como antes", async () => {
+    // O depósito é opcional: quem monta o editor fora do navegador (teste,
+    // servidor) não tem IndexedDB, e isso não pode quebrar a sincronia.
+    const banco = novoBanco();
+    const canal = novoCanal();
+    const ana = await abrir(banco, canal);
+
+    ana.doc.getText("t").insert(0, "sem aparelho");
+    await assentar();
+
+    expect(banco.pedacos).toHaveLength(1);
   });
 });

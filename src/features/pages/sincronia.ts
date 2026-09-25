@@ -21,6 +21,26 @@ import {
 
 export type Pedaco = { id: number; update: Uint8Array };
 
+/**
+ * Onde o que foi digitado fica **antes** de o banco confirmar.
+ *
+ * Existe porque a durabilidade dependia de um array em memória: fechar a aba
+ * com a gravação recusada perdia o texto, e a tela dizia só "tentando de
+ * novo" — a pessoa via o problema acontecer e perdia mesmo assim.
+ *
+ * É opcional: quem monta a sincronia fora do navegador não tem onde guardar,
+ * e isso não pode impedir a edição.
+ */
+export interface Deposito {
+  /** Guarda um update e devolve a chave para apagá-lo depois. */
+  guardar(update: Uint8Array): Promise<string>;
+  pendentes(): Promise<{ chave: string; update: Uint8Array }[]>;
+  limpar(chaves: string[]): Promise<void>;
+}
+
+/** Um update esperando o banco. `chave` chega quando o depósito responde. */
+type Pendente = { update: Uint8Array; chave?: string };
+
 export type Estado = "carregando" | "salvando" | "salvo" | "erro";
 
 export interface Transporte {
@@ -41,7 +61,7 @@ export class Sincronia {
   pronto = false;
 
   private ultimoId = 0;
-  private pendentes: Uint8Array[] = [];
+  private pendentes: Pendente[] = [];
   private gravando = false;
   private destruida = false;
   private readonly limite: number;
@@ -49,6 +69,7 @@ export class Sincronia {
   private readonly avisar: (e: Estado) => void;
   /** Presença criada aqui é destruída aqui; a de fora, quem criou destrói. */
   private readonly presencaPropria: boolean;
+  private readonly deposito: Deposito | null;
 
   constructor(
     private readonly doc: Y.Doc,
@@ -61,6 +82,8 @@ export class Sincronia {
       aoMudarEstado?: (e: Estado) => void;
       /** Presença já criada por quem monta o editor (o Plate cria a dele). */
       awareness?: Awareness;
+      /** Onde guardar o pendente enquanto o banco não confirma. */
+      deposito?: Deposito;
     } = {},
   ) {
     this.presencaPropria = !opcoes.awareness;
@@ -68,6 +91,7 @@ export class Sincronia {
     this.limite = opcoes.limiteCompactacao ?? 50;
     this.espera = opcoes.esperaRetentativa ?? 3_000;
     this.avisar = opcoes.aoMudarEstado ?? (() => {});
+    this.deposito = opcoes.deposito ?? null;
   }
 
   async iniciar(): Promise<void> {
@@ -81,6 +105,10 @@ export class Sincronia {
     this.awareness.on("update", this.aoMudarPresenca);
     this.pronto = true;
     this.avisar("salvo");
+
+    // O que ficou no aparelho da última vez: aplica no documento e recoloca
+    // na fila. É o que faz o texto **voltar** depois de um fechamento feio.
+    await this.recuperarDoDeposito();
 
     // Anuncia a presença: quem já está na página responde com a dela.
     this.transmitirPresenca([this.doc.clientID]);
@@ -118,6 +146,11 @@ export class Sincronia {
   }
 
   destruir(): void {
+    // Uma última tentativa antes de desligar: navegar entre telas do app
+    // descartava o pendente sem a aba sequer fechar. O que não subir aqui
+    // continua no depósito, e volta na próxima abertura.
+    void this.gravarPendentes();
+
     this.destruida = true;
     this.doc.off("update", this.aoAtualizar);
     // Avisa os outros que saiu, antes de desligar a presença.
@@ -139,9 +172,32 @@ export class Sincronia {
   private aoAtualizar = (update: Uint8Array, origem: unknown) => {
     if (origem === REMOTO) return;
     this.transporte.transmitir("update", update);
-    this.pendentes.push(update);
+
+    const pendente: Pendente = { update };
+    this.pendentes.push(pendente);
+    // Vai para o aparelho na hora, e não no fechamento da aba: `pagehide` não
+    // espera promessa, e o que se perde ali é exatamente o que importa.
+    void this.deposito?.guardar(update).then((chave) => {
+      pendente.chave = chave;
+    });
+
     this.gravarPendentes();
   };
+
+  /** Recoloca na fila o que o aparelho guardou e o banco nunca recebeu. */
+  private async recuperarDoDeposito(): Promise<void> {
+    if (!this.deposito) return;
+
+    const guardados = await this.deposito.pendentes().catch(() => []);
+    if (guardados.length === 0) return;
+
+    // Origem remota: aplicar no documento não pode reenfileirar o mesmo
+    // update — quem cuida de subi-lo é a fila, logo abaixo.
+    Y.applyUpdate(this.doc, Y.mergeUpdates(guardados.map((g) => g.update)), REMOTO);
+    for (const g of guardados) this.pendentes.push({ update: g.update, chave: g.chave });
+
+    this.gravarPendentes();
+  }
 
   private aoMudarPresenca = (
     { added, updated, removed }: { added: number[]; updated: number[]; removed: number[] },
@@ -160,20 +216,26 @@ export class Sincronia {
    * fila e tenta de novo — o texto nunca sai da memória antes de o banco
    * confirmar.
    */
-  private async gravarPendentes(): Promise<void> {
+  async gravarPendentes(): Promise<void> {
     if (this.gravando || this.destruida || this.pendentes.length === 0) return;
     this.gravando = true;
     this.avisar("salvando");
 
-    const lote = this.pendentes;
-    this.pendentes = [];
+    // O lote **não** sai da fila antes da resposta. Sair antes era uma janela
+    // em que o texto não estava mais na fila nem tinha chegado ao banco:
+    // morrer ali perdia o lote sem deixar rastro.
+    const lote = [...this.pendentes];
     try {
-      await this.transporte.gravar(Y.mergeUpdates(lote));
+      await this.transporte.gravar(Y.mergeUpdates(lote.map((p) => p.update)));
+
+      this.pendentes = this.pendentes.filter((p) => !lote.includes(p));
+      const chaves = lote.map((p) => p.chave).filter((c): c is string => Boolean(c));
+      if (chaves.length) await this.deposito?.limpar(chaves).catch(() => {});
+
       this.gravando = false;
       if (this.pendentes.length > 0) return this.gravarPendentes();
       this.avisar("salvo");
     } catch {
-      this.pendentes = [...lote, ...this.pendentes];
       this.gravando = false;
       this.avisar("erro");
       setTimeout(() => this.gravarPendentes(), this.espera);

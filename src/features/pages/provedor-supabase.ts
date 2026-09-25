@@ -7,6 +7,7 @@ import * as Y from "yjs";
 
 import { createClient } from "@/lib/supabase/client";
 
+import { depositoLocal } from "./deposito-local";
 import {
   deBase64,
   deBytea,
@@ -140,6 +141,10 @@ export class ProvedorSupabase implements UnifiedProvider {
 
     this.sincronia = new Sincronia(this.document, transporte, {
       awareness: props.awareness,
+      // O que for digitado fica no aparelho até o banco confirmar. Sem isto,
+      // fechar a aba com a gravação recusada perdia o texto — e a tela
+      // dizia só "tentando de novo".
+      deposito: depositoLocal(paginaId),
       aoMudarEstado: (estado) => {
         ganchosDasPaginas.get(paginaId)?.aoMudarEstado?.(estado);
         if (estado === "salvo" && this.isSynced) this.agendarConteudo();

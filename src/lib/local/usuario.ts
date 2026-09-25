@@ -39,16 +39,22 @@ function definir(novo: EstadoDoUsuario) {
 }
 
 function buscar() {
-  buscando ??= createClient()
-    .auth.getSession()
-    .then(({ data }) =>
+  // `async` e não `.then` encadeado: montar o cliente pode lançar de forma
+  // síncrona (variável de ambiente faltando, cliente falso num teste), e aí
+  // o `.catch` nem chegava a ser instalado — virava rejeição solta, que em
+  // produção derruba a tela inteira.
+  buscando ??= (async () => {
+    try {
+      const { data } = await createClient().auth.getSession();
       definir({
         userId: data.session?.user.id ?? null,
         email: data.session?.user.email ?? null,
         carregado: true,
-      }),
-    )
-    .catch(() => definir({ userId: null, email: null, carregado: true }));
+      });
+    } catch {
+      definir({ userId: null, email: null, carregado: true });
+    }
+  })();
   return buscando;
 }
 

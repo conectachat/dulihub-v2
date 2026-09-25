@@ -42,9 +42,18 @@ export function Sair({ collapsed }: { collapsed: boolean }) {
     await signOut();
   }
 
+  // Conta também o texto das Observações que não subiu: sair apaga os dois,
+  // e avisar de um só perderia o outro em silêncio.
   const pendentes = useLiveQuery(
-    async () =>
-      userId ? (await armazemDaFila(filaDoUsuario(userId)).listar()).length : 0,
+    async () => {
+      if (!userId) return 0;
+      const fila = filaDoUsuario(userId);
+      const [itens, pedacos] = await Promise.all([
+        armazemDaFila(fila).listar(),
+        fila.observacoes.count(),
+      ]);
+      return itens.length + pedacos;
+    },
     [userId],
     0,
   );

@@ -2,7 +2,7 @@
  * Supabase de mentira para testar o provedor e o editor sem rede.
  *
  * Cobre só o que `provedor-supabase.ts` usa: duas tabelas, a RPC de
- * compactação, canal com broadcast e `auth.getUser`. Um `Mundo` é o banco e o
+ * compactação, canal com broadcast e `auth`. Um `Mundo` é o banco e o
  * canal compartilhados; cada `clienteFalso(mundo)` é uma pessoa com o app
  * aberto.
  */
@@ -133,6 +133,11 @@ export function clienteFalso(mundo: Mundo) {
     async removeChannel(c: CanalFalso) {
       c.sair();
     },
-    auth: { getUser: async () => ({ data: { user: { id: "u1" } } }) },
+    auth: {
+      getUser: async () => ({ data: { user: { id: "u1" } } }),
+      // O depósito das Observações pergunta de quem é o aparelho antes de
+      // guardar. Sem esta, o falso divergia do cliente de verdade.
+      getSession: async () => ({ data: { session: { user: { id: "u1" } } } }),
+    },
   };
 }
