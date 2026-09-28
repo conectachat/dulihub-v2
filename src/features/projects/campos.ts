@@ -10,6 +10,7 @@ const DATAS = [
   "filed_on",
   "rfe_received_on",
   "rfe_due_on",
+  "rfe_answered_on",
   "decided_on",
   "expected_on",
 ] as const;

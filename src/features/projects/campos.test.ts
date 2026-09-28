@@ -55,6 +55,9 @@ describe("campoDoProcesso", () => {
       "filed_on",
       "rfe_received_on",
       "rfe_due_on",
+      // Sem ele, o alerta de prazo da RFE continuaria na tela Início depois
+      // da resposta enviada — e alerta que grita à toa se aprende a ignorar.
+      "rfe_answered_on",
       "decided_on",
       "expected_on",
     ])("%s aceita AAAA-MM-DD e vazio", (campo) => {

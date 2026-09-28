@@ -24,6 +24,8 @@ const CAMPOS_DE_DATA = [
   { campo: "priority_date", rotulo: "Priority date" },
   { campo: "rfe_received_on", rotulo: "RFE recebida" },
   { campo: "rfe_due_on", rotulo: "Prazo da RFE" },
+  // Preenchida, o prazo da RFE sai dos alertas da tela Início.
+  { campo: "rfe_answered_on", rotulo: "Resposta da RFE enviada" },
   { campo: "decided_on", rotulo: "Decisão" },
   { campo: "expected_on", rotulo: "Previsão de conclusão" },
 ] as const;

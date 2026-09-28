@@ -1287,6 +1287,7 @@ export type Database = {
           organization_id: string
           person_id: string
           priority_date: string | null
+          rfe_answered_on: string | null
           rfe_due_on: string | null
           rfe_received_on: string | null
           started_on: string
@@ -1307,6 +1308,7 @@ export type Database = {
           organization_id: string
           person_id: string
           priority_date?: string | null
+          rfe_answered_on?: string | null
           rfe_due_on?: string | null
           rfe_received_on?: string | null
           started_on?: string
@@ -1327,6 +1329,7 @@ export type Database = {
           organization_id?: string
           person_id?: string
           priority_date?: string | null
+          rfe_answered_on?: string | null
           rfe_due_on?: string | null
           rfe_received_on?: string | null
           started_on?: string

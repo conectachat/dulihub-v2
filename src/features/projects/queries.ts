@@ -98,7 +98,7 @@ export async function obterProcesso(id: string) {
       .from("projects")
       .select(
         `${COLUNAS}, organization_id, uscis_receipt_number, priority_date, filed_on,
-         rfe_received_on, rfe_due_on, decided_on, expected_on`,
+         rfe_received_on, rfe_due_on, rfe_answered_on, decided_on, expected_on`,
       )
       .eq("id", id)
       .maybeSingle(),
