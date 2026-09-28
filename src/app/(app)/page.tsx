@@ -6,7 +6,12 @@ import { QueryError } from "@/components/query-error";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getUserContext } from "@/features/organizations/queries";
+import { lerPainel } from "@/features/painel/queries";
+import { alertasDoDia } from "@/features/painel/regras";
 import { listPeople } from "@/features/people/queries";
+import { hojeEmSaoPaulo } from "@/lib/formatar";
+
+import { AlertasDoDia } from "./alertas";
 
 export const metadata = { title: "Dashboard — Duli Hub" };
 
@@ -21,7 +26,11 @@ export default async function DashboardPage() {
   // caso o matcher mude no futuro.
   if (!context) return null;
 
-  const { people, error } = await listPeople();
+  const hoje = hojeEmSaoPaulo();
+  const [{ people, error }, painel] = await Promise.all([
+    listPeople(),
+    lerPainel(hoje),
+  ]);
 
   // Sem isto os três números viram 0 e a tela convida a "começar cadastrando
   // um contato" — com 76 deles no banco.
@@ -72,6 +81,21 @@ export default async function DashboardPage() {
           context.organizations[0]?.name ?? "Sem organização vinculada"
         }
       />
+
+      {/*
+        O que precisa de atenção vem antes das contagens: é o que muda o que
+        a pessoa vai fazer hoje. Leitura que falhou aparece como falha — nunca
+        como "nada vencendo", que seria a tela dizendo que está tudo em dia
+        justamente quando não sabe.
+      */}
+      {painel.error ? (
+        <QueryError
+          title="Não foi possível conferir prazos e parcelas"
+          detalhe={painel.error}
+        />
+      ) : painel.dados ? (
+        <AlertasDoDia alertas={alertasDoDia(painel.dados, hoje)} />
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((card) => {

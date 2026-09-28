@@ -120,6 +120,18 @@ describe("cada tela abre com sessão", () => {
     expect(resposta.status).toBe(200);
   }, 60_000);
 
+  it("a tela Início confere prazos e parcelas de verdade", async () => {
+    // O 200 sozinho não prova nada aqui: consulta com erro vira o aviso
+    // "Não foi possível conferir" e a página continua respondendo 200. É
+    // justamente o erro que mais importa pegar — um painel de alertas que
+    // falha em silêncio parece um painel dizendo que está tudo em dia.
+    const resposta = await pedir("/");
+    const html = await resposta.text();
+
+    expect(resposta.status).toBe(200);
+    expect(html).not.toContain("Não foi possível conferir prazos e parcelas");
+  }, 60_000);
+
   it("ficha de contato", async () => {
     expect(pessoaId, "nenhum contato visível para a conta de teste").not.toBeNull();
     const resposta = await pedir(`/contatos/${pessoaId}`);
