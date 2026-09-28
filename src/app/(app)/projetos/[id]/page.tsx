@@ -30,12 +30,19 @@ const CAMPOS_DE_DATA = [
   { campo: "expected_on", rotulo: "Previsão de conclusão" },
 ] as const;
 
+/** As abas que um atalho pode abrir. Fora da lista, abre a primeira. */
+const ABAS = ["etapas", "documentos", "observacoes"] as const;
+
 export default async function ProcessoPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ aba?: string }>;
 }) {
-  const { id } = await params;
+  const [{ id }, { aba }] = await Promise.all([params, searchParams]);
+  // O alerta de pasta atrasada, na tela Início, leva direto aos documentos.
+  const abaInicial = (ABAS as readonly string[]).includes(aba ?? "") ? aba! : "etapas";
   const { processo, etapas, status, error } = await obterProcesso(id);
 
   if (error) return <QueryError detalhe={error} />;
@@ -125,7 +132,7 @@ export default async function ProcessoPage({
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="etapas">
+      <Tabs defaultValue={abaInicial}>
         <TabsList className="rounded-2xl">
           <TabsTrigger value="etapas" className="rounded-xl">
             Etapas ({concluidas}/{etapas.length})

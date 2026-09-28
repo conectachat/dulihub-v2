@@ -236,6 +236,8 @@ describe("com um processo de verdade", () => {
   it.each([
     ["lista", () => "/projetos"],
     ["tela do processo", () => `/projetos/${processoId}`],
+    // O atalho do alerta de pasta atrasada, na tela Início.
+    ["tela do processo aberta nos documentos", () => `/projetos/${processoId}?aba=documentos`],
     ["ficha do contato", () => `/contatos/${pessoaDoParceiro}`],
     ["CRM", () => "/crm"],
   ])("%s abre e mostra o processo", async (nome, rota) => {

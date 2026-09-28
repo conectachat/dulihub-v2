@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Search, TriangleAlert, Wallet } from "lucide-react";
 
@@ -72,7 +73,13 @@ function Numero({
 export function ListaDoFinanceiro() {
   const { userId, carregado } = useUsuarioLocal();
   const { em } = useSincronia();
-  const [filtro, setFiltro] = useState<Filtro>("todas");
+  // Lido do endereço no navegador, e não passado pela casca: a casca desta
+  // rota fica guardada para abrir offline, e guardá-la com um filtro dentro a
+  // faria abrir sempre com ele. O atalho da tela Início usa `?filtro=vencidas`.
+  const pedido = useSearchParams().get("filtro");
+  const [filtro, setFiltro] = useState<Filtro>(
+    FILTROS.some((f) => f.valor === pedido) ? (pedido as Filtro) : "todas",
+  );
   const [busca, setBusca] = useState("");
 
   const hoje = hojeEmSaoPaulo();
