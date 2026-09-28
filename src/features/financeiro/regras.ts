@@ -1,3 +1,5 @@
+import { venceu } from "@/lib/prazos";
+
 /**
  * As contas do a receber — puras, testadas em `regras.test.ts`.
  *
@@ -109,7 +111,7 @@ export function gerarParcelas({
  */
 export function situacaoDaParcela(parcela: ParaSituacao, hoje: string): Situacao {
   if (parcela.paid_on) return "paga";
-  return parcela.due_on < hoje ? "vencida" : "pendente";
+  return venceu(parcela.due_on, hoje) ? "vencida" : "pendente";
 }
 
 /**
