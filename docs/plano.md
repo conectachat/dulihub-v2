@@ -9,7 +9,7 @@ Convenções de código ficam no `AGENTS.md`.
 
 ---
 
-## 1. Estado atual (28/set/2026)
+## 1. Estado atual (3/out/2026)
 
 ### No ar
 
@@ -23,7 +23,7 @@ real.
 | Contatos | Lista, busca, filtro por tag, criar, editar, excluir e restaurar (lixeira) |
 | Ficha do contato | Dados, tags, oportunidades, processos, linha do tempo; "Novo processo" |
 | CRM | Quadro do funil; negócio em Ganho oferece "Criar processo" |
-| Projetos | Lista de processos: cliente, visto, status, pastas resolvidas, próximo prazo |
+| Projetos | Lista de processos: cliente, visto, status, progresso (etapas concluídas, em %), próximo prazo |
 | Processo | Status e campos do USCIS, inclusive quando a resposta da RFE foi enviada; abas **Etapas** (tabela com status, data prevista e de conclusão, sub-etapas em grupo), **Documentos** (pastas, envio, visualizar, aprovar, recusar com motivo, resolver) e **Observações** (editor estilo Notion, várias pessoas ao mesmo tempo) |
 | Configurações | Etapas do funil, tags, catálogo de pastas, tipos de visto, status de etapa — **abre e grava sem internet**, e sincroniza sozinha |
 | Sincronização | O que este aparelho gravou e o servidor ainda não recebeu; o que ele recusou, com o motivo |
@@ -46,7 +46,7 @@ Tudo roda sozinho em cada push.
 | Camada | O que pega |
 |---|---|
 | Trava de commit (`.githooks/pre-commit`) | Erro de tipo e de lint — o commit nem acontece |
-| 377 testes de unidade e componente | Regras, formatação, telas de etapas e documentos, sincronização em tempo real, editor montado sobre Supabase falso, fila de gravações offline, e as contas do a receber — arredondamento de parcela, vencimento que não pula de mês, conversão que exige cotação |
+| 386 testes de unidade e componente | Regras, formatação, telas de etapas e documentos, sincronização em tempo real, editor montado sobre Supabase falso, fila de gravações offline, e as contas do a receber — arredondamento de parcela, vencimento que não pula de mês, conversão que exige cotação |
 | 95 testes de RLS | Uma organização não enxerga nem altera dado da outra — tabelas, arquivos e o canal em tempo real; regras de negócio no banco (pasta só resolve com tudo aprovado, processo só se liga a negócio do mesmo contato); e que a fila, ao subir, passa pela mesma RLS; cobrança e parcela isoladas por organização |
 | 35 testes de fumaça | Cada tela abre com login de verdade, inclusive com um processo real; e a Início confere prazos e parcelas sem falhar — o 200 sozinho não provaria, porque a falha aparece como aviso dentro da página |
 
@@ -67,7 +67,7 @@ Decisões da fase:
 | Quem sobe arquivo agora? | Só a equipe. O cliente ganha a porta na Fase 6 |
 | Arquivo enviado entra como? | Em análise. Aprovado ou recusado com motivo (mín. 10 letras), que o cliente vai ler |
 | Quando a pasta conta como resolvida? | Quando o Renato marca — e **só com todos os arquivos aprovados**. Arquivo novo ou recusado depois reabre a pasta |
-| Barra de progresso mede o quê? | Pastas obrigatórias resolvidas ÷ pastas obrigatórias |
+| Barra de progresso mede o quê? | **Etapas concluídas ÷ todas as etapas** (principal e sub-etapa valem 1 cada, como no app antigo), arredondando para baixo. Mudou em 3/out: antes media pastas obrigatórias resolvidas, sem rótulo, e quem concluía etapa via a barra parada. As pastas resolvidas seguem contadas na aba Documentos |
 | Etapa: data prevista | Nasce vazia; conclusão automática ao concluir, e corrigível |
 | Observações | Plate (grátis, a cara do app) + sincronização própria pelo Supabase — o texto não sai do banco da Duli |
 
