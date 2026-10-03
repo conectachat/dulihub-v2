@@ -14,7 +14,7 @@ import { AlertasDoDia } from "./alertas";
  */
 
 const HOJE = "2026-10-15";
-const vazio = { processos: [], pastas: [], etapas: [], parcelas: [] };
+const vazio = { processos: [], pastas: [], etapas: [], parcelas: [], fichas: [] };
 
 describe("AlertasDoDia", () => {
   it("sem nada vencendo, diz isso — e não deixa um espaço em branco", () => {
@@ -79,6 +79,32 @@ describe("AlertasDoDia", () => {
     expect(
       screen.getByRole("link", { name: /Ver todas no Financeiro/ }).getAttribute("href"),
     ).toBe("/financeiro?filtro=vencidas");
+  });
+
+  it("ficha de cadastro recebida leva aos dados cadastrais do contato", () => {
+    render(
+      <AlertasDoDia
+        alertas={alertasDoDia(
+          {
+            ...vazio,
+            fichas: [
+              {
+                person_id: "c1",
+                cliente: "Ana de Teste",
+                submitted_at: "2026-10-14T15:00:00Z",
+                reviewed_at: null,
+              },
+            ],
+          },
+          HOJE,
+        )}
+      />,
+    );
+
+    expect(screen.getByText("Fichas de cadastro recebidas")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Ana de Teste/ }).getAttribute("href")).toBe(
+      "/contatos/c1#dados-cadastrais",
+    );
   });
 
   it("pasta atrasada leva direto à aba de documentos do processo", () => {

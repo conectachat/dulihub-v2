@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   declaracao,
   linkDoWhatsApp,
+  linkVigente,
   mensagemDoWhatsApp,
   situacaoDaFicha,
   urlDaFicha,
@@ -119,5 +120,41 @@ describe("linkDoWhatsApp", () => {
 describe("declaracao", () => {
   it("nomeia a organização que vai usar os dados", () => {
     expect(declaracao("Duli Consulting")).toContain("junto à Duli Consulting.");
+  });
+});
+
+describe("linkVigente", () => {
+  const de = (created_at: string, campos: Record<string, string | null> = {}) => ({
+    created_at,
+    expires_at: "2026-10-18T12:00:00Z",
+    cancelled_at: null,
+    submitted_at: null,
+    reviewed_at: null,
+    ...campos,
+  });
+
+  it("sem link, nulo", () => {
+    expect(linkVigente([])).toBeNull();
+  });
+
+  it("o mais recente que não foi cancelado", () => {
+    const antigo = de("2026-09-01T10:00:00Z", { submitted_at: "2026-09-02T10:00:00Z" });
+    const novo = de("2026-10-01T10:00:00Z");
+
+    expect(linkVigente([antigo, novo])).toBe(novo);
+    expect(linkVigente([novo, antigo])).toBe(novo);
+  });
+
+  it("cancelado não conta: vale a ficha recebida antes dele", () => {
+    const recebida = de("2026-09-01T10:00:00Z", { submitted_at: "2026-09-02T10:00:00Z" });
+    const cancelado = de("2026-10-01T10:00:00Z", { cancelled_at: "2026-10-02T10:00:00Z" });
+
+    expect(linkVigente([recebida, cancelado])).toBe(recebida);
+  });
+
+  it("só cancelados é o mesmo que nenhum", () => {
+    expect(
+      linkVigente([de("2026-10-01T10:00:00Z", { cancelled_at: "2026-10-02T10:00:00Z" })]),
+    ).toBeNull();
   });
 });

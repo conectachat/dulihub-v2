@@ -6,9 +6,11 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
 import { formatarMoeda, formatarPorMoeda, juntarMoedas } from "@/lib/totals";
+import { linkVigente, situacaoDaFicha } from "@/features/cadastro/regras";
 import { deleteOpportunity } from "@/features/opportunities/actions";
 import { getBoard, listPeopleForPicker } from "@/features/opportunities/queries";
 
+import { AtalhoDaFicha } from "./atalho-da-ficha";
 import { MoveCard } from "./move-card";
 import { OpportunityDialog } from "./opportunity-dialog";
 
@@ -47,6 +49,9 @@ export default async function CrmPage() {
   }
 
   const stageOptions = board.stages.map((s) => ({ id: s.id, name: s.name }));
+  // Um instante só para o quadro inteiro: link que vence durante a pintura
+  // não aparece aberto num cartão e expirado no outro.
+  const agora = new Date();
 
   // Só o que está em negociação. Ganho e perdido já saíram do funil, e somá-los
   // aqui daria um número que não significa nada.
@@ -126,6 +131,18 @@ export default async function CrmPage() {
                         >
                           {card.person.full_name}
                         </Link>
+                      ) : null}
+
+                      {/*
+                        O cliente disse que fecha: daqui se chega ao link da
+                        ficha de cadastro. Em negócio perdido não há o que
+                        cadastrar, e o atalho só faria barulho.
+                      */}
+                      {card.person && !stage.is_lost ? (
+                        <AtalhoDaFicha
+                          personId={card.person.id}
+                          situacao={situacaoDaFicha(linkVigente(card.person.fichas), agora)}
+                        />
                       ) : null}
 
                       {/*

@@ -14,7 +14,7 @@ export type TimelineItem = {
 };
 
 /** Tipos que o sistema cria sozinho — não são lançamentos de quem usa. */
-const SYSTEM_TYPES = new Set(["stage_change"]);
+const SYSTEM_TYPES = new Set(["stage_change", "registration_submitted"]);
 
 export const ACTIVITY_LABELS: Record<string, string> = {
   note: "Nota",
@@ -23,6 +23,8 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   email: "Email",
   other: "Outro",
   stage_change: "Movimento no funil",
+  // Gravado pelo banco quando o cliente envia a ficha pelo link (0035).
+  registration_submitted: "Ficha de cadastro",
 };
 
 /**

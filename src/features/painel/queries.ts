@@ -38,6 +38,12 @@ export type DadosDoPainel = {
     cliente: string;
     person_id: string;
   }[];
+  fichas: {
+    person_id: string;
+    cliente: string;
+    submitted_at: string | null;
+    reviewed_at: string | null;
+  }[];
 };
 
 export async function lerPainel(
@@ -45,7 +51,7 @@ export async function lerPainel(
 ): Promise<{ dados: DadosDoPainel | null; error: string | null }> {
   const supabase = await createClient();
 
-  const [processos, status, parcelas] = await Promise.all([
+  const [processos, status, parcelas, fichas] = await Promise.all([
     supabase
       .from("projects")
       .select(
@@ -63,9 +69,15 @@ export async function lerPainel(
       )
       .is("paid_on", null)
       .lt("due_on", hoje),
+    // Ficha de cadastro que o cliente enviou e ninguém conferiu.
+    supabase
+      .from("registration_forms")
+      .select("person_id, submitted_at, reviewed_at, person:people(full_name)")
+      .not("submitted_at", "is", null)
+      .is("reviewed_at", null),
   ]);
 
-  const falha = processos.error ?? status.error ?? parcelas.error;
+  const falha = processos.error ?? status.error ?? parcelas.error ?? fichas.error;
   if (falha) return { dados: null, error: falha.message };
 
   const concluiEtapa = new Map((status.data ?? []).map((s) => [s.id, s.is_done]));
@@ -106,6 +118,12 @@ export async function lerPainel(
             ]
           : [],
       ),
+      fichas: (fichas.data ?? []).map((f) => ({
+        person_id: f.person_id,
+        cliente: f.person?.full_name ?? "Cliente removido",
+        submitted_at: f.submitted_at,
+        reviewed_at: f.reviewed_at,
+      })),
     },
   };
 }

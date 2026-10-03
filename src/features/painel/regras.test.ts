@@ -23,7 +23,7 @@ const processo = {
   decided_on: null as string | null,
 };
 
-const vazio = { processos: [], pastas: [], etapas: [], parcelas: [] };
+const vazio = { processos: [], pastas: [], etapas: [], parcelas: [], fichas: [] };
 
 describe("diasAte", () => {
   it("conta dias corridos, e negativo quando já passou", () => {
@@ -235,5 +235,54 @@ describe("alertasDoDia — nada a avisar", () => {
     );
 
     expect(a.vazio).toBe(false);
+  });
+});
+
+describe("alertasDoDia — fichas de cadastro", () => {
+  const ficha = {
+    person_id: "c1",
+    cliente: "Ana",
+    submitted_at: "2026-10-14T15:00:00Z" as string | null,
+    reviewed_at: null as string | null,
+  };
+
+  it("ficha recebida e não conferida aparece", () => {
+    const a = alertasDoDia({ ...vazio, fichas: [ficha] }, HOJE);
+
+    expect(a.fichas).toEqual([
+      { person_id: "c1", nome: "Ana", recebidaEm: "2026-10-14T15:00:00Z" },
+    ]);
+    expect(a.vazio).toBe(false);
+  });
+
+  it("conferida para de avisar — alerta que grita à toa se aprende a ignorar", () => {
+    const a = alertasDoDia(
+      { ...vazio, fichas: [{ ...ficha, reviewed_at: "2026-10-15T09:00:00Z" }] },
+      HOJE,
+    );
+
+    expect(a.fichas).toEqual([]);
+    expect(a.vazio).toBe(true);
+  });
+
+  it("link ainda não preenchido não é ficha recebida", () => {
+    const a = alertasDoDia({ ...vazio, fichas: [{ ...ficha, submitted_at: null }] }, HOJE);
+
+    expect(a.fichas).toEqual([]);
+  });
+
+  it("a mais antiga vem primeiro: é a que está esperando há mais tempo", () => {
+    const a = alertasDoDia(
+      {
+        ...vazio,
+        fichas: [
+          ficha,
+          { ...ficha, person_id: "c2", cliente: "Bruno", submitted_at: "2026-10-10T10:00:00Z" },
+        ],
+      },
+      HOJE,
+    );
+
+    expect(a.fichas.map((f) => f.nome)).toEqual(["Bruno", "Ana"]);
   });
 });

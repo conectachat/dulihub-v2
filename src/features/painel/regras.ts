@@ -46,6 +46,13 @@ type Parcela = {
   person_id: string;
 };
 
+type Ficha = {
+  person_id: string;
+  cliente: string;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+};
+
 export type Referencia = { id: string; title: string; cliente: string };
 
 export type AlertaDeRfe = Referencia & { prazo: string; dias: number; urgente: boolean };
@@ -59,6 +66,8 @@ export type Alertas = {
   };
   pastas: { processo: Referencia; quantidade: number }[];
   etapas: { processo: Referencia; quantidade: number }[];
+  /** Ficha de cadastro que o cliente preencheu e ninguém conferiu ainda. */
+  fichas: { person_id: string; nome: string; recebidaEm: string }[];
   vazio: boolean;
 };
 
@@ -80,7 +89,13 @@ function porProcesso(
 }
 
 export function alertasDoDia(
-  dados: { processos: Processo[]; pastas: Pasta[]; etapas: Etapa[]; parcelas: Parcela[] },
+  dados: {
+    processos: Processo[];
+    pastas: Pasta[];
+    etapas: Etapa[];
+    parcelas: Parcela[];
+    fichas: Ficha[];
+  },
   hoje: string,
 ): Alertas {
   const referencias = new Map(
@@ -138,15 +153,25 @@ export function alertasDoDia(
     clientes: [...porCliente.values()].sort((a, b) => b.quantidade - a.quantidade),
   };
 
+  // Ficha recebida fica no aviso até alguém clicar "Conferi" — é o próximo
+  // passo do contrato, e sem o aviso ela chegaria sem ninguém saber. A mais
+  // antiga primeiro: é a que espera há mais tempo.
+  const fichas = dados.fichas
+    .filter((f) => f.submitted_at && !f.reviewed_at)
+    .map((f) => ({ person_id: f.person_id, nome: f.cliente, recebidaEm: f.submitted_at! }))
+    .sort((a, b) => a.recebidaEm.localeCompare(b.recebidaEm));
+
   return {
     rfe,
     parcelas,
     pastas,
     etapas,
+    fichas,
     vazio:
       rfe.length === 0 &&
       parcelas.quantidade === 0 &&
       pastas.length === 0 &&
-      etapas.length === 0,
+      etapas.length === 0 &&
+      fichas.length === 0,
   };
 }

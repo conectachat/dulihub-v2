@@ -11,7 +11,15 @@ export type BoardCard = Pick<
   Tables<"opportunities">,
   "id" | "title" | "value" | "currency" | "status" | "stage_id" | "created_at"
 > & {
-  person: Pick<Tables<"people">, "id" | "full_name"> | null;
+  person:
+    | (Pick<Tables<"people">, "id" | "full_name"> & {
+        /** Os links da ficha de cadastro do contato; a tela escolhe o vigente. */
+        fichas: Pick<
+          Tables<"registration_forms">,
+          "created_at" | "expires_at" | "cancelled_at" | "submitted_at" | "reviewed_at"
+        >[];
+      })
+    | null;
   /** Processos nascidos deste negócio — é o que decide o atalho no Ganho. */
   processos: Pick<Tables<"projects">, "id">[];
 };
@@ -75,7 +83,10 @@ export async function getBoard(): Promise<Board> {
       supabase
         .from("opportunities")
         .select(
-          "id, title, value, currency, status, stage_id, created_at, person:people(id, full_name), processos:projects!projects_opportunity_same_org(id)",
+          `id, title, value, currency, status, stage_id, created_at,
+           person:people(id, full_name,
+             fichas:registration_forms(created_at, expires_at, cancelled_at, submitted_at, reviewed_at)),
+           processos:projects!projects_opportunity_same_org(id)`,
         )
         .eq("pipeline_id", pipeline.id)
         .order("created_at", { ascending: false }),

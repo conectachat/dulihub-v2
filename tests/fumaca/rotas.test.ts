@@ -132,6 +132,17 @@ describe("cada tela abre com sessão", () => {
     expect(html).not.toContain("Não foi possível conferir prazos e parcelas");
   }, 60_000);
 
+  it("o quadro do CRM carrega de verdade", async () => {
+    // Mesmo motivo da Início: leitura com erro vira aviso dentro da página,
+    // e a página responde 200. O quadro junta negócio, contato, ficha de
+    // cadastro e processo numa consulta só — é a que mais tem onde quebrar.
+    const resposta = await pedir("/crm");
+    const html = await resposta.text();
+
+    expect(resposta.status).toBe(200);
+    expect(html).not.toContain("Não foi possível carregar o funil");
+  }, 60_000);
+
   it("ficha de contato", async () => {
     expect(pessoaId, "nenhum contato visível para a conta de teste").not.toBeNull();
     const resposta = await pedir(`/contatos/${pessoaId}`);

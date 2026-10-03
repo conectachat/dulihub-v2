@@ -1,9 +1,16 @@
 import Link from "next/link";
-import { CalendarClock, CheckCircle2, FolderClock, ListTodo, Wallet } from "lucide-react";
+import {
+  CalendarClock,
+  CheckCircle2,
+  ClipboardCheck,
+  FolderClock,
+  ListTodo,
+  Wallet,
+} from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Alertas } from "@/features/painel/regras";
-import { formatarDia } from "@/lib/formatar";
+import { formatarData, formatarDia } from "@/lib/formatar";
 import { formatarPorMoeda } from "@/lib/totals";
 import { cn } from "@/lib/utils";
 
@@ -11,8 +18,9 @@ import { cn } from "@/lib/utils";
  * "Precisa de atenção" — o topo da tela Início.
  *
  * Do mais grave para o menos: prazo de RFE é prazo legal, e perder mata o
- * caso; parcela vencida é dinheiro parado; pasta e etapa atrasadas são o
- * processo andando mais devagar do que devia.
+ * caso; ficha de cadastro recebida é um cliente pronto para o contrato,
+ * esperando por nós; parcela vencida é dinheiro parado; pasta e etapa
+ * atrasadas são o processo andando mais devagar do que devia.
  *
  * Bloco sem ocorrência não aparece. Nada vencendo vira uma frase, e não um
  * espaço em branco — em branco, a pessoa não sabe se está tudo em dia ou se
@@ -55,12 +63,12 @@ export function AlertasDoDia({ alertas }: { alertas: Alertas }) {
       <p className="flex items-center gap-2 rounded-3xl border p-4 text-sm text-muted-foreground">
         <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
         Nada vencendo: nenhum prazo de RFE nos próximos 30 dias, nenhuma
-        parcela, pasta ou etapa atrasada.
+        parcela, pasta ou etapa atrasada, e nenhuma ficha de cadastro a conferir.
       </p>
     );
   }
 
-  const { rfe, parcelas, pastas, etapas } = alertas;
+  const { rfe, parcelas, pastas, etapas, fichas } = alertas;
 
   return (
     <section className="space-y-3">
@@ -90,6 +98,32 @@ export function AlertasDoDia({ alertas }: { alertas: Alertas }) {
                   >
                     {quando(r.dias)}
                     <span className="block">{formatarDia(r.prazo)}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Bloco>
+        ) : null}
+
+        {fichas.length > 0 ? (
+          <Bloco
+            titulo="Fichas de cadastro recebidas"
+            icone={<ClipboardCheck className="h-4 w-4" />}
+          >
+            <ul className="divide-y">
+              {fichas.map((f) => (
+                <li key={f.person_id} className="flex items-center justify-between gap-3 py-2">
+                  <Link
+                    href={`/contatos/${f.person_id}#dados-cadastrais`}
+                    className="min-w-0 hover:underline"
+                  >
+                    <span className="block truncate text-sm font-medium">{f.nome}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      Confira os dados para montar o contrato
+                    </span>
+                  </Link>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {formatarData(f.recebidaEm)}
                   </span>
                 </li>
               ))}

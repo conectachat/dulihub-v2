@@ -74,7 +74,8 @@ export function DadosCadastrais({
   const url = link ? urlDaFicha(origem, link.token) : "";
 
   return (
-    <Card>
+    // Âncora dos atalhos do CRM e da tela Início.
+    <Card id="dados-cadastrais" className="scroll-mt-6">
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0">
         <div className="flex flex-wrap items-center gap-2">
           <CardTitle className="text-base">Dados cadastrais</CardTitle>

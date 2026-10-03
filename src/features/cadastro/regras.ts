@@ -41,6 +41,23 @@ export function situacaoDaFicha(link: Link | null, agora: Date = new Date()): Si
   return "aguardando";
 }
 
+/**
+ * O link que conta, entre todos os de um contato: o mais recente que não foi
+ * cancelado. Gerar um link novo cancela o anterior, e uma ficha já recebida
+ * continua valendo até haver outra.
+ *
+ * `queries.ts` faz a mesma escolha no banco; esta é para quem recebe a lista
+ * inteira junto de outra leitura — o quadro do CRM.
+ */
+export function linkVigente<T extends Link & { created_at: string }>(links: T[]): T | null {
+  let vigente: T | null = null;
+  for (const link of links) {
+    if (link.cancelled_at) continue;
+    if (!vigente || link.created_at > vigente.created_at) vigente = link;
+  }
+  return vigente;
+}
+
 export const ROTULO_DA_SITUACAO: Record<SituacaoDaFicha, string> = {
   "sem-link": "Sem ficha",
   aguardando: "Aguardando o cliente",
