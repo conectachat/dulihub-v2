@@ -48,7 +48,7 @@ export default async function ProjetosPage() {
                 <TableHead>Cliente</TableHead>
                 <TableHead>Processo</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Pastas</TableHead>
+                <TableHead>Progresso</TableHead>
                 <TableHead>Próximo prazo</TableHead>
               </TableRow>
             </TableHeader>

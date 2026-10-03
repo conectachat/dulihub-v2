@@ -10,7 +10,7 @@ import { obterProcesso, pastasDoProcesso } from "@/features/projects/queries";
 import { createClient } from "@/lib/supabase/server";
 import { formatarDia, hojeEmSaoPaulo } from "@/lib/formatar";
 
-import { BarraDeProgresso } from "../partes";
+import { ProgressoDoProjeto } from "../partes";
 import { CampoDoProcesso, StatusDoProcesso } from "./campos-editaveis";
 import { DocumentosDoProcesso } from "./documentos";
 import { EtapasDoProcesso } from "./etapas";
@@ -72,10 +72,6 @@ export default async function ProcessoPage({
       "Você",
   };
 
-  const concluidas = etapas.filter(
-    (e) => status.find((s) => s.id === e.status_id)?.is_done,
-  ).length;
-
   return (
     <main className="space-y-6 p-6">
       <Link
@@ -103,7 +99,7 @@ export default async function ProcessoPage({
           {processo.visto?.name ?? "Tipo de visto removido"} · desde{" "}
           {formatarDia(processo.started_on)}
         </p>
-        <BarraDeProgresso progresso={processo.progresso} />
+        <ProgressoDoProjeto progresso={processo.progresso} className="pt-2" />
       </header>
 
       <Card>
@@ -135,10 +131,11 @@ export default async function ProcessoPage({
       <Tabs defaultValue={abaInicial}>
         <TabsList className="rounded-2xl">
           <TabsTrigger value="etapas" className="rounded-xl">
-            Etapas ({concluidas}/{etapas.length})
+            {/* O mesmo número da barra do cabeçalho — uma conta só. */}
+            Etapas ({processo.progresso.concluidas}/{processo.progresso.total})
           </TabsTrigger>
           <TabsTrigger value="documentos" className="rounded-xl">
-            Documentos ({processo.progresso.resolvidas}/{processo.progresso.total})
+            Documentos ({processo.pastas.resolvidas}/{processo.pastas.total})
           </TabsTrigger>
           <TabsTrigger value="observacoes" className="rounded-xl">
             Observações

@@ -139,6 +139,8 @@ export async function mudarStatusDaEtapa(formData: FormData): Promise<ActionStat
   if (estado.error) return estado;
 
   revalidatePath(`/projetos/${etapa.project_id}`);
+  // A barra de evolução da lista conta etapas concluídas.
+  revalidatePath("/projetos");
   return estado;
 }
 
@@ -255,6 +257,8 @@ export async function criarEtapa(
   if (estado.error) return estado;
 
   revalidatePath(`/projetos/${projectId}`);
+  // Etapa nova muda o total da barra de evolução da lista.
+  revalidatePath("/projetos");
   return estado;
 }
 
@@ -329,5 +333,6 @@ export async function excluirEtapa(formData: FormData): Promise<ActionState> {
   if (estado.error) return estado;
 
   revalidatePath(`/projetos/${data![0].project_id}`);
+  revalidatePath("/projetos");
   return estado;
 }

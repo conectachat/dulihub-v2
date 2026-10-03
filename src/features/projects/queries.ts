@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 
+import { progressoDasEtapas } from "./campos";
 import { progressoDasPastas } from "./regras";
 import { proximoPrazo } from "./schema";
 
@@ -14,7 +15,8 @@ import { proximoPrazo } from "./schema";
 const COLUNAS = `id, title, status, started_on, opportunity_id,
   person:people(id, full_name),
   visto:visa_types(name),
-  pastas:project_documents(is_required, resolved_at, deadline_on)`;
+  pastas:project_documents(is_required, resolved_at, deadline_on),
+  etapas:project_stages(status:stage_statuses!project_stages_status_same_org(is_done))`;
 
 type Linha = {
   id: string;
@@ -29,20 +31,30 @@ type Linha = {
     resolved_at: string | null;
     deadline_on: string | null;
   }[];
+  etapas: { status: { is_done: boolean } | null }[];
 };
 
-export type ResumoDoProcesso = Omit<Linha, "pastas"> & {
-  progresso: ReturnType<typeof progressoDasPastas>;
+export type ResumoDoProcesso = Omit<Linha, "pastas" | "etapas"> & {
+  /** Etapas concluídas sobre todas — a barra de evolução. */
+  progresso: ReturnType<typeof progressoDasEtapas>;
+  /** Pastas obrigatórias resolvidas — o contador da aba Documentos. */
+  pastas: ReturnType<typeof progressoDasPastas>;
   proximoPrazo: string | null;
 };
 
 function resumir<T extends Linha>({
   pastas,
+  etapas,
   ...resto
-}: T): Omit<T, "pastas"> & Omit<ResumoDoProcesso, keyof Linha> {
+}: T): Omit<T, "pastas" | "etapas"> &
+  Pick<ResumoDoProcesso, "progresso" | "pastas" | "proximoPrazo"> {
   return {
     ...resto,
-    progresso: progressoDasPastas(pastas),
+    progresso: progressoDasEtapas(
+      // Status que a RLS esconde não conclui: na dúvida, a barra fica atrás.
+      etapas.map((e) => ({ concluida: e.status?.is_done ?? false })),
+    ),
+    pastas: progressoDasPastas(pastas),
     proximoPrazo: proximoPrazo(pastas),
   };
 }
