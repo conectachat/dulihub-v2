@@ -312,6 +312,11 @@ describe("com um processo de verdade", () => {
     expect(resposta.status).toBe(200);
     const html = await resposta.text();
     if (nome !== "CRM") expect(html).toContain(TITULO);
+    if (nome === "ficha do contato") {
+      // Cliente tem o perfil completo: processos e financeiro à vista.
+      expect(html).toContain('id="processos"');
+      expect(html).toContain('id="financeiro"');
+    }
     if (nome === "tela do processo") {
       // Etapas copiadas do molde e o bloco do USCIS desenhados de verdade.
       // A sub-etapa não: o grupo nasce fechado (decisão de 18/set).
@@ -418,6 +423,20 @@ describe("com um lead de verdade", () => {
     expect(html).not.toContain('id="processos"');
     expect(html).not.toContain('id="financeiro"');
     expect(html).not.toContain("Novo processo");
+  }, 60_000);
+
+  it("a ficha do contato de um lead é enxuta, e aponta para o negócio", async () => {
+    const resposta = await pedir(`/contatos/${leadId}`, sessao.cookie);
+    expect(resposta.status).toBe(200);
+
+    const html = await resposta.text();
+    expect(html).toContain(NOME);
+    expect(html).not.toContain('id="processos"');
+    expect(html).not.toContain('id="financeiro"');
+    expect(html).not.toContain("Novo processo");
+    // Em vez de um vazio, a tela diz quando eles chegam.
+    expect(html).toContain("quando o negócio for ganho");
+    expect(html).toContain(`/crm/${negocioId}`);
   }, 60_000);
 
   it("negócio que não existe dá 404, não erro", async () => {

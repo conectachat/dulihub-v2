@@ -10,6 +10,7 @@ import { QueryError } from "@/components/query-error";
 import { formatarMoeda } from "@/lib/totals";
 import { origemDoPedido } from "@/lib/origem";
 import { cadastroDoContato } from "@/features/cadastro/queries";
+import { perfilCompleto } from "@/features/people/regras";
 import { LIFECYCLE_LABELS } from "@/features/people/schema";
 import { listTags } from "@/features/people/queries";
 import { getTimeline } from "@/features/people/timeline-queries";
@@ -66,6 +67,7 @@ export default async function PersonPage({
     { processos, error: processosError },
     { vistos, error: vistosError },
     { cadastro, error: cadastroError },
+    { count: cobrancas, error: cobrancasError },
     cabecalhos,
   ] = await Promise.all([
     supabase
@@ -79,6 +81,11 @@ export default async function PersonPage({
     processosDoContato(id),
     vistosParaProcesso(),
     cadastroDoContato(id),
+    // Só a contagem: basta saber se existe cobrança para não escondê-la.
+    supabase
+      .from("receivables")
+      .select("id", { count: "exact", head: true })
+      .eq("person_id", id),
     headers(),
   ]);
 
@@ -91,7 +98,8 @@ export default async function PersonPage({
     userError?.message ??
     processosError ??
     vistosError ??
-    cadastroError;
+    cadastroError ??
+    cobrancasError?.message;
   if (falha) return <QueryError detalhe={falha} />;
 
   // O endereço público da ficha de cadastro sai do endereço em que o app foi
@@ -113,6 +121,14 @@ export default async function PersonPage({
     : undefined;
 
   const phone = telefoneCompleto(person.phone_country_code, person.phone);
+
+  // Lead não é cliente: processos e financeiro chegam com o Ganho. Quem já
+  // tem um ou outro aparece inteiro — a regra nunca esconde trabalho feito.
+  const completo = perfilCompleto({
+    estagio: person.lifecycle_stage,
+    processos: processos.length,
+    cobrancas: cobrancas ?? 0,
+  });
 
   return (
     <main className="space-y-6 p-6">
@@ -199,7 +215,13 @@ export default async function PersonPage({
                     className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-medium">{op.title}</p>
+                      {/* A tela do lead: o negócio enquanto está no funil. */}
+                      <Link
+                        href={`/crm/${op.id}`}
+                        className="block truncate font-medium hover:underline"
+                      >
+                        {op.title}
+                      </Link>
                       <p className="text-xs text-muted-foreground">
                         {op.stage?.name ?? "—"} ·{" "}
                         {formatarData(op.created_at)}
@@ -243,72 +265,81 @@ export default async function PersonPage({
         </Card>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
-          <CardTitle className="text-base">Processos ({processos.length})</CardTitle>
-          <NovoProcessoDialog
-            // A chave remonta o diálogo quando o atalho muda de negócio.
-            key={negocioInicial ?? "sem-atalho"}
-            personId={person.id}
-            personName={person.full_name}
-            vistos={vistos}
-            negocios={opportunities.map((o) => ({ id: o.id, title: o.title }))}
-            negocioInicial={negocioInicial}
-          />
-        </CardHeader>
-        <CardContent>
-          {processos.length === 0 ? (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <FolderKanban className="h-4 w-4 shrink-0" />
-              Nenhum processo ainda. Ao criar, as etapas e as pastas vêm do tipo
-              de visto.
-            </p>
-          ) : (
-            <ul className="divide-y">
-              {processos.map((p) => (
-                <li
-                  key={p.id}
-                  className="flex flex-wrap items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
-                >
-                  <div className="min-w-0">
-                    <Link
-                      href={`/projetos/${p.id}`}
-                      className="block truncate font-medium hover:underline"
-                    >
-                      {p.title}
-                    </Link>
-                    <p className="text-xs text-muted-foreground">
-                      {p.visto?.name ?? "Tipo de visto removido"} · desde{" "}
-                      {formatarDia(p.started_on)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <BarraDeProgresso progresso={p.progresso} />
-                    <SeloDoStatus status={p.status} />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      {completo ? (
+        <Card id="processos" className="scroll-mt-6">
+          <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+            <CardTitle className="text-base">Processos ({processos.length})</CardTitle>
+            <NovoProcessoDialog
+              // A chave remonta o diálogo quando o atalho muda de negócio.
+              key={negocioInicial ?? "sem-atalho"}
+              personId={person.id}
+              personName={person.full_name}
+              vistos={vistos}
+              negocios={opportunities.map((o) => ({ id: o.id, title: o.title }))}
+              negocioInicial={negocioInicial}
+            />
+          </CardHeader>
+          <CardContent>
+            {processos.length === 0 ? (
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <FolderKanban className="h-4 w-4 shrink-0" />
+                Nenhum processo ainda. Ao criar, as etapas e as pastas vêm do tipo
+                de visto.
+              </p>
+            ) : (
+              <ul className="divide-y">
+                {processos.map((p) => (
+                  <li
+                    key={p.id}
+                    className="flex flex-wrap items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                  >
+                    <div className="min-w-0">
+                      <Link
+                        href={`/projetos/${p.id}`}
+                        className="block truncate font-medium hover:underline"
+                      >
+                        {p.title}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">
+                        {p.visto?.name ?? "Tipo de visto removido"} · desde{" "}
+                        {formatarDia(p.started_on)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <BarraDeProgresso progresso={p.progresso} />
+                      <SeloDoStatus status={p.status} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <p className="rounded-3xl border border-dashed p-4 text-sm text-muted-foreground">
+          Processos e financeiro aparecem aqui quando o negócio for ganho — é
+          o Ganho que faz deste contato um cliente.
+        </p>
+      )}
 
       {cadastro ? (
         <DadosCadastrais personId={person.id} cadastro={cadastro} origem={origem} />
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Financeiro</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/*
-            Lê do aparelho, não daqui: é o caminho que funciona com e sem
-            internet, e o mesmo nos dois casos.
-          */}
-          <Cobrancas personId={person.id} />
-        </CardContent>
-      </Card>
+      {completo ? (
+        <Card id="financeiro" className="scroll-mt-6">
+          <CardHeader>
+            <CardTitle className="text-base">Financeiro</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/*
+              Lê do aparelho, não daqui: é o caminho que funciona com e sem
+              internet, e o mesmo nos dois casos.
+            */}
+            <Cobrancas personId={person.id} />
+          </CardContent>
+        </Card>
+      ) : null}
 
       {person.notes ? (
         <Card>
