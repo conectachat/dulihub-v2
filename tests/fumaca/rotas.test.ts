@@ -193,6 +193,19 @@ describe("sem sessão", () => {
     expect([302, 303, 307, 308]).toContain(resposta.status);
     expect(resposta.headers.get("location")).toContain("/login");
   });
+
+  it("ficha de cadastro com token que não existe dá 404, sem login", async () => {
+    // A única rota pública que fala com o banco. Sem o token certo ela não
+    // mostra nada — e não manda o lead para uma tela de login.
+    const token = `${crypto.randomUUID()}${crypto.randomUUID()}`.replaceAll("-", "");
+    const resposta = await pedir(`/cadastro/${token}`, false);
+    expect(resposta.status).toBe(404);
+  });
+
+  it("ficha de cadastro com endereço torto dá 404, sem consultar nada", async () => {
+    const resposta = await pedir("/cadastro/abc", false);
+    expect(resposta.status).toBe(404);
+  });
 });
 
 /**
@@ -208,6 +221,7 @@ describe("com um processo de verdade", () => {
   let sessao: Awaited<ReturnType<typeof entrar>>;
   let processoId: string | null = null;
   let pessoaDoParceiro: string;
+  let linkId: string | null = null;
   const TITULO = `Processo da fumaça ${crypto.randomUUID().slice(0, 8)}`;
 
   beforeAll(async () => {
@@ -231,7 +245,49 @@ describe("com um processo de verdade", () => {
 
   afterAll(async () => {
     if (processoId) await sessao.supabase.from("projects").delete().eq("id", processoId);
+    if (linkId) await sessao.supabase.from("registration_forms").delete().eq("id", linkId);
   });
+
+  it("a ficha de cadastro abre para o lead, sem login, pelo link", async () => {
+    // O caminho inteiro da porta pública: proxy liberando a rota, o cliente
+    // anônimo chamando a função do banco, e o formulário desenhado.
+    const token = `${crypto.randomUUID()}${crypto.randomUUID()}`.replaceAll("-", "");
+    const { data: pessoa } = await sessao.supabase
+      .from("people")
+      .select("organization_id, full_name")
+      .eq("id", pessoaDoParceiro)
+      .single();
+
+    // Link em aberto de uma rodada anterior não pode travar esta.
+    await sessao.supabase
+      .from("registration_forms")
+      .delete()
+      .eq("person_id", pessoaDoParceiro)
+      .is("submitted_at", null);
+
+    const { data: link, error } = await sessao.supabase
+      .from("registration_forms")
+      .insert({
+        organization_id: pessoa!.organization_id,
+        person_id: pessoaDoParceiro,
+        token,
+        expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(`Link da fumaça não criado: ${error.message}`);
+    linkId = link.id;
+
+    const resposta = await pedir(`/cadastro/${token}`, false);
+    expect(resposta.status).toBe(200);
+    const html = await resposta.text();
+    expect(html).toContain("Ficha de cadastro");
+    expect(html).toContain("Dados do contratante");
+    // Pré-preenchido com o que o lead já tinha dado: o nome.
+    expect(html).toContain(pessoa!.full_name);
+    // E fora dos buscadores: o endereço é a chave.
+    expect(html).toContain("noindex");
+  }, 60_000);
 
   it.each([
     ["lista", () => "/projetos"],

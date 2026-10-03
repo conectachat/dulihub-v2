@@ -53,6 +53,9 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/auth") ||
     pathname.startsWith("/proposta") || // link de proposta para o lead
     pathname.startsWith("/agendar") || // página pública de agendamento
+    // Ficha de cadastro do lead: quem autoriza é o token do endereço,
+    // conferido no banco (0035). Sem o token a rota não mostra nada.
+    pathname.startsWith("/cadastro/") ||
     // Do app instalável: o service worker entrega `/offline` sem rede, e
     // offline não há como conferir sessão — cair no login com os dados no
     // aparelho seria pior que a tela de erro do navegador.

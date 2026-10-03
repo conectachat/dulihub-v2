@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -22,8 +23,12 @@ import { Button } from "@/components/ui/button";
  */
 export function RegistrarSW({ versao }: { versao: string }) {
   const [emEspera, setEmEspera] = useState<ServiceWorker | null>(null);
+  // A ficha de cadastro é aberta pelo lead, no celular dele, uma vez. Não há
+  // por que instalar ali um worker que guarda o shell do sistema.
+  const publico = usePathname().startsWith("/cadastro/");
 
   useEffect(() => {
+    if (publico) return;
     if (!("serviceWorker" in navigator)) return;
 
     let registro: ServiceWorkerRegistration | null = null;
@@ -67,7 +72,7 @@ export function RegistrarSW({ versao }: { versao: string }) {
       cancelado = true;
       window.removeEventListener("focus", aoFocar);
     };
-  }, [versao]);
+  }, [versao, publico]);
 
   if (!emEspera) return null;
 
