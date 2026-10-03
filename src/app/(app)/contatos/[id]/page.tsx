@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { ArrowLeft, FolderKanban, Mail, Phone } from "lucide-react";
 
@@ -7,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { QueryError } from "@/components/query-error";
 import { formatarMoeda } from "@/lib/totals";
+import { origemDoPedido } from "@/lib/origem";
+import { cadastroDoContato } from "@/features/cadastro/queries";
 import { LIFECYCLE_LABELS } from "@/features/people/schema";
 import { listTags } from "@/features/people/queries";
 import { getTimeline } from "@/features/people/timeline-queries";
@@ -22,6 +25,7 @@ import { PersonTags } from "./person-tags";
 import { Timeline } from "./timeline";
 import { formatarData, formatarDia, telefoneCompleto } from "@/lib/formatar";
 import { Cobrancas } from "./cobrancas";
+import { DadosCadastrais } from "./dados-cadastrais";
 
 export default async function PersonPage({
   params,
@@ -61,6 +65,8 @@ export default async function PersonPage({
     { data: { user }, error: userError },
     { processos, error: processosError },
     { vistos, error: vistosError },
+    { cadastro, error: cadastroError },
+    cabecalhos,
   ] = await Promise.all([
     supabase
       .from("opportunities")
@@ -72,6 +78,8 @@ export default async function PersonPage({
     supabase.auth.getUser(),
     processosDoContato(id),
     vistosParaProcesso(),
+    cadastroDoContato(id),
+    headers(),
   ]);
 
   // O erro de `getUser` entra junto: sem ele, `user` vem nulo e a linha do
@@ -82,8 +90,13 @@ export default async function PersonPage({
     timelineError ??
     userError?.message ??
     processosError ??
-    vistosError;
+    vistosError ??
+    cadastroError;
   if (falha) return <QueryError detalhe={falha} />;
+
+  // O endereço público da ficha de cadastro sai do endereço em que o app foi
+  // aberto: o link gerado em produção aponta para produção.
+  const origem = origemDoPedido(cabecalhos);
 
   // Com os tipos gerados, o cliente sabe que `stage` e `tag` são objetos:
   // as duas relações são para-um. Antes eram inferidas como lista e
@@ -279,6 +292,10 @@ export default async function PersonPage({
           )}
         </CardContent>
       </Card>
+
+      {cadastro ? (
+        <DadosCadastrais personId={person.id} cadastro={cadastro} origem={origem} />
+      ) : null}
 
       <Card>
         <CardHeader>
