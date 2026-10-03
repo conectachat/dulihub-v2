@@ -1,44 +1,38 @@
 "use client";
 
-import { useRef } from "react";
-
-import { moveOpportunity } from "@/features/opportunities/actions";
-import { comAviso } from "@/lib/avisar";
-
 /**
  * Seletor de etapa dentro do cartão.
  *
- * Sem arrastar-e-soltar por enquanto, e de propósito: um seletor funciona no
- * celular, no teclado e no leitor de tela, e não depende de biblioteca. Se o
- * uso pedir, o arrastar entra depois — os dados já suportam.
+ * O quadro também deixa arrastar (`quadro.tsx`), mas o seletor fica: arrastar
+ * nativo não funciona no toque nem no teclado, e este funciona no celular e
+ * no leitor de tela sem biblioteca nenhuma.
+ *
+ * Controlado, e sem gravar por conta própria: quem decide o que fazer com a
+ * etapa escolhida é o quadro — Ganho abre a confirmação e Perdido pede o
+ * motivo, em vez de mover direto. Enquanto o diálogo está aberto o seletor
+ * continua mostrando a etapa em que o negócio de fato está.
  */
 export function MoveCard({
-  opportunityId,
-  currentStageId,
-  stages,
+  etapaAtual,
+  etapas,
+  aoMover,
 }: {
-  opportunityId: string;
-  currentStageId: string;
-  stages: { id: string; name: string }[];
+  etapaAtual: string;
+  etapas: { id: string; name: string }[];
+  aoMover: (etapaId: string) => void;
 }) {
-  const formRef = useRef<HTMLFormElement>(null);
-
   return (
-    <form ref={formRef} action={comAviso(moveOpportunity)}>
-      <input type="hidden" name="id" value={opportunityId} />
-      <select
-        name="stage_id"
-        defaultValue={currentStageId}
-        onChange={() => formRef.current?.requestSubmit()}
-        aria-label="Mover para outra etapa"
-        className="w-full rounded-xl border-0 bg-muted px-2 py-1 text-xs text-muted-foreground"
-      >
-        {stages.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.name}
-          </option>
-        ))}
-      </select>
-    </form>
+    <select
+      value={etapaAtual}
+      onChange={(evento) => aoMover(evento.target.value)}
+      aria-label="Mover para outra etapa"
+      className="w-full rounded-xl border-0 bg-muted px-2 py-1 text-xs text-muted-foreground"
+    >
+      {etapas.map((e) => (
+        <option key={e.id} value={e.id}>
+          {e.name}
+        </option>
+      ))}
+    </select>
   );
 }

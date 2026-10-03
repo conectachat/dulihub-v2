@@ -12,10 +12,14 @@ import { comAviso } from "@/lib/avisar";
  * Navy, como todo ícone de ação nesta base — cinza fazia a tela inteira parecer
  * desligada. Desabilitado o `Button` já esmaece sozinho.
  *
- * Substitui arrastar-e-soltar em toda a base, e é escolha, não limitação:
+ * Substitui arrastar-e-soltar para **reordenar**, e é escolha, não limitação:
  * funciona no celular, no teclado e no leitor de tela, sem depender de
  * biblioteca. Numa árvore o arrastar é ainda pior — soltar entre dois níveis é
  * ambíguo: o item vai depois daquele ou dentro dele? Botão não tem essa dúvida.
+ *
+ * A única tela em que se arrasta é o quadro do CRM (`crm/quadro.tsx`), e lá
+ * não é reordenação: o cartão troca de coluna, o destino é a coluna inteira,
+ * e o seletor de etapa continua ao lado para quem não pode arrastar.
  *
  * A recusa vira aviso flutuante, e não texto na linha: aqui não há onde
  * escrever — a linha é duas setas. E a lista já volta sozinha à ordem certa,

@@ -1,22 +1,16 @@
-import Link from "next/link";
 import { KanbanSquare } from "lucide-react";
 
-import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
-import { formatarMoeda, formatarPorMoeda, juntarMoedas } from "@/lib/totals";
+import { formatarPorMoeda, juntarMoedas } from "@/lib/totals";
 import { linkVigente, situacaoDaFicha } from "@/features/cadastro/regras";
-import { enderecoDoCartao } from "@/features/opportunities/regras";
-import { deleteOpportunity } from "@/features/opportunities/actions";
 import { getBoard, listPeopleForPicker } from "@/features/opportunities/queries";
 
-import { AtalhoDaFicha } from "./atalho-da-ficha";
-import { MoveCard } from "./move-card";
 import { OpportunityDialog } from "./opportunity-dialog";
+import { Quadro, type CartaoDoQuadro } from "./quadro";
 
 export const metadata = { title: "CRM — Duli Hub" };
-
 
 export default async function CrmPage() {
   const [board, { people, error: peopleError }] = await Promise.all([
@@ -54,6 +48,24 @@ export default async function CrmPage() {
   // não aparece aberto num cartão e expirado no outro.
   const agora = new Date();
 
+  // O quadro é desenhado no navegador, por causa do arrastar. Vai para lá só
+  // o que o cartão mostra — e a situação da ficha já resolvida, para o
+  // servidor e o navegador não discordarem sobre que horas são.
+  const cartoes: CartaoDoQuadro[] = board.stages.flatMap((etapa) =>
+    (board.cardsByStage[etapa.id] ?? []).map((card) => ({
+      id: card.id,
+      title: card.title,
+      value: card.value,
+      currency: card.currency,
+      stage_id: card.stage_id,
+      person: card.person
+        ? { id: card.person.id, full_name: card.person.full_name }
+        : null,
+      processoId: card.processos[0]?.id ?? null,
+      ficha: situacaoDaFicha(linkVigente(card.person?.fichas ?? []), agora),
+    })),
+  );
+
   // Só o que está em negociação. Ganho e perdido já saíram do funil, e somá-los
   // aqui daria um número que não significa nada.
   //
@@ -76,131 +88,7 @@ export default async function CrmPage() {
         actions={<OpportunityDialog people={people} stages={stageOptions} />}
       />
 
-      <div className="flex gap-4 overflow-x-auto pb-4">
-        {board.stages.map((stage) => {
-          const cards = board.cardsByStage[stage.id] ?? [];
-          const totals = board.totalsByStage[stage.id] ?? { count: 0, porMoeda: {} };
-          const soma = formatarPorMoeda(totals.porMoeda);
-
-          return (
-            <section
-              key={stage.id}
-              className="flex w-72 shrink-0 flex-col rounded-3xl bg-muted/50 p-3"
-              aria-label={`Etapa ${stage.name}`}
-            >
-              <div className="mb-3 px-1">
-                <h2 className="flex items-center gap-2 truncate text-sm font-semibold">
-                  {stage.is_won ? (
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-success" />
-                  ) : stage.is_lost ? (
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-destructive" />
-                  ) : null}
-                  {stage.name}
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  {totals.count}
-                  {soma ? ` · ${soma}` : ""}
-                </p>
-              </div>
-
-              <div className="flex-1 space-y-2">
-                {cards.length === 0 ? (
-                  <EmptyState title="Vazia" size="compact" />
-                ) : (
-                  cards.map((card) => (
-                    <article
-                      key={card.id}
-                      className="space-y-2 rounded-2xl border bg-card p-3 shadow-sm"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        {/* Lead abre a tela do lead; ganho, o perfil do cliente. */}
-                        <Link
-                          href={enderecoDoCartao(card, stage)}
-                          className="min-w-0 flex-1 text-sm font-medium leading-snug hover:underline"
-                        >
-                          {card.title}
-                        </Link>
-                        <ConfirmAction
-                          action={deleteOpportunity}
-                          hidden={{ id: card.id }}
-                          title={`Excluir "${card.title}"?`}
-                          consequence="Oportunidade não tem lixeira: some de vez, com valor, etapa e histórico de movimentação. O contato permanece."
-                          triggerLabel={`Excluir ${card.title}`}
-                        />
-                      </div>
-
-                      {card.person ? (
-                        <Link
-                          href={enderecoDoCartao(card, stage)}
-                          className="block truncate text-xs text-muted-foreground hover:underline"
-                        >
-                          {card.person.full_name}
-                        </Link>
-                      ) : null}
-
-                      {/*
-                        O cliente disse que fecha: daqui se chega ao link da
-                        ficha de cadastro. Em negócio perdido não há o que
-                        cadastrar, e o atalho só faria barulho.
-                      */}
-                      {card.person && !stage.is_lost ? (
-                        <AtalhoDaFicha
-                          href={`${enderecoDoCartao(card, stage)}#dados-cadastrais`}
-                          situacao={situacaoDaFicha(linkVigente(card.person.fichas), agora)}
-                        />
-                      ) : null}
-
-                      {/*
-                        Ganho oferece o processo, não cria: o Renato escolhe o
-                        visto e o título na ficha, onde o processo nasce.
-                      */}
-                      {stage.is_won && card.person ? (
-                        card.processos.length > 0 ? (
-                          <Link
-                            href={`/projetos/${card.processos[0].id}`}
-                            className="block text-xs text-primary hover:underline"
-                          >
-                            Ver processo
-                          </Link>
-                        ) : (
-                          <Link
-                            href={`/contatos/${card.person.id}?novo-processo=${card.id}`}
-                            className="block text-xs font-medium text-primary hover:underline"
-                          >
-                            Criar processo →
-                          </Link>
-                        )
-                      ) : null}
-
-                      {card.value != null ? (
-                        <p className="text-sm font-semibold tabular-nums">
-                          {formatarMoeda(card.value, card.currency)}
-                        </p>
-                      ) : null}
-
-                      <MoveCard
-                        opportunityId={card.id}
-                        currentStageId={card.stage_id}
-                        stages={stageOptions}
-                      />
-                    </article>
-                  ))
-                )}
-              </div>
-
-              <div className="pt-2">
-                <OpportunityDialog
-                  people={people}
-                  stages={stageOptions}
-                  defaultStageId={stage.id}
-                  label="Adicionar"
-                  variant="ghost"
-                />
-              </div>
-            </section>
-          );
-        })}
-      </div>
+      <Quadro etapas={board.stages} cartoes={cartoes} pessoas={people} />
     </main>
   );
 }
