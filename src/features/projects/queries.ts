@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 
-import { progresso } from "./regras";
+import { progressoDasPastas } from "./regras";
 import { proximoPrazo } from "./schema";
 
 /**
@@ -32,7 +32,7 @@ type Linha = {
 };
 
 export type ResumoDoProcesso = Omit<Linha, "pastas"> & {
-  progresso: ReturnType<typeof progresso>;
+  progresso: ReturnType<typeof progressoDasPastas>;
   proximoPrazo: string | null;
 };
 
@@ -42,7 +42,7 @@ function resumir<T extends Linha>({
 }: T): Omit<T, "pastas"> & Omit<ResumoDoProcesso, keyof Linha> {
   return {
     ...resto,
-    progresso: progresso(pastas),
+    progresso: progressoDasPastas(pastas),
     proximoPrazo: proximoPrazo(pastas),
   };
 }

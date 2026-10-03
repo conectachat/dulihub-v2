@@ -7,7 +7,7 @@ import {
   motivoDeRecusa,
   podeResolver,
   prazoDaPasta,
-  progresso,
+  progressoDasPastas,
   resumoDosArquivos,
   tipoDeVisualizacao,
 } from "./regras";
@@ -15,12 +15,12 @@ import {
 /**
  * Regras do processo que não dependem do banco.
  *
- * Cada uma decide algo que o Renato vê e em que confia: a barra de progresso,
+ * Cada uma decide algo que o Renato vê e em que confia: a contagem de pastas,
  * o prazo de uma pasta, onde o arquivo do cliente mora, e se uma recusa diz ao
  * cliente o que ele precisa trocar.
  */
 
-describe("progresso", () => {
+describe("progressoDasPastas", () => {
   const pasta = (is_required: boolean, resolvida: boolean) => ({
     is_required,
     resolved_at: resolvida ? "2026-09-18T12:00:00Z" : null,
@@ -30,7 +30,7 @@ describe("progresso", () => {
     // Opcional resolvida não empurra a barra: ela mede o que falta para o
     // processo poder seguir, e opcional nunca impede de seguir.
     expect(
-      progresso([pasta(true, true), pasta(true, false), pasta(false, true)]),
+      progressoDasPastas([pasta(true, true), pasta(true, false), pasta(false, true)]),
     ).toEqual({ resolvidas: 1, total: 2, percentual: 50 });
   });
 
@@ -39,18 +39,18 @@ describe("progresso", () => {
       ...Array.from({ length: 199 }, () => pasta(true, true)),
       pasta(true, false),
     ];
-    expect(progresso(pastas).percentual).toBe(99);
+    expect(progressoDasPastas(pastas).percentual).toBe(99);
   });
 
   it("sem pasta obrigatória, não há o que medir", () => {
     // Nulo e não 100%: um processo sem exigência nenhuma não está "completo",
     // está sem configuração. A tela mostra isso em vez de uma barra cheia.
-    expect(progresso([pasta(false, false)])).toEqual({
+    expect(progressoDasPastas([pasta(false, false)])).toEqual({
       resolvidas: 0,
       total: 0,
       percentual: null,
     });
-    expect(progresso([]).percentual).toBeNull();
+    expect(progressoDasPastas([]).percentual).toBeNull();
   });
 });
 

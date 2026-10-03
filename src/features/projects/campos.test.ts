@@ -5,6 +5,7 @@ import {
   campoDoProcesso,
   datasDaEtapa,
   numeracao,
+  progressoDasEtapas,
   resumoDasFilhas,
 } from "./campos";
 
@@ -209,5 +210,38 @@ describe("resumoDasFilhas", () => {
     expect(resumo.get("a")).toEqual({ concluidas: 2, total: 3 });
     // Sem filhas, sem contador.
     expect(resumo.has("b")).toBe(false);
+  });
+});
+
+describe("progressoDasEtapas", () => {
+  const etapas = (concluidas: number, total: number) =>
+    Array.from({ length: total }, (_, i) => ({ concluida: i < concluidas }));
+
+  it("toda linha vale um — principal ou sub-etapa", () => {
+    // O processo da Gisele em 3/out: 15 principais e 11 sub-etapas, 11
+    // concluídas. A barra mostrava 0/16, que era a conta das pastas.
+    expect(progressoDasEtapas(etapas(11, 26))).toEqual({
+      concluidas: 11,
+      total: 26,
+      percentual: 42,
+    });
+  });
+
+  it("arredonda para baixo — 99% não pode virar 100% com etapa aberta", () => {
+    expect(progressoDasEtapas(etapas(199, 200)).percentual).toBe(99);
+  });
+
+  it("tudo concluído é 100%", () => {
+    expect(progressoDasEtapas(etapas(4, 4)).percentual).toBe(100);
+  });
+
+  it("sem etapa, não há o que medir", () => {
+    // Nulo e não 0% nem 100%: processo sem etapa está sem molde, e a tela
+    // diz isso em vez de desenhar uma barra.
+    expect(progressoDasEtapas([])).toEqual({
+      concluidas: 0,
+      total: 0,
+      percentual: null,
+    });
   });
 });

@@ -162,3 +162,27 @@ export function resumoDasFilhas(
   }
   return resumo;
 }
+
+/**
+ * Etapas concluídas sobre todas as etapas — a barra de evolução do processo.
+ *
+ * Toda linha vale um, principal ou sub-etapa: cada uma tem status próprio,
+ * escolhido à mão, e é a mesma conta do app antigo, com a qual a equipe já lê
+ * a barra. É também o número da aba Etapas — um só, e não dois que divergem.
+ *
+ * Arredonda para baixo: 99,5% não pode aparecer como 100% com etapa aberta.
+ * Sem etapa o percentual é nulo — o processo não está parado em 0%, está sem
+ * molde, e a tela precisa dizer isso.
+ */
+export function progressoDasEtapas(
+  etapas: { concluida: boolean }[],
+): { concluidas: number; total: number; percentual: number | null } {
+  const concluidas = etapas.filter((e) => e.concluida).length;
+  const total = etapas.length;
+
+  return {
+    concluidas,
+    total,
+    percentual: total === 0 ? null : Math.floor((concluidas / total) * 100),
+  };
+}

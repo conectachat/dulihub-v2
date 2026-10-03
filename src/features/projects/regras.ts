@@ -14,8 +14,12 @@
  * Arredonda para baixo: 99,5% não pode aparecer como 100% com pasta faltando.
  * Sem pasta obrigatória o percentual é nulo — o processo não está completo, está
  * sem exigência configurada, e a tela precisa dizer isso.
+ *
+ * Não é a barra de evolução do processo: essa conta etapas
+ * (`progressoDasEtapas`, em `campos.ts`). Enquanto as duas se chamavam só
+ * "progresso", a barra mostrou pastas a quem concluía etapas (3/out).
  */
-export function progresso(
+export function progressoDasPastas(
   pastas: { is_required: boolean; resolved_at: string | null }[],
 ): { resolvidas: number; total: number; percentual: number | null } {
   const obrigatorias = pastas.filter((p) => p.is_required);
