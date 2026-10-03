@@ -21,9 +21,10 @@ real.
 |---|---|
 | Início | **O que precisa de atenção hoje**: prazo de RFE (30 dias antes, vermelho nos últimos 7), fichas de cadastro recebidas e ainda não conferidas, parcelas vencidas, pastas e etapas atrasadas — cada um leva ao lugar certo. Depois, as contagens |
 | Contatos | Lista, busca, filtro por tag, criar, editar, excluir e restaurar (lixeira) |
-| Ficha do contato | Dados, tags, oportunidades, processos, linha do tempo; "Novo processo"; **Dados cadastrais** (o que vai para o contrato: CPF, RG, estado civil, endereço, dependentes) e o **link da ficha** para o cliente preencher |
+| Ficha do contato | Dados, tags, oportunidades, linha do tempo; **Dados cadastrais** (o que vai para o contrato: CPF, RG, estado civil, endereço, dependentes) e o **link da ficha** para o cliente preencher. **Processos e Financeiro só para quem é cliente** — ou para quem já tem processo ou cobrança |
 | Ficha de cadastro (pública) | `/cadastro/<token>`: o cliente preenche no celular, **sem login**; ao enviar, a ficha do contato se atualiza e o link morre |
-| CRM | Quadro do funil; negócio em Ganho oferece "Criar processo"; cada cartão mostra em que pé está a ficha de cadastro e leva até ela |
+| CRM | Quadro do funil, com **cartões que se arrastam** entre as colunas (o seletor de etapa continua, para o celular); negócio em Ganho oferece "Criar processo"; cada cartão mostra em que pé está a ficha de cadastro |
+| Lead (`/crm/[id]`) | O negócio enquanto está no funil: trilha das etapas, **Ganho** e **Perdido** (com motivo), contato, valor e origem, dados cadastrais com o link da ficha, histórico. Sem processos e sem financeiro |
 | Projetos | Lista de processos: cliente, visto, status, progresso (etapas concluídas, em %), próximo prazo |
 | Processo | Status e campos do USCIS, inclusive quando a resposta da RFE foi enviada; abas **Etapas** (tabela com status, data prevista e de conclusão, sub-etapas em grupo), **Documentos** (pastas, envio, visualizar, aprovar, recusar com motivo, resolver) e **Observações** (editor estilo Notion, várias pessoas ao mesmo tempo) |
 | Configurações | Etapas do funil, tags, catálogo de pastas, tipos de visto, status de etapa — **abre e grava sem internet**, e sincroniza sozinha |
@@ -47,9 +48,9 @@ Tudo roda sozinho em cada push.
 | Camada | O que pega |
 |---|---|
 | Trava de commit (`.githooks/pre-commit`) | Erro de tipo e de lint — o commit nem acontece |
-| 457 testes de unidade e componente | Regras, formatação, telas de etapas e documentos, sincronização em tempo real, editor montado sobre Supabase falso, fila de gravações offline, as contas do a receber — arredondamento de parcela, vencimento que não pula de mês, conversão que exige cotação — e a ficha de cadastro: CPF conferido pelos dígitos, erro apontado no campo, recusa que não apaga o que foi digitado |
-| 109 testes de RLS | Uma organização não enxerga nem altera dado da outra — tabelas, arquivos e o canal em tempo real; regras de negócio no banco (pasta só resolve com tudo aprovado, processo só se liga a negócio do mesmo contato); e que a fila, ao subir, passa pela mesma RLS; cobrança e parcela isoladas por organização; e a porta do anônimo: sem token não lê nada, com token altera só uma pessoa, só os campos da ficha, uma vez |
-| 39 testes de fumaça | Cada tela abre com login de verdade, inclusive com um processo real; a Início e o quadro do CRM carregam sem falhar — o 200 sozinho não provaria, porque a falha aparece como aviso dentro da página; e a ficha de cadastro abre **sem** login pelo link, e dá 404 sem ele |
+| 493 testes de unidade e componente | Regras, formatação, telas de etapas e documentos, sincronização em tempo real, editor montado sobre Supabase falso, fila de gravações offline, as contas do a receber — arredondamento de parcela, vencimento que não pula de mês, conversão que exige cotação — e a ficha de cadastro: CPF conferido pelos dígitos, erro apontado no campo, recusa que não apaga o que foi digitado |
+| 114 testes de RLS | Uma organização não enxerga nem altera dado da outra — tabelas, arquivos e o canal em tempo real; regras de negócio no banco (pasta só resolve com tudo aprovado, processo só se liga a negócio do mesmo contato); e que a fila, ao subir, passa pela mesma RLS; cobrança e parcela isoladas por organização; e a porta do anônimo: sem token não lê nada, com token altera só uma pessoa, só os campos da ficha, uma vez |
+| 44 testes de fumaça | Cada tela abre com login de verdade, inclusive com um processo real; a Início e o quadro do CRM carregam sem falhar — o 200 sozinho não provaria, porque a falha aparece como aviso dentro da página; e a ficha de cadastro abre **sem** login pelo link, e dá 404 sem ele |
 
 ---
 
@@ -181,6 +182,31 @@ atualiza, a Início avisa, e o Renato clica "Conferi".
 
 É a primeira porta do app para quem não tem login; o desenho e a exceção à
 regra do `security definer` estão na migration 0035 e no `AGENTS.md`.
+
+### Lead não é cliente (3/out)
+
+O cartão do CRM abria a ficha do contato, com processos e financeiro, "como se
+já fosse cliente". Agora o lead tem tela própria, e o perfil completo chega
+com o Ganho.
+
+| Pergunta | Resposta |
+|---|---|
+| O que é o Ganho | O contrato assinado. O contato vira cliente, e **cliente não volta a ser lead** — reabrir o negócio não rebaixa ninguém |
+| Depois de clicar Ganho | Vai para o perfil completo do cliente, sem abrir nada |
+| Perdido | Pede o motivo (lista curta + detalhe); fica no negócio e no histórico. Reabrir apaga |
+| Quem vê Processos e Financeiro | Cliente, ou quem já tem processo ou cobrança. A regra nunca esconde trabalho feito: em 3/out havia dois contatos com processo sem serem clientes |
+| Arrastar | Só no quadro do CRM, com o HTML nativo. O seletor de etapa fica, porque arrastar não funciona no toque nem no teclado. Soltar em Ganho ou Perdido abre a mesma pergunta do botão |
+
+Fica com o Renato, e não é código:
+
+- **O funil da Duli só tem Novo Lead, Ganho e Perdido.** As etapas do meio
+  (reunião, proposta, ficha enviada, contrato enviado) se criam em
+  Configurações › Etapas do funil; a trilha da tela do lead as mostra sozinha.
+- **50 contatos estão marcados "oportunidade" sem cartão no quadro** — vieram
+  assim da importação. Criar negócio para eles é decisão dele.
+
+Não entraram, e foram oferecidos: dias na etapa, previsão de fechamento, e as
+abas Tarefas, Produtos e Arquivos dos prints de referência.
 
 **Próximo passo, fora deste corte:** gerar o contrato com esses dados e mandar
 ao ZapSign. Os dados estão em `people`, `person_dependents` e em
