@@ -817,6 +817,53 @@ export type Database = {
           },
         ]
       }
+      person_dependents: {
+        Row: {
+          birth_country: string
+          birth_date: string
+          created_at: string
+          full_name: string
+          id: string
+          organization_id: string
+          person_id: string
+          position: number
+          relationship: string
+          updated_at: string
+        }
+        Insert: {
+          birth_country: string
+          birth_date: string
+          created_at?: string
+          full_name: string
+          id?: string
+          organization_id: string
+          person_id: string
+          position?: number
+          relationship: string
+          updated_at?: string
+        }
+        Update: {
+          birth_country?: string
+          birth_date?: string
+          created_at?: string
+          full_name?: string
+          id?: string
+          organization_id?: string
+          person_id?: string
+          position?: number
+          relationship?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_dependents_person_same_org"
+            columns: ["person_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
       person_tags: {
         Row: {
           created_at: string
@@ -1458,6 +1505,82 @@ export type Database = {
           },
         ]
       }
+      registration_forms: {
+        Row: {
+          answers: Json | null
+          cancelled_at: string | null
+          consent_text: string | null
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          organization_id: string
+          person_id: string
+          previous: Json | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          submitted_at: string | null
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          answers?: Json | null
+          cancelled_at?: string | null
+          consent_text?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at: string
+          id?: string
+          organization_id: string
+          person_id: string
+          previous?: Json | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          submitted_at?: string | null
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          answers?: Json | null
+          cancelled_at?: string | null
+          consent_text?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          organization_id?: string
+          person_id?: string
+          previous?: Json | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          submitted_at?: string | null
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registration_forms_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registration_forms_person_same_org"
+            columns: ["person_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "registration_forms_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stage_statuses: {
         Row: {
           code: string
@@ -1713,6 +1836,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      abrir_ficha_de_cadastro: {
+        Args: { p_token: string }
+        Returns: {
+          ddi: string
+          email: string
+          nome: string
+          organizacao: string
+          situacao: string
+          telefone: string
+        }[]
+      }
       compactar_pagina: {
         Args: {
           p_ate: number
@@ -1731,9 +1865,17 @@ export type Database = {
         }
         Returns: string
       }
+      enviar_ficha_de_cadastro: {
+        Args: { p_consentimento: string; p_dados: Json; p_token: string }
+        Returns: undefined
+      }
       reordenar_irmaos: {
         Args: { p_ids: string[]; p_tabela: string }
         Returns: undefined
+      }
+      salvar_cadastro: {
+        Args: { p_completo?: boolean; p_dados: Json; p_person: string }
+        Returns: Json
       }
       set_default_stage_status: { Args: { p_id: string }; Returns: undefined }
       swap_positions: {
