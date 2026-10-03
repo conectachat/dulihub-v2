@@ -328,3 +328,106 @@ describe("com um processo de verdade", () => {
     }
   }, 60_000);
 });
+
+/**
+ * A tela do lead, com um lead de verdade.
+ *
+ * Lead não é cliente: enquanto o negócio está no funil, a tela dele não
+ * mostra processo nem financeiro (Renato, 3/out). O parceiro cria um contato
+ * e um negócio, as telas são pedidas com a sessão dele, e o contato é apagado
+ * no fim — a cascata leva o negócio junto.
+ */
+describe("com um lead de verdade", () => {
+  let sessao: Awaited<ReturnType<typeof entrar>>;
+  let leadId: string | null = null;
+  let negocioId: string;
+  let etapaDoMeio: string;
+  const NOME = `Lead da fumaça ${crypto.randomUUID().slice(0, 8)}`;
+
+  beforeAll(async () => {
+    sessao = await entrar("parceiro");
+    const { supabase } = sessao;
+
+    const { data: membro } = await supabase
+      .from("organization_members")
+      .select("organization_id")
+      .limit(1)
+      .single();
+    const org = membro!.organization_id;
+
+    const { data: funil } = await supabase
+      .from("pipelines")
+      .select("id")
+      .eq("organization_id", org)
+      .eq("is_default", true)
+      .single();
+    const { data: etapas } = await supabase
+      .from("pipeline_stages")
+      .select("id, name, position, is_won, is_lost")
+      .eq("pipeline_id", funil!.id)
+      .order("position");
+    const meio = etapas!.find((e) => !e.is_won && !e.is_lost)!;
+    etapaDoMeio = meio.name;
+
+    const { data: pessoa, error: erroPessoa } = await supabase
+      .from("people")
+      .insert({ organization_id: org, full_name: NOME, lifecycle_stage: "opportunity" })
+      .select("id")
+      .single();
+    if (erroPessoa) throw new Error(`Lead da fumaça não criado: ${erroPessoa.message}`);
+    leadId = pessoa.id;
+
+    const { data: negocio, error: erroNegocio } = await supabase
+      .from("opportunities")
+      .insert({
+        organization_id: org,
+        person_id: pessoa.id,
+        pipeline_id: funil!.id,
+        stage_id: meio.id,
+        title: "Negócio da fumaça",
+        value: 5000,
+      })
+      .select("id")
+      .single();
+    if (erroNegocio) throw new Error(`Negócio da fumaça não criado: ${erroNegocio.message}`);
+    negocioId = negocio.id;
+  }, 60_000);
+
+  afterAll(async () => {
+    if (leadId) await sessao.supabase.from("people").delete().eq("id", leadId);
+  });
+
+  it("a tela do lead abre com o negócio, a trilha e as saídas", async () => {
+    const resposta = await pedir(`/crm/${negocioId}`, sessao.cookie);
+    expect(resposta.status).toBe(200);
+
+    const html = await resposta.text();
+    expect(html).toContain(NOME);
+    expect(html).toContain("Negócio da fumaça");
+    expect(html).toContain(etapaDoMeio);
+    expect(html).toContain("Ganho");
+    expect(html).toContain("Perdido");
+    // A ficha de cadastro vem antes do contrato: mora na tela do lead.
+    expect(html).toContain("Dados cadastrais");
+  }, 60_000);
+
+  it("a tela do lead não tem processo nem financeiro", async () => {
+    const html = await (await pedir(`/crm/${negocioId}`, sessao.cookie)).text();
+
+    // Pelos ids das seções: "Financeiro" também é item do menu lateral.
+    expect(html).not.toContain('id="processos"');
+    expect(html).not.toContain('id="financeiro"');
+    expect(html).not.toContain("Novo processo");
+  }, 60_000);
+
+  it("negócio que não existe dá 404, não erro", async () => {
+    const resposta = await pedir(`/crm/${crypto.randomUUID()}`, sessao.cookie);
+    expect(resposta.status).toBe(404);
+  }, 60_000);
+
+  it("o quadro leva o cartão para a tela do lead", async () => {
+    const html = await (await pedir("/crm", sessao.cookie)).text();
+
+    expect(html).toContain(`/crm/${negocioId}`);
+  }, 60_000);
+});

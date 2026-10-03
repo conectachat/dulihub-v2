@@ -57,6 +57,8 @@ export async function updatePerson(
   if (error) return falhou(traduzirErro(error));
 
   revalidatePath("/contatos");
+  // A tela do lead (`/crm/[id]`) mostra o mesmo dado.
+  revalidatePath("/crm/[id]", "page");
   return gravou();
 }
 

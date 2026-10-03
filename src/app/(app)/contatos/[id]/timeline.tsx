@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import {
   ArrowRightLeft,
   CalendarDays,
+  ClipboardCheck,
   History,
   Mail,
   MessageSquare,
@@ -41,6 +42,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   email: Mail,
   other: MessageSquare,
   stage_change: ArrowRightLeft,
+  registration_submitted: ClipboardCheck,
 };
 
 const LABELS: Record<string, string> = {
@@ -50,6 +52,8 @@ const LABELS: Record<string, string> = {
   email: "Email",
   other: "Outro",
   stage_change: "Movimento no funil",
+  // Gravado pelo banco quando o cliente envia a ficha pelo link (0035).
+  registration_submitted: "Ficha de cadastro",
 };
 
 /**

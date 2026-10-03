@@ -82,6 +82,8 @@ export async function createEntry(
   }
 
   revalidatePath(`/contatos/${person_id}`);
+  // A tela do lead (`/crm/[id]`) mostra o mesmo dado.
+  revalidatePath("/crm/[id]", "page");
   return gravou();
 }
 
@@ -134,5 +136,7 @@ export async function deleteEntry(formData: FormData): Promise<ActionState> {
   }
 
   revalidatePath(`/contatos/${personId}`);
+  // A tela do lead (`/crm/[id]`) mostra o mesmo dado.
+  revalidatePath("/crm/[id]", "page");
   return gravou();
 }

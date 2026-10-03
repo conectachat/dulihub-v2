@@ -16,9 +16,9 @@ describe("AtalhoDaFicha", () => {
     ["recebida", "Ficha recebida · conferir"],
     ["conferida", "Ficha conferida"],
   ] as const)("%s: diz o estado e leva aos dados cadastrais", (situacao, texto) => {
-    render(<AtalhoDaFicha personId="c1" situacao={situacao} />);
+    render(<AtalhoDaFicha href="/crm/n1#dados-cadastrais" situacao={situacao} />);
 
     const atalho = screen.getByRole("link", { name: new RegExp(texto) });
-    expect(atalho.getAttribute("href")).toBe("/contatos/c1#dados-cadastrais");
+    expect(atalho.getAttribute("href")).toBe("/crm/n1#dados-cadastrais");
   });
 });

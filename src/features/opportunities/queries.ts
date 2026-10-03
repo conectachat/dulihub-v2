@@ -147,3 +147,40 @@ export async function listPeopleForPicker() {
     error: error?.message ?? null,
   };
 }
+
+/**
+ * Um negócio inteiro, para a tela do lead: o negócio, o contato dele e as
+ * etapas do funil em que ele está. Negócio nulo quando a RLS esconde.
+ *
+ * As etapas vêm em leitura à parte: etapa e funil têm duas chaves entre si (a
+ * simples e a composta da 0027), e o embutido não sabe qual seguir.
+ */
+export async function obterNegocio(id: string) {
+  const supabase = await createClient();
+
+  const { data: negocio, error } = await supabase
+    .from("opportunities")
+    .select(
+      `id, title, value, currency, status, stage_id, pipeline_id, source,
+       lost_reason, created_at, closed_at,
+       person:people(id, full_name, email, phone, phone_country_code, company,
+         job_title, lifecycle_stage, person_tags(tag:tags(id, name)))`,
+    )
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) return { negocio: null, etapas: [], error: error.message };
+  if (!negocio) return { negocio: null, etapas: [], error: null };
+
+  const { data: etapas, error: erroEtapas } = await supabase
+    .from("pipeline_stages")
+    .select("id, name, position, probability, is_won, is_lost")
+    .eq("pipeline_id", negocio.pipeline_id)
+    .order("position");
+
+  return {
+    negocio,
+    etapas: (etapas ?? []) as Stage[],
+    error: erroEtapas?.message ?? null,
+  };
+}

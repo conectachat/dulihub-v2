@@ -40,6 +40,8 @@ export async function salvarCadastro(
   revalidatePath(`/contatos/${personId}`);
   // Nome, e-mail e telefone aparecem na lista.
   revalidatePath("/contatos");
+  // A tela do lead (`/crm/[id]`) mostra o mesmo dado.
+  revalidatePath("/crm/[id]", "page");
   return { error: null };
 }
 
@@ -47,6 +49,8 @@ export async function salvarCadastro(
 function revalidar(personId: string) {
   revalidatePath(`/contatos/${personId}`);
   revalidatePath("/crm");
+  // A tela do lead mostra a ficha e o link.
+  revalidatePath("/crm/[id]", "page");
   revalidatePath("/");
 }
 

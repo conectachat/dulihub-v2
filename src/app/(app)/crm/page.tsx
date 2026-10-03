@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
 import { formatarMoeda, formatarPorMoeda, juntarMoedas } from "@/lib/totals";
 import { linkVigente, situacaoDaFicha } from "@/features/cadastro/regras";
+import { enderecoDoCartao } from "@/features/opportunities/regras";
 import { deleteOpportunity } from "@/features/opportunities/actions";
 import { getBoard, listPeopleForPicker } from "@/features/opportunities/queries";
 
@@ -112,9 +113,13 @@ export default async function CrmPage() {
                       className="space-y-2 rounded-2xl border bg-card p-3 shadow-sm"
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p className="min-w-0 flex-1 text-sm font-medium leading-snug">
+                        {/* Lead abre a tela do lead; ganho, o perfil do cliente. */}
+                        <Link
+                          href={enderecoDoCartao(card, stage)}
+                          className="min-w-0 flex-1 text-sm font-medium leading-snug hover:underline"
+                        >
                           {card.title}
-                        </p>
+                        </Link>
                         <ConfirmAction
                           action={deleteOpportunity}
                           hidden={{ id: card.id }}
@@ -126,7 +131,7 @@ export default async function CrmPage() {
 
                       {card.person ? (
                         <Link
-                          href={`/contatos/${card.person.id}`}
+                          href={enderecoDoCartao(card, stage)}
                           className="block truncate text-xs text-muted-foreground hover:underline"
                         >
                           {card.person.full_name}
@@ -140,7 +145,7 @@ export default async function CrmPage() {
                       */}
                       {card.person && !stage.is_lost ? (
                         <AtalhoDaFicha
-                          personId={card.person.id}
+                          href={`${enderecoDoCartao(card, stage)}#dados-cadastrais`}
                           situacao={situacaoDaFicha(linkVigente(card.person.fichas), agora)}
                         />
                       ) : null}

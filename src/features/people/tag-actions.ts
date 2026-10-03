@@ -82,5 +82,7 @@ export async function setPersonTags(formData: FormData): Promise<ActionState> {
 
   revalidatePath(`/contatos/${personId}`);
   revalidatePath("/contatos");
+  // A tela do lead (`/crm/[id]`) mostra o mesmo dado.
+  revalidatePath("/crm/[id]", "page");
   return gravou();
 }

@@ -7,8 +7,9 @@ import { cn } from "@/lib/utils";
  * O atalho do cartão para a ficha de cadastro do contato.
  *
  * Um link, e não um botão que gera: o link gerado precisa ser copiado ou
- * mandado pelo WhatsApp, e isso mora na ficha do contato. Aqui o cartão diz
- * em que pé a ficha está e leva até lá.
+ * mandado pelo WhatsApp, e isso mora no cartão "Dados cadastrais" — na tela
+ * do lead enquanto o negócio está no funil, no perfil do cliente depois do
+ * Ganho. Aqui o cartão diz em que pé a ficha está e leva até lá.
  */
 const TEXTO: Record<SituacaoDaFicha, string> = {
   "sem-link": "Enviar ficha de cadastro →",
@@ -19,15 +20,16 @@ const TEXTO: Record<SituacaoDaFicha, string> = {
 };
 
 export function AtalhoDaFicha({
-  personId,
+  href,
   situacao,
 }: {
-  personId: string;
+  /** Onde os dados cadastrais deste contato estão, já com a âncora. */
+  href: string;
   situacao: SituacaoDaFicha;
 }) {
   return (
     <Link
-      href={`/contatos/${personId}#dados-cadastrais`}
+      href={href}
       className={cn(
         "block text-xs hover:underline",
         // Só o que pede ação se destaca: ficha que chegou, ou link que morreu.
