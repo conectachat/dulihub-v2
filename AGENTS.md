@@ -53,6 +53,28 @@ permissão nenhuma: quem decide continua sendo a RLS, a cada linha que sobe.
 proteção. Toda tabela nova nasce com RLS ligada e policy escrita na mesma
 migration.
 
+**Uma porta para quem não tem login, e só uma.** A ficha de cadastro
+(`/cadastro/<token>`, migration 0035) é o único caminho do app para o
+anônimo. Ela existe em duas funções — `abrir_ficha_de_cadastro` e
+`enviar_ficha_de_cadastro` — que são `security definer` em `public`,
+executáveis por `anon`: exatamente o que a 0003 proibiu, e a única exceção.
+O que a mantém estreita, e que qualquer porta nova teria de repetir:
+
+- o token de 256 bits é a única chave, gerado no servidor, de uso único e
+  com prazo; a função trava a linha antes de gravar;
+- lista fechada de campos (`private.campos_da_ficha`) — o `jsonb` não
+  alcança `organization_id`, `lifecycle_stage` nem `user_id`;
+- a leitura devolve só nome e contato, nunca documento ou endereço;
+- só `anon` executa: o app chama por `lib/supabase/anonimo.ts`, sem cookie,
+  para que ninguém entre por ela com sessão (o gatilho da 0013 congelaria o
+  CPF em silêncio);
+- quem grava é `salvar_cadastro`, `security invoker` — a mesma função que a
+  equipe usa, onde a RLS decide.
+
+O aviso do Supabase "definer executável por anon" é esperado para essas duas
+funções. Aparecendo para qualquer outra, é defeito. Nenhuma policy é
+`to anon`, e não é para passar a ser.
+
 **Dinheiro não se converte sem cotação e sem data.** `totals.ts` soma por
 moeda e nunca uma na outra; a única conversão do sistema é `emReais`
 (`features/financeiro/regras.ts`), e ela exige a cotação junto — devolve nulo
@@ -92,7 +114,7 @@ src/
     components/           componentes do domínio
   components/ui/          shadcn/ui, não editar à mão
   lib/local/              espelho, fila, sobreposição e sincronia
-  lib/supabase/           os três clientes
+  lib/supabase/           os quatro clientes
 ```
 
 Tela migrada não tem `actions.ts` nem `queries.ts`: quando a última tela de um
@@ -320,7 +342,7 @@ Ver `supabase/migrations/README.md` para o estado atual e o desencontro
 conhecido da 0001/0002.
 
 **E os tipos junto.** `src/lib/supabase/database.types.ts` é regenerado no mesmo
-commit de toda migration. Os três clientes (`server.ts`, `client.ts`,
-`proxy.ts`) são `<Database>`: tipo de linha se deriva de `Tables<"…">` e
+commit de toda migration. Os quatro clientes (`server.ts`, `client.ts`,
+`proxy.ts` e `anonimo.ts`, o da ficha pública) são `<Database>`: tipo de linha se deriva de `Tables<"…">` e
 `Enums<"…">`, nunca se reescreve à mão, e `as unknown as` sobre dado do banco
 não entra — se o compilador reclama, o formato mudou e a tela quebraria.

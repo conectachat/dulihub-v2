@@ -19,10 +19,11 @@ real.
 
 | Tela | O que faz |
 |---|---|
-| Início | **O que precisa de atenção hoje**: prazo de RFE (30 dias antes, vermelho nos últimos 7), parcelas vencidas, pastas e etapas atrasadas — cada um leva ao lugar certo. Depois, as contagens |
+| Início | **O que precisa de atenção hoje**: prazo de RFE (30 dias antes, vermelho nos últimos 7), fichas de cadastro recebidas e ainda não conferidas, parcelas vencidas, pastas e etapas atrasadas — cada um leva ao lugar certo. Depois, as contagens |
 | Contatos | Lista, busca, filtro por tag, criar, editar, excluir e restaurar (lixeira) |
-| Ficha do contato | Dados, tags, oportunidades, processos, linha do tempo; "Novo processo" |
-| CRM | Quadro do funil; negócio em Ganho oferece "Criar processo" |
+| Ficha do contato | Dados, tags, oportunidades, processos, linha do tempo; "Novo processo"; **Dados cadastrais** (o que vai para o contrato: CPF, RG, estado civil, endereço, dependentes) e o **link da ficha** para o cliente preencher |
+| Ficha de cadastro (pública) | `/cadastro/<token>`: o cliente preenche no celular, **sem login**; ao enviar, a ficha do contato se atualiza e o link morre |
+| CRM | Quadro do funil; negócio em Ganho oferece "Criar processo"; cada cartão mostra em que pé está a ficha de cadastro e leva até ela |
 | Projetos | Lista de processos: cliente, visto, status, progresso (etapas concluídas, em %), próximo prazo |
 | Processo | Status e campos do USCIS, inclusive quando a resposta da RFE foi enviada; abas **Etapas** (tabela com status, data prevista e de conclusão, sub-etapas em grupo), **Documentos** (pastas, envio, visualizar, aprovar, recusar com motivo, resolver) e **Observações** (editor estilo Notion, várias pessoas ao mesmo tempo) |
 | Configurações | Etapas do funil, tags, catálogo de pastas, tipos de visto, status de etapa — **abre e grava sem internet**, e sincroniza sozinha |
@@ -35,7 +36,7 @@ real.
 |---|---|
 | Contatos | 76, importados do app antigo sem duplicata |
 | Organizações | Duli (raiz) e "Parceiro de Teste" (só para a suíte de testes) |
-| Banco | Supabase `xigmtofpmfqeehhcdasf`, migrations `0001` a `0034` em `supabase/migrations/` |
+| Banco | Supabase `xigmtofpmfqeehhcdasf`, migrations `0001` a `0035` em `supabase/migrations/` |
 | Arquivos | Buckets privados `documentos` (pastas do processo) e `observacoes` (colados no editor), 20 MB |
 | No aparelho | Cópia das tabelas de configuração e do que ela usa, por usuário (IndexedDB), mais a fila do que ainda não subiu |
 
@@ -46,9 +47,9 @@ Tudo roda sozinho em cada push.
 | Camada | O que pega |
 |---|---|
 | Trava de commit (`.githooks/pre-commit`) | Erro de tipo e de lint — o commit nem acontece |
-| 386 testes de unidade e componente | Regras, formatação, telas de etapas e documentos, sincronização em tempo real, editor montado sobre Supabase falso, fila de gravações offline, e as contas do a receber — arredondamento de parcela, vencimento que não pula de mês, conversão que exige cotação |
-| 95 testes de RLS | Uma organização não enxerga nem altera dado da outra — tabelas, arquivos e o canal em tempo real; regras de negócio no banco (pasta só resolve com tudo aprovado, processo só se liga a negócio do mesmo contato); e que a fila, ao subir, passa pela mesma RLS; cobrança e parcela isoladas por organização |
-| 35 testes de fumaça | Cada tela abre com login de verdade, inclusive com um processo real; e a Início confere prazos e parcelas sem falhar — o 200 sozinho não provaria, porque a falha aparece como aviso dentro da página |
+| 457 testes de unidade e componente | Regras, formatação, telas de etapas e documentos, sincronização em tempo real, editor montado sobre Supabase falso, fila de gravações offline, as contas do a receber — arredondamento de parcela, vencimento que não pula de mês, conversão que exige cotação — e a ficha de cadastro: CPF conferido pelos dígitos, erro apontado no campo, recusa que não apaga o que foi digitado |
+| 109 testes de RLS | Uma organização não enxerga nem altera dado da outra — tabelas, arquivos e o canal em tempo real; regras de negócio no banco (pasta só resolve com tudo aprovado, processo só se liga a negócio do mesmo contato); e que a fila, ao subir, passa pela mesma RLS; cobrança e parcela isoladas por organização; e a porta do anônimo: sem token não lê nada, com token altera só uma pessoa, só os campos da ficha, uma vez |
+| 39 testes de fumaça | Cada tela abre com login de verdade, inclusive com um processo real; a Início e o quadro do CRM carregam sem falhar — o 200 sozinho não provaria, porque a falha aparece como aviso dentro da página; e a ficha de cadastro abre **sem** login pelo link, e dá 404 sem ele |
 
 ---
 
@@ -162,6 +163,29 @@ Seis defeitos observados no código dele, cada um virou uma decisão:
 Contas a pagar, despesas, fornecedores e fluxo de caixa. Depois: contrato no
 ZapSign, boleto do Itaú, link do C6 e nota fiscal — estas quatro dependem das
 credenciais que ainda estão com o Renato.
+
+### Ficha de cadastro por link (3/out) — o primeiro passo do contrato
+
+O Renato mandava a ficha em PDF pelo WhatsApp e redigitava a resposta para
+montar o contrato. Agora: no contato (ou pelo cartão do CRM), **Gerar link da
+ficha**; o cliente preenche no celular, sem login; a ficha do contato se
+atualiza, a Início avisa, e o Renato clica "Conferi".
+
+| Pergunta | Resposta |
+|---|---|
+| Campos | Os do PDF, campo por campo. As colunas já existiam em `people` desde a 0001; só os dependentes ganharam tabela |
+| CPF e RG | Obrigatórios para o cliente; CPF conferido pelos dígitos |
+| O link | Uso único, 15 dias, um em aberto por contato — gerar outro cancela o anterior |
+| O que a resposta faz | Atualiza o contato direto. O declarado e o que havia antes ficam guardados no link |
+| Correção depois | A equipe edita na ficha, ou gera outro link |
+
+É a primeira porta do app para quem não tem login; o desenho e a exceção à
+regra do `security definer` estão na migration 0035 e no `AGENTS.md`.
+
+**Próximo passo, fora deste corte:** gerar o contrato com esses dados e mandar
+ao ZapSign. Os dados estão em `people`, `person_dependents` e em
+`registration_forms.answers`. Também de fora: preencher endereço pelo CEP e
+avisar por e-mail quando a ficha chega.
 
 ---
 
