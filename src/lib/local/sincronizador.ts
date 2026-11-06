@@ -18,14 +18,18 @@ import { transporteSupabase } from "./transporte-supabase";
  * (`CONFERENCIA_MS`): o banco decide, o resto só adianta.
  *
  * Uma sincronia por vez. Duas ao mesmo tempo disputariam a marca d'água e
- * uma apagaria o avanço da outra.
+ * uma apagaria o avanço da outra. Mas o pedido que chega no meio de uma
+ * rodada não é jogado fora: vira mais uma rodada ao terminar. Antes ele era
+ * ignorado, e o segundo clique de reordenar esperava o próximo gatilho
+ * parecendo perdido (G7).
  */
 
 const INTERVALO_MS = 60_000;
 
 let banco: BancoLocal | null = null;
 let fila: BancoDaFila | null = null;
-let rodando = false;
+let rodada: Promise<void> | null = null;
+let pedidoNoMeio: string | null = null;
 
 export function bancoDoUsuario(userId: string) {
   if (!banco || banco.name !== `dulihub-${userId}`) {
@@ -81,9 +85,28 @@ async function drenarFila(userId: string) {
   });
 }
 
-export async function sincronizarAgora(userId: string) {
-  if (rodando) return;
-  rodando = true;
+export function sincronizarAgora(userId: string): Promise<void> {
+  if (rodada) {
+    pedidoNoMeio = userId;
+    return rodada;
+  }
+
+  rodada = (async () => {
+    try {
+      let quem: string | null = userId;
+      while (quem) {
+        pedidoNoMeio = null;
+        await umaRodada(quem);
+        quem = pedidoNoMeio;
+      }
+    } finally {
+      rodada = null;
+    }
+  })();
+  return rodada;
+}
+
+async function umaRodada(userId: string) {
   definirEstado({ sincronizando: true, online: navigator.onLine });
 
   try {
@@ -101,7 +124,7 @@ export async function sincronizarAgora(userId: string) {
     // validade (`sessao.ts`) existe para impedir.
     if (!resultado.error) await armazem.definirMarca(MARCA_DA_SINCRONIA, resultado.em);
   } finally {
-    rodando = false;
+    definirEstado({ sincronizando: false });
   }
 }
 

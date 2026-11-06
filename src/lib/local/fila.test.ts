@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   drenar,
+  mesmaVersao,
   type ArmazemDaFila,
   type ItemDaFila,
   type Operacao,
@@ -42,6 +43,8 @@ function transporte(config: {
   existe?: boolean;
   /** Erro da pergunta "a linha ainda está lá?". */
   erroDoExiste?: Falha;
+  /** Roda no meio de cada chamada — para encenar um clique durante o envio. */
+  durante?: () => Promise<void> | void;
 }): TransporteDaFila & { chamadas: Chamada[] } {
   const chamadas: Chamada[] = [];
   let i = 0;
@@ -76,6 +79,7 @@ function transporte(config: {
     },
     async rpc(nome) {
       chamadas.push({ tipo: "rpc", tabela: nome });
+      await config.durante?.();
       return { error: proximo() };
     },
   };
@@ -95,6 +99,14 @@ function armazem(itens: ItemDaFila[]): ArmazemDaFila & { itens: ItemDaFila[] } {
     async apagar(id) {
       const i = itens.findIndex((x) => x.id === id);
       if (i >= 0) itens.splice(i, 1);
+    },
+    async apagarSeIgual(item) {
+      const i = itens.findIndex((x) => x.id === item.id);
+      if (i >= 0 && mesmaVersao(itens[i], item)) itens.splice(i, 1);
+    },
+    async gravarSeIgual(anterior, novo) {
+      const i = itens.findIndex((x) => x.id === anterior.id);
+      if (i >= 0 && mesmaVersao(itens[i], anterior)) itens[i] = novo;
     },
   };
 }
@@ -295,6 +307,54 @@ describe("drenar", () => {
 
       expect(resultado.subiram).toBe(0);
       expect(resultado.parou).toBeTruthy();
+      expect(fila.itens[0].estado).toBe("pendente");
+    });
+  });
+
+  describe("item substituído enquanto sobe (G7)", () => {
+    // Dois cliques rápidos em reordenar: o segundo substitui o primeiro na
+    // fila, com o mesmo id, enquanto o primeiro ainda está subindo. Apagar
+    // "pelo id" ao terminar levava junto a versão nova, e a linha pulava de
+    // volta para a ordem do primeiro clique.
+    const ordem = (irmaos: string[]): Operacao => ({
+      tipo: "rpc",
+      nome: "reordenar_irmaos",
+      args: { p_ids: irmaos },
+    });
+
+    it("a versão nova continua na fila, e sobe na rodada seguinte", async () => {
+      const primeira = item("r", [ordem(["b", "a", "c"])], { alvo: "reordenar:tags:raiz" });
+      const fila = armazem([primeira]);
+      const segunda = item("r", [ordem(["b", "c", "a"])], { alvo: "reordenar:tags:raiz" });
+
+      const rede = transporte({
+        durante: async () => {
+          if (fila.itens[0] === primeira) await fila.gravar(segunda);
+        },
+      });
+
+      await drenar(rede, fila);
+      expect(fila.itens).toEqual([segunda]);
+
+      await drenar(rede, fila);
+      expect(fila.itens).toEqual([]);
+      expect(rede.chamadas).toHaveLength(2);
+    });
+
+    it("recusa da versão velha não marca conflito na nova", async () => {
+      const primeira = item("r", [ordem(["b", "a"])], { alvo: "reordenar:tags:raiz" });
+      const fila = armazem([primeira]);
+      const segunda = item("r", [ordem(["a", "b"])], { alvo: "reordenar:tags:raiz" });
+
+      const rede = transporte({
+        erros: [{ code: "42501", message: "recusado" }],
+        durante: async () => {
+          if (fila.itens[0] === primeira) await fila.gravar(segunda);
+        },
+      });
+
+      await drenar(rede, fila);
+      expect(fila.itens).toEqual([segunda]);
       expect(fila.itens[0].estado).toBe("pendente");
     });
   });

@@ -2,7 +2,7 @@
 
 import Dexie, { type Table } from "dexie";
 
-import type { ArmazemDaFila, ItemDaFila } from "./fila";
+import { mesmaVersao, type ArmazemDaFila, type ItemDaFila } from "./fila";
 
 /**
  * A fila mora num banco **separado** do espelho.
@@ -52,6 +52,20 @@ export function armazemDaFila(banco: BancoDaFila): ArmazemDaFila {
     },
     async apagar(id) {
       await banco.fila.delete(id);
+    },
+    // Ler e apagar na mesma transação: entre os dois, outra aba ou outro
+    // clique poderia trocar o item.
+    async apagarSeIgual(item) {
+      await banco.transaction("rw", banco.fila, async () => {
+        const atual = await banco.fila.get(item.id);
+        if (atual && mesmaVersao(atual, item)) await banco.fila.delete(item.id);
+      });
+    },
+    async gravarSeIgual(anterior, novo) {
+      await banco.transaction("rw", banco.fila, async () => {
+        const atual = await banco.fila.get(anterior.id);
+        if (atual && mesmaVersao(atual, anterior)) await banco.fila.put(novo);
+      });
     },
   };
 }

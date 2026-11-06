@@ -2,7 +2,13 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { drenar, type ArmazemDaFila, type ItemDaFila, type Operacao } from "@/lib/local/fila";
+import {
+  drenar,
+  mesmaVersao,
+  type ArmazemDaFila,
+  type ItemDaFila,
+  type Operacao,
+} from "@/lib/local/fila";
 import { transporteDaFila } from "@/lib/local/transporte-da-fila";
 
 import { entrarComo, type Cliente } from "./clientes";
@@ -31,6 +37,14 @@ function armazem(itens: ItemDaFila[]): ArmazemDaFila & { itens: ItemDaFila[] } {
     async apagar(id) {
       const i = itens.findIndex((x) => x.id === id);
       if (i >= 0) itens.splice(i, 1);
+    },
+    async apagarSeIgual(item) {
+      const i = itens.findIndex((x) => x.id === item.id);
+      if (i >= 0 && mesmaVersao(itens[i], item)) itens.splice(i, 1);
+    },
+    async gravarSeIgual(anterior, novo) {
+      const i = itens.findIndex((x) => x.id === anterior.id);
+      if (i >= 0 && mesmaVersao(itens[i], anterior)) itens[i] = novo;
     },
   };
 }

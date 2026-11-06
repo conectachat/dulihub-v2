@@ -96,6 +96,28 @@ export interface ArmazemDaFila {
   listar(): Promise<ItemDaFila[]>;
   gravar(item: ItemDaFila): Promise<void>;
   apagar(id: string): Promise<void>;
+  /**
+   * Apaga só se o que está guardado ainda for **esta** versão do item.
+   *
+   * A reordenação substitui o item na fila mantendo o id (`ordem.ts`). Se
+   * isso acontece enquanto a versão anterior sobe, apagar pelo id ao final
+   * levava junto a versão nova — e o segundo clique se perdia calado (G7).
+   */
+  apagarSeIgual(item: ItemDaFila): Promise<void>;
+  /** Grava `novo` no lugar de `anterior`, só se `anterior` ainda estiver lá. */
+  gravarSeIgual(anterior: ItemDaFila, novo: ItemDaFila): Promise<void>;
+}
+
+/**
+ * Mesma versão de um item da fila: mesmo id, mesma hora de criação e mesmos
+ * passos. A substituição (`enfileirar` com `id`) muda a hora e os passos.
+ */
+export function mesmaVersao(a: ItemDaFila, b: ItemDaFila): boolean {
+  return (
+    a.id === b.id &&
+    a.criada_em === b.criada_em &&
+    JSON.stringify(a.passos) === JSON.stringify(b.passos)
+  );
 }
 
 /**
@@ -268,7 +290,7 @@ export async function drenar(
     if (item.depende.some((d) => envenenados.has(d))) {
       envenenados.add(item.alvo);
       conflitos += 1;
-      await armazem.gravar({ ...item, estado: "conflito", motivo: DEPENDE_DE_RECUSADA });
+      await armazem.gravarSeIgual(item, { ...item, estado: "conflito", motivo: DEPENDE_DE_RECUSADA });
       continue;
     }
 
@@ -294,7 +316,9 @@ export async function drenar(
     if (recusa) {
       envenenados.add(item.alvo);
       conflitos += 1;
-      await armazem.gravar({
+      // Se o item foi substituído enquanto subia, a recusa é da versão velha:
+      // a nova continua pendente e sobe na próxima rodada.
+      await armazem.gravarSeIgual(item, {
         ...item,
         estado: "conflito",
         motivo: recusa.motivo,
@@ -304,7 +328,7 @@ export async function drenar(
     }
 
     subiram += 1;
-    await armazem.apagar(item.id);
+    await armazem.apagarSeIgual(item);
   }
 
   return { subiram, conflitos, parou: null };
