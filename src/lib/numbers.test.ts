@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseMoney, parseWholeNumber } from "./numbers";
+import { parseCotacao, parseMoney, parseWholeNumber } from "./numbers";
 
 /**
  * Havia duas cópias deste parser — valor de oportunidade e preço-base do tipo
@@ -94,5 +94,34 @@ describe("parseWholeNumber", () => {
     expect(parseWholeNumber("1.5")).toBeNull();
     expect(parseWholeNumber("-5")).toBeNull();
     expect(parseWholeNumber(null)).toBeNull();
+  });
+});
+
+/**
+ * Cotação não é dinheiro (G3 da revisão de novembro).
+ *
+ * Em dinheiro, `1.500` é mil e quinhentos. Em cotação, três casas depois da
+ * vírgula são o normal — `5,425` — e lidas pela regra do dinheiro viravam
+ * cinco mil quatrocentos e vinte e cinco: um pagamento de US$ 1.000 entrava
+ * no fechamento do mês como R$ 5.425.000.
+ */
+describe("parseCotacao", () => {
+  it("um separador só é sempre o decimal", () => {
+    expect(parseCotacao("5,425")).toBe(5.425);
+    expect(parseCotacao("5.425")).toBe(5.425);
+    expect(parseCotacao("5,42")).toBe(5.42);
+    expect(parseCotacao("5,4251")).toBe(5.4251);
+  });
+
+  it("com os dois, manda o último", () => {
+    expect(parseCotacao("1.234,5678")).toBe(1234.5678);
+    expect(parseCotacao("1,234.5678")).toBe(1234.5678);
+  });
+
+  it("inteiro e vazio", () => {
+    expect(parseCotacao("5")).toBe(5);
+    expect(parseCotacao("")).toBeNull();
+    expect(parseCotacao(null)).toBeNull();
+    expect(parseCotacao("abc")).toBeNull();
   });
 });

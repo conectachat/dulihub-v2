@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { parseMoney, parseWholeNumber } from "@/lib/numbers";
+import { parseCotacao, parseMoney, parseWholeNumber } from "@/lib/numbers";
 
 /**
  * O que vale como entrada no a receber — puro, e o mesmo dos dois lados.
@@ -71,12 +71,20 @@ export const baixaSchema = z
   .object({
     id: z.string().uuid("Parcela não informada"),
     paid_on: dataISO,
-    paid_rate: dinheiro,
+    // Cotação tem regra própria: "5,425" é cinco e quatrocentos e vinte e
+    // cinco milésimos, não milhar (G3).
+    paid_rate: z.string().nullish().transform(parseCotacao),
     moeda: z.enum(["BRL", "USD"]),
   })
   // Em dólar, sem cotação não há como dizer quanto entrou no caixa. Guardar
   // a baixa assim faria o fechamento do mês somar dólar como se fosse real.
   .refine((d) => d.moeda === "BRL" || (d.paid_rate !== null && d.paid_rate > 0), {
     message: "Informe a cotação do dólar no dia do pagamento",
+    path: ["paid_rate"],
+  })
+  // Um dólar nunca valeu cem reais. Passou disso, foi dígito a mais ou
+  // separador trocado — e o erro iria direto para o fechamento do mês.
+  .refine((d) => d.paid_rate === null || d.paid_rate < 100, {
+    message: "Cotação fora do normal — confira (ex.: 5,42)",
     path: ["paid_rate"],
   });

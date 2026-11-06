@@ -229,6 +229,28 @@ describe("dar baixa", () => {
     });
   });
 
+  it("cotação com três casas é lida como cotação, não como milhar", async () => {
+    // "5,425" pela regra do dinheiro virava 5425, e US$ 1.000 entrava no
+    // fechamento do mês como R$ 5.425.000.
+    await darBaixa(
+      { error: null },
+      formulario({ id: PARCELA, paid_on: "2026-10-03", paid_rate: "5,425", moeda: "USD" }),
+    );
+
+    const [item] = await fila.fila.toArray();
+    expect(item.passos[0]).toMatchObject({ patch: { paid_rate: 5.425 } });
+  });
+
+  it("cotação fora do normal é recusada", async () => {
+    const estado = await darBaixa(
+      { error: null },
+      formulario({ id: PARCELA, paid_on: "2026-10-03", paid_rate: "5425", moeda: "USD" }),
+    );
+
+    expect(estado.error).toMatch(/fora do normal/i);
+    expect(await fila.fila.count()).toBe(0);
+  });
+
   it("em dólar sem cotação, recusa", async () => {
     // Sem cotação não há como dizer quanto entrou, e o fechamento do mês
     // somaria dólar como se fosse real.

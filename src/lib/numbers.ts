@@ -15,6 +15,28 @@
  * importa: preço zero é cortesia, preço nulo é "ainda não definido".
  */
 export function parseMoney(entrada: string | null | undefined): number | null {
+  return lerNumero(entrada, { tresCasasEhMilhar: true });
+}
+
+/**
+ * Lê cotação digitada à mão: quantos reais vale um dólar naquele dia.
+ *
+ * A regra do dinheiro não serve. Em dinheiro, `1.500` é mil e quinhentos; em
+ * cotação, três casas depois da vírgula são o normal (`5,425`), e pela regra
+ * do dinheiro viravam milhar — um pagamento de US$ 1.000 entrava no
+ * fechamento do mês como R$ 5.425.000 (G3 da revisão de novembro).
+ *
+ * Aqui um separador só é **sempre** o decimal. Com os dois, manda o último,
+ * como no dinheiro.
+ */
+export function parseCotacao(entrada: string | null | undefined): number | null {
+  return lerNumero(entrada, { tresCasasEhMilhar: false });
+}
+
+function lerNumero(
+  entrada: string | null | undefined,
+  { tresCasasEhMilhar }: { tresCasasEhMilhar: boolean },
+): number | null {
   if (typeof entrada !== "string") return null;
 
   // Símbolo de moeda, espaço e qualquer outro enfeite saem; sobram dígitos,
@@ -41,7 +63,9 @@ export function parseMoney(entrada: string | null | undefined): number | null {
       semSinal.split(separador).length === 2;
 
     // "1.500" é milhar; "1.50" é decimal. Separador repetido é sempre milhar.
-    decimal = apareceUmaVez && casasDepois !== 3 ? separador : "";
+    // Na cotação, três casas também são decimal.
+    const milhar = tresCasasEhMilhar && casasDepois === 3;
+    decimal = apareceUmaVez && !milhar ? separador : "";
   } else {
     decimal = "";
   }
