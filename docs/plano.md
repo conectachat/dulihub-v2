@@ -5,7 +5,9 @@ no Lovable. O antigo segue em produção até a Fase 5.
 
 Este documento diz **onde estamos, o que vem, e por que as coisas são como são**.
 O histórico de como se chegou aqui está no `git log`, que guarda isso melhor.
-Convenções de código ficam no `AGENTS.md`.
+Convenções de código ficam no `AGENTS.md`. **O que o produto deve fazer** — a
+jornada, os módulos, os critérios de aceite e as perguntas em aberto — fica
+no `docs/spec.md`, que vem antes de qualquer funcionalidade nova.
 
 ---
 
