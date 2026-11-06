@@ -20,6 +20,23 @@ import { createClient } from "@/lib/supabase/client";
  * de **decidir permissão**; aqui só se decide qual banco local abrir. Quem
  * decide permissão continua sendo a RLS, no servidor, a cada leitura e a
  * cada gravação que sobe.
+ *
+ * ## O dono do aparelho, guardado (G8 da revisão de novembro)
+ *
+ * O login guardado dura cerca de uma hora. Sem rede para renová-lo, o
+ * `getSession()` tenta por ~25 s e devolve nulo — e o app dizia "Sua sessão
+ * terminou neste aparelho" justamente quando o espelho era a única fonte.
+ * A sessão continua no disco; só a pergunta é que não tem resposta.
+ *
+ * Por isso quem usou por último fica anotado (`DONO`), e é ele quem abre o
+ * banco local:
+ *
+ * - sem rede, sem nem perguntar à sessão (acaba a espera de 25 s);
+ * - com rede ruim, quando a sessão não renovou por falha de rede.
+ *
+ * Sessão encerrada de verdade (nula sem erro de rede) esquece o dono, e sair
+ * também (`limpeza.ts`). Gravar continua exigindo sessão válida para subir:
+ * o sincronizador confere antes de mandar.
  */
 
 type EstadoDoUsuario = {
@@ -30,6 +47,44 @@ type EstadoDoUsuario = {
 };
 
 let estado: EstadoDoUsuario = { userId: null, email: null, carregado: false };
+
+const DONO = "dulihub:dono-do-aparelho";
+
+type Dono = { id: string; email: string | null };
+
+function lerDono(): Dono | null {
+  try {
+    const bruto = localStorage.getItem(DONO);
+    const dono = bruto ? (JSON.parse(bruto) as Dono) : null;
+    return dono && typeof dono.id === "string" ? dono : null;
+  } catch {
+    return null;
+  }
+}
+
+function lembrarDono(dono: Dono) {
+  try {
+    localStorage.setItem(DONO, JSON.stringify(dono));
+  } catch {
+    // Aba anônima ou cota: sem o dono guardado, só não abre offline.
+  }
+}
+
+/** Sair, e sessão encerrada: ninguém abre offline o banco de quem saiu. */
+export function esquecerDonoDoAparelho() {
+  try {
+    localStorage.removeItem(DONO);
+  } catch {
+    // Idem.
+  }
+}
+
+/** A sessão não renovou porque a rede falhou — não porque acabou. */
+function falhouPorRede(erro: { name?: string; status?: number } | null): boolean {
+  return erro?.name === "AuthRetryableFetchError" || erro?.status === 0;
+}
+
+const semRede = () => typeof navigator !== "undefined" && navigator.onLine === false;
 let buscando: Promise<void> | null = null;
 const ouvintes = new Set<() => void>();
 
@@ -44,15 +99,32 @@ function buscar() {
   // o `.catch` nem chegava a ser instalado — virava rejeição solta, que em
   // produção derruba a tela inteira.
   buscando ??= (async () => {
+    const guardado = lerDono();
+    const peloDono = (dono: Dono | null) =>
+      definir({ userId: dono?.id ?? null, email: dono?.email ?? null, carregado: true });
+
+    // Sem rede, perguntar à sessão só custa ~25 s para ouvir "não sei".
+    if (semRede() && guardado) {
+      peloDono(guardado);
+      return;
+    }
+
     try {
-      const { data } = await createClient().auth.getSession();
-      definir({
-        userId: data.session?.user.id ?? null,
-        email: data.session?.user.email ?? null,
-        carregado: true,
-      });
+      const { data, error } = await createClient().auth.getSession();
+      const usuario = data.session?.user;
+
+      if (usuario) {
+        const dono = { id: usuario.id, email: usuario.email ?? null };
+        lembrarDono(dono);
+        peloDono(dono);
+      } else if (falhouPorRede(error) || semRede()) {
+        peloDono(guardado);
+      } else {
+        esquecerDonoDoAparelho();
+        peloDono(null);
+      }
     } catch {
-      definir({ userId: null, email: null, carregado: true });
+      peloDono(semRede() ? guardado : null);
     }
   })();
   return buscando;

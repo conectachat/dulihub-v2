@@ -1,5 +1,7 @@
 "use client";
 
+import { createClient } from "@/lib/supabase/client";
+
 import { armazemDo, BancoLocal, TABELAS_ESPELHADAS } from "./banco";
 import { armazemDaFila, BancoDaFila } from "./banco-da-fila";
 import { drenar } from "./fila";
@@ -106,8 +108,33 @@ export function sincronizarAgora(userId: string): Promise<void> {
   return rodada;
 }
 
+const SESSAO_ENCERRADA = "Sua sessão terminou. Entre de novo para enviar e receber as alterações.";
+
+/**
+ * A sessão que vai junto de cada pedido é desta pessoa?
+ *
+ * O aparelho sabe de quem é mesmo sem sessão — é o que deixa o espelho abrir
+ * offline (`usuario.ts`, G8). Mas sem sessão o cliente do Supabase manda o
+ * pedido com a chave anônima: subir viraria recusa da RLS em cada item, e
+ * baixar traria a cópia vazia. Então, com rede, a rodada só acontece com a
+ * sessão certa.
+ */
+async function sessaoDe(userId: string): Promise<boolean> {
+  try {
+    const { data } = await createClient().auth.getSession();
+    return data.session?.user.id === userId;
+  } catch {
+    return false;
+  }
+}
+
 async function umaRodada(userId: string) {
   definirEstado({ sincronizando: true, online: navigator.onLine });
+
+  if (navigator.onLine && !(await sessaoDe(userId))) {
+    definirEstado({ sincronizando: false, error: SESSAO_ENCERRADA });
+    return;
+  }
 
   try {
     await drenarFila(userId);

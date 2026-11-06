@@ -3,6 +3,7 @@
 import Dexie from "dexie";
 
 import { fecharBancos } from "./sincronizador";
+import { esquecerDonoDoAparelho } from "./usuario";
 
 /**
  * Tirar do aparelho o que não é de quem está usando.
@@ -38,6 +39,8 @@ export async function apagarDadosDoUsuario(userId: string): Promise<void> {
   // aquele nome, e o app mantém uma no singleton do sincronizador.
   fecharBancos();
   for (const nome of bancosDe(userId)) await Dexie.delete(nome);
+  // Sem isto, offline o aparelho abriria o banco (vazio) de quem saiu.
+  esquecerDonoDoAparelho();
 }
 
 /** Apaga o que sobrou de qualquer outra conta neste aparelho. */

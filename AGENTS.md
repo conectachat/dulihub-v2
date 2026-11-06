@@ -48,6 +48,10 @@ apenas lê o cookie, que o cliente pode forjar. `getUser()` revalida no servidor
 A exceção é `src/lib/local/usuario.ts`, que usa `getSession` para saber **qual
 banco local abrir** — offline não há a quem perguntar, e ali não se decide
 permissão nenhuma: quem decide continua sendo a RLS, a cada linha que sobe.
+Sem rede (ou com a sessão sem renovar por falha de rede), ele usa o **dono do
+aparelho** guardado no último login, para o espelho continuar abrindo depois
+de o token vencer; sair e sessão encerrada o esquecem. Subir e baixar exigem
+sessão válida da mesma pessoa — o sincronizador confere antes (G8).
 
 **RLS é a segurança real.** Verificação na interface é conveniência, não
 proteção. Toda tabela nova nasce com RLS ligada e policy escrita na mesma

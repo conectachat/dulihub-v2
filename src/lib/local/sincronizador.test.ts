@@ -24,14 +24,19 @@ vi.mock("./fila", async (original) => ({
   ...(await original<typeof import("./fila")>()),
   drenar: (...args: unknown[]) => drenar(...(args as [])),
 }));
-vi.mock("./espelho", () => ({
-  sincronizar: vi.fn(async () => ({ error: null, em: "2026-11-06T12:00:00Z", tabelas: {} })),
+const sincronizar = vi.fn(async () => ({ error: null, em: "2026-11-06T12:00:00Z", tabelas: {} }));
+vi.mock("./espelho", () => ({ sincronizar: () => sincronizar() }));
+
+let sessao: { user: { id: string } } | null = { user: { id: "u1" } };
+vi.mock("@/lib/supabase/client", () => ({
+  createClient: () => ({ auth: { getSession: async () => ({ data: { session: sessao }, error: null }) } }),
 }));
 vi.mock("./transporte-da-fila", () => ({ transporteDaFila: () => ({}) }));
 vi.mock("./transporte-supabase", () => ({ transporteSupabase: () => ({}) }));
+const definirEstado = vi.fn();
 vi.mock("./estado", () => ({
   aplicarResultado: vi.fn(),
-  definirEstado: vi.fn(),
+  definirEstado: (m: unknown) => definirEstado(m),
   estadoAtual: () => ({}),
 }));
 
@@ -40,6 +45,9 @@ const { sincronizarAgora, fecharBancos } = await import("./sincronizador");
 afterEach(() => {
   fecharBancos();
   drenar.mockClear();
+  sincronizar.mockClear();
+  definirEstado.mockClear();
+  sessao = { user: { id: "u1" } };
 });
 
 describe("sincronizarAgora", () => {
@@ -62,5 +70,27 @@ describe("sincronizarAgora", () => {
     liberar();
     await rodada;
     expect(drenar).toHaveBeenCalledTimes(1);
+  });
+
+  it("sem sessão válida, nem sobe nem baixa — e diz para entrar de novo (G8)", async () => {
+    // O aparelho sabe de quem é mesmo sem sessão (para abrir offline). Mas
+    // subir sem sessão mandaria com a chave anônima, e a RLS recusaria tudo
+    // como conflito; baixar sem sessão traria a cópia vazia.
+    sessao = null;
+
+    await sincronizarAgora("u1");
+
+    expect(drenar).not.toHaveBeenCalled();
+    expect(sincronizar).not.toHaveBeenCalled();
+    expect(definirEstado).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.stringMatching(/entre de novo/i) }),
+    );
+  });
+
+  it("sessão de outra pessoa também não serve", async () => {
+    sessao = { user: { id: "outra" } };
+    await sincronizarAgora("u1");
+    expect(drenar).not.toHaveBeenCalled();
+    expect(sincronizar).not.toHaveBeenCalled();
   });
 });
