@@ -107,16 +107,17 @@ describe("colaborador lê a configuração, e não a altera", () => {
   });
 
   it("continua criando contato, que é o trabalho dele", async () => {
-    const { data, error } = await staff
+    // Prova a permissão **sem gravar**: contato nunca é apagado de vez (spec
+    // §6.8), e um contato de teste por execução engordaria a carteira do
+    // Renato. A policy é conferida antes das restrições da tabela; então um
+    // contato sem nome responde 23502 (nome obrigatório) se a policy deixou
+    // passar, e 42501 se recusou.
+    const { error } = await staff
       .from("people")
-      .insert({ organization_id: organizationId, full_name: "Contato do colaborador" })
+      .insert({ organization_id: organizationId } as never)
       .select("id");
 
-    expect(error).toBeNull();
-    expect(data).toHaveLength(1);
-
-    // Limpa: o teste não pode engordar a carteira do Renato a cada execução.
-    await staff.from("people").delete().eq("id", data![0].id);
+    expect(error?.code).toBe("23502");
   });
 });
 
