@@ -8,36 +8,45 @@
 | `docs/plano.md` | **Onde estamos** e **em que ordem**: estado atual, fases, decisões já tomadas |
 | `AGENTS.md` | **Como** se constrói: segurança, testes, organização do código |
 
-Toda funcionalidade nova começa aqui: entra (ou muda) a seção do módulo, com
-critério de aceite, **antes** do plano de implementação. Decisão tomada no meio
-de uma entrega volta para cá.
+Escrita em 6/nov/2026, a partir do app como está e do `plano.md`. Estado de
+cada requisito: **✅ feito** · **🟡 parcial** · **⬜ falta**.
 
-Escrita em 6/nov/2026, a partir do app novo como está, do `plano.md` e de um
-inventário do app antigo (Lovable). Estado de cada requisito:
-**✅ feito** · **🟡 parcial** · **⬜ falta**.
+## Como uma funcionalidade nasce
+
+Cada funcionalidade é tratada como nova — desenhada a partir do que a Duli
+precisa, e não copiada de outro sistema (decisão do Renato, 6/nov).
+
+| Passo | O que sai |
+|---|---|
+| 1. Desenho com o Renato | O problema, para quem, e as escolhas que são dele |
+| 2. Spec | A seção do módulo aqui, com requisitos, prioridade e **critério de aceite** — antes de qualquer código |
+| 3. Plano | Como construir: banco, telas, ordem dos commits, como provar |
+| 4. Código | Teste antes do código; `bun run verify`, build e fumaça verdes |
+| 5. Revisão de código | Revisão do superpowers sobre o intervalo de commits, contra a seção da spec. Crítico e Importante são corrigidos antes de dar por pronto |
+
+Decisão tomada no meio de uma entrega volta para cá.
 
 ---
 
 ## 1. Problema
 
 A Duli Consulting conduz processos de visto americano (EB-1A, EB-2 NIW, O-1 e
-outros) do primeiro contato do lead até a decisão do USCIS. Hoje isso roda num
-app feito no Lovable que:
+outros) do primeiro contato do lead até a decisão do USCIS. Cada caso passa por
+muitas mãos e muitos prazos: o lead que decide fechar, a ficha e o contrato, as
+parcelas em real ou em dólar, dezenas de documentos para conferir, etapas, e
+prazos do USCIS que não perdoam atraso.
 
-- **guarda a mesma pessoa três vezes** (contato, lead, cliente), com tags,
-  notas e arquivos duplicados e um serviço só para copiar entre eles;
-- **tem funções pela metade** que a equipe acha que existem: contrato pelo
-  ZapSign sem botão, conversão de lead em cliente sem tela, aviso de tarefa
-  vencida que nunca roda, configurações que só mostram um aviso;
-- **erra dinheiro**: parcela em dólar exibida como real, saldos guardados que
-  divergem das parcelas, real somado com dólar;
-- **depende de uma conta da Lovable** para banco e e-mail, que não é da Duli;
-- **deixa qualquer usuário que não seja cliente ou parceiro ver tudo**, sem
-  controle de papel na área administrativa.
+Sem um sistema que junte isso, o trabalho vira:
 
-O custo é retrabalho (redigitar a ficha no contrato, planilha paralela para
-fechar o mês), risco (prazo de RFE perdido, dado de cliente exposto) e
-dependência de um fornecedor que a Duli não controla.
+- **retrabalho** — o mesmo dado digitado várias vezes (a ficha no contrato, o
+  contrato na cobrança) e planilha paralela para fechar o mês;
+- **risco** — prazo de RFE ou parcela vencida que ninguém viu, dado pessoal de
+  cliente acessível a quem não devia;
+- **dependência** — dados e contas em nome de terceiros, que a Duli não
+  controla.
+
+O DuliHub é o lugar único do caso: do primeiro contato ao encerramento, com o
+dinheiro e os prazos à vista, e cada pessoa vendo só o que é dela.
 
 ## 2. Quem usa
 
@@ -57,7 +66,7 @@ na tela (ver §6).
 
 | # | Objetivo | Como se mede | Hoje |
 |---|---|---|---|
-| O1 | **Desligar o app antigo** | A equipe trabalha um dia inteiro só no novo; o antigo fica 30 dias intacto e ninguém precisa abri-lo | Não |
+| O1 | **A equipe trabalha o dia inteiro no DuliHub** | Um dia normal de trabalho — leads, processos, cobrança, tarefas — sem precisar de outra ferramenta para isso | Não — falta contrato, a pagar, tarefas e usuários (§9) |
 | O2 | **Fechar o mês sem planilha** | Um mês inteiro de entradas e saídas lançado e conferido no app | Não — falta a pagar e fluxo de caixa |
 | O3 | **Dado digitado uma vez** | Do lead ao contrato assinado, nenhum dado do cliente é redigitado pela equipe | Em parte — a ficha já chega preenchida; o contrato ainda é montado à mão |
 | O4 | **Nenhum prazo perdido sem aviso** | Todo prazo de RFE, parcela, pasta e etapa vencidos aparecem na Início antes de vencer ou no dia | Sim |
@@ -70,9 +79,8 @@ cliente) estão nas perguntas em aberto (§10): o app ainda não mede nada disso
 
 | Não faz | Por quê |
 |---|---|
-| Conversa de WhatsApp dentro do app | O antigo tentou e removeu. O app abre a conversa (`wa.me`); a conversa fica no WhatsApp |
+| Conversa de WhatsApp dentro do app | O app abre a conversa (`wa.me`) com a mensagem pronta; a conversa fica no WhatsApp, onde o cliente já está |
 | Contabilidade ou ERP | O financeiro é de caixa: o que entra, o que sai, o que vence. Balanço e impostos são do contador |
-| Migrar o financeiro antigo | Decisão de 25/set: o que foi lançado no antigo termina lá |
 | App nativo de loja | O app é instalável (PWA) no celular e no computador; não precisa de loja |
 | Converter moeda sem cotação | Regra de dinheiro (§6). Valor em dólar só vira real com a cotação do dia em que entrou |
 | Montar a peça jurídica do caso | Petição e cartas são feitas fora; o app guarda, organiza e acompanha |
@@ -137,7 +145,7 @@ Lead entra → conversa → proposta → ficha → contrato → assinatura → G
 ## 7. Módulos
 
 Cada módulo: para que serve, requisitos por prioridade (**P0** não vai para a
-virada sem; **P1** logo depois; **P2** não agora, mas o desenho não pode
+uso diário (§9) sem; **P1** logo depois; **P2** não agora, mas o desenho não pode
 impedir) e o estado. Critério de aceite detalhado só para o que falta — o que
 está feito tem teste.
 
@@ -162,7 +170,7 @@ Dizer o que precisa de atenção hoje.
 | CON-1 | Lista, busca, filtro por tag, criar, editar | P0 | ✅ |
 | CON-2 | Excluir com lixeira e restaurar | P0 | ✅ |
 | CON-3 | Ficha enxuta para quem não é cliente; completa para cliente (ou para quem já tem processo/cobrança) | P0 | ✅ |
-| CON-4 | Aviso de contato duplicado (mesmo e-mail ou telefone) ao criar | P1 | ⬜ (o antigo tem) |
+| CON-4 | Aviso de contato duplicado (mesmo e-mail ou telefone) ao criar | P1 | ⬜ |
 | CON-5 | Histórico: notas, ligações, reuniões, movimentos do funil, ficha recebida | P0 | ✅ |
 
 ### 7.3 CRM — funil e tela do lead
@@ -187,7 +195,7 @@ Dizer o que precisa de atenção hoje.
 | FIC-2 | Campos do PDF: dados pessoais, documentos, endereço, dependentes; CPF conferido | P0 | ✅ |
 | FIC-3 | Ao enviar, atualiza o contato, guarda o declarado e o anterior, avisa na Início | P0 | ✅ |
 | FIC-4 | Enviar pelo WhatsApp com a mensagem pronta | P0 | ✅ |
-| FIC-5 | Rascunho: o lead pode parar e voltar sem perder o que digitou | P1 | ⬜ (o antigo tem) |
+| FIC-5 | Rascunho: o lead pode parar e voltar sem perder o que digitou | P1 | ⬜ |
 | FIC-6 | Endereço preenchido pelo CEP | P2 | ⬜ |
 
 ### 7.5 Contrato e assinatura — **próximo**
@@ -227,9 +235,9 @@ Dúvidas que bloqueiam este módulo estão em §10 (Q1–Q4).
 | PRO-5 | Campos do USCIS: recibo, priority date, RFE recebida, prazo, resposta enviada, decisão | P0 | ✅ |
 | PRO-6 | Busca e filtro na lista de processos | P1 | ⬜ |
 | PRO-7 | Responsável por etapa | P1 | ⬜ |
-| PRO-8 | Lista de evidências (documento do caso) | P1 | ⬜ (o antigo tem; também recebe do n8n) |
+| PRO-8 | Lista de evidências (documento do caso, no mesmo editor das Observações) | P1 | ⬜ |
 | PRO-9 | Fila única de documentos esperando revisão, de todos os processos | P1 | ⬜ (vira P0 com o portal) |
-| PRO-10 | Etapa-mãe concluída sozinha quando todas as filhas concluem | P2 | ⬜ (o antigo faz) |
+| PRO-10 | Etapa-mãe concluída sozinha quando todas as filhas concluem | P2 | ⬜ |
 | PRO-11 | Link do Google Drive do caso | P2 | ⬜ |
 
 ### 7.7 Financeiro — a receber
@@ -240,11 +248,11 @@ Dúvidas que bloqueiam este módulo estão em §10 (Q1–Q4).
 | REC-2 | Parcelas geradas sem perder centavo; baixa com data e cotação | P0 | ✅ |
 | REC-3 | Lista com filtros (vencidas, a vencer, pagas) e números do mês | P0 | ✅ |
 | REC-4 | Funciona sem internet | P0 | ✅ |
-| REC-5 | Anexar boleto e nota fiscal à parcela | P1 | ⬜ (o antigo anexa arquivo) |
+| REC-5 | Anexar boleto e nota fiscal à parcela | P1 | ⬜ |
 | REC-6 | Cobrança criada a partir do contrato assinado (CTR-2) | P0 | ⬜ |
 | REC-7 | Boleto do Itaú e link do C6 emitidos pelo app | P2 | ⬜ — depende das credenciais |
 | REC-8 | Nota fiscal emitida pelo app | P2 | ⬜ — depende do provedor |
-| REC-9 | Cotação do dólar sugerida automaticamente | P2 | ⬜ (o antigo busca no Banco Central) |
+| REC-9 | Cotação do dólar sugerida automaticamente (Banco Central), sempre corrigível | P2 | ⬜ |
 
 ### 7.8 Financeiro — a pagar e caixa
 
@@ -270,7 +278,7 @@ planilha ao lado.
 | TAR-1 | Tarefa com responsável, prazo, prioridade, tipo; ligada a contato, negócio ou processo | P0 | ⬜ |
 | TAR-2 | Minhas tarefas e as da equipe; concluir | P0 | ⬜ |
 | TAR-3 | Aparecem na Início (atrasadas e de hoje) e na tela de onde nasceram | P0 | ⬜ |
-| TAR-4 | Aviso de tarefa vencendo (no app; e-mail opcional) | P1 | ⬜ — no antigo existe e nunca roda |
+| TAR-4 | Aviso de tarefa vencendo (no app; e-mail opcional), que roda sozinho todo dia | P1 | ⬜ |
 | TAR-5 | Visão em calendário | P2 | ⬜ |
 
 ### 7.10 Usuários, permissões e notificações
@@ -279,7 +287,7 @@ planilha ao lado.
 |---|---|---|---|
 | USU-1 | Convidar membro da equipe, escolher papel (`admin`, `staff`), desativar | P0 | ⬜ |
 | USU-2 | Configuração só para `owner`/`admin`; `staff` lê | P0 | ✅ |
-| USU-3 | Trocar e redefinir a própria senha ("esqueci minha senha") | P0 | ⬜ (hoje só entrar e sair; a virada exige redefinir 25 senhas) |
+| USU-3 | Trocar e redefinir a própria senha ("esqueci minha senha") | P0 | ⬜ (hoje só entrar e sair) |
 | USU-4 | Central de notificações: ficha recebida, contrato assinado, documento enviado pelo cliente, tarefa vencendo | P1 | ⬜ |
 | USU-5 | Registro de quem mudou papel de quem | P2 | ⬜ |
 
@@ -295,16 +303,15 @@ planilha ao lado.
 
 ### 7.12 Integrações e automações
 
-Decidir, uma por uma, o que vem do antigo (§10, Q5).
+Cada integração é uma funcionalidade nova: entra com desenho e spec próprios
+quando houver um problema da Duli que ela resolva (§10, Q5).
 
-| Do antigo | O que faz lá | Proposta | Pri. |
-|---|---|---|---|
-| ZapSign | Backend pronto, sem botão | Entra em 7.5 | P0 |
-| Calendly | Cria lead e tarefa quando alguém agenda | Trazer | P1 |
-| Agendamento próprio + Google Meet | Página pública de horários | Decidir: Calendly **ou** próprio, não os dois | P1 |
-| Caixa de e-mail compartilhada (Gmail) | Ler e responder dentro do app, pelo gateway da Lovable | Decidir se vale; se sim, sem a Lovable | P2 |
-| n8n (saída) | Avisa eventos (lead criado, documento aprovado…) | Trazer os eventos que algum fluxo de fato usa | P1 |
-| API para o n8n (entrada) | Atualiza etapa e lista de evidências | Trazer com PRO-8 | P1 |
+| Integração | O que faria pela Duli | Pri. |
+|---|---|---|
+| ZapSign | Assinatura do contrato, com o resultado voltando sozinho | P0 — em 7.5 |
+| Agenda (Calendly ou página própria) | Reunião marcada pelo lead já cria o lead e a tarefa | P1 |
+| n8n | Automações da equipe: avisar eventos, receber a lista de evidências | P1 |
+| E-mail | Avisos ao cliente e à equipe (ficha recebida, documento recusado, parcela vencendo) | P1 |
 
 ### 7.13 Funcionar sem internet
 
@@ -324,7 +331,6 @@ Decidir, uma por uma, o que vem do antigo (§10, Q5).
 | POR-3 | Envia documentos para as pastas; vê aprovado/recusado com o motivo | P0 da fase | ⬜ |
 | POR-4 | Vê suas parcelas | P1 da fase | ⬜ |
 | POR-5 | A equipe pode "ver como o cliente" | P1 da fase | ⬜ |
-| POR-6 | Checklist de onboarding (o antigo tem) | ? | ⬜ — §10, Q7 |
 
 Já preparado: o banco deixa o cliente ler o que é dele e congela o que ele não
 pode mudar (CPF, RG, vínculo).
@@ -351,10 +357,10 @@ pode mudar (CPF, RG, vínculo).
 | Custo | Plano gratuito do Supabase e da Vercel enquanto couber; arquivos de cliente não são copiados para todo aparelho |
 | Dono dos dados | Banco, domínio e contas em nome da Duli — nada que dependa de conta de terceiro |
 
-## 9. Virada — o que precisa existir para desligar o app antigo
+## 9. Pronto para a equipe usar no dia a dia
 
-O app antigo só é desligado quando a equipe não precisa dele para nada que faz
-hoje (O1).
+O critério do objetivo O1: o que precisa existir para a equipe trabalhar o dia
+inteiro no DuliHub.
 
 | Precisa estar pronto | Módulo |
 |---|---|
@@ -362,13 +368,11 @@ hoje (O1).
 | Contrato e assinatura | 7.5 |
 | A pagar, despesas e fluxo de caixa | 7.8 |
 | Tarefas | 7.9 |
-| Convidar e gerenciar usuários | 7.10 |
-| As integrações que a equipe usa no dia a dia (§10, Q5) | 7.12 |
-| Dados finais migrados; domínio `login.duliconsulting.com` apontando para o novo; senhas redefinidas | Fase 5 |
+| Convidar usuários, trocar e redefinir senha | 7.10 |
+| As integrações escolhidas em Q5 | 7.12 |
 
-Do antigo que **não** volta, salvo decisão em contrário: módulo de contratos
-vazio (`/contracts`), página estática de documentação de processos, telas de
-configuração que não gravavam nada, os três cadastros duplicados de pessoa.
+Passo operacional, não de código: o domínio `login.duliconsulting.com` passa a
+apontar para o DuliHub, e cada pessoa da equipe define a sua senha.
 
 ## 10. Perguntas em aberto
 
@@ -378,23 +382,21 @@ configuração que não gravavam nada, os três cadastros duplicados de pessoa.
 | Q2 | O contrato é um modelo dentro do ZapSign ou um documento nosso que o app gera em PDF? | Renato + engenharia | 7.5 |
 | Q3 | Assinado o contrato, o Ganho deve ser **automático** ou só **oferecido**? | Renato | 7.5 |
 | Q4 | Quem mais assina além do cliente (Duli, testemunhas, cônjuge)? | Renato | 7.5 |
-| Q5 | Das integrações do antigo (Calendly, agendamento próprio, e-mail, n8n, API), quais a equipe usa de verdade hoje? | Renato | 7.12, virada |
-| Q6 | A ficha do antigo tem uma etapa "financeiro". O que ela pede, e precisa voltar? | Renato | 7.4 |
-| Q7 | O onboarding em etapas do portal antigo é usado pelos clientes, ou as pastas do processo bastam? | Renato | 7.14 |
-| Q8 | Quantas pessoas da equipe usam o app, e com que papel? | Renato | 7.10 |
-| Q9 | Metas: em quanto tempo, do "sim" do lead ao contrato assinado, queremos chegar? Hoje leva quanto? | Renato | §3 |
-| Q10 | Provedor de nota fiscal; como faturar em dólar (NFS-e ou invoice) | Renato + contador | REC-8 |
-| Q11 | Credenciais do Itaú e do C6 | Renato | REC-7 |
+| Q5 | Quais integrações resolvem um problema real da equipe hoje — agenda, e-mail, n8n? | Renato | 7.12, §9 |
+| Q6 | Quantas pessoas da equipe usam o app, e com que papel? | Renato | 7.10 |
+| Q7 | Metas: em quanto tempo, do "sim" do lead ao contrato assinado, queremos chegar? Hoje leva quanto? | Renato | §3 |
+| Q8 | Provedor de nota fiscal; como faturar em dólar (NFS-e ou invoice) | Renato + contador | REC-8 |
+| Q9 | Credenciais do Itaú e do C6 | Renato | REC-7 |
 
 ## 11. Ordem proposta
 
 A ordem fina mora no `plano.md`; esta é a sugestão que sai da spec, pelo
-caminho até a virada:
+caminho até o uso diário (§9):
 
 1. **Contrato e assinatura (7.5)**: fecha a jornada do lead e alimenta a
    cobrança. Depende de Q1–Q4.
 2. **A pagar e fluxo de caixa (7.8)**: portão O2.
 3. **Tarefas (7.9)** com tipos e prioridades.
 4. **Usuários (7.10)** e as integrações escolhidas em Q5.
-5. **Virada (§9).**
+5. **Uso diário (§9)**: troca do domínio e senhas da equipe.
 6. Portal do cliente, depois portal do parceiro.

@@ -328,6 +328,13 @@ Lint em **zero**, sem exceção herdada. Era 7, todos de `setState` dentro de
 `useEffect`; foram pagos, não administrados. Se voltar a subir, o commit não
 acontece — a trava local recusa antes.
 
+**Revisão de código antes de dar por pronto.** Toda funcionalidade nasce na
+spec (`docs/spec.md`, "Como uma funcionalidade nasce") com critério de aceite,
+e termina com a revisão de código do superpowers (`requesting-code-review`)
+sobre o intervalo de commits dela, tendo a seção da spec como requisito.
+Crítico e Importante se corrigem antes de dizer que está pronto; achado
+recusado fica registrado com o motivo.
+
 ## Migrations: arquivo sempre, no mesmo commit
 
 Toda alteração de schema vira arquivo em `supabase/migrations/`, no mesmo commit
