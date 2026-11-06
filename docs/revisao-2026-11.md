@@ -46,6 +46,19 @@ ela. **Esforço:** P pequeno (horas) · M médio (um dia) · G grande (vários d
 | G7 | **Dois cliques rápidos para reordenar perdem o segundo** em silêncio | `lib/local/fila.ts:117,270` | A linha "pula de volta" para a ordem anterior | P | Sim — o item é apagado pelo id, que é o mesmo da versão nova |
 | G8 | **O modo sem internet para cerca de 1 hora depois do último uso online**: o login guardado expira e o app pede para entrar de novo, sem rede para entrar | `lib/local/usuario.ts:48` | Em voo ou visita a cliente: "Abrindo…" por 25 s e depois "Sua sessão terminou neste aparelho"; nada grava | M | Reproduzido pelo revisor; código lido |
 
+### Correção dos graves (6/nov)
+
+| # | Commit | Estado |
+|---|---|---|
+| G1 | `5791391` (migration 0036) | Corrigido |
+| G2 | `5791391` (0036) | Corrigido na edição. **Pendente:** 0037 fecha a mesma brecha na criação (contato já nascendo atribuído a outra organização) e a marca de teste na criação; escrita e testada, aguardando acesso ao banco |
+| G3 | `ddea80d` | Corrigido. Nenhuma parcela tinha cotação gravada: nada a consertar nos dados |
+| G4 | `0e007ab` | Corrigido |
+| G5 | `f82f91f` | Corrigido na tela e no servidor. **Pendente:** 0038, a mesma regra no banco; escrita e testada, aguardando acesso ao banco |
+| G6 | `cfc81df`, `13738aa` | Corrigido. A revisão de confirmação achou que "todo 5xx espera" travava a fila numa recusa de verdade; corrigido em `13738aa` |
+| G7 | `1b912f7` | Corrigido |
+| G8 | `def4eb0`, `13738aa` | Corrigido. Rede ruim mostra "Sem conexão", não "Entre de novo" (`13738aa`) |
+
 ## Importante
 
 | # | O que é | Onde | O que se veria | Esf. | Conferido |
