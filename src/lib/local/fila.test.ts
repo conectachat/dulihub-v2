@@ -297,6 +297,38 @@ describe("drenar", () => {
       }
     });
 
+    it("recusa do banco que chega como 500 continua sendo recusa, não espera", async () => {
+      // O PostgREST responde 500 para vários erros que não passam com o tempo
+      // — a reordenação levanta P0002 quando um irmão sumiu. Tratar todo 5xx
+      // como espera travava a fila inteira, calada e sem saída.
+      const fila = armazem([
+        item("a", [{ tipo: "rpc", nome: "reordenar_irmaos", args: {} }]),
+        item("b", [{ tipo: "insert", tabela: "tags", linha: { id: "t2" } }]),
+      ]);
+      const rede = transporte({
+        erros: [{ code: "P0002", message: "Reordenação recusada", status: 500 }],
+      });
+
+      const resultado = await drenar(rede, fila);
+
+      expect(resultado.conflitos).toBe(1);
+      expect(resultado.parou).toBeNull();
+      expect(fila.itens.map((i) => [i.id, i.estado])).toEqual([["a", "conflito"]]);
+    });
+
+    it("a pergunta \"ainda existe?\" recusada pelo banco é conflito, não espera", async () => {
+      const fila = armazem([item("a", [{ tipo: "delete", tabela: "tags", id: "t1" }])]);
+      const rede = transporte({
+        linhas: [0],
+        erroDoExiste: { code: "42P01", message: "relation does not exist", status: 404 },
+      });
+
+      const resultado = await drenar(rede, fila);
+
+      expect(resultado.conflitos).toBe(1);
+      expect(fila.itens[0].estado).toBe("conflito");
+    });
+
     it("delete sem linha e sem rede para perguntar: espera, não declara sucesso", async () => {
       // Antes, a pergunta que falhava respondia "não existe", e o delete era
       // dado como feito sem o servidor ter visto nada.

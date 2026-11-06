@@ -10,6 +10,7 @@ import { aplicarResultado, definirEstado, estadoAtual } from "./estado";
 import { sincronizar } from "./espelho";
 import { MARCA_DA_SINCRONIA } from "./sessao";
 import { transporteSupabase } from "./transporte-supabase";
+import { falhouPorRede } from "./usuario";
 
 /**
  * Quem manda o espelho sincronizar, e quando.
@@ -119,21 +120,31 @@ const SESSAO_ENCERRADA = "Sua sessão terminou. Entre de novo para enviar e rece
  * baixar traria a cópia vazia. Então, com rede, a rodada só acontece com a
  * sessão certa.
  */
-async function sessaoDe(userId: string): Promise<boolean> {
+async function sessaoDe(userId: string): Promise<"valida" | "encerrada" | "sem-rede"> {
   try {
-    const { data } = await createClient().auth.getSession();
-    return data.session?.user.id === userId;
+    const { data, error } = await createClient().auth.getSession();
+    if (data.session?.user.id === userId) return "valida";
+    // Wi-Fi sem saída com o navegador achando que está online: a sessão não
+    // renovou porque a rede falhou. Pedir para entrar de novo seria pedir o
+    // impossível — sem rede, o login também não passa.
+    return falhouPorRede(error) ? "sem-rede" : "encerrada";
   } catch {
-    return false;
+    return "encerrada";
   }
 }
 
 async function umaRodada(userId: string) {
   definirEstado({ sincronizando: true, online: navigator.onLine });
 
-  if (navigator.onLine && !(await sessaoDe(userId))) {
-    definirEstado({ sincronizando: false, error: SESSAO_ENCERRADA });
-    return;
+  if (navigator.onLine) {
+    const sessao = await sessaoDe(userId);
+    if (sessao !== "valida") {
+      definirEstado({
+        sincronizando: false,
+        error: sessao === "sem-rede" ? "Sem conexão com o servidor." : SESSAO_ENCERRADA,
+      });
+      return;
+    }
   }
 
   try {

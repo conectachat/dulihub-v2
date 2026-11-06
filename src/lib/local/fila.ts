@@ -192,10 +192,25 @@ function caiuARede(falha: Falha): boolean {
   return !falha.code && /fetch|network|load failed/i.test(falha.message ?? "");
 }
 
-/** Servidor fora do ar, demorando ou pedindo calma: tentar de novo depois. */
+/**
+ * Erros do Postgres que passam sozinhos: conflito de transação, trava,
+ * tempo esgotado, conexão, falta de recurso.
+ */
+const SQLSTATE_PASSAGEIRO = /^(40001|40P01|55P03|57014|57P0[1-3]|08...|53...)$/;
+
+/**
+ * Servidor fora do ar, demorando ou pedindo calma: tentar de novo depois.
+ *
+ * **Não** é todo 5xx. O PostgREST responde 500 a vários erros que não passam
+ * com o tempo — a reordenação levanta P0002 quando um irmão sumiu —, e
+ * tratá-los como espera travava a fila inteira, calada e sem saída. Então:
+ * os status do caminho (gateway, indisponível, demora, limite) e os SQLSTATE
+ * passageiros esperam; o resto é recusa, e vira conflito visível.
+ */
 function servidorIndisponivel(falha: Falha): boolean {
   const status = falha?.status ?? 0;
-  return status === 408 || status === 429 || status >= 500;
+  if ([408, 429, 502, 503, 504].includes(status)) return true;
+  return SQLSTATE_PASSAGEIRO.test(falha?.code ?? "");
 }
 
 const DEPENDE_DE_RECUSADA =
@@ -257,12 +272,9 @@ async function aplicar(
     // exigiria um espelho com linha que aquele login nunca poderia ter
     // recebido.
     const pergunta = await transporte.existe(passo.tabela, passo.id);
-    // A pergunta falhou: não dá para saber, então espera — "não consegui
-    // perguntar" não é "sumiu".
-    if (pergunta.error) {
-      const r = recusa(pergunta.error);
-      return { ...r, espera: true };
-    }
+    // A pergunta falhou. Se foi a rede ou o servidor, espera — "não consegui
+    // perguntar" não é "sumiu". Se foi o banco recusando, é conflito.
+    if (pergunta.error) return recusa(pergunta.error);
     return pergunta.existe ? { ok: false, motivo: NADA_GRAVADO } : { ok: true };
   }
 

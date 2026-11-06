@@ -80,7 +80,7 @@ export function esquecerDonoDoAparelho() {
 }
 
 /** A sessão não renovou porque a rede falhou — não porque acabou. */
-function falhouPorRede(erro: { name?: string; status?: number } | null): boolean {
+export function falhouPorRede(erro: { name?: string; status?: number } | null): boolean {
   return erro?.name === "AuthRetryableFetchError" || erro?.status === 0;
 }
 

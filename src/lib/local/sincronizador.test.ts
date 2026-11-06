@@ -28,8 +28,11 @@ const sincronizar = vi.fn(async () => ({ error: null, em: "2026-11-06T12:00:00Z"
 vi.mock("./espelho", () => ({ sincronizar: () => sincronizar() }));
 
 let sessao: { user: { id: string } } | null = { user: { id: "u1" } };
+let erroDaSessao: { name: string; message: string } | null = null;
 vi.mock("@/lib/supabase/client", () => ({
-  createClient: () => ({ auth: { getSession: async () => ({ data: { session: sessao }, error: null }) } }),
+  createClient: () => ({
+    auth: { getSession: async () => ({ data: { session: sessao }, error: erroDaSessao }) },
+  }),
 }));
 vi.mock("./transporte-da-fila", () => ({ transporteDaFila: () => ({}) }));
 vi.mock("./transporte-supabase", () => ({ transporteSupabase: () => ({}) }));
@@ -48,6 +51,7 @@ afterEach(() => {
   sincronizar.mockClear();
   definirEstado.mockClear();
   sessao = { user: { id: "u1" } };
+  erroDaSessao = null;
 });
 
 describe("sincronizarAgora", () => {
@@ -92,5 +96,19 @@ describe("sincronizarAgora", () => {
     await sincronizarAgora("u1");
     expect(drenar).not.toHaveBeenCalled();
     expect(sincronizar).not.toHaveBeenCalled();
+  });
+
+  it("sessão que não renovou por falha de rede é falta de rede, não sessão encerrada", async () => {
+    // Wi-Fi sem saída com o navegador achando que está online: mandar entrar
+    // de novo seria pedir o impossível — sem rede, o login também não passa.
+    sessao = null;
+    erroDaSessao = { name: "AuthRetryableFetchError", message: "Failed to fetch" };
+
+    await sincronizarAgora("u1");
+
+    expect(drenar).not.toHaveBeenCalled();
+    expect(sincronizar).not.toHaveBeenCalled();
+    const erros = definirEstado.mock.calls.map(([m]) => (m as { error?: string }).error).filter(Boolean);
+    expect(erros).toEqual([expect.stringMatching(/sem conexão/i)]);
   });
 });
