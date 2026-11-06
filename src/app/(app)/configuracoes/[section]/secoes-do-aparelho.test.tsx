@@ -64,7 +64,11 @@ beforeEach(() => {
   // A resposta fica guardada no módulo: sem esquecer, o segundo teste herda
   // a sessão do primeiro. No app é o que se quer — uma pergunta por aba.
   esquecerUsuarioLocal();
-  definirEstado({ em: "2026-09-21T10:05:00Z", sincronizando: false, error: null, online: true });
+  // Sincronizado há cinco minutos, relativo a hoje: uma data fixa aqui
+  // envelhecia sozinha e, passados 14 dias, o próprio prazo de validade do
+  // aparelho escondia o espelho e derrubava o primeiro teste.
+  const cincoMinutos = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  definirEstado({ em: cincoMinutos, sincronizando: false, error: null, online: true });
 });
 
 afterEach(async () => {
