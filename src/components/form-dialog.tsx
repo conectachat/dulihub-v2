@@ -1,7 +1,5 @@
 "use client";
 
-import { useActionState } from "react";
-
 import { FieldError } from "@/components/field-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
@@ -14,8 +12,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ESTADO_INICIAL, type ActionState } from "@/lib/action-state";
+import type { ActionState } from "@/lib/action-state";
 import { useDialogOnSuccess } from "@/lib/use-dialog-on-success";
+import { useFormulario } from "@/lib/use-formulario";
 
 /**
  * Diálogo de criar ou editar: gatilho, cabeçalho, formulário, erro e rodapé.
@@ -26,9 +25,10 @@ import { useDialogOnSuccess } from "@/lib/use-dialog-on-success";
  *
  * Três regras que o componente garante e que cada cópia precisava lembrar:
  *
- * - **Fecha só quando gravou.** `useDialogOnSuccess` compara o `token`; um
- *   diálogo que fecha na recusa leva o erro junto, e a pessoa não sabe por que
- *   o contato não apareceu na lista.
+ * - **Fecha só quando gravou.** `useDialogOnSuccess` olha `ok`; um diálogo
+ *   que fecha na recusa leva o erro junto, e a pessoa não sabe por que o
+ *   contato não apareceu na lista. E a recusa não apaga o que foi digitado:
+ *   o envio é por `useFormulario` (G4 da revisão de novembro).
  * - **O erro fica dentro do formulário**, acima dos botões, onde o olho está.
  * - **Campos voltam limpos ao reabrir**: o Radix desmonta o conteúdo ao
  *   fechar, então nenhum valor digitado sobrevive de uma abertura para outra.
@@ -58,8 +58,8 @@ export function FormDialog({
   /** Os campos. */
   children: React.ReactNode;
 }) {
-  const [state, formAction] = useActionState(acao, ESTADO_INICIAL);
-  const { open, setOpen } = useDialogOnSuccess(state.token, abertoDeInicio);
+  const { estado, enviar, enviando } = useFormulario(acao);
+  const { open, setOpen } = useDialogOnSuccess(estado, abertoDeInicio);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -71,16 +71,18 @@ export function FormDialog({
           {descricao ? <DialogDescription>{descricao}</DialogDescription> : null}
         </DialogHeader>
 
-        <form action={formAction} className="space-y-4">
+        <form onSubmit={enviar} className="space-y-4">
           {children}
 
-          <FieldError mensagem={state.error} />
+          <FieldError mensagem={estado.error} />
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <SubmitButton pendente={pendente}>{salvar}</SubmitButton>
+            <SubmitButton pendente={pendente} enviando={enviando}>
+              {salvar}
+            </SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

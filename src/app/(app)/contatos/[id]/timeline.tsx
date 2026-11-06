@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
 import {
   ArrowRightLeft,
   CalendarDays,
@@ -13,7 +13,7 @@ import {
   Users,
 } from "lucide-react";
 
-import { ESTADO_INICIAL } from "@/lib/action-state";
+import { useFormulario } from "@/lib/use-formulario";
 import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { FieldError } from "@/components/field-error";
@@ -64,16 +64,18 @@ const LABELS: Record<string, string> = {
  */
 function Composer({
   personId,
-  action,
+  onSubmit,
+  enviando,
 }: {
   personId: string;
-  action: (formData: FormData) => void;
+  onSubmit: (evento: React.FormEvent<HTMLFormElement>) => void;
+  enviando: boolean;
 }) {
   const [type, setType] = useState<string>("note");
   const isNote = type === "note";
 
   return (
-    <form action={action} className="space-y-3">
+    <form onSubmit={onSubmit} className="space-y-3">
       <input type="hidden" name="person_id" value={personId} />
       <input type="hidden" name="type" value={type} />
 
@@ -128,7 +130,9 @@ function Composer({
         ) : null}
 
         <div className="ml-auto">
-          <SubmitButton pendente="Salvando..." size="sm">Registrar</SubmitButton>
+          <SubmitButton pendente="Salvando..." size="sm" enviando={enviando}>
+            Registrar
+          </SubmitButton>
         </div>
       </div>
     </form>
@@ -144,11 +148,11 @@ export function Timeline({
   items: TimelineItem[];
   currentUserId: string | null;
 }) {
-  const [state, formAction] = useActionState(createEntry, ESTADO_INICIAL);
+  const { estado: state, enviar, enviando, chave } = useFormulario(createEntry);
 
   return (
     <div className="space-y-6">
-      <Composer key={state.token ?? "novo"} personId={personId} action={formAction} />
+      <Composer key={chave} personId={personId} onSubmit={enviar} enviando={enviando} />
 
       <FieldError mensagem={state.error} />
 

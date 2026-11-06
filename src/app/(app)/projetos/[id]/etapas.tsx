@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -42,7 +42,8 @@ import {
   mudarStatusDaEtapa,
 } from "@/features/projects/actions";
 import { numeracao, resumoDasFilhas } from "@/features/projects/campos";
-import { ESTADO_INICIAL, type ActionState } from "@/lib/action-state";
+import { type ActionState } from "@/lib/action-state";
+import { useFormulario } from "@/lib/use-formulario";
 import { comAviso } from "@/lib/avisar";
 import { listarNomes } from "@/lib/avisos";
 import { formatarDia } from "@/lib/formatar";
@@ -520,10 +521,10 @@ function NovaEtapa({
   parentId: string | null;
   onFechar?: () => void;
 }) {
-  const [state, formAction] = useActionState(criarEtapa, ESTADO_INICIAL);
+  const { estado: state, enviar, enviando, chave } = useFormulario(criarEtapa);
 
   return (
-    <form key={state.token ?? "nova"} action={formAction} className="space-y-1">
+    <form key={chave} onSubmit={enviar} className="space-y-1">
       <input type="hidden" name="project_id" value={processoId} />
       {parentId ? <input type="hidden" name="parent_id" value={parentId} /> : null}
       <div className="flex items-center gap-2">
@@ -534,7 +535,7 @@ function NovaEtapa({
           placeholder={parentId ? "Nome da sub-etapa" : "Etapa só deste processo"}
           className="h-8 flex-1 rounded-xl"
         />
-        <SubmitButton pendente="Criando..." size="sm" icone={<Plus className="h-4 w-4" />}>
+        <SubmitButton pendente="Criando..." size="sm" enviando={enviando} icone={<Plus className="h-4 w-4" />}>
           {parentId ? "Adicionar" : "Etapa"}
         </SubmitButton>
         {onFechar ? (

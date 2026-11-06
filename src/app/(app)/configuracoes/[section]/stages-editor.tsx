@@ -1,9 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+
 import { Lock, Plus } from "lucide-react";
 
-import { ESTADO_INICIAL } from "@/lib/action-state";
+import { useFormulario } from "@/lib/use-formulario";
 import { ConfirmAction } from "@/components/confirm-action";
 import { InlineText } from "@/components/inline-text";
 import { MoveButtons } from "@/components/move-buttons";
@@ -39,7 +39,7 @@ export function StagesEditor({
   pipelineId: string;
   stages: Stage[];
 }) {
-  const [state, formAction] = useActionState(createStage, ESTADO_INICIAL);
+  const { estado: state, enviar, enviando, chave } = useFormulario(createStage);
 
   // Ganho e perdido não se movem, então a vizinhança que importa é a do meio.
   const middle = stages.filter((s) => !s.is_won && !s.is_lost);
@@ -56,8 +56,8 @@ export function StagesEditor({
         segunda etapa criada deixava o nome digitado no campo.
       */}
       <form
-        key={state.token ?? "novo"}
-        action={formAction}
+        key={chave}
+        onSubmit={enviar}
         className="flex flex-wrap items-end gap-2 rounded-3xl border border-dashed p-3"
       >
         <input type="hidden" name="pipeline_id" value={pipelineId} />
@@ -73,7 +73,9 @@ export function StagesEditor({
             className="rounded-xl"
           />
         </div>
-        <SubmitButton pendente="Criando..." icone={<Plus className="h-4 w-4" />}>Criar etapa</SubmitButton>
+        <SubmitButton pendente="Criando..." enviando={enviando} icone={<Plus className="h-4 w-4" />}>
+          Criar etapa
+        </SubmitButton>
       </form>
 
       <FieldError mensagem={state.error} />

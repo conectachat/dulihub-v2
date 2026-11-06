@@ -1,9 +1,9 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
 import { Folder, FolderOpen, Plus } from "lucide-react";
 
-import { ESTADO_INICIAL } from "@/lib/action-state";
+import { useFormulario } from "@/lib/use-formulario";
 import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { InlineText } from "@/components/inline-text";
@@ -42,18 +42,19 @@ function CreateForm({
   parentId: string | null;
   label: string;
 }) {
-  const [state, formAction] = useActionState(createDocumentType, ESTADO_INICIAL);
+  const { estado: state, enviar, enviando, chave } = useFormulario(createDocumentType);
 
   return (
-    // O `key` é o que limpa o campo depois de gravar. O `useEffect(...,
+    // O `key` é o que limpa o campo depois de gravar — e só depois de gravar
+    // (`useFormulario`): na recusa, o nome digitado fica. O `useEffect(...,
     // [state.ok])` que estava aqui só funcionava na primeira vez: `ok`
     // continua verdadeiro depois do primeiro sucesso, o efeito não roda de
     // novo, e a segunda pasta criada deixava o nome digitado no campo.
     // O painel de subpasta também deixou de fechar sozinho — quem abre para
     // criar uma subpasta costuma criar duas ou três seguidas.
     <form
-      key={state.token ?? "novo"}
-      action={formAction}
+      key={chave}
+      onSubmit={enviar}
       className="space-y-2"
     >
       {parentId ? <input type="hidden" name="parent_id" value={parentId} /> : null}
@@ -64,7 +65,9 @@ function CreateForm({
           required
           className="h-9 min-w-48 flex-1 rounded-xl"
         />
-        <SubmitButton pendente="Criando..." size="sm" icone={<Plus className="h-4 w-4" />}>{label}</SubmitButton>
+        <SubmitButton pendente="Criando..." size="sm" enviando={enviando} icone={<Plus className="h-4 w-4" />}>
+          {label}
+        </SubmitButton>
       </div>
       <FieldError mensagem={state.error} />
     </form>

@@ -22,6 +22,7 @@ export function SubmitButton({
   icone,
   size,
   className,
+  enviando,
 }: {
   children: React.ReactNode;
   /** O que aparece enquanto grava. */
@@ -37,8 +38,14 @@ export function SubmitButton({
   icone?: React.ReactNode;
   size?: "sm" | "default";
   className?: string;
+  /**
+   * Para formulário enviado por `onSubmit` (`useFormulario`): ali o
+   * `useFormStatus` não vê o envio, e quem sabe é o `useActionState`.
+   */
+  enviando?: boolean;
 }) {
-  const { pending } = useFormStatus();
+  const status = useFormStatus();
+  const pending = enviando ?? status.pending;
 
   return (
     <Button type="submit" size={size} disabled={pending} className={className}>

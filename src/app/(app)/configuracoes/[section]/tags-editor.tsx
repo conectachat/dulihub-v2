@@ -1,9 +1,9 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Plus, Tag as TagIcon } from "lucide-react";
 
-import { ESTADO_INICIAL } from "@/lib/action-state";
+import { useFormulario } from "@/lib/use-formulario";
 import { ColorPicker } from "@/components/color-picker";
 import { ColorPickerPopover } from "@/components/color-picker-popover";
 import { ConfirmAction } from "@/components/confirm-action";
@@ -93,12 +93,18 @@ function TagRow({ tag }: { tag: Tag }) {
  * Vive separado e é remontado pela `key` a cada sucesso: campo e cor voltam
  * ao inicial sem efeito nenhum limpando estado depois do fato.
  */
-function CreateTagForm({ action }: { action: (formData: FormData) => void }) {
+function CreateTagForm({
+  onSubmit,
+  enviando,
+}: {
+  onSubmit: (evento: React.FormEvent<HTMLFormElement>) => void;
+  enviando: boolean;
+}) {
   const [newColor, setNewColor] = useState<string>(DEFAULT_COLOR);
 
   return (
     <form
-      action={action}
+      onSubmit={onSubmit}
       className="space-y-3 rounded-3xl border border-dashed p-4"
     >
       <div className="space-y-1">
@@ -124,13 +130,15 @@ function CreateTagForm({ action }: { action: (formData: FormData) => void }) {
         />
       </div>
 
-      <SubmitButton pendente="Criando..." icone={<Plus className="h-4 w-4" />}>Criar tag</SubmitButton>
+      <SubmitButton pendente="Criando..." enviando={enviando} icone={<Plus className="h-4 w-4" />}>
+        Criar tag
+      </SubmitButton>
     </form>
   );
 }
 
 export function TagsEditor({ tags }: { tags: Tag[] }) {
-  const [state, formAction] = useActionState(createTag, ESTADO_INICIAL);
+  const { estado: state, enviar, enviando, chave } = useFormulario(createTag);
 
   return (
     <div className="space-y-6">
@@ -138,7 +146,7 @@ export function TagsEditor({ tags }: { tags: Tag[] }) {
         Criar vem antes da lista de propósito: com a lista cheia, o campo no
         fim obrigaria a rolar até embaixo a cada tag nova.
       */}
-      <CreateTagForm key={state.token ?? "novo"} action={formAction} />
+      <CreateTagForm key={chave} onSubmit={enviar} enviando={enviando} />
 
       <FieldError mensagem={state.error} />
 

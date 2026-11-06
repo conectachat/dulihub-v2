@@ -25,6 +25,7 @@ vi.mock("@/features/projects/actions", () => ({
 }));
 
 const { EtapasDoProcesso } = await import("./etapas");
+const acoes = await import("@/features/projects/actions");
 
 const STATUS = [
   { id: "pend", label: "A fazer", color: "#999", is_done: false },
@@ -151,5 +152,23 @@ describe("EtapasDoProcesso", () => {
     const dialogo = await screen.findByRole("dialog");
     expect(within(dialogo).getByText(/Petição e Cartas/)).toBeTruthy();
     expect(chamadas).toEqual([]);
+  });
+
+  it("criar etapa: a recusa guarda o nome e mostra o motivo; o sucesso limpa", async () => {
+    // G4: o formulário era remontado (e apagado) pela marca da recusa também.
+    vi.mocked(acoes.criarEtapa)
+      .mockResolvedValueOnce({ error: "Já existe uma etapa com esse nome.", token: "r1" })
+      .mockResolvedValueOnce({ error: null, ok: true, token: "s1" });
+    desenhar();
+
+    const campo = () => screen.getByPlaceholderText("Etapa só deste processo");
+    fireEvent.change(campo(), { target: { value: "Entrevista" } });
+    fireEvent.click(screen.getByRole("button", { name: "Etapa" }));
+
+    expect(await screen.findByText("Já existe uma etapa com esse nome.")).toBeInTheDocument();
+    expect(campo()).toHaveValue("Entrevista");
+
+    fireEvent.click(screen.getByRole("button", { name: "Etapa" }));
+    await vi.waitFor(() => expect(campo()).toHaveValue(""));
   });
 });

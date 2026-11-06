@@ -1,9 +1,9 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
 import { ListChecks, Plus } from "lucide-react";
 
-import { ESTADO_INICIAL } from "@/lib/action-state";
+import { useFormulario } from "@/lib/use-formulario";
 import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { InlineText } from "@/components/inline-text";
@@ -53,12 +53,12 @@ function CreateStageForm({
   visaTypeId: string;
   parentId: string | null;
 }) {
-  const [state, formAction] = useActionState(createVisaStage, ESTADO_INICIAL);
+  const { estado: state, enviar, enviando, chave } = useFormulario(createVisaStage);
 
   return (
     <form
-      key={state.token ?? "novo"}
-      action={formAction}
+      key={chave}
+      onSubmit={enviar}
       className="space-y-2"
     >
       <input type="hidden" name="visa_type_id" value={visaTypeId} />
@@ -77,7 +77,9 @@ function CreateStageForm({
           className="h-9 w-20 rounded-xl"
           aria-label="Prazo estimado em dias"
         />
-        <SubmitButton pendente="Criando..." size="sm" icone={<Plus className="h-4 w-4" />}>Adicionar</SubmitButton>
+        <SubmitButton pendente="Criando..." size="sm" enviando={enviando} icone={<Plus className="h-4 w-4" />}>
+          Adicionar
+        </SubmitButton>
       </div>
       <FieldError mensagem={state.error} />
     </form>

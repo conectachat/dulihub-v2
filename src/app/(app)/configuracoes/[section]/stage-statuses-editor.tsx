@@ -1,9 +1,9 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Check, CircleDot, Lock, Plus } from "lucide-react";
 
-import { ESTADO_INICIAL } from "@/lib/action-state";
+import { useFormulario } from "@/lib/use-formulario";
 import { ColorPicker } from "@/components/color-picker";
 import { ColorPickerPopover } from "@/components/color-picker-popover";
 import { ConfirmAction } from "@/components/confirm-action";
@@ -163,15 +163,17 @@ function StatusRow({
  * voltam ao estado inicial sem efeito nenhum limpando estado depois do fato.
  */
 function CreateStatusForm({
-  action,
+  onSubmit,
+  enviando,
 }: {
-  action: (formData: FormData) => void;
+  onSubmit: (evento: React.FormEvent<HTMLFormElement>) => void;
+  enviando: boolean;
 }) {
   const [newColor, setNewColor] = useState<string>(DEFAULT_COLOR);
 
   return (
     <form
-      action={action}
+      onSubmit={onSubmit}
       className="space-y-3 rounded-3xl border border-dashed p-4"
     >
       <div className="space-y-1">
@@ -197,13 +199,15 @@ function CreateStatusForm({
         />
       </div>
 
-      <SubmitButton pendente="Criando..." icone={<Plus className="h-4 w-4" />}>Criar status</SubmitButton>
+      <SubmitButton pendente="Criando..." enviando={enviando} icone={<Plus className="h-4 w-4" />}>
+        Criar status
+      </SubmitButton>
     </form>
   );
 }
 
 export function StageStatusesEditor({ statuses }: { statuses: StageStatus[] }) {
-  const [state, formAction] = useActionState(createStageStatus, ESTADO_INICIAL);
+  const { estado: state, enviar, enviando, chave } = useFormulario(createStageStatus);
 
   return (
     <div className="space-y-6">
@@ -211,7 +215,7 @@ export function StageStatusesEditor({ statuses }: { statuses: StageStatus[] }) {
         Criar vem antes da lista de propósito: com a lista cheia, o campo no
         fim obrigaria a rolar até embaixo a cada status novo.
       */}
-      <CreateStatusForm key={state.token ?? 0} action={formAction} />
+      <CreateStatusForm key={chave} onSubmit={enviar} enviando={enviando} />
 
       <FieldError mensagem={state.error} />
 

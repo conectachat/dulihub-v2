@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { ChevronLeft, ChevronRight, Download, Loader2, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
 
 import { FieldError } from "@/components/field-error";
@@ -15,7 +15,7 @@ import {
 } from "@/features/projects/documentos-actions";
 import type { PastaDoProcesso } from "@/features/projects/queries";
 import { tipoDeVisualizacao } from "@/features/projects/regras";
-import { ESTADO_INICIAL } from "@/lib/action-state";
+import { useFormulario } from "@/lib/use-formulario";
 import { comAviso } from "@/lib/avisar";
 import { formatarDataHora } from "@/lib/formatar";
 import { cn } from "@/lib/utils";
@@ -169,7 +169,8 @@ function Decisao({ arquivo }: { arquivo: PastaDoProcesso["arquivos"][number] }) 
   const [aprovando, iniciar] = useTransition();
   const [recusando, setRecusando] = useState(false);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
-  const [estado, recusar] = useActionState(recusarArquivo, ESTADO_INICIAL);
+  // Recusa do servidor não apaga o motivo já escrito (G4).
+  const { estado, enviar: recusar, enviando: recusandoAgora, chave } = useFormulario(recusarArquivo);
 
   const fd = (campos: Record<string, string>) => {
     const f = new FormData();
@@ -207,7 +208,7 @@ function Decisao({ arquivo }: { arquivo: PastaDoProcesso["arquivos"][number] }) 
       ) : null}
 
       {recusando ? (
-        <form action={recusar} className="space-y-2">
+        <form key={chave} onSubmit={recusar} className="space-y-2">
           <input type="hidden" name="id" value={arquivo.id} />
           <label htmlFor="motivo" className="text-xs font-medium">
             Motivo da recusa — é o que o cliente vai ler
@@ -223,7 +224,12 @@ function Decisao({ arquivo }: { arquivo: PastaDoProcesso["arquivos"][number] }) 
           />
           <FieldError mensagem={estado.error} pequeno />
           <div className="flex gap-2">
-            <SubmitButton pendente="Recusando..." size="sm" className="bg-destructive text-white hover:bg-destructive/90">
+            <SubmitButton
+              pendente="Recusando..."
+              size="sm"
+              enviando={recusandoAgora}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
               Recusar
             </SubmitButton>
             <Button type="button" variant="ghost" size="sm" onClick={() => setRecusando(false)}>
