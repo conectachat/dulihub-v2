@@ -6,6 +6,7 @@ import { QueryError } from "@/components/query-error";
 import { formatarPorMoeda, juntarMoedas } from "@/lib/totals";
 import { linkVigente, situacaoDaFicha } from "@/features/cadastro/regras";
 import { getBoard, listPeopleForPicker } from "@/features/opportunities/queries";
+import { etapasDeEntrada } from "@/features/opportunities/regras";
 
 import { OpportunityDialog } from "./opportunity-dialog";
 import { Quadro, type CartaoDoQuadro } from "./quadro";
@@ -43,7 +44,8 @@ export default async function CrmPage() {
     );
   }
 
-  const stageOptions = board.stages.map((s) => ({ id: s.id, name: s.name }));
+  // Negócio novo só nasce em etapa aberta (G5).
+  const stageOptions = etapasDeEntrada(board.stages).map((s) => ({ id: s.id, name: s.name }));
   // Um instante só para o quadro inteiro: link que vence durante a pintura
   // não aparece aberto num cartão e expirado no outro.
   const agora = new Date();

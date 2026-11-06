@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/empty-state";
 import type { SituacaoDaFicha } from "@/features/cadastro/regras";
 import { deleteOpportunity, moveOpportunity } from "@/features/opportunities/actions";
 import type { Stage } from "@/features/opportunities/queries";
-import { aoSoltar, enderecoDoCartao } from "@/features/opportunities/regras";
+import { aoSoltar, enderecoDoCartao, etapasDeEntrada } from "@/features/opportunities/regras";
 import { formatarMoeda, formatarPorMoeda, somarPorMoeda } from "@/lib/totals";
 import { cn } from "@/lib/utils";
 
@@ -73,6 +73,7 @@ export function Quadro({
   >(null);
 
   const opcoes = etapas.map((e) => ({ id: e.id, name: e.name }));
+  const entrada = etapasDeEntrada(etapas).map((e) => ({ id: e.id, name: e.name }));
 
   /** Leva o cartão para a etapa — por arrastar ou pelo seletor. */
   function levar(cartao: CartaoDoQuadro, etapaId: string) {
@@ -265,15 +266,19 @@ export function Quadro({
                 )}
               </div>
 
-              <div className="pt-2">
-                <OpportunityDialog
-                  people={pessoas}
-                  stages={opcoes}
-                  defaultStageId={etapa.id}
-                  label="Adicionar"
-                  variant="ghost"
-                />
-              </div>
+              {/* Ganho e Perdido não recebem negócio novo: têm porta própria
+                  (confirmação, motivo), e criar direto nelas a pulava (G5). */}
+              {!etapa.is_won && !etapa.is_lost ? (
+                <div className="pt-2">
+                  <OpportunityDialog
+                    people={pessoas}
+                    stages={entrada}
+                    defaultStageId={etapa.id}
+                    label="Adicionar"
+                    variant="ghost"
+                  />
+                </div>
+              ) : null}
             </section>
           );
         })}

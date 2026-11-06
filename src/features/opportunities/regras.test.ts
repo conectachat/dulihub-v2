@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   aoSoltar,
   enderecoDoCartao,
+  etapasDeEntrada,
   motivoDaPerda,
+  recusaDaEtapaDeEntrada,
   trilhaDoFunil,
 } from "./regras";
 
@@ -138,5 +140,30 @@ describe("enderecoDoCartao", () => {
     expect(enderecoDoCartao({ id: "n1", person: null }, etapa("Ganho", 98, "ganho"))).toBe(
       "/crm/n1",
     );
+  });
+});
+
+/**
+ * Negócio novo nasce aberto (G5 da revisão de novembro).
+ *
+ * "Adicionar" na coluna Ganho criava o negócio já ganho: o contato virava
+ * cliente sem confirmação e sem histórico. Na coluna Perdido, perdido sem
+ * motivo. Ganhar e perder têm porta própria — mover o cartão.
+ */
+describe("etapa de entrada", () => {
+  const funil = [
+    { id: "novo", is_won: false, is_lost: false },
+    { id: "ganho", is_won: true, is_lost: false },
+    { id: "perdido", is_won: false, is_lost: true },
+  ];
+
+  it("só as etapas abertas recebem negócio novo", () => {
+    expect(etapasDeEntrada(funil).map((e) => e.id)).toEqual(["novo"]);
+  });
+
+  it("Ganho e Perdido recusam, com o caminho certo na mensagem", () => {
+    expect(recusaDaEtapaDeEntrada(funil[0])).toBeNull();
+    expect(recusaDaEtapaDeEntrada(funil[1])).toMatch(/mova o cartão/i);
+    expect(recusaDaEtapaDeEntrada(funil[2])).toMatch(/mova o cartão/i);
   });
 });

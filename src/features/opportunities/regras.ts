@@ -107,6 +107,29 @@ export function aoSoltar(
   return "mover";
 }
 
+// ----------------------------------------------------------- etapa de entrada
+
+/**
+ * Onde um negócio novo pode nascer: só nas etapas abertas (G5).
+ *
+ * Ganho e Perdido são saídas, e cada uma tem porta própria — o Ganho pede
+ * confirmação e faz o contato virar cliente; o Perdido pede o motivo. Criar
+ * direto nelas pulava as duas coisas.
+ */
+export function etapasDeEntrada<T extends Pick<EtapaDoFunil, "is_won" | "is_lost">>(
+  etapas: T[],
+): T[] {
+  return etapas.filter((e) => !e.is_won && !e.is_lost);
+}
+
+/** A recusa do servidor, para quem chegar a pedir mesmo assim. */
+export function recusaDaEtapaDeEntrada(
+  etapa: Pick<EtapaDoFunil, "is_won" | "is_lost">,
+): string | null {
+  if (!etapa.is_won && !etapa.is_lost) return null;
+  return "Negócio novo começa numa etapa aberta. Para ganhar ou perder, mova o cartão.";
+}
+
 /**
  * Para onde o cartão leva. Enquanto é lead, a tela do lead; ganho, o perfil
  * completo do cliente — que é onde o processo nasce.

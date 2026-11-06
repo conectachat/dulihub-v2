@@ -16,7 +16,7 @@ import {
   etapaTerminal,
   type EtapaDeDestino,
 } from "./mover";
-import { motivoDaPerda } from "./regras";
+import { motivoDaPerda, recusaDaEtapaDeEntrada } from "./regras";
 
 const opportunitySchema = z.object({
   person_id: z.string().uuid("Escolha um contato"),
@@ -67,7 +67,10 @@ export async function createOpportunity(
   if (stageError) return falhou(traduzirErro(stageError));
   if (!stage) return falhou("Etapa não encontrada.");
 
-  const terminal = stage.is_won || stage.is_lost;
+  // Ganho e Perdido têm porta própria (confirmação, motivo): não se nasce
+  // neles (G5).
+  const recusa = recusaDaEtapaDeEntrada(stage);
+  if (recusa) return falhou(recusa);
 
   const { error } = await supabase.from("opportunities").insert({
     organization_id: pessoa.organization_id,
@@ -79,9 +82,8 @@ export async function createOpportunity(
     currency: parsed.data.currency,
     source: parsed.data.source || null,
     probability: stage.probability,
-    // O banco exige coerência entre status e data de encerramento.
-    status: stage.is_won ? "won" : stage.is_lost ? "lost" : "open",
-    closed_at: terminal ? new Date().toISOString() : null,
+    status: "open",
+    closed_at: null,
     owner_id: userId,
     created_by: userId,
   });
@@ -96,7 +98,7 @@ export async function createOpportunity(
   const promocao = resultadoSemContagem(
     await supabase
       .from("people")
-      .update({ lifecycle_stage: stage.is_won ? "client" : "opportunity" })
+      .update({ lifecycle_stage: "opportunity" })
       .eq("id", parsed.data.person_id)
       .neq("lifecycle_stage", "client"),
   );

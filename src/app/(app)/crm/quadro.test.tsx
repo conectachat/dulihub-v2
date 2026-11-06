@@ -81,6 +81,20 @@ describe("Quadro", () => {
     ).toBeTruthy();
   });
 
+  it("negócio novo só nas colunas abertas — Ganho e Perdido não têm Adicionar", () => {
+    // G5: "Adicionar" em Ganho fazia cliente sem confirmação; em Perdido,
+    // perdido sem motivo.
+    render(<Quadro etapas={etapas} cartoes={[cartao]} pessoas={[]} />);
+
+    const adicionar = (etapa: string) =>
+      within(screen.getByRole("region", { name: `Etapa ${etapa}` })).queryByRole("button", {
+        name: /Adicionar/,
+      });
+    expect(adicionar("Novo Lead")).not.toBeNull();
+    expect(adicionar("Ganho")).toBeNull();
+    expect(adicionar("Perdido")).toBeNull();
+  });
+
   it("arrastar para outra etapa move o negócio", async () => {
     render(<Quadro etapas={etapas} cartoes={[cartao]} pessoas={[]} />);
 
