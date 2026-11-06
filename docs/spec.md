@@ -134,11 +134,15 @@ Lead entra → conversa → proposta → ficha → contrato → assinatura → G
    parcelas.
 7. **Nada some sem aviso.** Exclusão diz o que vai junto; o que tem lixeira
    (contatos) pode ser restaurado.
-8. **Falha não vira vazio.** Se uma leitura falha, a tela diz que falhou — não
+8. **Contato nunca é apagado de vez** (decisão de 6/nov). Pode ser editado,
+   ir para a lixeira e voltar, ou ser mesclado com um duplicado — mas o banco
+   não aceita apagar a linha, de ninguém. A única exceção é a organização de
+   teste, para os testes limparem o que criam.
+9. **Falha não vira vazio.** Se uma leitura falha, a tela diz que falhou — não
    mostra "nenhum item" nem "tudo em dia".
-9. **Funciona sem internet**, igual a com internet, nas telas já migradas;
-   as outras dizem que precisam de rede.
-10. **Em português**, no celular e no computador, com o mesmo recurso nos dois.
+10. **Funciona sem internet**, igual a com internet, nas telas já migradas;
+    as outras dizem que precisam de rede.
+11. **Em português**, no celular e no computador, com o mesmo recurso nos dois.
 
 ---
 
@@ -168,10 +172,11 @@ Dizer o que precisa de atenção hoje.
 | ID | Requisito | Pri. | Estado |
 |---|---|---|---|
 | CON-1 | Lista, busca, filtro por tag, criar, editar | P0 | ✅ |
-| CON-2 | Excluir com lixeira e restaurar | P0 | ✅ |
+| CON-2 | Excluir com lixeira e restaurar; nunca apagar de vez (§6.8) | P0 | ✅ |
 | CON-3 | Ficha enxuta para quem não é cliente; completa para cliente (ou para quem já tem processo/cobrança) | P0 | ✅ |
 | CON-4 | Aviso de contato duplicado (mesmo e-mail ou telefone) ao criar | P1 | ⬜ |
 | CON-5 | Histórico: notas, ligações, reuniões, movimentos do funil, ficha recebida | P0 | ✅ |
+| CON-6 | Mesclar dois contatos da mesma pessoa, levando negócios, processos, cobranças e histórico | P1 | ⬜ |
 
 ### 7.3 CRM — funil e tela do lead
 
@@ -180,6 +185,7 @@ Dizer o que precisa de atenção hoje.
 | CRM-1 | Quadro do funil, cartões arrastáveis, seletor de etapa no celular | P0 | ✅ |
 | CRM-2 | Tela do lead: trilha das etapas, contato, negócio, ficha, histórico | P0 | ✅ |
 | CRM-3 | Ganho com confirmação; Perdido com motivo; reabrir | P0 | ✅ |
+| CRM-10 | **Ganho e reabrir um ganho**: só o dono do negócio e a linha ascendente dele (decisão de 6/nov). Hoje qualquer pessoa da equipe consegue | P0 | ⬜ — depende de Q10 |
 | CRM-4 | Etapas do funil configuráveis | P0 | ✅ |
 | CRM-5 | **Etapas automáticas**: ficha enviada, ficha recebida, contrato enviado — o negócio anda sozinho quando o fato acontece | P1 | ⬜ |
 | CRM-6 | Visto de interesse no negócio (escolhido dos tipos de visto) | P1 | ⬜ |
@@ -327,7 +333,7 @@ quando houver um problema da Duli que ela resolva (§10, Q5).
 | ID | Requisito | Pri. | Estado |
 |---|---|---|---|
 | POR-1 | O cliente recebe acesso no Ganho (convite, troca de senha no primeiro acesso) | P0 da fase | ⬜ |
-| POR-2 | Vê seus processos: etapas e progresso, sem as observações internas | P0 da fase | ⬜ |
+| POR-2 | Vê seus processos: etapas e progresso, **sem as notas internas** nem as observações (decisão de 6/nov; hoje o banco deixaria — fechar antes de abrir o portal) | P0 da fase | ⬜ |
 | POR-3 | Envia documentos para as pastas; vê aprovado/recusado com o motivo | P0 da fase | ⬜ |
 | POR-4 | Vê suas parcelas | P1 da fase | ⬜ |
 | POR-5 | A equipe pode "ver como o cliente" | P1 da fase | ⬜ |
@@ -387,6 +393,18 @@ apontar para o DuliHub, e cada pessoa da equipe define a sua senha.
 | Q7 | Metas: em quanto tempo, do "sim" do lead ao contrato assinado, queremos chegar? Hoje leva quanto? | Renato | §3 |
 | Q8 | Provedor de nota fiscal; como faturar em dólar (NFS-e ou invoice) | Renato + contador | REC-8 |
 | Q9 | Credenciais do Itaú e do C6 | Renato | REC-7 |
+| Q10 | "Linha ascendente" do dono do negócio: quem é? O app só conhece os papéis `owner`, `admin` e `staff` por organização — não há "chefe de" | Renato | CRM-10 |
+| Q11 | Link novo de ficha com uma ficha recebida ainda não conferida: substitui a antiga ou ela continua valendo? | Renato | INI-4 |
+| Q12 | Outra pessoa entra no mesmo aparelho com alterações da anterior ainda por subir: apagar, segurar até ela voltar, ou avisar? | Renato | 7.13 |
+
+### Decididas
+
+| Data | Decisão |
+|---|---|
+| 6/nov | Contato nunca é apagado de vez (§6.8) |
+| 6/nov | Ganho e reabrir: só o dono do negócio e a linha ascendente (CRM-10) |
+| 6/nov | O cliente do portal não vê notas internas (POR-2) |
+| 6/nov | Sem banco separado para testes: eles rodam no banco de produção, só com as contas de teste e na organização de teste |
 
 ## 11. Ordem proposta
 

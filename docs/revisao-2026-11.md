@@ -135,13 +135,13 @@ ela. **Esforço:** P pequeno (horas) · M médio (um dia) · G grande (vários d
 
 | # | Pergunta | Por que importa |
 |---|---|---|
-| D1 | Contato na lixeira: o que acontece com os negócios, processos, cobranças e alertas dele? | I8 |
-| D2 | Negócio ganho pode ser reaberto? Por qual caminho, e por quem? | I3, M5 |
-| D3 | Gerar link novo com uma ficha recebida ainda não conferida: substitui, ou a ficha antiga continua valendo? | I4 |
-| D4 | Quem pode marcar Ganho: qualquer pessoa da equipe, ou só `owner`/`admin`? | §5 diz "Renato"; o código deixa qualquer um |
-| D5 | No portal (Fase 6), o cliente vê as notas internas e o histórico do negócio? Hoje o banco deixaria | Decidir antes de abrir o portal |
-| D6 | Outra pessoa entra no mesmo aparelho com alterações da anterior ainda por subir: apagar (hoje, em silêncio), segurar, ou avisar? | Hoje some sem aviso |
-| D7 | Criar um banco separado só para os testes (custo: um projeto Supabase a mais, gratuito ou pago) | I14 |
+| D1 | Contato na lixeira: o que acontece com os negócios, processos, cobranças e alertas dele? | I8 — **Respondida 6/nov:** contato nunca é apagado de vez; só editado ou mesclado (spec §6.8) |
+| D2 | Negócio ganho pode ser reaberto? Por qual caminho, e por quem? | I3, M5 — **Respondida 6/nov:** sim, pelo dono e a linha ascendente (CRM-10; falta Q10) |
+| D3 | Gerar link novo com uma ficha recebida ainda não conferida: substitui, ou a ficha antiga continua valendo? | I4 — aberta (spec Q11) |
+| D4 | Quem pode marcar Ganho: qualquer pessoa da equipe, ou só `owner`/`admin`? | **Respondida 6/nov:** só o dono e a linha ascendente (CRM-10; falta Q10) |
+| D5 | No portal (Fase 6), o cliente vê as notas internas e o histórico do negócio? Hoje o banco deixaria | **Respondida 6/nov:** não vê (POR-2) |
+| D6 | Outra pessoa entra no mesmo aparelho com alterações da anterior ainda por subir: apagar (hoje, em silêncio), segurar, ou avisar? | Aberta (spec Q12) |
+| D7 | Criar um banco separado só para os testes (custo: um projeto Supabase a mais, gratuito ou pago) | I14 — **Respondida 6/nov:** não |
 
 ## Deixado de lado pelos revisores, e decidido
 
