@@ -69,7 +69,12 @@ export type ItemDaFila = {
   motivo: string | null;
 };
 
-export type Falha = { code?: string; message?: string } | null;
+/**
+ * `status` é o HTTP da resposta. É ele que separa a queda de rede da recusa:
+ * em POST, PATCH e DELETE o supabase-js não lança a queda — devolve resposta
+ * com `status` 0 e `code` vazio, que antes passava por recusa (G6).
+ */
+export type Falha = { code?: string; message?: string; status?: number } | null;
 
 export interface TransporteDaFila {
   inserir(tabela: string, linha: Linha): Promise<{ error: Falha }>;
@@ -79,8 +84,11 @@ export interface TransporteDaFila {
     patch: Linha,
   ): Promise<{ error: Falha; linhas: number }>;
   apagar(tabela: string, id: string): Promise<{ error: Falha; linhas: number }>;
-  /** Só é chamado quando um `delete` não tocou linha nenhuma. */
-  existe(tabela: string, id: string): Promise<boolean>;
+  /**
+   * Só é chamado quando um `delete` não tocou linha nenhuma. Devolve o erro:
+   * pergunta que falhou não é "não existe".
+   */
+  existe(tabela: string, id: string): Promise<{ existe: boolean; error: Falha }>;
   rpc(nome: string, args: Record<string, unknown>): Promise<{ error: Falha }>;
 }
 
@@ -147,6 +155,27 @@ export type ResultadoDaDrenagem = {
  */
 const ESPERAR = new Set(["PGRST301", "503", "08006", "57P01"]);
 
+const SEM_CONEXAO = "Sem conexão com o servidor.";
+
+/**
+ * Queda de rede que chegou como **resposta**, não como exceção.
+ *
+ * É o que o supabase-js faz em POST, PATCH e DELETE: `status` 0, `code`
+ * vazio, mensagem do `fetch`. Sem isto, Wi-Fi sem saída marcava cada
+ * gravação pendente como recusada, com o botão "Descartar" (G6).
+ */
+function caiuARede(falha: Falha): boolean {
+  if (!falha) return false;
+  if (falha.status === 0) return true;
+  return !falha.code && /fetch|network|load failed/i.test(falha.message ?? "");
+}
+
+/** Servidor fora do ar, demorando ou pedindo calma: tentar de novo depois. */
+function servidorIndisponivel(falha: Falha): boolean {
+  const status = falha?.status ?? 0;
+  return status === 408 || status === 429 || status >= 500;
+}
+
 const DEPENDE_DE_RECUSADA =
   "Esta alteração depende de outra que não foi aceita. Resolva a primeira.";
 
@@ -164,10 +193,13 @@ async function aplicar(
   transporte: TransporteDaFila,
   passo: Operacao,
 ): Promise<{ ok: true } | { ok: false; motivo: string; espera?: boolean }> {
-  const recusa = (falha: Falha) =>
-    ESPERAR.has(falha?.code ?? "")
-      ? { ok: false as const, motivo: traduzirErro(falha), espera: true }
-      : { ok: false as const, motivo: traduzirErro(falha) };
+  const recusa = (falha: Falha) => {
+    if (caiuARede(falha)) return { ok: false as const, motivo: SEM_CONEXAO, espera: true };
+    if (ESPERAR.has(falha?.code ?? "") || servidorIndisponivel(falha)) {
+      return { ok: false as const, motivo: traduzirErro(falha), espera: true };
+    }
+    return { ok: false as const, motivo: traduzirErro(falha) };
+  };
 
   if (passo.tipo === "insert") {
     const { error } = await transporte.inserir(passo.tabela, passo.linha);
@@ -202,9 +234,14 @@ async function aplicar(
     // foi recusada — é barrado antes, pelo bloqueio por alvo; e chegar aqui
     // exigiria um espelho com linha que aquele login nunca poderia ter
     // recebido.
-    return (await transporte.existe(passo.tabela, passo.id))
-      ? { ok: false, motivo: NADA_GRAVADO }
-      : { ok: true };
+    const pergunta = await transporte.existe(passo.tabela, passo.id);
+    // A pergunta falhou: não dá para saber, então espera — "não consegui
+    // perguntar" não é "sumiu".
+    if (pergunta.error) {
+      const r = recusa(pergunta.error);
+      return { ...r, espera: true };
+    }
+    return pergunta.existe ? { ok: false, motivo: NADA_GRAVADO } : { ok: true };
   }
 
   const { error } = await transporte.rpc(passo.nome, passo.args);
@@ -249,7 +286,7 @@ export async function drenar(
       if (!ehQuedaDeRede(erro)) throw erro;
       // Sem rede a fila para inteira, na ordem: mandar o próximo item antes
       // deste trocaria a ordem das gravações da pessoa.
-      return { subiram, conflitos, parou: "Sem conexão com o servidor." };
+      return { subiram, conflitos, parou: SEM_CONEXAO };
     }
 
     if (recusa?.espera) return { subiram, conflitos, parou: recusa.motivo };

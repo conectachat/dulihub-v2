@@ -25,7 +25,14 @@ import {
 
 type Chamada = { tipo: string; tabela?: string; id?: string };
 
-type Falha = { code?: string; message?: string };
+type Falha = { code?: string; message?: string; status?: number };
+
+/**
+ * A queda de rede **como o supabase-js a entrega** em POST, PATCH e DELETE:
+ * não como exceção, mas como resposta, com `status` 0 e `code` vazio. Era
+ * assim que ela passava por recusa do servidor (G6).
+ */
+const QUEDA: Falha = { code: "", message: "TypeError: Failed to fetch", status: 0 };
 
 function transporte(config: {
   /** Erro por chamada, na ordem; nulo deixa passar. */
@@ -33,6 +40,8 @@ function transporte(config: {
   /** Quantas linhas cada update/delete tocou, na ordem. */
   linhas?: number[];
   existe?: boolean;
+  /** Erro da pergunta "a linha ainda está lá?". */
+  erroDoExiste?: Falha;
 }): TransporteDaFila & { chamadas: Chamada[] } {
   const chamadas: Chamada[] = [];
   let i = 0;
@@ -63,7 +72,7 @@ function transporte(config: {
     },
     async existe(tabela, id) {
       chamadas.push({ tipo: "existe", tabela, id });
-      return config.existe ?? false;
+      return { existe: config.existe ?? false, error: config.erroDoExiste ?? null };
     },
     async rpc(nome) {
       chamadas.push({ tipo: "rpc", tabela: nome });
@@ -244,6 +253,50 @@ describe("drenar", () => {
     expect(resultado.parou).toBeTruthy();
     expect(fila.itens.map((i) => i.id)).toEqual(["b", "c"]);
     expect(fila.itens.every((i) => i.estado === "pendente")).toBe(true);
+  });
+
+  describe("queda de rede que chega como resposta (G6)", () => {
+    const casos: [string, Operacao][] = [
+      ["insert", { tipo: "insert", tabela: "tags", linha: { id: "t1" } }],
+      ["update", { tipo: "update", tabela: "tags", id: "t1", patch: { name: "x" } }],
+      ["delete", { tipo: "delete", tabela: "tags", id: "t1" }],
+      ["rpc", { tipo: "rpc", nome: "reordenar_irmaos", args: {} }],
+    ];
+
+    it.each(casos)("%s: não vira conflito; a fila para e espera", async (_nome, passo) => {
+      const fila = armazem([item("a", [passo]), item("b", [passo])]);
+
+      const resultado = await drenar(transporte({ erros: [QUEDA] }), fila);
+
+      expect(resultado.conflitos).toBe(0);
+      expect(resultado.parou).toMatch(/sem conexão/i);
+      expect(fila.itens.map((i) => i.estado)).toEqual(["pendente", "pendente"]);
+    });
+
+    it("servidor fora do ar (5xx) e limite de pedidos (429) também esperam", async () => {
+      for (const falha of [
+        { code: "", message: "Bad Gateway", status: 502 },
+        { code: "", message: "Too Many Requests", status: 429 },
+      ]) {
+        const fila = armazem([item("a", [{ tipo: "insert", tabela: "tags", linha: { id: "t1" } }])]);
+        const resultado = await drenar(transporte({ erros: [falha] }), fila);
+        expect(resultado.parou).toBeTruthy();
+        expect(fila.itens[0].estado).toBe("pendente");
+      }
+    });
+
+    it("delete sem linha e sem rede para perguntar: espera, não declara sucesso", async () => {
+      // Antes, a pergunta que falhava respondia "não existe", e o delete era
+      // dado como feito sem o servidor ter visto nada.
+      const fila = armazem([item("a", [{ tipo: "delete", tabela: "tags", id: "t1" }])]);
+      const rede = transporte({ linhas: [0], erroDoExiste: QUEDA });
+
+      const resultado = await drenar(rede, fila);
+
+      expect(resultado.subiram).toBe(0);
+      expect(resultado.parou).toBeTruthy();
+      expect(fila.itens[0].estado).toBe("pendente");
+    });
   });
 
   it("sessão expirada espera — não é recusa, é hora errada", async () => {
