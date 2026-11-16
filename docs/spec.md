@@ -238,7 +238,7 @@ Critério de aceite (CTR-1 a CTR-4):
 - Antes de planejar: o aviso do ZapSign é uma segunda porta sem login (Q14),
   e o PDF precisa de um depósito de arquivos do contato, que ainda não
   existe — entra em §12.1, em `docs/banco.md` §4 e na cópia do OPS-1. A
-  tabela `files` já existe, sem depósito nem policy.
+  tabela `files` já existe (com RLS), mas sem depósito nem policy de Storage.
 - Antes de planejar: o Ganho automático (CTR-4) e a cobrança do contrato
   (CTR-2, REC-6) passam por caminhos com defeito aberto — I2, I20 e I24.
   Corrigir os três antes ou dentro do 7.5.
@@ -371,14 +371,14 @@ pode mudar (CPF, RG, vínculo).
 
 | Tema | Requisito |
 |---|---|
-| Segurança | Isolamento por organização garantido no banco e provado por teste a cada mudança. Toda porta sem login está listada em §12.2 e em `src/proxy.ts`, faz uma coisa só e é conferida por segredo: hoje só a ficha, por token de uso único; o aviso do ZapSign entra como a segunda (7.5, Q14) |
+| Segurança | Isolamento por organização garantido no banco e provado por teste a cada mudança. Toda porta sem login que lê ou grava dados de cliente está listada em §12.2 e em `src/proxy.ts`, faz uma coisa só e é conferida por segredo: hoje só a ficha, por token de uso único; o aviso do ZapSign entra como a segunda (7.5, Q14) |
 | Dados pessoais (LGPD) | CPF, RG, passaporte e documentos só para quem precisa — **hoje a cópia offline leva a ficha inteira de todo contato para cada aparelho da equipe (I13)**; aceite do lead guardado com o texto aceito, sem a equipe poder reescrever (hoje pode — I11); arquivos em depósito privado com link temporário; pedido do titular atendido por anonimização (CON-7) |
 | Disponibilidade | Falha de leitura aparece como falha; nunca como lista vazia ou "tudo em dia" |
 | Celular | Toda tela funciona no celular, inclusive o que no computador se faz arrastando |
 | Desempenho | Telas abrem em até ~2 s com os dados atuais (76 contatos, dezenas de processos) |
 | Custo | Plano gratuito do Supabase enquanto couber e uma VPS de custo fixo (Hostinger); arquivos de cliente não são copiados para todo aparelho |
 | Dono dos dados | Banco, domínio e contas em nome da Duli — nada que dependa de conta de terceiro |
-| Cópia de segurança | **OPS-1** (P0, ⬜): cópia diária do banco **e de todos os depósitos de arquivos** (hoje `documentos` e `observacoes`; o do contrato quando o 7.5 o criar), cifrada, guardada fora do Supabase e fora da VPS; aviso ao Renato se a cópia de um dia falhar; restauração testada uma vez por mês num Supabase vazio — local, pela linha de comando, enquanto não houver vaga de projeto (Q13) —, com data e tempo anotados. A cópia é a única tarefa automática que usa a senha do banco e a chave mestra; onde ela roda e onde moram esses segredos e a chave da cifra fica em §12.1 e §12.5 (inventário na Q15). Aceite: dado o banco de ontem, quando a restauração roda num projeto vazio, então os contatos, as cobranças e um passaporte escolhido ao acaso abrem iguais aos de produção. **Hoje não existe cópia nenhuma** (plano gratuito) |
+| Cópia de segurança | **OPS-1** (P0, ⬜): cópia diária do banco **e de todos os depósitos de arquivos** (hoje `documentos` e `observacoes`; o do contrato quando o 7.5 o criar), cifrada, guardada fora do Supabase e fora da VPS; aviso ao Renato se a cópia de um dia falhar; restauração testada uma vez por mês num Supabase vazio — local, pela linha de comando, enquanto não houver vaga de projeto (Q13) —, com data e tempo anotados. A cópia é a única tarefa automática que usa a senha do banco e a chave mestra. Onde a cópia roda, onde moram a senha do banco e a chave mestra que ela usa, e onde fica a chave da cifra (nunca junto da cópia, e recuperável se a VPS ou o Supabase se perderem) ainda não está decidido: entra em §12.5 (linha da tarefa) e em §12.1 (Variáveis e segredos) quando o OPS-1 for desenhado; inventário na Q15. Aceite: dado o banco de ontem, quando a restauração roda num Supabase vazio (local ou projeto), então os contatos, as cobranças e um passaporte escolhido ao acaso abrem iguais aos de produção. **Hoje não existe cópia nenhuma** (plano gratuito) |
 | Operação | **OPS-2** (P0, ⬜): um monitor de fora confere `app.duliconsulting.com/api/versao` a cada 5 minutos e avisa o Renato se cair (vê o app, não o banco); o roteiro "o app caiu" está em §12.8 |
 | Registro de quem fez o quê | **AUD-1** (P1, ⬜): quem criou, alterou ou apagou cobrança e parcela, e quem aprovou ou recusou documento, guardado num registro que ninguém edita |
 
@@ -396,7 +396,7 @@ inteiro no DuliHub.
 | Tarefas | 7.9 |
 | Convidar usuários, trocar e redefinir senha | 7.10 |
 | As integrações escolhidas em Q5 (enquanto Q5 não for respondida, este item fica sem fim definido) | 7.12 |
-| Dados finais do app antigo migrados (contatos, processos e arquivos), conferidos por contagem; app antigo intacto por 30 dias. O financeiro do antigo não migra — "o que está lançado termina lá" (plano) —, e por isso o app antigo precisa continuar acessível até a última parcela lançada nele ser paga | Fase 5 do plano |
+| Dados finais do app antigo migrados (contatos, processos e arquivos), conferidos por contagem; app antigo intacto por 30 dias. O financeiro do antigo não migra — "o que está lançado termina lá" (plano) —, e por isso o app antigo precisa continuar acessível até a última parcela lançada nele ser paga, por um endereço próprio depois que `login.duliconsulting.com` passar ao DuliHub 2 | Fase 5 do plano |
 
 Passo operacional, não de código: o domínio `login.duliconsulting.com` (hoje o
 app antigo) passa a levar ao DuliHub 2, que já está em `app.duliconsulting.com`,
@@ -490,7 +490,8 @@ GitHub ──envio no main──▶ Easypanel monta o Dockerfile ──▶ app n
   do banco, por token de uso único (migration 0035). Rotas que o app abre sem
   login: `/login`, `/cadastro/`, `/offline`, `/sw.js`, o manifesto e
   `/api/versao`. `/proposta`, `/agendar` e `/auth` estão liberadas sem existir
-  e devem sair (M13). O cadastro público do login do Supabase deve estar desligado
+  e devem sair (M13; o `/auth` volta quando o USU-3 criar a rota de
+  confirmação do e-mail). O cadastro público do login do Supabase deve estar desligado
   (S13, a conferir no painel).
 
 ### 12.3 Onde ficam as regras do negócio
@@ -549,7 +550,8 @@ um banco de teste resolve as três (Q13).
 4. Mudança no banco vai **antes** do código que depende dela, e precisa
    funcionar com o código antigo ainda no ar (primeiro só acrescentar;
    retirar coluna, depois). Antes de aplicar, a cópia do dia (OPS-1);
-   enquanto o OPS-1 não existe, um `pg_dump` à mão, guardado fora do Supabase. A
+   enquanto o OPS-1 não existe, um `pg_dump` à mão, cifrado e guardado fora
+   do Supabase. A
    migration é aplicada pelo conector do Supabase, com o arquivo e os tipos
    no mesmo commit.
 5. Voltar atrás: `git revert` e `push` republicam a versão anterior.
