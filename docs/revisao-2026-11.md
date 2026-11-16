@@ -144,6 +144,20 @@ ela. **Esforço:** P pequeno (horas) · M médio (um dia) · G grande (vários d
 
 ---
 
+## Achados novos (16/nov, ao montar `docs/banco.md`)
+
+Conferidos nas migrations. Entram no lote 1 (segurança), cada um com teste RLS
+vermelho antes.
+
+| # | O que é | Onde | Grau |
+|---|---|---|---|
+| N1 | **Ligações que atravessam organizações**: `opportunity_products.product_id`, e `opportunity_id` em `notes`, `activities` e `files`, são chaves simples, sem a organização. Uma nota pode apontar para o negócio de outra pessoa, e um produto de outra organização entra num negócio. Contraria a regra §6.5 da spec | `0004`, `0016` (não cobriu essas colunas) | Importante |
+| N2 | **Qualquer colaborador cria e apaga produto do catálogo** (`products`); etiquetas, funil e vistos exigem `owner`/`admin` | `0004`, fora da `0018` | Médio |
+| N3 | **A organização atribuída edita o contato, mas não o histórico dele**, e não enxerga processos, cobranças nem fichas. O comentário da `0001` promete mais ("enxerga e atua"). Decidir o que a atribuída deve poder antes do portal do parceiro (Fase 7) | `0001`, `0017`, `0020`, `0033` | Decisão do Renato |
+
+O I10 (cliente do portal grava em `opportunity_products`) foi confirmado de
+novo: a tabela não tem `guard_child_row` e ficou fora da `0017`.
+
 ## Decisões que são do Renato (lacunas da spec)
 
 | # | Pergunta | Por que importa |

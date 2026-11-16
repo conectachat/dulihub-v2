@@ -8,6 +8,7 @@
 | `docs/plano.md` | **Onde estamos** e **em que ordem**: estado atual, fases, decisões já tomadas |
 | `AGENTS.md` | **Como** se constrói: segurança, testes, organização do código |
 | §12 deste documento | **Como o sistema é montado**: as partes, onde moram, quem fala com quem |
+| `docs/banco.md` | **Onde mora cada dado** e quem lê e grava cada tabela |
 
 Escrita em 6/nov/2026, a partir do app como está e do `plano.md`. Estado de
 cada requisito: **✅ feito** · **🟡 parcial** · **⬜ falta**.
@@ -25,7 +26,9 @@ precisa, e não copiada de outro sistema (decisão do Renato, 6/nov).
 | 4. Código | Teste antes do código; `bun run verify`, build e fumaça verdes |
 | 5. Revisão de código | Revisão do superpowers sobre o intervalo de commits, contra a seção da spec. Crítico e Importante são corrigidos antes de dar por pronto |
 
-Decisão tomada no meio de uma entrega volta para cá.
+Decisão tomada no meio de uma entrega volta para cá. O roteiro passo a passo,
+que também atualiza a documentação no fim, é a skill do projeto
+`criar-funcionalidade` (`.claude/skills/`).
 
 ---
 
@@ -465,7 +468,7 @@ GitHub ──envio no main──▶ Easypanel monta o Dockerfile ──▶ app n
 
 | Camada | O que garante | Exemplo |
 |---|---|---|
-| **Banco** (RLS, chaves compostas, gatilhos) | O que **não pode** acontecer, venha o pedido de onde vier | Uma organização não lê a outra; contato não muda de organização; negócio não nasce ganho; contato não é apagado de vez |
+| **Banco** (RLS, chaves compostas, gatilhos) | O que **não pode** acontecer, venha o pedido de onde vier | Uma organização não lê a outra; contato não muda de organização; contato não é apagado de vez; negócio não nasce ganho (migration 0038, ainda não aplicada) |
 | **Regras puras** (`src/features/<domínio>/regras.ts`) | As contas e decisões do negócio, testadas sem banco | Parcelas que fecham no centavo; para onde o cartão vai ao ser solto |
 | **Telas** | Só desenham e pedem | — |
 
@@ -476,8 +479,10 @@ Regra que só está na tela é conveniência, não regra (`AGENTS.md`).
 Várias, desde a primeira migration. Toda linha tem `organization_id`,
 herdado do registro-pai. A **Duli** é a organização raiz; cada **parceiro** é
 uma organização; o cliente do portal entra pelo vínculo com a própria ficha.
-Papéis por organização: `owner`, `admin`, `staff`. Escrever em organizações e
-associações exige ser dono (da organização, ou da raiz).
+Papéis por organização: `owner`, `admin`, `staff`. Criar organização exige ser
+dono da raiz; mexer nas associações, ser `owner` ou `admin` da organização (ou
+dono da raiz); e só um dono cria, altera ou tira outro dono. O detalhe de cada
+tabela — quem lê, quem grava — está em `docs/banco.md`.
 
 ### 12.5 Fila, tarefas agendadas e sistemas de fora
 

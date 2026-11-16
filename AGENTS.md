@@ -337,7 +337,9 @@ spec (`docs/spec.md`, "Como uma funcionalidade nasce") com critério de aceite,
 e termina com a revisão de código do superpowers (`requesting-code-review`)
 sobre o intervalo de commits dela, tendo a seção da spec como requisito.
 Crítico e Importante se corrigem antes de dizer que está pronto; achado
-recusado fica registrado com o motivo.
+recusado fica registrado com o motivo. O roteiro inteiro, inclusive atualizar
+spec, `docs/banco.md` e este arquivo no fim, está na skill
+`criar-funcionalidade` (`.claude/skills/criar-funcionalidade`).
 
 ## Migrations: arquivo sempre, no mesmo commit
 
