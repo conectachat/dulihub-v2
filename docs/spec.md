@@ -74,7 +74,7 @@ na tela (ver §6).
 | O1 | **A equipe trabalha o dia inteiro no DuliHub** | Um dia normal de trabalho — leads, processos, cobrança, tarefas — sem precisar de outra ferramenta para isso | Não — falta contrato, a pagar, tarefas e usuários (§9) |
 | O2 | **Fechar o mês sem planilha** | Um mês inteiro de entradas e saídas lançado e conferido no app | Não — falta a pagar e fluxo de caixa |
 | O3 | **Dado digitado uma vez** | Do lead ao contrato assinado, nenhum dado do cliente é redigitado pela equipe | Em parte — a ficha já chega preenchida; o contrato ainda é montado à mão |
-| O4 | **Nenhum prazo perdido sem aviso** | RFE aparece 30 dias antes (vermelho nos últimos 7); parcela, pasta obrigatória e etapa aparecem no dia seguinte ao vencimento; processo encerrado e contato na lixeira não geram alerta | Em parte — processo encerrado ainda alerta (I5); parcela, pasta e etapa não avisam antes de vencer |
+| O4 | **Nenhum prazo perdido sem aviso** | RFE aparece 30 dias antes (vermelho nos últimos 7); parcela, pasta obrigatória e etapa aparecem no dia seguinte ao vencimento; processo encerrado e contato na lixeira não geram alerta | Em parte — processo encerrado (I5) e contato na lixeira (I8) ainda alertam |
 | O5 | **Nenhum dado fora da organização** | Suíte de RLS passando a cada mudança; zero acesso cruzado | Em parte — migration 0037 não aplicada; ligações sem organização (N1); testes que podem passar sem provar (I15) |
 
 Metas numéricas (tempo do lead ao contrato, % de fichas preenchidas pelo
@@ -178,11 +178,11 @@ Dizer o que precisa de atenção hoje.
 
 | ID | Requisito | Pri. | Estado |
 |---|---|---|---|
-| CON-1 | Lista, busca, filtro por tag, criar, editar | P0 | ✅ |
+| CON-1 | Lista, busca, filtro por tag, criar, editar | P0 | 🟡 — editar diz que salvou sem gravar (I7) |
 | CON-2 | Excluir com lixeira e restaurar; nunca apagar de vez (§6.8) | P0 | 🟡 — lixeira sem confirmação, e o caso do contato continua aparecendo (I8) |
 | CON-3 | Ficha enxuta para quem não é cliente; completa para cliente (ou para quem já tem processo/cobrança) | P0 | ✅ |
 | CON-4 | Aviso de contato duplicado (mesmo e-mail ou telefone) ao criar | P1 | ⬜ |
-| CON-5 | Histórico: notas, ligações, reuniões, movimentos do funil, ficha recebida | P0 | ✅ |
+| CON-5 | Histórico: notas, ligações, reuniões, movimentos do funil, ficha recebida | P0 | 🟡 — hora da atividade grava 3 h antes (I6) |
 | CON-6 | Mesclar dois contatos da mesma pessoa, levando negócios, processos, cobranças e histórico | P1 | ⬜ |
 | CON-7 | Pedido do titular (LGPD): exportar os dados da pessoa; e, a pedido, **anonimizar** — a linha fica (§6.8) e as cobranças também, mas nome vira "Titular removido" e saem e-mail, telefone, CPF, RG, passaporte, endereço, nascimento, dependentes, respostas da ficha e os arquivos dos depósitos | P1 | ⬜ — depende de Q17 |
 
@@ -190,7 +190,7 @@ Dizer o que precisa de atenção hoje.
 
 | ID | Requisito | Pri. | Estado |
 |---|---|---|---|
-| CRM-1 | Quadro do funil, cartões arrastáveis, seletor de etapa no celular | P0 | ✅ |
+| CRM-1 | Quadro do funil, cartões arrastáveis, seletor de etapa no celular | P0 | 🟡 — mover não é tudo-ou-nada (I2) |
 | CRM-2 | Tela do lead: trilha das etapas, contato, negócio, ficha, histórico | P0 | ✅ |
 | CRM-3 | Ganho com confirmação; Perdido com motivo; reabrir | P0 | 🟡 — o quadro reabre um ganho sem perguntar (I3) |
 | CRM-4 | Etapas do funil configuráveis | P0 | ✅ |
@@ -235,12 +235,16 @@ Critério de aceite (CTR-1 a CTR-4):
 - Assinado pelo cliente, em até 5 minutos o lead mostra "contrato
   assinado", com o PDF, sem ninguém atualizar nada à mão.
 - O mesmo aviso do ZapSign recebido duas vezes não duplica nada.
-- Antes de planejar: o aviso do ZapSign é uma segunda porta sem login, e o
-  PDF precisa de um depósito de arquivos do contato, que ainda não existe
-  (Q14, §12).
+- Antes de planejar: o aviso do ZapSign é uma segunda porta sem login (Q14),
+  e o PDF precisa de um depósito de arquivos do contato, que ainda não
+  existe — entra em §12.1, em `docs/banco.md` §4 e na cópia do OPS-1. A
+  tabela `files` já existe, sem depósito nem policy.
+- Antes de planejar: o Ganho automático (CTR-4) e a cobrança do contrato
+  (CTR-2, REC-6) passam por caminhos com defeito aberto — I2, I20 e I24.
+  Corrigir os três antes ou dentro do 7.5.
 - Nenhum dado de cliente é digitado pela equipe entre a ficha e o contrato.
 
-Dúvidas que bloqueiam este módulo estão em §10 (Q1–Q4).
+Dúvidas que bloqueiam este módulo estão em §10 (Q1–Q4 e Q14).
 
 ### 7.6 Processos
 
@@ -248,8 +252,8 @@ Dúvidas que bloqueiam este módulo estão em §10 (Q1–Q4).
 |---|---|---|---|
 | PRO-1 | Criar processo do tipo de visto: etapas e pastas copiadas | P0 | ✅ |
 | PRO-2 | Etapas com status, data prevista e de conclusão, sub-etapas; progresso em % | P0 | ✅ |
-| PRO-3 | Documentos: pastas, envio, ver, aprovar, recusar com motivo, resolver | P0 | ✅ |
-| PRO-4 | Observações em editor colaborativo | P0 | ✅ |
+| PRO-3 | Documentos: pastas, envio, ver, aprovar, recusar com motivo, resolver | P0 | 🟡 — excluir pasta apaga os arquivos antes (I9) |
+| PRO-4 | Observações em editor colaborativo | P0 | 🟡 — a compactação pode perder texto em edição simultânea (I22) |
 | PRO-5 | Campos do USCIS: recibo, priority date, RFE recebida, prazo, resposta enviada, decisão | P0 | ✅ |
 | PRO-6 | Busca e filtro na lista de processos | P1 | ⬜ |
 | PRO-7 | Responsável por etapa | P1 | ⬜ |
@@ -262,10 +266,10 @@ Dúvidas que bloqueiam este módulo estão em §10 (Q1–Q4).
 
 | ID | Requisito | Pri. | Estado |
 |---|---|---|---|
-| REC-1 | Cobrança por cliente, em real ou dólar, com desconto | P0 | ✅ |
-| REC-2 | Parcelas geradas sem perder centavo; baixa com data e cotação | P0 | ✅ |
+| REC-1 | Cobrança por cliente, em real ou dólar, com desconto | P0 | 🟡 — cobrança não é tudo-ou-nada; carimbada com a organização de quem clicou (I20, I24) |
+| REC-2 | Parcelas geradas sem perder centavo; baixa com data e cotação | P0 | 🟡 — entrada negativa gera parcela negativa (I20) |
 | REC-3 | Lista com filtros (vencidas, a vencer, pagas) e números do mês | P0 | ✅ |
-| REC-4 | Funciona sem internet | P0 | 🟡 — sem o prazo de 14 dias (I19) e "Nenhuma cobrança" antes de baixar (I26) |
+| REC-4 | Funciona sem internet | P0 | 🟡 — sem o prazo de 14 dias (I19), "Nenhuma cobrança" antes de baixar (I26), e os defeitos da fila (I17, I21, I23) |
 | REC-5 | Anexar boleto e nota fiscal à parcela | P1 | ⬜ |
 | REC-6 | Cobrança criada a partir do contrato assinado (CTR-2) | P0 | ⬜ |
 | REC-7 | Boleto do Itaú e link do C6 emitidos pelo app | P2 | ⬜ — depende das credenciais |
@@ -313,7 +317,7 @@ planilha ao lado.
 
 | ID | Requisito | Pri. | Estado |
 |---|---|---|---|
-| CFG-1 | Etapas do funil, tags, catálogo de pastas, tipos de visto, status de etapa | P0 | ✅ (offline) |
+| CFG-1 | Etapas do funil, tags, catálogo de pastas, tipos de visto, status de etapa | P0 | 🟡 (offline) — defeitos da fila (I17, I21, I23) |
 | CFG-2 | Tipos e prioridades de tarefa | P0 | ⬜ (com 7.9) |
 | CFG-3 | Métodos de pagamento | P1 | ⬜ |
 | CFG-4 | Dados da empresa (razão social, CNPJ, endereço — vão para o contrato) | P0 | ⬜ (com 7.5) |
@@ -336,7 +340,7 @@ quando houver um problema da Duli que ela resolva (§10, Q5).
 | ID | Requisito | Pri. | Estado |
 |---|---|---|---|
 | OFF-1 | Instalável no celular e no computador | P0 | ✅ |
-| OFF-2 | Configuração e Financeiro abrem e gravam sem internet e sincronizam sozinhos | P0 | 🟡 — Financeiro sem o prazo de 14 dias (I19) |
+| OFF-2 | Configuração e Financeiro abrem e gravam sem internet e sincronizam sozinhos | P0 | 🟡 — Financeiro sem o prazo de 14 dias (I19); defeitos da fila (I17, I21, I23) |
 | OFF-3 | Contatos, CRM e Processos sem internet | P2 | ⬜ (despriorizado em 25/set) |
 | OFF-4 | Arquivos de um processo disponíveis offline, por escolha | P2 | ⬜ |
 
@@ -367,15 +371,15 @@ pode mudar (CPF, RG, vínculo).
 
 | Tema | Requisito |
 |---|---|
-| Segurança | Isolamento por organização garantido no banco e provado por teste a cada mudança. Uma única porta sem login (a ficha), por token de uso único |
+| Segurança | Isolamento por organização garantido no banco e provado por teste a cada mudança. Toda porta sem login está listada em §12.2 e em `src/proxy.ts`, faz uma coisa só e é conferida por segredo: hoje só a ficha, por token de uso único; o aviso do ZapSign entra como a segunda (7.5, Q14) |
 | Dados pessoais (LGPD) | CPF, RG, passaporte e documentos só para quem precisa — **hoje a cópia offline leva a ficha inteira de todo contato para cada aparelho da equipe (I13)**; aceite do lead guardado com o texto aceito, sem a equipe poder reescrever (hoje pode — I11); arquivos em depósito privado com link temporário; pedido do titular atendido por anonimização (CON-7) |
 | Disponibilidade | Falha de leitura aparece como falha; nunca como lista vazia ou "tudo em dia" |
 | Celular | Toda tela funciona no celular, inclusive o que no computador se faz arrastando |
 | Desempenho | Telas abrem em até ~2 s com os dados atuais (76 contatos, dezenas de processos) |
 | Custo | Plano gratuito do Supabase enquanto couber e uma VPS de custo fixo (Hostinger); arquivos de cliente não são copiados para todo aparelho |
 | Dono dos dados | Banco, domínio e contas em nome da Duli — nada que dependa de conta de terceiro |
-| Cópia de segurança | **OPS-1** (P0, ⬜): cópia diária do banco **e dos dois depósitos de arquivos**, cifrada, guardada fora do Supabase e fora da VPS; aviso ao Renato se a cópia de um dia falhar; restauração testada uma vez por mês num projeto vazio, com data e tempo anotados. Aceite: dado o banco de ontem, quando a restauração roda num projeto vazio, então os contatos, as cobranças e um passaporte escolhido ao acaso abrem iguais aos de produção. **Hoje não existe cópia nenhuma** (plano gratuito) |
-| Operação | **OPS-2** (P0, ⬜): um monitor de fora confere `app.duliconsulting.com/api/versao` a cada 5 minutos e avisa o Renato se cair; o roteiro "o app caiu" está em §12.8 |
+| Cópia de segurança | **OPS-1** (P0, ⬜): cópia diária do banco **e de todos os depósitos de arquivos** (hoje `documentos` e `observacoes`; o do contrato quando o 7.5 o criar), cifrada, guardada fora do Supabase e fora da VPS; aviso ao Renato se a cópia de um dia falhar; restauração testada uma vez por mês num Supabase vazio — local, pela linha de comando, enquanto não houver vaga de projeto (Q13) —, com data e tempo anotados. A cópia é a única tarefa automática que usa a senha do banco e a chave mestra; onde ela roda e onde moram esses segredos e a chave da cifra fica em §12.1 e §12.5 (inventário na Q15). Aceite: dado o banco de ontem, quando a restauração roda num projeto vazio, então os contatos, as cobranças e um passaporte escolhido ao acaso abrem iguais aos de produção. **Hoje não existe cópia nenhuma** (plano gratuito) |
+| Operação | **OPS-2** (P0, ⬜): um monitor de fora confere `app.duliconsulting.com/api/versao` a cada 5 minutos e avisa o Renato se cair (vê o app, não o banco); o roteiro "o app caiu" está em §12.8 |
 | Registro de quem fez o quê | **AUD-1** (P1, ⬜): quem criou, alterou ou apagou cobrança e parcela, e quem aprovou ou recusou documento, guardado num registro que ninguém edita |
 
 ## 9. Pronto para a equipe usar no dia a dia
@@ -392,7 +396,7 @@ inteiro no DuliHub.
 | Tarefas | 7.9 |
 | Convidar usuários, trocar e redefinir senha | 7.10 |
 | As integrações escolhidas em Q5 (enquanto Q5 não for respondida, este item fica sem fim definido) | 7.12 |
-| Dados finais do app antigo migrados (contatos, processos e arquivos), conferidos por contagem; app antigo intacto por 30 dias | Fase 5 do plano |
+| Dados finais do app antigo migrados (contatos, processos e arquivos), conferidos por contagem; app antigo intacto por 30 dias. O financeiro do antigo não migra — "o que está lançado termina lá" (plano) —, e por isso o app antigo precisa continuar acessível até a última parcela lançada nele ser paga | Fase 5 do plano |
 
 Passo operacional, não de código: o domínio `login.duliconsulting.com` (hoje o
 app antigo) passa a levar ao DuliHub 2, que já está em `app.duliconsulting.com`,
@@ -404,7 +408,7 @@ e cada pessoa da equipe define a sua senha.
 |---|---|---|---|
 | Q1 | O modelo do contrato: quais campos variam além dos dados do cliente e da forma de pagamento? (visto, valor por extenso, foro, testemunhas…) | Renato | 7.5 |
 | Q2 | O contrato é um modelo dentro do ZapSign ou um documento nosso que o app gera em PDF? | Renato + engenharia | 7.5 |
-| Q3 | Assinado o contrato, o Ganho deve ser **automático** ou só **oferecido**? | Renato | 7.5 |
+| Q3 | Assinado o contrato, o Ganho deve ser **automático** ou só **oferecido**? Se automático: em nome de quem o Ganho é registrado, já que o CRM-10 só permite ao dono do negócio e à linha ascendente, e o aviso do ZapSign não tem usuário (Q14)? | Renato | 7.5 |
 | Q4 | Quem mais assina além do cliente (Duli, testemunhas, cônjuge)? | Renato | 7.5 |
 | Q5 | Quais integrações resolvem um problema real da equipe hoje — agenda, e-mail, n8n? | Renato | 7.12, §9 |
 | Q6 | Quantas pessoas da equipe usam o app, e com que papel? | Renato | 7.10 |
@@ -416,7 +420,7 @@ e cada pessoa da equipe define a sua senha.
 | Q12 | Outra pessoa entra no mesmo aparelho com alterações da anterior ainda por subir: apagar, segurar até ela voltar, ou avisar? | Renato | 7.13 |
 | Q13 | Banco de teste e cópia: liberar uma das vagas gratuitas do Supabase, ou passar ao plano pago? O pago traz cópia diária **só do banco**, guardada 7 dias; os arquivos continuam precisando do OPS-1 | Renato | §12.6, OPS-1 |
 | Q14 | Como o aviso do ZapSign entra no banco sem login: função estreita conferida por segredo (como a ficha) ou chave de servidor? Onde fica o token da API do ZapSign? | Engenharia, com o Renato | 7.5, §12 |
-| Q15 | Inventário de contas: quem é dono e quem tem acesso (e se com verificação em duas etapas) a Supabase, Hostinger, Easypanel, GitHub `conectachat`, HostGator e os segredos do CI? O repositório deve ser privado? | Renato | §8 "Dono dos dados" |
+| Q15 | Inventário de contas: quem é dono e quem tem acesso (e se com verificação em duas etapas) a Supabase, Hostinger, Easypanel, GitHub `conectachat`, HostGator, os segredos do CI e o Supabase do app antigo (conta da Lovable)? O repositório deve ser privado? | Renato | §8 "Dono dos dados" |
 | Q16 | O que a organização **atribuída** a um contato pode fazer: hoje edita o contato, lê o histórico mas não escreve nele, e não vê processos, cobranças nem fichas (N3) | Renato | PAR-1 |
 | Q17 | LGPD: por quanto tempo guardar lead perdido antes de anonimizar; o que fazer com notas e Observações em texto livre, com a cópia offline e com as cópias de segurança | Renato, com advogado | CON-7 |
 
@@ -463,7 +467,7 @@ virar código; se não couber, a arquitetura muda primeiro, aqui.
 | **Banco, login, arquivos e tempo real** | **Supabase** na nuvem, projeto `xigmtofpmfqeehhcdasf` | Postgres com as regras de acesso (RLS) e gatilhos; login por e-mail e senha; arquivos em depósitos privados (`documentos`, `observacoes`); canal em tempo real das Observações |
 | **Código** | GitHub, `conectachat/dulihub-v2` | Guarda as versões. A cada envio, roda os testes (unidade, RLS, fumaça) |
 | **Endereço** | DNS na HostGator | `app.duliconsulting.com` → VPS. `login.duliconsulting.com` → app antigo, até a virada (§9) |
-| **Variáveis e segredos** | Easypanel (Ambiente do `app`) e GitHub (Secrets) | No Easypanel, só as duas chaves públicas do Supabase, que entram no build. No GitHub, as mesmas mais as senhas das contas de teste, para o CI. Nenhuma chave mestra em lugar nenhum do app |
+| **Variáveis e segredos** | Easypanel (Ambiente do `app`) e GitHub (Secrets) | No Easypanel, só as duas chaves públicas do Supabase, que entram no build. No GitHub, as mesmas mais as senhas das contas de teste, para o CI. Nenhuma chave mestra no app; a da cópia (OPS-1) mora só onde a cópia roda. O interruptor de emergência `SW_DESLIGAR=1`, no Ambiente do Easypanel, faz os navegadores apagarem a casca guardada (§12.8) |
 
 O banco **não** mora na VPS de propósito: cópia, atualização e segurança do
 banco ficam com o Supabase, e um problema no servidor não leva os dados
@@ -480,12 +484,13 @@ GitHub ──envio no main──▶ Easypanel monta o Dockerfile ──▶ app n
 
 - **Ninguém usa a chave mestra do Supabase** (service role): nem o app nem o
   aparelho. Toda leitura e gravação passa pela RLS com a sessão de quem está
-  usando. A chave mestra só existe para scripts rodados à mão, fora do app.
+  usando. A chave mestra só existe para scripts rodados à mão e para a cópia
+  de segurança (OPS-1), que não roda dentro do app.
 - A única porta sem login para **gravar** é a ficha de cadastro: duas funções
   do banco, por token de uso único (migration 0035). Rotas que o app abre sem
   login: `/login`, `/cadastro/`, `/offline`, `/sw.js`, o manifesto e
-  `/api/versao`. `/proposta` e `/agendar` estão reservadas sem existir e devem
-  sair (M13). O cadastro público do login do Supabase deve estar desligado
+  `/api/versao`. `/proposta`, `/agendar` e `/auth` estão liberadas sem existir
+  e devem sair (M13). O cadastro público do login do Supabase deve estar desligado
   (S13, a conferir no painel).
 
 ### 12.3 Onde ficam as regras do negócio
@@ -543,7 +548,8 @@ um banco de teste resolve as três (Q13).
    bun quebra no build dentro do Docker); a imagem final só roda o servidor.
 4. Mudança no banco vai **antes** do código que depende dela, e precisa
    funcionar com o código antigo ainda no ar (primeiro só acrescentar;
-   retirar coluna, depois). Antes de aplicar, a cópia do dia (OPS-1). A
+   retirar coluna, depois). Antes de aplicar, a cópia do dia (OPS-1);
+   enquanto o OPS-1 não existe, um `pg_dump` à mão, guardado fora do Supabase. A
    migration é aplicada pelo conector do Supabase, com o arquivo e os tipos
    no mesmo commit.
 5. Voltar atrás: `git revert` e `push` republicam a versão anterior.
@@ -555,7 +561,7 @@ um banco de teste resolve as três (Q13).
 |---|---|
 | Saber que caiu | Monitor de fora em `/api/versao`, a cada 5 minutos, avisando o Renato (OPS-2, ⬜). Hoje a equipe descobre ao tentar usar |
 | Onde ver o que aconteceu | Easypanel → `app`: **Implantações** (montagem) e **Logs** (o app rodando) |
-| O app caiu | 1. Easypanel → `app` → reiniciar. 2. Se não voltar, `git revert` do último commit e `push`. 3. Se a VPS inteira caiu, o painel da Hostinger |
+| O app caiu | 1. Easypanel → `app` → reiniciar. 2. Se não voltar, `git revert` do último commit e `push`. 3. Se a VPS inteira caiu, o painel da Hostinger. 4. Se o problema for a casca guardada nos navegadores, `SW_DESLIGAR=1` no Ambiente do Easypanel e implantar de novo |
 | Certificado (HTTPS) | Let's Encrypt pelo Easypanel, renovado sozinho. O resolvedor de certificados do domínio precisa estar escrito `letsencrypt` |
 | Manutenção | Atualizar o Easypanel e o sistema da VPS, e limpar imagens antigas do Docker, uma vez por mês — Renato, com roteiro. Cópia da própria VPS (snapshot da Hostinger): a decidir |
 | Acesso | Quem entra na Hostinger, no Easypanel, no Supabase e no GitHub, e com verificação em duas etapas (Q15) |

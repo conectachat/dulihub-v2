@@ -7,8 +7,8 @@ import { VERSAO } from "@/lib/versao";
  *
  * O app antigo precisou publicar um service worker "desligador" quando o
  * cache dele prendeu arquivos velhos — e para isso dependeu de um deploy.
- * Aqui o desligamento é uma variável de ambiente: pôr `SW_DESLIGAR=1` na
- * Vercel faz cada navegador, na próxima abertura, apagar os caches e
+ * Aqui o desligamento é uma variável de ambiente: pôr `SW_DESLIGAR=1` no
+ * Ambiente do Easypanel (e implantar de novo) faz cada navegador, na próxima abertura, apagar os caches e
  * desregistrar o worker. Sem publicar código.
  *
  * Nunca entra em cache: é o jeito de desligar o cache.
