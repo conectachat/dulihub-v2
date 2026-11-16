@@ -259,7 +259,5 @@ documentação sugere. Cada um merece teste RLS vermelho antes de mexer.
    cobranças e fichas ela nem enxerga.
 5. **Leitura ampla da raiz continua**: qualquer `staff` da Duli lê todas as
    organizações e todas as associações (0036 deixou para o achado I15).
-6. **Spec §12.3** diz que "negócio não nasce ganho" é garantido pelo banco —
-   isso é a 0038, ainda não aplicada. **Spec §12.4** diz que escrever em
-   associações "exige ser dono"; na verdade `admin` da organização também
-   escreve (com as travas do gatilho para linhas de `owner`).
+6. ~~Spec §12.3 e §12.4 afirmavam mais do que o banco garante~~ — corrigido
+   na spec em 16/nov.

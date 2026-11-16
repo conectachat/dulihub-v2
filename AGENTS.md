@@ -114,6 +114,7 @@ src/
     consultas-locais.ts   leitura do espelho — tela migrada
     escritas-locais.ts    gravação pela fila — tela migrada
     montagem.ts           contagens e junções puras, usadas pelos dois lados
+    regras.ts             regras do negócio, puras e testadas sem banco
     schema.ts             validação Zod, pura e compartilhada
     components/           componentes do domínio
   components/ui/          shadcn/ui, não editar à mão
@@ -326,7 +327,8 @@ assinada (expira).
 schema, o teste de RLS: usuário da organização A não enxerga dado da
 organização B.
 
-Um comando só faz os três: `bun run verify`.
+`bun run verify` faz tipos, lint, testes de unidade e de RLS; o build e a
+fumaça (`bun run test:fumaca`, com o servidor local no ar) rodam à parte.
 
 Lint em **zero**, sem exceção herdada. Era 7, todos de `setState` dentro de
 `useEffect`; foram pagos, não administrados. Se voltar a subir, o commit não

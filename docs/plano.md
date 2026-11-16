@@ -11,7 +11,7 @@ no `docs/spec.md`, que vem antes de qualquer funcionalidade nova.
 
 ---
 
-## 1. Estado atual (3/out/2026)
+## 1. Estado atual (3/out/2026; hospedagem em 16/nov)
 
 ### No ar
 

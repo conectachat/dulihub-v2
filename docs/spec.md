@@ -10,7 +10,8 @@
 | §12 deste documento | **Como o sistema é montado**: as partes, onde moram, quem fala com quem |
 | `docs/banco.md` | **Onde mora cada dado** e quem lê e grava cada tabela |
 
-Escrita em 6/nov/2026, a partir do app como está e do `plano.md`. Estado de
+Escrita em 6/nov/2026, a partir do app como está e do `plano.md`; arquitetura,
+hospedagem e operação revistas em 16/nov. Estado de
 cada requisito: **✅ feito** · **🟡 parcial** · **⬜ falta**.
 
 ## Como uma funcionalidade nasce
@@ -73,8 +74,8 @@ na tela (ver §6).
 | O1 | **A equipe trabalha o dia inteiro no DuliHub** | Um dia normal de trabalho — leads, processos, cobrança, tarefas — sem precisar de outra ferramenta para isso | Não — falta contrato, a pagar, tarefas e usuários (§9) |
 | O2 | **Fechar o mês sem planilha** | Um mês inteiro de entradas e saídas lançado e conferido no app | Não — falta a pagar e fluxo de caixa |
 | O3 | **Dado digitado uma vez** | Do lead ao contrato assinado, nenhum dado do cliente é redigitado pela equipe | Em parte — a ficha já chega preenchida; o contrato ainda é montado à mão |
-| O4 | **Nenhum prazo perdido sem aviso** | Todo prazo de RFE, parcela, pasta e etapa vencidos aparecem na Início antes de vencer ou no dia | Sim |
-| O5 | **Nenhum dado fora da organização** | Suíte de RLS passando a cada mudança; zero acesso cruzado | Sim |
+| O4 | **Nenhum prazo perdido sem aviso** | RFE aparece 30 dias antes (vermelho nos últimos 7); parcela, pasta obrigatória e etapa aparecem no dia seguinte ao vencimento; processo encerrado e contato na lixeira não geram alerta | Em parte — processo encerrado ainda alerta (I5); parcela, pasta e etapa não avisam antes de vencer |
+| O5 | **Nenhum dado fora da organização** | Suíte de RLS passando a cada mudança; zero acesso cruzado | Em parte — migration 0037 não aplicada; ligações sem organização (N1); testes que podem passar sem provar (I15) |
 
 Metas numéricas (tempo do lead ao contrato, % de fichas preenchidas pelo
 cliente) estão nas perguntas em aberto (§10): o app ainda não mede nada disso.
@@ -126,18 +127,20 @@ Lead entra → conversa → proposta → ficha → contrato → assinatura → G
    estágios.
 2. **Lead não é cliente.** Enquanto o negócio está no funil, a pessoa não tem
    processo nem financeiro à vista. O **Ganho** — contrato assinado — é o que a
-   faz cliente, e cliente não volta a ser lead.
+   faz cliente, e cliente não volta a ser lead (hoje só a tela garante — M17).
 3. **Negócio não é pessoa.** A mesma pessoa pode ter vários negócios ao longo do
    tempo.
 4. **Molde e cópia.** O tipo de visto é o molde de etapas e pastas; o processo
    recebe uma cópia. Mudar o molde não mexe em processo em andamento.
 5. **Cada registro pertence a uma organização**, herdada do registro-pai, e o
-   banco recusa qualquer ligação entre organizações diferentes.
+   banco recusa qualquer ligação entre organizações diferentes. Exceções
+   conhecidas, a fechar: N1 (`docs/revisao-2026-11.md`).
 6. **Dinheiro em real e dólar, somado por moeda.** Conversão só com a cotação e
    a data em que o dinheiro entrou. Nenhum saldo guardado: tudo se soma das
    parcelas.
 7. **Nada some sem aviso.** Exclusão diz o que vai junto; o que tem lixeira
-   (contatos) pode ser restaurado.
+   (contatos) pode ser restaurado. (Hoje mandar contato para a lixeira é um
+   clique, sem confirmação — I8.)
 8. **Contato nunca é apagado de vez** (decisão de 6/nov). Pode ser editado,
    ir para a lixeira e voltar, ou ser mesclado com um duplicado — mas o banco
    não aceita apagar a linha, de ninguém. A única exceção é a organização de
@@ -152,8 +155,8 @@ Lead entra → conversa → proposta → ficha → contrato → assinatura → G
 
 ## 7. Módulos
 
-Cada módulo: para que serve, requisitos por prioridade (**P0** não vai para a
-uso diário (§9) sem; **P1** logo depois; **P2** não agora, mas o desenho não pode
+Cada módulo: para que serve, requisitos por prioridade (**P0**: sem ele não há
+uso diário (§9); **P1** logo depois; **P2** não agora, mas o desenho não pode
 impedir) e o estado. Critério de aceite detalhado só para o que falta — o que
 está feito tem teste.
 
@@ -165,8 +168,8 @@ Dizer o que precisa de atenção hoje.
 |---|---|---|---|
 | INI-1 | Prazo de RFE: 30 dias antes, vermelho nos últimos 7; some quando a resposta é enviada | P0 | ✅ |
 | INI-2 | Parcelas vencidas, total por moeda e por cliente | P0 | ✅ |
-| INI-3 | Pastas e etapas com prazo vencido | P0 | ✅ |
-| INI-4 | Fichas de cadastro recebidas e não conferidas | P0 | ✅ |
+| INI-3 | Pastas e etapas com prazo vencido | P0 | 🟡 — processo encerrado ainda alerta (I5) |
+| INI-4 | Fichas de cadastro recebidas e não conferidas | P0 | 🟡 — o aviso pode ficar preso (I4, depende de Q11) |
 | INI-5 | Tarefas minhas, de hoje e atrasadas | P0 | ⬜ (depende de 7.9) |
 | INI-6 | Contas a pagar da semana | P1 | ⬜ (depende de 7.8) |
 | INI-7 | Números do mês: negócios ganhos, entradas, saídas | P2 | ⬜ |
@@ -176,11 +179,12 @@ Dizer o que precisa de atenção hoje.
 | ID | Requisito | Pri. | Estado |
 |---|---|---|---|
 | CON-1 | Lista, busca, filtro por tag, criar, editar | P0 | ✅ |
-| CON-2 | Excluir com lixeira e restaurar; nunca apagar de vez (§6.8) | P0 | ✅ |
+| CON-2 | Excluir com lixeira e restaurar; nunca apagar de vez (§6.8) | P0 | 🟡 — lixeira sem confirmação, e o caso do contato continua aparecendo (I8) |
 | CON-3 | Ficha enxuta para quem não é cliente; completa para cliente (ou para quem já tem processo/cobrança) | P0 | ✅ |
 | CON-4 | Aviso de contato duplicado (mesmo e-mail ou telefone) ao criar | P1 | ⬜ |
 | CON-5 | Histórico: notas, ligações, reuniões, movimentos do funil, ficha recebida | P0 | ✅ |
 | CON-6 | Mesclar dois contatos da mesma pessoa, levando negócios, processos, cobranças e histórico | P1 | ⬜ |
+| CON-7 | Pedido do titular (LGPD): exportar os dados da pessoa; e, a pedido, **anonimizar** — a linha fica (§6.8) e as cobranças também, mas nome vira "Titular removido" e saem e-mail, telefone, CPF, RG, passaporte, endereço, nascimento, dependentes, respostas da ficha e os arquivos dos depósitos | P1 | ⬜ — depende de Q17 |
 
 ### 7.3 CRM — funil e tela do lead
 
@@ -188,14 +192,14 @@ Dizer o que precisa de atenção hoje.
 |---|---|---|---|
 | CRM-1 | Quadro do funil, cartões arrastáveis, seletor de etapa no celular | P0 | ✅ |
 | CRM-2 | Tela do lead: trilha das etapas, contato, negócio, ficha, histórico | P0 | ✅ |
-| CRM-3 | Ganho com confirmação; Perdido com motivo; reabrir | P0 | ✅ |
-| CRM-10 | **Ganho e reabrir um ganho**: só o dono do negócio e a linha ascendente dele (decisão de 6/nov). Hoje qualquer pessoa da equipe consegue | P0 | ⬜ — depende de Q10 |
+| CRM-3 | Ganho com confirmação; Perdido com motivo; reabrir | P0 | 🟡 — o quadro reabre um ganho sem perguntar (I3) |
 | CRM-4 | Etapas do funil configuráveis | P0 | ✅ |
 | CRM-5 | **Etapas automáticas**: ficha enviada, ficha recebida, contrato enviado — o negócio anda sozinho quando o fato acontece | P1 | ⬜ |
 | CRM-6 | Visto de interesse no negócio (escolhido dos tipos de visto) | P1 | ⬜ |
 | CRM-7 | Mais de um funil | P2 | ⬜ (o banco já suporta) |
 | CRM-8 | Dias na etapa e previsão de fechamento | P2 | ⬜ (oferecido em 3/out, não escolhido) |
 | CRM-9 | Entrada automática de lead (agendamento, Calendly, formulário do site) | P1 | ⬜ — ver 7.12 |
+| CRM-10 | **Ganho e reabrir um ganho**: só o dono do negócio e a linha ascendente dele (decisão de 6/nov). Hoje qualquer pessoa da equipe consegue | P0 | ⬜ — depende de Q10 |
 
 ### 7.4 Ficha de cadastro (lead, sem login)
 
@@ -217,8 +221,8 @@ assinatura e trazer o resultado de volta.
 |---|---|---|---|
 | CTR-1 | Na tela do lead, **Gerar contrato**: o modelo da Duli preenchido com os dados da ficha (nome, CPF, RG, estado civil, nacionalidade, endereço) | P0 | ⬜ |
 | CTR-2 | Forma de pagamento escolhida na hora (valor, moeda, entrada, nº de parcelas, vencimentos), e a mesma condição vira a cobrança depois do Ganho — sem redigitar | P0 | ⬜ |
-| CTR-3 | Enviar ao ZapSign; o negócio passa a "contrato enviado" | P0 | ⬜ |
-| CTR-4 | Assinado → o PDF assinado fica no lead/cliente, o histórico registra, e o Ganho é **oferecido** | P0 | ⬜ |
+| CTR-3 | Enviar ao ZapSign; o negócio registra "contrato enviado" (data e link), exista ou não uma etapa com esse nome no funil | P0 | ⬜ |
+| CTR-4 | Assinado → o PDF assinado fica no lead/cliente, o histórico registra, e o Ganho é oferecido ou feito sozinho, conforme Q3 | P0 | ⬜ |
 | CTR-5 | Recusado ou expirado → avisa na Início, o negócio continua no funil | P1 | ⬜ |
 | CTR-6 | Mais de um modelo de contrato (por tipo de visto) | P2 | ⬜ |
 
@@ -228,8 +232,12 @@ Critério de aceite (CTR-1 a CTR-4):
   e escolhe a forma de pagamento, então vê a prévia com os dados certos antes
   de enviar.
 - Sem ficha conferida, o botão explica o que falta e não gera nada.
-- Assinado pelo cliente, em até alguns minutos o lead mostra "contrato
+- Assinado pelo cliente, em até 5 minutos o lead mostra "contrato
   assinado", com o PDF, sem ninguém atualizar nada à mão.
+- O mesmo aviso do ZapSign recebido duas vezes não duplica nada.
+- Antes de planejar: o aviso do ZapSign é uma segunda porta sem login, e o
+  PDF precisa de um depósito de arquivos do contato, que ainda não existe
+  (Q14, §12).
 - Nenhum dado de cliente é digitado pela equipe entre a ficha e o contrato.
 
 Dúvidas que bloqueiam este módulo estão em §10 (Q1–Q4).
@@ -257,7 +265,7 @@ Dúvidas que bloqueiam este módulo estão em §10 (Q1–Q4).
 | REC-1 | Cobrança por cliente, em real ou dólar, com desconto | P0 | ✅ |
 | REC-2 | Parcelas geradas sem perder centavo; baixa com data e cotação | P0 | ✅ |
 | REC-3 | Lista com filtros (vencidas, a vencer, pagas) e números do mês | P0 | ✅ |
-| REC-4 | Funciona sem internet | P0 | ✅ |
+| REC-4 | Funciona sem internet | P0 | 🟡 — sem o prazo de 14 dias (I19) e "Nenhuma cobrança" antes de baixar (I26) |
 | REC-5 | Anexar boleto e nota fiscal à parcela | P1 | ⬜ |
 | REC-6 | Cobrança criada a partir do contrato assinado (CTR-2) | P0 | ⬜ |
 | REC-7 | Boleto do Itaú e link do C6 emitidos pelo app | P2 | ⬜ — depende das credenciais |
@@ -328,7 +336,7 @@ quando houver um problema da Duli que ela resolva (§10, Q5).
 | ID | Requisito | Pri. | Estado |
 |---|---|---|---|
 | OFF-1 | Instalável no celular e no computador | P0 | ✅ |
-| OFF-2 | Configuração e Financeiro abrem e gravam sem internet e sincronizam sozinhos | P0 | ✅ |
+| OFF-2 | Configuração e Financeiro abrem e gravam sem internet e sincronizam sozinhos | P0 | 🟡 — Financeiro sem o prazo de 14 dias (I19) |
 | OFF-3 | Contatos, CRM e Processos sem internet | P2 | ⬜ (despriorizado em 25/set) |
 | OFF-4 | Arquivos de um processo disponíveis offline, por escolha | P2 | ⬜ |
 
@@ -360,13 +368,15 @@ pode mudar (CPF, RG, vínculo).
 | Tema | Requisito |
 |---|---|
 | Segurança | Isolamento por organização garantido no banco e provado por teste a cada mudança. Uma única porta sem login (a ficha), por token de uso único |
-| Dados pessoais (LGPD) | CPF, RG, passaporte e documentos só para quem precisa; aceite do lead guardado com o texto aceito; arquivos em armazenamento privado com link temporário |
+| Dados pessoais (LGPD) | CPF, RG, passaporte e documentos só para quem precisa — **hoje a cópia offline leva a ficha inteira de todo contato para cada aparelho da equipe (I13)**; aceite do lead guardado com o texto aceito, sem a equipe poder reescrever (hoje pode — I11); arquivos em depósito privado com link temporário; pedido do titular atendido por anonimização (CON-7) |
 | Disponibilidade | Falha de leitura aparece como falha; nunca como lista vazia ou "tudo em dia" |
 | Celular | Toda tela funciona no celular, inclusive o que no computador se faz arrastando |
 | Desempenho | Telas abrem em até ~2 s com os dados atuais (76 contatos, dezenas de processos) |
 | Custo | Plano gratuito do Supabase enquanto couber e uma VPS de custo fixo (Hostinger); arquivos de cliente não são copiados para todo aparelho |
 | Dono dos dados | Banco, domínio e contas em nome da Duli — nada que dependa de conta de terceiro |
-| Cópia de segurança | Cópia diária do banco e dos arquivos fora do Supabase, com teste de restauração por mês — ⬜ (§12.5) |
+| Cópia de segurança | **OPS-1** (P0, ⬜): cópia diária do banco **e dos dois depósitos de arquivos**, cifrada, guardada fora do Supabase e fora da VPS; aviso ao Renato se a cópia de um dia falhar; restauração testada uma vez por mês num projeto vazio, com data e tempo anotados. Aceite: dado o banco de ontem, quando a restauração roda num projeto vazio, então os contatos, as cobranças e um passaporte escolhido ao acaso abrem iguais aos de produção. **Hoje não existe cópia nenhuma** (plano gratuito) |
+| Operação | **OPS-2** (P0, ⬜): um monitor de fora confere `app.duliconsulting.com/api/versao` a cada 5 minutos e avisa o Renato se cair; o roteiro "o app caiu" está em §12.8 |
+| Registro de quem fez o quê | **AUD-1** (P1, ⬜): quem criou, alterou ou apagou cobrança e parcela, e quem aprovou ou recusou documento, guardado num registro que ninguém edita |
 
 ## 9. Pronto para a equipe usar no dia a dia
 
@@ -375,15 +385,18 @@ inteiro no DuliHub.
 
 | Precisa estar pronto | Módulo |
 |---|---|
-| Tudo marcado ✅ acima | — |
+| Tudo marcado ✅ acima, **sem defeito Grave ou Importante aberto** em `docs/revisao-2026-11.md`, e as migrations 0037 e 0038 aplicadas | — |
+| Cópia de segurança diária com restauração testada (OPS-1) e monitor de queda (OPS-2) | §8 |
 | Contrato e assinatura | 7.5 |
 | A pagar, despesas e fluxo de caixa | 7.8 |
 | Tarefas | 7.9 |
 | Convidar usuários, trocar e redefinir senha | 7.10 |
-| As integrações escolhidas em Q5 | 7.12 |
+| As integrações escolhidas em Q5 (enquanto Q5 não for respondida, este item fica sem fim definido) | 7.12 |
+| Dados finais do app antigo migrados (contatos, processos e arquivos), conferidos por contagem; app antigo intacto por 30 dias | Fase 5 do plano |
 
-Passo operacional, não de código: o domínio `login.duliconsulting.com` passa a
-apontar para o DuliHub, e cada pessoa da equipe define a sua senha.
+Passo operacional, não de código: o domínio `login.duliconsulting.com` (hoje o
+app antigo) passa a levar ao DuliHub 2, que já está em `app.duliconsulting.com`,
+e cada pessoa da equipe define a sua senha.
 
 ## 10. Perguntas em aberto
 
@@ -399,9 +412,13 @@ apontar para o DuliHub, e cada pessoa da equipe define a sua senha.
 | Q8 | Provedor de nota fiscal; como faturar em dólar (NFS-e ou invoice) | Renato + contador | REC-8 |
 | Q9 | Credenciais do Itaú e do C6 | Renato | REC-7 |
 | Q10 | "Linha ascendente" do dono do negócio: quem é? O app só conhece os papéis `owner`, `admin` e `staff` por organização — não há "chefe de" | Renato | CRM-10 |
-| Q11 | Link novo de ficha com uma ficha recebida ainda não conferida: substitui a antiga ou ela continua valendo? | Renato | INI-4 |
+| Q11 | Link novo de ficha com uma ficha recebida ainda não conferida: substitui a antiga ou ela continua valendo? | Renato | I4 (aviso preso do INI-4) |
 | Q12 | Outra pessoa entra no mesmo aparelho com alterações da anterior ainda por subir: apagar, segurar até ela voltar, ou avisar? | Renato | 7.13 |
-| Q13 | Banco de teste: liberar uma das duas vagas gratuitas do Supabase, ou passar ao plano pago (que também traz cópia diária)? | Renato | §12.6 |
+| Q13 | Banco de teste e cópia: liberar uma das vagas gratuitas do Supabase, ou passar ao plano pago? O pago traz cópia diária **só do banco**, guardada 7 dias; os arquivos continuam precisando do OPS-1 | Renato | §12.6, OPS-1 |
+| Q14 | Como o aviso do ZapSign entra no banco sem login: função estreita conferida por segredo (como a ficha) ou chave de servidor? Onde fica o token da API do ZapSign? | Engenharia, com o Renato | 7.5, §12 |
+| Q15 | Inventário de contas: quem é dono e quem tem acesso (e se com verificação em duas etapas) a Supabase, Hostinger, Easypanel, GitHub `conectachat`, HostGator e os segredos do CI? O repositório deve ser privado? | Renato | §8 "Dono dos dados" |
+| Q16 | O que a organização **atribuída** a um contato pode fazer: hoje edita o contato, lê o histórico mas não escreve nele, e não vê processos, cobranças nem fichas (N3) | Renato | PAR-1 |
+| Q17 | LGPD: por quanto tempo guardar lead perdido antes de anonimizar; o que fazer com notas e Observações em texto livre, com a cópia offline e com as cópias de segurança | Renato, com advogado | CON-7 |
 
 ### Decididas
 
@@ -410,7 +427,7 @@ apontar para o DuliHub, e cada pessoa da equipe define a sua senha.
 | 6/nov | Contato nunca é apagado de vez (§6.8) |
 | 6/nov | Ganho e reabrir: só o dono do negócio e a linha ascendente (CRM-10) |
 | 6/nov | O cliente do portal não vê notas internas (POR-2) |
-| 6/nov | Sem banco separado para testes: eles rodam no banco de produção, só com as contas de teste e na organização de teste |
+| 6/nov | Sem banco separado para testes: eles rodam no banco de produção, só com as contas de teste e na organização de teste (revista em 16/nov — Q13) |
 | 16/nov | A hospedagem sai da Vercel e vai para uma VPS da Hostinger (Easypanel); o banco continua no Supabase (§12) |
 | 16/nov | O banco de teste foi querido, mas adiado: as duas vagas gratuitas do Supabase estão ocupadas (§12.6, Q13) |
 
@@ -419,8 +436,10 @@ apontar para o DuliHub, e cada pessoa da equipe define a sua senha.
 A ordem fina mora no `plano.md`; esta é a sugestão que sai da spec, pelo
 caminho até o uso diário (§9):
 
+0. **Cópia de segurança e monitor (OPS-1, OPS-2)**: hoje não existe cópia, e
+   tudo — testes, desenvolvimento, migrations — bate no banco de produção.
 1. **Contrato e assinatura (7.5)**: fecha a jornada do lead e alimenta a
-   cobrança. Depende de Q1–Q4.
+   cobrança. Depende de Q1–Q4 e Q14.
 2. **A pagar e fluxo de caixa (7.8)**: portão O2.
 3. **Tarefas (7.9)** com tipos e prioridades.
 4. **Usuários (7.10)** e as integrações escolhidas em Q5.
@@ -444,6 +463,7 @@ virar código; se não couber, a arquitetura muda primeiro, aqui.
 | **Banco, login, arquivos e tempo real** | **Supabase** na nuvem, projeto `xigmtofpmfqeehhcdasf` | Postgres com as regras de acesso (RLS) e gatilhos; login por e-mail e senha; arquivos em depósitos privados (`documentos`, `observacoes`); canal em tempo real das Observações |
 | **Código** | GitHub, `conectachat/dulihub-v2` | Guarda as versões. A cada envio, roda os testes (unidade, RLS, fumaça) |
 | **Endereço** | DNS na HostGator | `app.duliconsulting.com` → VPS. `login.duliconsulting.com` → app antigo, até a virada (§9) |
+| **Variáveis e segredos** | Easypanel (Ambiente do `app`) e GitHub (Secrets) | No Easypanel, só as duas chaves públicas do Supabase, que entram no build. No GitHub, as mesmas mais as senhas das contas de teste, para o CI. Nenhuma chave mestra em lugar nenhum do app |
 
 O banco **não** mora na VPS de propósito: cópia, atualização e segurança do
 banco ficam com o Supabase, e um problema no servidor não leva os dados
@@ -461,8 +481,12 @@ GitHub ──envio no main──▶ Easypanel monta o Dockerfile ──▶ app n
 - **Ninguém usa a chave mestra do Supabase** (service role): nem o app nem o
   aparelho. Toda leitura e gravação passa pela RLS com a sessão de quem está
   usando. A chave mestra só existe para scripts rodados à mão, fora do app.
-- A única porta sem login é a ficha de cadastro: duas funções do banco, por
-  token de uso único (migration 0035).
+- A única porta sem login para **gravar** é a ficha de cadastro: duas funções
+  do banco, por token de uso único (migration 0035). Rotas que o app abre sem
+  login: `/login`, `/cadastro/`, `/offline`, `/sw.js`, o manifesto e
+  `/api/versao`. `/proposta` e `/agendar` estão reservadas sem existir e devem
+  sair (M13). O cadastro público do login do Supabase deve estar desligado
+  (S13, a conferir no painel).
 
 ### 12.3 Onde ficam as regras do negócio
 
@@ -472,12 +496,13 @@ GitHub ──envio no main──▶ Easypanel monta o Dockerfile ──▶ app n
 | **Regras puras** (`src/features/<domínio>/regras.ts`) | As contas e decisões do negócio, testadas sem banco | Parcelas que fecham no centavo; para onde o cartão vai ao ser solto |
 | **Telas** | Só desenham e pedem | — |
 
-Regra que só está na tela é conveniência, não regra (`AGENTS.md`).
+Regra que só está na tela é conveniência, não regra (`AGENTS.md`). Regras da
+§6 que hoje ainda só estão na tela: §6.2, cliente não volta a lead (M17).
 
 ### 12.4 Uma empresa ou várias
 
 Várias, desde a primeira migration. Toda linha tem `organization_id`,
-herdado do registro-pai. A **Duli** é a organização raiz; cada **parceiro** é
+herdado do registro-pai — exceto `profiles` e a própria `organizations`. A **Duli** é a organização raiz; cada **parceiro** é
 uma organização; o cliente do portal entra pelo vínculo com a própria ficha.
 Papéis por organização: `owner`, `admin`, `staff`. Criar organização exige ser
 dono da raiz; mexer nas associações, ser `owner` ou `admin` da organização (ou
@@ -489,15 +514,15 @@ tabela — quem lê, quem grava — está em `docs/banco.md`.
 | Tema | Hoje | Depois |
 |---|---|---|
 | **Fila** | A fila do aparelho: gravação offline sobe em ordem quando a rede volta; queda de rede espera, recusa vira conflito visível (`src/lib/local/fila.ts`). No servidor não há fila | — |
-| **Tarefas agendadas** | Nenhuma | ⬜ **Cópia de segurança diária do banco e dos arquivos**, guardada fora do Supabase, com teste de restauração por mês. A primeira a existir |
-| **Sistemas de fora** | Só o Supabase | ZapSign (7.5), Itaú e C6 (REC-7), nota fiscal (REC-8), agenda, n8n e e-mail (7.12) — cada um entra aqui quando for desenhado |
+| **Tarefas agendadas** | Uma, no banco: `limpar-lapides` (pg_cron, todo dia às 04:17 UTC, migration 0031) apaga lápides com mais de 90 dias. No aparelho, a sincronia tenta subir a fila a cada minuto enquanto o app está aberto (não é tarefa do servidor). Na VPS, nenhuma | Cópia de segurança diária (OPS-1) e monitor de queda (OPS-2). Toda tarefa nova entra aqui com: onde roda, horário em UTC e quem fica sabendo se falhar |
+| **Sistemas de fora** | Só o Supabase | ZapSign (7.5, Q14), Itaú e C6 (REC-7), nota fiscal (REC-8), agenda, n8n e e-mail (7.12); **um servidor de e-mail próprio (SMTP)**, com SPF/DKIM no DNS da HostGator, para convite e "esqueci a senha" (USU-1, USU-3) — o e-mail padrão do Supabase não serve para isso. Cada um entra aqui quando for desenhado |
 
 ### 12.6 Ambientes
 
 | Ambiente | Onde | Banco |
 |---|---|---|
 | Produção | `app.duliconsulting.com` (VPS) | O de verdade |
-| Desenvolvimento | O computador do Renato | **O de verdade** |
+| Desenvolvimento | O computador do Renato | **O de verdade** — por isso, ao desenvolver, entra-se só com as contas de teste |
 | Testes automáticos | Computador e GitHub | **O de verdade**, só nas contas e na organização de teste (`is_test`) |
 
 **Não há banco de teste** (decisão de 16/nov: o plano gratuito do Supabase
@@ -509,10 +534,28 @@ um banco de teste resolve as três (Q13).
 
 ### 12.7 Como uma mudança chega ao ar
 
-1. Código e teste no computador; `bun run verify` verde; commit.
+1. Código e teste no computador; `bun run verify`, build e fumaça verdes;
+   commit.
 2. Envio (`push`) para o `main` no GitHub: o CI roda unidade, RLS e fumaça.
-3. O Easypanel vê o envio, monta o `Dockerfile` e troca o container. O Next
-   é montado com o Node (o bun quebra no build dentro do Docker); a imagem
-   final só roda o servidor.
-4. Mudança no banco: a migration é aplicada pelo conector do Supabase, com o
-   arquivo e os tipos no mesmo commit.
+3. O Easypanel vê o envio e monta o `Dockerfile` **sem esperar o CI**: teste
+   vermelho não impede a publicação, só build quebrado impede. Por isso o
+   `push` só sai com tudo verde na máquina. O Next é montado com o Node (o
+   bun quebra no build dentro do Docker); a imagem final só roda o servidor.
+4. Mudança no banco vai **antes** do código que depende dela, e precisa
+   funcionar com o código antigo ainda no ar (primeiro só acrescentar;
+   retirar coluna, depois). Antes de aplicar, a cópia do dia (OPS-1). A
+   migration é aplicada pelo conector do Supabase, com o arquivo e os tipos
+   no mesmo commit.
+5. Voltar atrás: `git revert` e `push` republicam a versão anterior.
+   Migration não volta: corrige-se com outra.
+
+### 12.8 Operação — quem cuida do servidor e o que fazer se cair
+
+| Tema | Como é |
+|---|---|
+| Saber que caiu | Monitor de fora em `/api/versao`, a cada 5 minutos, avisando o Renato (OPS-2, ⬜). Hoje a equipe descobre ao tentar usar |
+| Onde ver o que aconteceu | Easypanel → `app`: **Implantações** (montagem) e **Logs** (o app rodando) |
+| O app caiu | 1. Easypanel → `app` → reiniciar. 2. Se não voltar, `git revert` do último commit e `push`. 3. Se a VPS inteira caiu, o painel da Hostinger |
+| Certificado (HTTPS) | Let's Encrypt pelo Easypanel, renovado sozinho. O resolvedor de certificados do domínio precisa estar escrito `letsencrypt` |
+| Manutenção | Atualizar o Easypanel e o sistema da VPS, e limpar imagens antigas do Docker, uma vez por mês — Renato, com roteiro. Cópia da própria VPS (snapshot da Hostinger): a decidir |
+| Acesso | Quem entra na Hostinger, no Easypanel, no Supabase e no GitHub, e com verificação em duas etapas (Q15) |
