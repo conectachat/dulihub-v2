@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Na VPS o app roda num container (Dockerfile). `standalone` gera um
+  // servidor Node enxuto, só com o que o app usa, em `.next/standalone`.
+  output: "standalone",
   async headers() {
     return [
       {

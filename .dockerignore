@@ -1,0 +1,16 @@
+# O que não entra no build da VPS: segredos, o que se gera de novo, e o que
+# não é do app.
+.env*
+!.env.example
+.git
+.github
+.next
+node_modules
+coverage
+tests
+*.tsbuildinfo
+docs
+marca
+migration
+supabase
+.claude
