@@ -7,6 +7,7 @@
 | `docs/spec.md` (este) | **O quê** e **para quem**: a jornada, os módulos, as regras, o critério de pronto |
 | `docs/plano.md` | **Onde estamos** e **em que ordem**: estado atual, fases, decisões já tomadas |
 | `AGENTS.md` | **Como** se constrói: segurança, testes, organização do código |
+| §12 deste documento | **Como o sistema é montado**: as partes, onde moram, quem fala com quem |
 
 Escrita em 6/nov/2026, a partir do app como está e do `plano.md`. Estado de
 cada requisito: **✅ feito** · **🟡 parcial** · **⬜ falta**.
@@ -360,8 +361,9 @@ pode mudar (CPF, RG, vínculo).
 | Disponibilidade | Falha de leitura aparece como falha; nunca como lista vazia ou "tudo em dia" |
 | Celular | Toda tela funciona no celular, inclusive o que no computador se faz arrastando |
 | Desempenho | Telas abrem em até ~2 s com os dados atuais (76 contatos, dezenas de processos) |
-| Custo | Plano gratuito do Supabase e da Vercel enquanto couber; arquivos de cliente não são copiados para todo aparelho |
+| Custo | Plano gratuito do Supabase enquanto couber e uma VPS de custo fixo (Hostinger); arquivos de cliente não são copiados para todo aparelho |
 | Dono dos dados | Banco, domínio e contas em nome da Duli — nada que dependa de conta de terceiro |
+| Cópia de segurança | Cópia diária do banco e dos arquivos fora do Supabase, com teste de restauração por mês — ⬜ (§12.5) |
 
 ## 9. Pronto para a equipe usar no dia a dia
 
@@ -396,6 +398,7 @@ apontar para o DuliHub, e cada pessoa da equipe define a sua senha.
 | Q10 | "Linha ascendente" do dono do negócio: quem é? O app só conhece os papéis `owner`, `admin` e `staff` por organização — não há "chefe de" | Renato | CRM-10 |
 | Q11 | Link novo de ficha com uma ficha recebida ainda não conferida: substitui a antiga ou ela continua valendo? | Renato | INI-4 |
 | Q12 | Outra pessoa entra no mesmo aparelho com alterações da anterior ainda por subir: apagar, segurar até ela voltar, ou avisar? | Renato | 7.13 |
+| Q13 | Banco de teste: liberar uma das duas vagas gratuitas do Supabase, ou passar ao plano pago (que também traz cópia diária)? | Renato | §12.6 |
 
 ### Decididas
 
@@ -405,6 +408,8 @@ apontar para o DuliHub, e cada pessoa da equipe define a sua senha.
 | 6/nov | Ganho e reabrir: só o dono do negócio e a linha ascendente (CRM-10) |
 | 6/nov | O cliente do portal não vê notas internas (POR-2) |
 | 6/nov | Sem banco separado para testes: eles rodam no banco de produção, só com as contas de teste e na organização de teste |
+| 16/nov | A hospedagem sai da Vercel e vai para uma VPS da Hostinger (Easypanel); o banco continua no Supabase (§12) |
+| 16/nov | O banco de teste foi querido, mas adiado: as duas vagas gratuitas do Supabase estão ocupadas (§12.6, Q13) |
 
 ## 11. Ordem proposta
 
@@ -418,3 +423,91 @@ caminho até o uso diário (§9):
 4. **Usuários (7.10)** e as integrações escolhidas em Q5.
 5. **Uso diário (§9)**: troca do domínio e senhas da equipe.
 6. Portal do cliente, depois portal do parceiro.
+
+---
+
+## 12. Arquitetura — como o sistema é montado
+
+A spec diz o que o sistema faz; esta seção diz **onde mora cada parte e
+quem fala com quem**. Toda funcionalidade nova se encaixa aqui antes de
+virar código; se não couber, a arquitetura muda primeiro, aqui.
+
+### 12.1 As partes e onde moram
+
+| Parte | Onde | O que faz |
+|---|---|---|
+| **Aparelho** (navegador, celular ou computador) | Na mão de quem usa | Desenha as telas. Guarda a **casca** das telas para abrir sem internet (service worker), a **cópia** do servidor (espelho, IndexedDB, uma por usuário) e a **fila** do que foi gravado e ainda não subiu (banco separado da cópia) |
+| **App** (Next.js 16, num container Docker) | **VPS Hostinger**, painel Easypanel — projeto `dulihub`, serviço `app` | Monta as páginas, roda as ações de gravar (Server Actions) com a sessão de quem clicou, e manda para o login quem não está logado |
+| **Banco, login, arquivos e tempo real** | **Supabase** na nuvem, projeto `xigmtofpmfqeehhcdasf` | Postgres com as regras de acesso (RLS) e gatilhos; login por e-mail e senha; arquivos em depósitos privados (`documentos`, `observacoes`); canal em tempo real das Observações |
+| **Código** | GitHub, `conectachat/dulihub-v2` | Guarda as versões. A cada envio, roda os testes (unidade, RLS, fumaça) |
+| **Endereço** | DNS na HostGator | `app.duliconsulting.com` → VPS. `login.duliconsulting.com` → app antigo, até a virada (§9) |
+
+O banco **não** mora na VPS de propósito: cópia, atualização e segurança do
+banco ficam com o Supabase, e um problema no servidor não leva os dados
+junto.
+
+### 12.2 Quem fala com quem
+
+```
+aparelho ──páginas e ações──▶ app (VPS) ──sessão de quem clicou──▶ Supabase
+aparelho ──fila, cópia, tempo real, arquivos──────────────────────▶ Supabase
+cliente sem login ──ficha (/cadastro/<token>)──▶ app ──porta anônima──▶ Supabase
+GitHub ──envio no main──▶ Easypanel monta o Dockerfile ──▶ app novo no ar
+```
+
+- **Ninguém usa a chave mestra do Supabase** (service role): nem o app nem o
+  aparelho. Toda leitura e gravação passa pela RLS com a sessão de quem está
+  usando. A chave mestra só existe para scripts rodados à mão, fora do app.
+- A única porta sem login é a ficha de cadastro: duas funções do banco, por
+  token de uso único (migration 0035).
+
+### 12.3 Onde ficam as regras do negócio
+
+| Camada | O que garante | Exemplo |
+|---|---|---|
+| **Banco** (RLS, chaves compostas, gatilhos) | O que **não pode** acontecer, venha o pedido de onde vier | Uma organização não lê a outra; contato não muda de organização; negócio não nasce ganho; contato não é apagado de vez |
+| **Regras puras** (`src/features/<domínio>/regras.ts`) | As contas e decisões do negócio, testadas sem banco | Parcelas que fecham no centavo; para onde o cartão vai ao ser solto |
+| **Telas** | Só desenham e pedem | — |
+
+Regra que só está na tela é conveniência, não regra (`AGENTS.md`).
+
+### 12.4 Uma empresa ou várias
+
+Várias, desde a primeira migration. Toda linha tem `organization_id`,
+herdado do registro-pai. A **Duli** é a organização raiz; cada **parceiro** é
+uma organização; o cliente do portal entra pelo vínculo com a própria ficha.
+Papéis por organização: `owner`, `admin`, `staff`. Escrever em organizações e
+associações exige ser dono (da organização, ou da raiz).
+
+### 12.5 Fila, tarefas agendadas e sistemas de fora
+
+| Tema | Hoje | Depois |
+|---|---|---|
+| **Fila** | A fila do aparelho: gravação offline sobe em ordem quando a rede volta; queda de rede espera, recusa vira conflito visível (`src/lib/local/fila.ts`). No servidor não há fila | — |
+| **Tarefas agendadas** | Nenhuma | ⬜ **Cópia de segurança diária do banco e dos arquivos**, guardada fora do Supabase, com teste de restauração por mês. A primeira a existir |
+| **Sistemas de fora** | Só o Supabase | ZapSign (7.5), Itaú e C6 (REC-7), nota fiscal (REC-8), agenda, n8n e e-mail (7.12) — cada um entra aqui quando for desenhado |
+
+### 12.6 Ambientes
+
+| Ambiente | Onde | Banco |
+|---|---|---|
+| Produção | `app.duliconsulting.com` (VPS) | O de verdade |
+| Desenvolvimento | O computador do Renato | **O de verdade** |
+| Testes automáticos | Computador e GitHub | **O de verdade**, só nas contas e na organização de teste (`is_test`) |
+
+**Não há banco de teste** (decisão de 16/nov: o plano gratuito do Supabase
+permite dois projetos, e os dois estão ocupados). Consequências que ficam
+abertas: a conta de teste existe no banco real; a exceção de apagar contato
+existe só para a organização de teste; e migration vai direto para a
+produção — por isso toda migration entra com teste RLS vermelho antes. Ter
+um banco de teste resolve as três (Q13).
+
+### 12.7 Como uma mudança chega ao ar
+
+1. Código e teste no computador; `bun run verify` verde; commit.
+2. Envio (`push`) para o `main` no GitHub: o CI roda unidade, RLS e fumaça.
+3. O Easypanel vê o envio, monta o `Dockerfile` e troca o container. O Next
+   é montado com o Node (o bun quebra no build dentro do Docker); a imagem
+   final só roda o servidor.
+4. Mudança no banco: a migration é aplicada pelo conector do Supabase, com o
+   arquivo e os tipos no mesmo commit.

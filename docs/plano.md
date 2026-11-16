@@ -15,9 +15,9 @@ no `docs/spec.md`, que vem antes de qualquer funcionalidade nova.
 
 ### No ar
 
-`https://dulihub-v2.vercel.app` — publica sozinho a cada push no `main`. Protegido
-pela Vercel (login da Vercel antes do login do app), porque aponta para o banco
-real.
+`https://app.duliconsulting.com` — numa VPS da Hostinger, pelo Easypanel, desde
+16/nov (antes, Vercel). Publica sozinho a cada push no `main`. Como as partes
+se encaixam: `docs/spec.md` §12.
 
 | Tela | O que faz |
 |---|---|
@@ -286,6 +286,6 @@ leitor de tela; numa árvore, soltar entre dois níveis é ambíguo.
 |---|---|---|
 | 3 — Financeiro | **A receber: feito.** Falta contas a pagar, despesas, fornecedores e fluxo de caixa; depois contrato no ZapSign, cobrança C6/Itaú e nota fiscal | Fechar um mês inteiro no app, sem planilha |
 | 4 — Tarefas e integrações | Tarefas da equipe, usuários e permissões, notificações; porta Calendly, Gmail e n8n do app antigo | Equipe trabalha sem abrir o app antigo para essas coisas |
-| 5 — Virada | Dados finais migrados, domínio `login.duliconsulting.com` aponta para a Vercel, 25 usuários redefinem senha. App antigo intacto por 30 dias | Equipe trabalha um dia inteiro no app novo |
+| 5 — Virada | Dados finais migrados, domínio `login.duliconsulting.com` aponta para a VPS, 25 usuários redefinem senha. App antigo intacto por 30 dias | Equipe trabalha um dia inteiro no app novo |
 | 6 — Portal do cliente | Acompanhar etapas, subir documentos, ver financeiro, contratar tradução | — |
 | 7 — Portal do parceiro | Marca própria, carteira e financeiro do parceiro separados da Duli | — |
