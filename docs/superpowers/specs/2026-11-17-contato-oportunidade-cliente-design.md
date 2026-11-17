@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Data | 17/nov/2026 |
-| Estado | Rodada 3 da revisão (Code Reviewer). **Ainda sem plano** |
+| Estado | Rodada 4 da revisão (Code Reviewer). **Ainda sem plano** |
 | Quem decidiu | Renato, no brainstorming de 17/nov |
 | Requisitos com ID | Em `docs/spec.md`: 7.2, 7.3, 7.4, 7.6, 7.7, 7.1 e o módulo novo 7.16 Clientes |
 | Este documento | O **como**: banco, funções, telas, testes e o critério de aceite de cada entrega |
@@ -34,6 +34,14 @@ Nada aqui está construído. Cada requisito nasce ⬜.
 - **Quem torna alguém cliente:** só a gestão ou o Ganho (I4).
 - **Prova da forma de pagamento:** a inserção direta de resposta é recusada (I5).
 - **Os menores M1–M9.**
+
+**O que mudou da rodada 3 para a 4:**
+- **Liberação das travas:** cobre também o `set null` das chaves estrangeiras.
+- **Estágio "cliente":** só a gestão ou o Ganho, inclusive pelo `update` direto em
+  `people`.
+- **Ficha anônima de hoje:** continua fechando, com a marca `via_ficha`.
+- **Testes:** usam uma pessoa descartável; o processo-sentinela saiu.
+- **Os menores M1–M6.**
 
 ---
 
@@ -112,13 +120,23 @@ nenhum dado é digitado duas vezes.
   - Toda trava nova de "não apagar" ou "não mudar" vale **também na organização de
     teste**, para update e para delete direto. Só assim a suíte prova cada trava sem
     gravar lixo permanente na Duli.
-  - A única liberação é a **exclusão em cascata**: a trava deixa passar quando
-    `pg_trigger_depth() > 1`, isto é, quando a linha está sendo apagada porque a
-    linha-mãe foi apagada.
+  - A única liberação é a **ação da chave estrangeira**: a trava deixa passar
+    qualquer escrita com `pg_trigger_depth() > 1`. Isso cobre o `delete` da cascata
+    e também o `update` do `on delete set null (col)`. Por exemplo, apagar um tipo
+    de visto nas Configurações anula `visa_type_id` no item de um negócio ganho, e
+    apagar um negócio anula `payment_plan_id` no link.
+  - Nenhum gatilho deste desenho escreve em tabela travada. Se um dia algum
+    escrever, herda essa liberação, e isso tem de ser pensado na hora.
+  - A RLS não se aplica às ações da chave estrangeira (o Postgres as executa como
+    dono da tabela; `paginas.test.ts:88` já depende disso).
   - Como pessoa só se apaga na organização de teste (0036), a limpeza dos testes
     (apagar a pessoa) continua levando tudo junto.
   - Teste que hoje apaga negócio, processo ou cobrança **diretamente** passa a limpar
-    apagando a pessoa de teste.
+    apagando uma **pessoa descartável**, criada pelo próprio teste. A pessoa fixa da
+    suíte ("Cliente de Teste", `fixture()`, ligada à conta do portal e à nota da
+    0015) **nunca** é apagada: `processos`, `documentos`, `paginas` e a fumaça
+    (`rotas.test.ts:248`) passam a criar processo numa pessoa descartável, criada e
+    promovida pela conta de gestão de teste.
 - **Marcas de transação.** Uma função que precisa abrir uma trava liga uma marca
   própria do recurso, com `set_config('dulihub.via_ganho', 'on', true)`, e a
   **desliga no fim**, inclusive no caminho de erro, como a 0025:51-56 faz.
@@ -246,7 +264,6 @@ ao ar em duas fases (§6.3).
 | Aplicar e fazer commit das migrations 0037 e 0038, que estão hoje fora do git, com os testes já alterados em `tests/rls/` | Mexem na mesma área (criação de negócio, atribuição) |
 | Cópia do banco (`pg_dump`, spec §12.7) antes de cada migration destas entregas | Não há banco de teste nem cópia automática (OPS-1) |
 | **Quarta conta de teste:** `staff` da organização de teste (`teste-staff`). A associação nasce numa fixture idempotente, como a 0015. A conta entra no `tests/rls/README.md`, no `.env.local` e nos segredos do GitHub, para o CI | Hoje o único `staff` é da Duli. Sem esta conta, provar "staff que não é dono é recusado" exigiria ganhar um negócio **real**, e o M17 e o PRO-12 tornam esse estrago permanente |
-| **Processo-sentinela** na Duli: "Teste de segurança — não apagar", no padrão de `papeis.test.ts:36` | Serve para provar que apagar processo na organização real é recusado, sem arriscar processo de cliente |
 
 ### 6.1 Entrega 1 — contato completo e sem duplicata
 
@@ -397,14 +414,14 @@ quando os vistos entram.
 | `person_participants` | `id` (chave, para a lápide funcionar), `unique (person_id, user_id)`, mais `organization_id`, `created_at`, `created_by`, `updated_at`. FK `(person_id, organization_id)` → `people`, com cascade. FK `(organization_id, user_id)` → `organization_members`, com cascade. RLS: membros da organização leem e gravam. Lápide e `updated_at`. Fica fora do espelho |
 | `opportunity_participants` | O mesmo desenho (com `id`), ligado a `opportunities` |
 | `opportunities.owner_id` | Um gatilho só deixa trocar o dono do negócio quem é o dono atual ou a gestão (C2) |
-| Gatilho `cliente_nao_volta` em `people` | Recusa sempre, inclusive sem usuário, o update com `old.lifecycle_stage = 'client'` e `new.lifecycle_stage <> 'client'`. A importação deixa de mandar rebaixamento |
+| Gatilho `estagio_do_cliente` em `people` | Duas regras. (1) **Não volta:** recusa sempre, inclusive sem usuário, o update com `old.lifecycle_stage = 'client'` e `new.lifecycle_stage <> 'client'`. A importação deixa de mandar rebaixamento. (2) **Quem torna cliente:** passar a `client` (no update, ou no insert já como `client`) só com a marca `via_ganho` ou por alguém da **gestão**. Sem usuário passa, para a importação e as migrations. Fecha o caminho do `update people set lifecycle_stage = 'client'` direto pela API, que a policy `people_update_staff` (0001) deixaria a qualquer membro |
 | Gatilho `quem_tem_processo_e_cliente` | `before insert` em `projects` e em `receivables`, quando a pessoa ainda não é cliente: com a marca `via_ganho` (o Ganho já promoveu antes), passa; sem a marca, só passa se quem cria é da **gestão**, e então promove a pessoa a `client` (o `client_since` segue as regras acima) e registra no histórico "Virou cliente (processo ‹título›)" ou "(cobrança ‹título›)". Quem não é da gestão recebe "Só a gestão torna alguém cliente; use o Ganho". Na tela isso não aparece, porque "+ Novo processo" e "Criar cobrança" só existem no perfil de quem já é cliente; a trava cobre a API e a fila |
 | `public.marcar_como_cliente(p_pessoa uuid, p_desde date)` | `security invoker`. Confere a gestão **no banco**, grava o estágio, o `client_since` e o histórico numa transação. **Não tem volta** pelo app: a tela avisa antes, e corrigir um engano só se faz pelo dono do banco, no SQL Editor |
 | `people_guard_self_update` | No portal, o cliente também não muda `owner_id` nem `client_since` |
 | Leitura de `notes` e `activities` | A policy passa de `can_access_person` (que inclui o cliente logado) para **membros da organização e da organização atribuída**. O cliente do portal deixa de ler (POR-2). A escrita não muda. `can_access_person` continua valendo para as outras tabelas |
 | `files` | Ganha `category text not null default 'outro'`, com `check` em `identidade`, `passaporte`, `comprovante_residencia`, `contrato` e `outro`. A FK de `opportunity_id` vira composta, com `on delete set null (opportunity_id)` (fecha a parte de `files` do N1). Ganha um `check` de caminho `{org}/{pessoa}/{arquivo}/{nome}`, como o `document_files_path_matches` (0020:201-207) |
 | Depósito `pessoas` | Privado, até 20 MB, os mesmos tipos de arquivo do depósito `documentos`. Policies de leitura, gravação e exclusão pela pasta da organização, como na 0020 |
-| `installment_files` | `id`, `organization_id`, `installment_id`, `kind` (`boleto`, `nota_fiscal`, `comprovante` ou `outro`), `filename`, `storage_path` (com `check` de caminho), `mime_type`, `size_bytes`, `uploaded_by`, `created_at` e `updated_at`. FK `(installment_id, organization_id)` → `installments`. Lápide. RLS de membros. Fica fora do espelho |
+| `installment_files` | `id`, `organization_id`, `installment_id`, `kind` (`boleto`, `nota_fiscal`, `comprovante` ou `outro`), `filename`, `storage_path` (com `check` de caminho), `mime_type`, `size_bytes`, `uploaded_by`, `created_at` e `updated_at`. FK `(installment_id, organization_id)` → `installments`, `on delete cascade` (para a pessoa de teste levar tudo; o delete direto de parcela com anexo é recusado antes, pelo gatilho abaixo). O teste que envia arquivo o remove do depósito no fim. Lápide. RLS de membros. Fica fora do espelho |
 | Depósito `financeiro` | Privado, como `pessoas`. Caminho `{org}/{pessoa}/{cobrança}/{parcela}/{arquivo}/{nome}`: a pasta da pessoa vem primeiro, para a anonimização (CON-7) apagar de uma vez |
 | Parcela ou cobrança com anexo | Gatilhos em `receivables` e `installments` recusam o delete **direto** (`pg_trigger_depth() = 1`) quando há anexo ("Remova os anexos antes"), para nenhum arquivo ficar órfão no depósito. A cascata vinda da pessoa (só possível na organização de teste) passa. Para isso funcionar sem internet, `excluirCobranca` (`escritas-locais.ts:200-211`) passa a mandar **só** o delete da cobrança, e as parcelas vão em cascata no servidor: a recusa vem inteira, como um conflito só, em vez de deixar a cobrança pela metade |
 
@@ -586,6 +603,9 @@ quando os vistos entram.
     frase diz "Reabra ou encerre os processos; o negócio ganho fica como registro".
   - O botão "Excluir" do quadro (`quadro.tsx:197-203`) segue a mesma regra.
   - Vale também na organização de teste. Só a cascata da pessoa passa (§3).
+  - Negócio **aberto** com link de pagamento aberto também não se exclui ("Cancele o
+    link de pagamento antes"), para nenhum link ficar apontando para nada. A tela
+    oferece o cancelamento, que passa por `voltar_forma_para_rascunho`.
 - **Encerradas (CRM-16).**
   - O quadro mostra as etapas abertas. As colunas Ganho e Perdido mostram só os
     encerrados **nos últimos 30 dias**.
@@ -606,7 +626,7 @@ quando os vistos entram.
 | `opportunity_items` | `id`, `organization_id`, `opportunity_id`, `visa_type_id` (nulo), `visa_name text not null`, `amount numeric(12,2) not null check (amount >= 0)`, `currency char(3) check in ('BRL','USD')`, `position int`, `created_by`, `created_at`, `updated_at`, `unique (id, organization_id)`. FK `(opportunity_id, organization_id)` → `opportunities`, com cascade. FK `(visa_type_id, organization_id)` → `visa_types`, `on delete set null (visa_type_id)`. RLS com leitura e escrita separadas, como `opportunities` (0017), mais o `guard_child_row`. Lápide e `updated_at`. Gatilho de trava: item de negócio ganho não é inserido, alterado nem apagado (só a cascata passa, §3). O gatilho lê o negócio com `select … for share`, para não correr junto com o Ganho. Fica fora do espelho |
 | `projects.opportunity_item_id uuid` | Índice único parcial (quando não nulo). FK `(opportunity_item_id, organization_id)` → `opportunity_items`, `on delete set null (opportunity_item_id)` |
 | `projects`, exclusão | A policy `for all` se divide em select, insert e update, **sem** delete. Um gatilho recusa o `delete` direto, com frase, e deixa passar só a cascata (§3). Os testes que apagam processo direto (fumaça `rotas.test.ts:258` e os de processo) passam a limpar apagando a pessoa de teste. O plano confere, no primeiro teste, que a cascata de `people` atravessa a RLS de `projects` |
-| `criar_processo` | Ganha `p_item uuid` (gravado em `opportunity_item_id`), com `drop` + `create`. Todos os chamadores são atualizados para a assinatura nova: `projects/actions.ts:35`, quatro testes de RLS e `rotas.test.ts:248` |
+| `criar_processo` | Ganha `p_item uuid default null` (gravado em `opportunity_item_id`), com `drop` + `create` na migration A. O padrão nulo mantém funcionando o "Novo processo" do código antigo entre a migration e o deploy. Todos os chamadores são atualizados para a assinatura nova: `projects/actions.ts:35`, quatro testes de RLS e `rotas.test.ts:248` |
 | Marca de transação | `ganhar_negocio`, `reabrir_negocio` e `marcar_como_cliente` ligam `dulihub.via_ganho` e a desligam no fim (§3) |
 | Gatilho `ganho_so_pela_funcao` em `opportunities` | `before update`: mudar `status` para ou de `won`, ou o `stage_id` para ou de uma etapa de ganho, sem a marca `via_ganho`, é recusado, também na organização de teste: os testes usam as funções. Entra só na **migration B** (abaixo), depois que o código que usa as funções estiver no ar |
 | Gatilho do dono do negócio | `before update of owner_id`: só passa se quem chama é o dono atual ou a gestão |
@@ -666,14 +686,21 @@ quando os vistos entram.
   - `ganhar_negocio` e `reabrir_negocio`;
   - `update opportunities set status = 'won', stage_id = <ganho>` direto pela API;
   - `update opportunities set owner_id = auth.uid()`.
-- `delete` em `projects` pela API no processo-sentinela da Duli é recusado. Na
-  organização de teste, passa. Teste vermelho antes.
+- `delete` em `projects` pela API, na organização de teste, apaga **0 linhas** (a RLS
+  não tem policy de delete; o gatilho é a segunda camada). Apagar a pessoa
+  descartável leva o processo junto. Teste vermelho antes.
 - Mudar o preço do EB-1A nas Configurações não muda o item de uma oportunidade aberta.
 - Item em real de um visto com preço em dólar: o campo de valor vem em branco, e nada
   é convertido.
 - Negócio ganho há 40 dias não aparece na coluna Ganho do quadro. Aparece em
   Encerradas, e a busca pelo nome do contato o acha.
-- Excluir negócio ganho (fora da organização de teste) é recusado com frase.
+- Excluir negócio ganho é recusado com frase, também na organização de teste.
+- Excluir negócio aberto com link de pagamento aberto é recusado ("Cancele o link de
+  pagamento antes"). Depois de cancelar, a exclusão passa.
+- Apagar nas Configurações um tipo de visto usado num negócio ganho funciona: o item
+  fica sem visto e guarda o nome (`visa_name`).
+- `teste-staff` fazendo `update people set lifecycle_stage = 'client'` num lead é
+  recusado. A gestão consegue, e "Marcar como cliente" registra no histórico.
 - Depois da migration da fase 2, `sync_manifesto()` responde sem erro, e
   `tests/rls/sincronia.test.ts` passa.
 - Entre a migration A e o deploy, ganhar e reabrir pelo código antigo continuam
@@ -739,7 +766,8 @@ quando os vistos entram.
     editam direto, em qualquer estado.
 - **A prova.**
   - A resposta guarda a **cópia** do que o cliente viu (vistos, partes e parcelas,
-    **sem** a cotação), montada no banco a partir da forma **no estado `enviada`**.
+    **sem** a cotação), montada no banco a partir da forma **no estado `enviada`**
+    (ou `rascunho`, na confirmação pela equipe).
     Como uma forma enviada não se edita, o cliente confirma exatamente o que viu.
   - Respostas não se alteram nem se apagam (só a cascata da pessoa de teste passa).
   - Resposta só nasce pelas funções: a do cliente por `responder_forma_de_pagamento`
@@ -772,8 +800,8 @@ quando os vistos entram.
 | `payment_plans` | `id`, `organization_id`, `opportunity_id` (único: uma forma por negócio), `status` (`rascunho`, `enviada`, `confirmada` ou `recusada`), `reference_rate numeric(12,4)`, `reference_rate_note text`, `charges_created_at timestamptz`, `created_by`, `created_at`, `updated_at`. FK `(opportunity_id, organization_id)` → `opportunities`, com cascade. RLS de leitura: só membros (o cliente nunca lê). Escrita só pelas funções, com a marca `via_forma`; o gatilho deixa membros mudarem direto só `reference_rate` e `reference_rate_note`. Lápide |
 | `payment_plan_parts` | `id`, `organization_id`, `plan_id`, `position`, `label text`, `method` (o mesmo `check` de `installments.method`), `currency` (BRL ou USD), `total numeric(12,2) > 0`, `installments_count int` (de 1 a 36), `card_with_interest boolean`. `check`: com `method = 'cartao'`, sem juros vai até 10 e com juros até 18; nos outros métodos, `card_with_interest` é nulo. FK composta para o plano, com cascade. `updated_at`, lápide e gatilho de trava (lê o plano com `for share`) |
 | `payment_plan_installments` | `id`, `organization_id`, `part_id`, `number`, `amount numeric(12,2) > 0`, `due_on date`, `unique (part_id, number)`. No cartão, uma linha só. `updated_at`, lápide e a mesma trava |
-| `payment_plan_responses` | `id`, `organization_id`, `plan_id`, `registration_form_id`, `decision` (`confirmada`, `recusada` ou `confirmada_pela_equipe`), `reason text` (até 500), `snapshot jsonb not null`, `answered_at`, `answered_by`. `check`: quando a decisão é `confirmada_pela_equipe`, `answered_by` é obrigatório e `registration_form_id` é nulo; nas outras duas, o contrário. Gatilho `before insert`: sem a marca `via_forma`, recusa. Com a marca, confere o estado da forma (`enviada` para o cliente; `rascunho` ou `enviada` para a equipe) e, com usuário logado, força `decision = 'confirmada_pela_equipe'`, `answered_by = auth.uid()`, `registration_form_id = null` e `answered_at = now()` (defesa a mais). A cópia é sempre montada no banco, pela função. Update e delete são recusados; só a cascata passa (§3) |
-| `registration_forms` | Ganha `payment_plan_id` (FK composta, `on delete set null (payment_plan_id)`), `mode` (`completa` ou `so_pagamento`, padrão `completa`) e `closed_at`. A migration copia `closed_at = submitted_at` nas linhas que existem. O índice "um link aberto por pessoa" passa a valer onde `closed_at` e `cancelled_at` são nulos. `gerarLink` e `cancelarLink` (`cadastro/actions.ts:86`, `:119`) passam a olhar `closed_at`. Um gatilho congela `mode`, `closed_at` e `payment_plan_id` fora das funções (marca `via_ficha`; a policy de hoje deixa membros gravarem a linha inteira, 0035:150-153) e confere que a pessoa do link é a pessoa do negócio da forma |
+| `payment_plan_responses` | `id`, `organization_id`, `plan_id`, `registration_form_id`, `decision` (`confirmada`, `recusada` ou `confirmada_pela_equipe`), `reason text` (até 500), `snapshot jsonb not null`, `answered_at`, `answered_by`. A FK de `registration_form_id` fica com a ação padrão (`no action`): `set null` quebraria o `check` abaixo, e `restrict` poderia travar a limpeza da pessoa de teste. `check`: quando a decisão é `confirmada_pela_equipe`, `answered_by` é obrigatório e `registration_form_id` é nulo; nas outras duas, o contrário. Gatilho `before insert`: sem a marca `via_forma`, recusa. Com a marca, confere o estado da forma (`enviada` para o cliente; `rascunho` ou `enviada` para a equipe) e, com usuário logado, força `decision = 'confirmada_pela_equipe'`, `answered_by = auth.uid()`, `registration_form_id = null` e `answered_at = now()` (defesa a mais). A cópia é sempre montada no banco, pela função. Update e delete são recusados; só a cascata passa (§3) |
+| `registration_forms` | Ganha `payment_plan_id` (FK composta, `on delete set null (payment_plan_id)`), `mode` (`completa` ou `so_pagamento`, padrão `completa`) e `closed_at`. A migration copia `closed_at = submitted_at` nas linhas que existem **antes** de criar o gatilho de congelamento. O índice "um link aberto por pessoa" passa a valer onde `closed_at` e `cancelled_at` são nulos. `gerarLink` e `cancelarLink` (`cadastro/actions.ts:86`, `:119`) passam a olhar `closed_at`. Um gatilho congela `mode`, `closed_at` e `payment_plan_id` fora das funções (marca `via_ficha`; a policy de hoje deixa membros gravarem a linha inteira, 0035:150-153) e confere que a pessoa do link é a pessoa do negócio da forma. Na **inserção**, aceita sem a marca os valores padrão (`mode = 'completa'`, `closed_at` e `payment_plan_id` nulos), que é o que `gerarLink` e a fumaça (`rotas.test.ts:283`) gravam |
 | `receivables.payment_plan_part_id` | Único quando não nulo. FK composta, `on delete set null (payment_plan_part_id)` |
 | Token | Gerado no banco em **base64url** (`+` vira `-`, `/` vira `_`, sem `=`) a partir de 32 bytes aleatórios. É o formato que `publico-queries.ts:21` aceita |
 | `public.salvar_forma_de_pagamento(p_negocio uuid, p_forma jsonb)` | `security invoker`, numa transação, com a marca `via_forma`. Só em `rascunho`. **Mantém os ids** das partes que continuam, por `position`. Valida somas, limites e moedas. A organização vem do negócio |
@@ -781,7 +809,7 @@ quando os vistos entram.
 | `public.voltar_forma_para_rascunho(p_negocio uuid)` | `security invoker`, com as marcas. Cobre o "Editar" de uma forma enviada (cancela o link), o "Ajustar" de uma recusada, o "Refazer" de uma confirmada e o "Cancelar link". Recusa sempre que `charges_created_at` está preenchido |
 | `public.confirmar_forma_de_pagamento_pela_equipe(p_negocio uuid, p_observacao text)` | `security invoker`, com as marcas. Confere o CRM-10 e a forma completa. Vale a partir de `rascunho` ou de `enviada` (cancela o link aberto). Grava a resposta, com a cópia montada no banco, e põe a forma em `confirmada` |
 | `abrir_ficha_de_cadastro` (anônima) | `drop` + `create`, e depois `revoke … from public, anon, authenticated` e `grant … to anon`, como na 0035:432-433. Novas situações: `aberta`, `aguardando_pagamento` (dados enviados, pagamento pendente, ou modo `so_pagamento`), `respondida` e as de hoje. Devolve `modo` e `forma_de_pagamento jsonb` (vistos e partes com parcelas) **só** na situação `aguardando_pagamento`. **Nunca** devolve cotação, documento ou endereço. Pessoa na lixeira dá a situação de hoje (0035:411) |
-| `enviar_ficha_de_cadastro` (anônima) | Recusa o modo `so_pagamento`. No modo `completa` com forma, grava os dados e deixa o link aberto. Sem forma, fecha como hoje (`closed_at`) |
+| `enviar_ficha_de_cadastro` (anônima) | Liga e desliga a marca `via_ficha`. Recusa o modo `so_pagamento`. No modo `completa` com forma, grava os dados e deixa o link aberto. Sem forma, fecha como hoje (`closed_at`) |
 | `public.responder_forma_de_pagamento(p_token text, p_aceita boolean, p_motivo text)` (anônima, **nova**) | `security definer`, só `anon` executa, com as travas da 0035: o token é a única chave e a linha é travada antes de gravar. Liga as marcas `via_forma` e `via_ficha` e as desliga no fim. Exige `aguardando_pagamento`, a forma em `enviada` e a pessoa fora da lixeira. Monta a cópia **no banco**. Do navegador chegam só sim, não e o motivo (até 500 caracteres). Grava a resposta, muda a forma, registra no histórico e fecha o link |
 | `ganhar_negocio`, passo (7) | Com a marca `via_forma`. Só cria cobranças se `charges_created_at` é nulo, e o grava ao criar. Cria uma cobrança por parte, com a organização **da pessoa**: título "‹rótulo› — ‹vistos›", `amount` = total, a moeda da parte e `payment_plan_part_id`. As parcelas copiam as da forma, com o `method` da parte. No cartão, uma parcela com a anotação "Nx com/sem juros" |
 
