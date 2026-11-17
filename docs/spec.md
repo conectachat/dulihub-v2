@@ -564,6 +564,6 @@ um banco de teste resolve as três (Q13).
 | Saber que caiu | Monitor de fora em `/api/versao`, a cada 5 minutos, avisando o Renato (OPS-2, ⬜). Hoje a equipe descobre ao tentar usar |
 | Onde ver o que aconteceu | Easypanel → `app`: **Implantações** (montagem) e **Logs** (o app rodando) |
 | O app caiu | 1. Easypanel → `app` → reiniciar. 2. Se não voltar, `git revert` do último commit e `push`. 3. Se a VPS inteira caiu, o painel da Hostinger. 4. Se o problema for a casca guardada nos navegadores, `SW_DESLIGAR=1` no Ambiente do Easypanel e implantar de novo |
-| Certificado (HTTPS) | Let's Encrypt pelo Easypanel, renovado sozinho. O resolvedor de certificados do domínio precisa estar escrito `letsencrypt` |
+| Certificado (HTTPS) | Let's Encrypt pelo Easypanel, renovado sozinho. Domínio novo: primeiro o DNS apontando para a VPS, depois o domínio no Easypanel com o resolvedor **escrito** `letsencrypt` (o cinza é só sugestão). Se o certificado não sair (o navegador avisa "conexão não particular"), Configurações → Geral → Traefik → Reiniciar — foi o que destravou o `app.duliconsulting.com` em 17/nov, depois de uma tentativa que falhou enquanto o DNS ainda apontava para a Vercel |
 | Manutenção | Atualizar o Easypanel e o sistema da VPS, e limpar imagens antigas do Docker, uma vez por mês — Renato, com roteiro. Cópia da própria VPS (snapshot da Hostinger): a decidir |
 | Acesso | Quem entra na Hostinger, no Easypanel, no Supabase e no GitHub, e com verificação em duas etapas (Q15) |
