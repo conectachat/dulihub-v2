@@ -108,9 +108,9 @@ Lead entra → conversa → proposta → ficha → contrato → assinatura → G
 | 4 | O lead aceita → **ficha de cadastro** por link | Lead | `/cadastro/<token>` | ✅ |
 | 5 | **Contrato** gerado com os dados da ficha e a forma de pagamento | Renato | Tela do lead | ⬜ |
 | 6 | **Assinatura** (ZapSign) | Lead | Fora do app, volta por webhook | ⬜ |
-| 7 | **Ganho**: o lead vira cliente | Automático na assinatura, ou Renato | Tela do lead | 🟡 manual |
-| 8 | **Processo** criado a partir do tipo de visto | Renato | Perfil do cliente | ✅ |
-| 9 | **Cobrança** e parcelas | Renato | Perfil do cliente › Financeiro | ✅ |
+| 7 | **Ganho** com resumo: o lead vira cliente (a assinatura só oferece; o dono confirma — 17/nov) | Dono do negócio | Tela do lead | 🟡 manual, sem resumo |
+| 8 | **Processo** criado no Ganho, um por visto do negócio | Automático no Ganho | Clientes › Projetos | 🟡 hoje à mão, um de cada vez |
+| 9 | **Cobrança** e parcelas, da forma de pagamento confirmada na ficha | Automático no Ganho, ou à mão | Clientes › Financeiro | 🟡 hoje só à mão |
 | 10 | Cliente recebe acesso e envia documentos | Cliente | Portal | ⬜ Fase 6 |
 | 11 | Equipe revisa documentos, toca etapas, registra observações | Equipe | Processo | ✅ |
 | 12 | Tarefas do dia a dia | Equipe | Tarefas | ⬜ |
@@ -141,7 +141,8 @@ Lead entra → conversa → proposta → ficha → contrato → assinatura → G
 7. **Nada some sem aviso.** Exclusão diz o que vai junto; o que tem lixeira
    (contatos) pode ser restaurado. (Hoje mandar contato para a lixeira é um
    clique, sem confirmação — I8.)
-8. **Contato nunca é apagado de vez** (decisão de 6/nov). Pode ser editado,
+8. **Contato nunca é apagado de vez** (decisão de 6/nov). **Processo também
+   não** (17/nov): desistência é encerrar, nunca apagar (PRO-12). Pode ser editado,
    ir para a lixeira e voltar, ou ser mesclado com um duplicado — mas o banco
    não aceita apagar a linha, de ninguém. A única exceção é a organização de
    teste, para os testes limparem o que criam.
@@ -181,7 +182,8 @@ Dizer o que precisa de atenção hoje.
 | CON-1 | Lista, busca, filtro por tag, criar, editar | P0 | 🟡 — editar diz que salvou sem gravar (I7) |
 | CON-2 | Excluir com lixeira e restaurar; nunca apagar de vez (§6.8) | P0 | 🟡 — lixeira sem confirmação, e o caso do contato continua aparecendo (I8) |
 | CON-3 | Ficha enxuta para quem não é cliente; completa para cliente (ou para quem já tem processo/cobrança) | P0 | ✅ |
-| CON-4 | Aviso de contato duplicado (mesmo e-mail ou telefone) ao criar | P1 | ⬜ |
+| CON-4 | Aviso de contato já cadastrado (mesmo e-mail ou telefone, inclusive na lixeira) ao criar e ao editar: mostra quem e qual dado, pergunta "É a mesma pessoa?" e, no "não", "Criar outro contato?" (17/nov: sobe para P0) | P0 | ⬜ |
+| CON-8 | Nome, telefone (com DDI) e e-mail obrigatórios ao criar e editar contato; o contato pode existir sem oportunidade (17/nov) | P0 | ⬜ |
 | CON-5 | Histórico: notas, ligações, reuniões, movimentos do funil, ficha recebida | P0 | 🟡 — hora da atividade grava 3 h antes (I6) |
 | CON-6 | Mesclar dois contatos da mesma pessoa, levando negócios, processos, cobranças e histórico | P1 | ⬜ |
 | CON-7 | Pedido do titular (LGPD): exportar os dados da pessoa; e, a pedido, **anonimizar** — a linha fica (§6.8) e as cobranças também, mas nome vira "Titular removido" e saem e-mail, telefone, CPF, RG, passaporte, endereço, nascimento, dependentes, respostas da ficha e os arquivos dos depósitos | P1 | ⬜ — depende de Q17 |
@@ -195,11 +197,16 @@ Dizer o que precisa de atenção hoje.
 | CRM-3 | Ganho com confirmação; Perdido com motivo; reabrir | P0 | 🟡 — o quadro reabre um ganho sem perguntar (I3) |
 | CRM-4 | Etapas do funil configuráveis | P0 | ✅ |
 | CRM-5 | **Etapas automáticas**: ficha enviada, ficha recebida, contrato enviado — o negócio anda sozinho quando o fato acontece | P1 | ⬜ |
-| CRM-6 | Visto de interesse no negócio (escolhido dos tipos de visto) | P1 | ⬜ |
+| CRM-6 | Visto de interesse no negócio — substituído pelo CRM-13 (17/nov) | — | — |
 | CRM-7 | Mais de um funil | P2 | ⬜ (o banco já suporta) |
 | CRM-8 | Dias na etapa e previsão de fechamento | P2 | ⬜ (oferecido em 3/out, não escolhido) |
 | CRM-9 | Entrada automática de lead (agendamento, Calendly, formulário do site) | P1 | ⬜ — ver 7.12 |
-| CRM-10 | **Ganho e reabrir um ganho**: só o dono do negócio e a linha ascendente dele (decisão de 6/nov). Hoje qualquer pessoa da equipe consegue | P0 | ⬜ — depende de Q10 |
+| CRM-10 | **Ganho e reabrir um ganho** (critério de aceite deste e de CRM-11 a CRM-15, CON-4, CON-8, PRO-12: `docs/superpowers/specs/2026-11-17-contato-oportunidade-cliente-design.md`): só o dono do negócio e a linha ascendente dele (decisão de 6/nov). Hoje qualquer pessoa da equipe consegue. Até a Q10, a gestão (`owner`/`admin`) faz o papel da linha ascendente | P0 | ⬜ |
+| CRM-11 | Nova oportunidade com "contato existente" ou "novo contato" no mesmo formulário, numa gravação só | P0 | ⬜ |
+| CRM-12 | Aviso de oportunidade já existente para o contato (título, situação, data de criação), com confirmação para criar outra | P0 | ⬜ |
+| CRM-13 | Um ou mais **vistos** do catálogo na oportunidade, cada um com valor e moeda sugeridos do visto e gravados no item; total por moeda | P0 | ⬜ |
+| CRM-14 | **Ganho com resumo** (vistos, valores, forma de pagamento, o que vai acontecer) e, só após confirmar, numa gravação só: ganho, histórico, cliente, dono, **um processo por visto** e as cobranças | P0 | ⬜ |
+| CRM-15 | Reabrir um ganho pede confirmação também no quadro (I3); ganhar de novo não duplica processo nem cobrança | P0 | ⬜ |
 
 ### 7.4 Ficha de cadastro (lead, sem login)
 
@@ -211,6 +218,13 @@ Dizer o que precisa de atenção hoje.
 | FIC-4 | Enviar pelo WhatsApp com a mensagem pronta | P0 | ✅ |
 | FIC-5 | Rascunho: o lead pode parar e voltar sem perder o que digitou | P1 | ⬜ |
 | FIC-6 | Endereço preenchido pelo CEP | P2 | ⬜ |
+| FIC-7 | **Enviar ficha** pela oportunidade abre a **forma de pagamento** (cartão até 10x sem juros / 18x com juros, parcelas iguais, entrada + parcelas, à vista; cada parte na sua moeda, com as datas), resumo e confirmação antes do link | P0 | ⬜ |
+| FIC-8 | O cliente, depois dos dados pessoais, **confirma** a forma de pagamento ou diz **o que está errado** | P0 | ⬜ |
+| FIC-9 | Recusada: o dono ajusta e reenvia; o link novo abre direto no pagamento, sem mostrar de novo os dados pessoais | P0 | ⬜ |
+| FIC-10 | Confirmação da forma de pagamento pela equipe, registrando quem | P0 | ⬜ |
+| FIC-11 | Cotação usada (C6) anotada na forma de pagamento; só a equipe vê | P1 | ⬜ |
+
+Critério de aceite de FIC-7 a FIC-11: `docs/superpowers/specs/2026-11-17-contato-oportunidade-cliente-design.md` §6.4.
 
 ### 7.5 Contrato e assinatura — **próximo**
 
@@ -222,7 +236,7 @@ assinatura e trazer o resultado de volta.
 | CTR-1 | Na tela do lead, **Gerar contrato**: o modelo da Duli preenchido com os dados da ficha (nome, CPF, RG, estado civil, nacionalidade, endereço) | P0 | ⬜ |
 | CTR-2 | Forma de pagamento escolhida na hora (valor, moeda, entrada, nº de parcelas, vencimentos), e a mesma condição vira a cobrança depois do Ganho — sem redigitar | P0 | ⬜ |
 | CTR-3 | Enviar ao ZapSign; o negócio registra "contrato enviado" (data e link), exista ou não uma etapa com esse nome no funil | P0 | ⬜ |
-| CTR-4 | Assinado → o PDF assinado fica no lead/cliente, o histórico registra, e o Ganho é oferecido ou feito sozinho, conforme Q3 | P0 | ⬜ |
+| CTR-4 | Assinado → o PDF assinado fica no lead/cliente, o histórico registra, e o Ganho é **oferecido** ao dono, que confirma pelo resumo do CRM-14 (Q3, decidida em 17/nov) | P0 | ⬜ |
 | CTR-5 | Recusado ou expirado → avisa na Início, o negócio continua no funil | P1 | ⬜ |
 | CTR-6 | Mais de um modelo de contrato (por tipo de visto) | P2 | ⬜ |
 
@@ -244,7 +258,7 @@ Critério de aceite (CTR-1 a CTR-4):
   Corrigir os três antes ou dentro do 7.5.
 - Nenhum dado de cliente é digitado pela equipe entre a ficha e o contrato.
 
-Dúvidas que bloqueiam este módulo estão em §10 (Q1–Q4 e Q14).
+Dúvidas que bloqueiam este módulo estão em §10 (Q1, Q2, Q4 e Q14; a Q3 foi decidida em 17/nov).
 
 ### 7.6 Processos
 
@@ -261,6 +275,7 @@ Dúvidas que bloqueiam este módulo estão em §10 (Q1–Q4 e Q14).
 | PRO-9 | Fila única de documentos esperando revisão, de todos os processos | P1 | ⬜ (vira P0 com o portal) |
 | PRO-10 | Etapa-mãe concluída sozinha quando todas as filhas concluem | P2 | ⬜ |
 | PRO-11 | Link do Google Drive do caso | P2 | ⬜ |
+| PRO-12 | **Processo nunca é apagado**, por ninguém (o banco recusa; exceção só na organização de teste). Desistência = encerrado (17/nov) | P0 | ⬜ |
 
 ### 7.7 Financeiro — a receber
 
@@ -270,8 +285,8 @@ Dúvidas que bloqueiam este módulo estão em §10 (Q1–Q4 e Q14).
 | REC-2 | Parcelas geradas sem perder centavo; baixa com data e cotação | P0 | 🟡 — entrada negativa gera parcela negativa (I20) |
 | REC-3 | Lista com filtros (vencidas, a vencer, pagas) e números do mês | P0 | ✅ |
 | REC-4 | Funciona sem internet | P0 | 🟡 — sem o prazo de 14 dias (I19), "Nenhuma cobrança" antes de baixar (I26), e os defeitos da fila (I17, I21, I23) |
-| REC-5 | Anexar boleto e nota fiscal à parcela | P1 | ⬜ |
-| REC-6 | Cobrança criada a partir do contrato assinado (CTR-2) | P0 | ⬜ |
+| REC-5 | Anexar boleto e nota fiscal à parcela — vira o CLI-6 (17/nov) | P1 | ⬜ |
+| REC-6 | Cobranças criadas no Ganho a partir da forma de pagamento confirmada, uma por parte, sem duplicar (17/nov; antes dependia do contrato, CTR-2) | P0 | ⬜ |
 | REC-7 | Boleto do Itaú e link do C6 emitidos pelo app | P2 | ⬜ — depende das credenciais |
 | REC-8 | Nota fiscal emitida pelo app | P2 | ⬜ — depende do provedor |
 | REC-9 | Cotação do dólar sugerida automaticamente (Banco Central), sempre corrigível | P2 | ⬜ |
@@ -365,6 +380,30 @@ pode mudar (CPF, RG, vínculo).
 | PAR-2 | Cliente do parceiro vê a marca do parceiro | P0 da fase | ⬜ |
 | PAR-3 | Financeiro em dois lados: o que o parceiro cobra do cliente (dele) e o que a Duli cobra do parceiro (da Duli) | P0 da fase | ⬜ |
 
+### 7.16 Clientes (desenhado em 17/nov)
+
+Ver os clientes separados de quem nunca fechou, com tudo de cada um num lugar
+só. Cliente é a mesma linha de `people` (§6.1), com estágio `client`; a tela é
+que é própria. Desenho técnico e critério de aceite de cada requisito:
+`docs/superpowers/specs/2026-11-17-contato-oportunidade-cliente-design.md`
+(§6.2; entregas 1, 3 e 4 nos §6.1, §6.3 e §6.4).
+
+| ID | Requisito | Pri. | Estado |
+|---|---|---|---|
+| CLI-1 | Item **Clientes** no menu, abaixo do CRM: lista com nome, e-mail, telefone, dono, cliente desde e **Abrir**; busca por nome, e-mail ou telefone; sem corte silencioso | P0 | ⬜ |
+| CLI-2 | Perfil do cliente: cabeçalho numa linha e abas Dados cadastrais, Financeiro, Projetos, Documentos, Notas | P0 | ⬜ |
+| CLI-3 | Copiar telefone e e-mail com um clique | P0 | ⬜ |
+| CLI-4 | Dados cadastrais: a ficha inteira (contratante, endereço, dependentes) e a situação do link | P0 | ⬜ |
+| CLI-5 | Financeiro: cobranças, totais por moeda (contratado, pago, saldo devedor, vencido), parcelas, baixa, cobrança manual | P0 | ⬜ |
+| CLI-6 | Anexar boleto, nota fiscal e comprovante à parcela (era o REC-5) | P1 | ⬜ |
+| CLI-7 | Projetos: os processos do cliente, com andamento; clicar abre o processo | P0 | ⬜ |
+| CLI-8 | Documentos do cliente por categoria (identidade, passaporte, comprovante de residência, contrato, outro); os do processo ficam no processo | P0 | ⬜ |
+| CLI-9 | Notas e histórico desde a fase de lead; quem tem acesso ao cliente lê e escreve, **o cliente nunca lê** | P0 | ⬜ |
+| CLI-10 | Dono e participantes do cliente e da oportunidade; o cliente herda no Ganho. Por ora só marcam quem cuida — não restringem quem vê | P1 | ⬜ |
+| CLI-11 | Cliente desde: gravado no primeiro Ganho, editável para os antigos | P0 | ⬜ |
+| CLI-12 | Marcar como cliente à mão (clientes antigos; contato com processo) | P0 | ⬜ |
+| CLI-13 | Cliente não volta a ser lead, garantido no banco (fecha o M17) | P0 | ⬜ |
+
 ---
 
 ## 8. Requisitos não funcionais
@@ -408,7 +447,6 @@ e cada pessoa da equipe define a sua senha.
 |---|---|---|---|
 | Q1 | O modelo do contrato: quais campos variam além dos dados do cliente e da forma de pagamento? (visto, valor por extenso, foro, testemunhas…) | Renato | 7.5 |
 | Q2 | O contrato é um modelo dentro do ZapSign ou um documento nosso que o app gera em PDF? | Renato + engenharia | 7.5 |
-| Q3 | Assinado o contrato, o Ganho deve ser **automático** ou só **oferecido**? Se automático: em nome de quem o Ganho é registrado, já que o CRM-10 só permite ao dono do negócio e à linha ascendente, e o aviso do ZapSign não tem usuário (Q14)? | Renato | 7.5 |
 | Q4 | Quem mais assina além do cliente (Duli, testemunhas, cônjuge)? | Renato | 7.5 |
 | Q5 | Quais integrações resolvem um problema real da equipe hoje — agenda, e-mail, n8n? | Renato | 7.12, §9 |
 | Q6 | Quantas pessoas da equipe usam o app, e com que papel? | Renato | 7.10 |
@@ -434,6 +472,14 @@ e cada pessoa da equipe define a sua senha.
 | 6/nov | Sem banco separado para testes: eles rodam no banco de produção, só com as contas de teste e na organização de teste (revista em 16/nov — Q13) |
 | 16/nov | A hospedagem sai da Vercel e vai para uma VPS da Hostinger (Easypanel); o banco continua no Supabase (§12) |
 | 16/nov | O banco de teste foi querido, mas adiado: as duas vagas gratuitas do Supabase estão ocupadas (§12.6, Q13) |
+| 17/nov | Q3: assinado o contrato, o Ganho é só **oferecido**; o dono confirma. Automático, só quando o fluxo inteiro estiver funcionando |
+| 17/nov | Clientes com item próprio no menu e perfil em abas (7.16). Documentos do processo ficam no processo |
+| 17/nov | Nome, telefone e e-mail obrigatórios em todo contato; aviso de contato e de oportunidade já existentes (CON-4, CON-8, CRM-12) |
+| 17/nov | Oportunidade com vários vistos; o Ganho cria um processo por visto, com resumo antes (CRM-13, CRM-14) |
+| 17/nov | Processo nunca é apagado (§6.8, PRO-12) |
+| 17/nov | Forma de pagamento definida ao enviar a ficha, confirmada pelo cliente no formulário; cada parte na sua moeda, sem conversão pelo app (FIC-7 a FIC-11) |
+| 17/nov | Dono e participantes só marcam quem cuida; não restringem quem vê (CLI-10) |
+| 17/nov | Notas: o cliente nunca lê; quem tem acesso ao cliente lê e escreve (CLI-9) |
 
 ## 11. Ordem proposta
 
