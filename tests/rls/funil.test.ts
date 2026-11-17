@@ -27,6 +27,8 @@ describe("funil: mover, ganhar e perder", () => {
   let pessoaId: string;
   let negocioId: string;
   let meio: EtapaDeDestino;
+  let funilId: string;
+  let ganhoId: string;
 
   const negocio = () =>
     parceiro
@@ -72,6 +74,8 @@ describe("funil: mover, ganhar e perder", () => {
       .sort((a, b) => a.position - b.position)[0];
     if (!doMeio) throw new Error("O funil do parceiro não tem etapa aberta.");
     meio = doMeio;
+    funilId = funil.id;
+    ganhoId = etapas.find((e) => e.is_won)!.id;
 
     const { data: pessoa, error: erroPessoa } = await parceiro
       .from("people")
@@ -179,5 +183,43 @@ describe("funil: mover, ganhar e perder", () => {
 
     expect((await negocio()).data?.status).toBe("open");
     expect(await estagio()).toBe("client");
+  });
+
+  it("negócio novo não nasce ganho — nem pela API (G5)", async () => {
+    // Nascer em Ganho pulava a confirmação e o histórico, e fazia cliente.
+    const resposta = await parceiro
+      .from("opportunities")
+      .insert({
+        organization_id: orgParceiro,
+        person_id: pessoaId,
+        pipeline_id: funilId,
+        stage_id: ganhoId,
+        title: "Negócio que tenta nascer ganho",
+        status: "won",
+        closed_at: new Date().toISOString(),
+      })
+      .select("id");
+
+    expect(resposta.error?.code).toBe("23514");
+  });
+
+  it("nem em etapa terminal com status aberto, nem em Perdido", async () => {
+    const perdido = (
+      await parceiro.from("pipeline_stages").select("id").eq("pipeline_id", funilId).eq("is_lost", true).single()
+    ).data!.id;
+
+    for (const stage_id of [ganhoId, perdido]) {
+      const resposta = await parceiro
+        .from("opportunities")
+        .insert({
+          organization_id: orgParceiro,
+          person_id: pessoaId,
+          pipeline_id: funilId,
+          stage_id,
+          title: "Negócio que tenta nascer fechado",
+        })
+        .select("id");
+      expect(resposta.error?.code).toBe("23514");
+    }
   });
 });

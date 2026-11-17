@@ -51,10 +51,10 @@ ela. **Esforço:** P pequeno (horas) · M médio (um dia) · G grande (vários d
 | # | Commit | Estado |
 |---|---|---|
 | G1 | `5791391` (migration 0036) | Corrigido |
-| G2 | `5791391` (0036) | Corrigido na edição. **Pendente:** 0037 fecha a mesma brecha na criação (contato já nascendo atribuído a outra organização) e a marca de teste na criação; escrita e testada, aguardando acesso ao banco |
+| G2 | `5791391` (0036) | Corrigido na edição. Na criação (contato já nascendo atribuído a outra organização, e a marca de teste), pela 0037, aplicada em 17/nov |
 | G3 | `ddea80d` | Corrigido. Nenhuma parcela tinha cotação gravada: nada a consertar nos dados |
 | G4 | `0e007ab` | Corrigido |
-| G5 | `f82f91f` | Corrigido na tela e no servidor. **Pendente:** 0038, a mesma regra no banco; escrita e testada, aguardando acesso ao banco |
+| G5 | `f82f91f` | Corrigido na tela e no servidor; no banco, pela 0038, aplicada em 17/nov |
 | G6 | `cfc81df`, `13738aa` | Corrigido. A revisão de confirmação achou que "todo 5xx espera" travava a fila numa recusa de verdade; corrigido em `13738aa` |
 | G7 | `1b912f7` | Corrigido |
 | G8 | `def4eb0`, `13738aa` | Corrigido. Rede ruim mostra "Sem conexão", não "Entre de novo" (`13738aa`) |

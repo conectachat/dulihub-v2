@@ -75,7 +75,7 @@ na tela (ver §6).
 | O2 | **Fechar o mês sem planilha** | Um mês inteiro de entradas e saídas lançado e conferido no app | Não — falta a pagar e fluxo de caixa |
 | O3 | **Dado digitado uma vez** | Do lead ao contrato assinado, nenhum dado do cliente é redigitado pela equipe | Em parte — a ficha já chega preenchida; o contrato ainda é montado à mão |
 | O4 | **Nenhum prazo perdido sem aviso** | RFE aparece 30 dias antes (vermelho nos últimos 7); parcela, pasta obrigatória e etapa aparecem no dia seguinte ao vencimento; processo encerrado e contato na lixeira não geram alerta | Em parte — processo encerrado (I5) e contato na lixeira (I8) ainda alertam |
-| O5 | **Nenhum dado fora da organização** | Suíte de RLS passando a cada mudança; zero acesso cruzado | Em parte — migration 0037 não aplicada; ligações sem organização (N1); testes que podem passar sem provar (I15) |
+| O5 | **Nenhum dado fora da organização** | Suíte de RLS passando a cada mudança; zero acesso cruzado | Em parte — ligações sem organização (N1); testes que podem passar sem provar (I15) |
 
 Metas numéricas (tempo do lead ao contrato, % de fichas preenchidas pelo
 cliente) estão nas perguntas em aberto (§10): o app ainda não mede nada disso.
@@ -422,7 +422,7 @@ que é própria. Desenho técnico e critério de aceite de cada requisito:
 | Desempenho | Telas abrem em até ~2 s com os dados atuais (76 contatos, dezenas de processos) |
 | Custo | Plano gratuito do Supabase enquanto couber e uma VPS de custo fixo (Hostinger); arquivos de cliente não são copiados para todo aparelho |
 | Dono dos dados | Banco, domínio e contas em nome da Duli — nada que dependa de conta de terceiro |
-| Cópia de segurança | **OPS-1** (P0, ⬜): cópia diária do banco **e de todos os depósitos de arquivos** (hoje `documentos` e `observacoes`; `pessoas` e `financeiro` quando o 7.16 os criar — o PDF do contrato mora em `pessoas`), cifrada, guardada fora do Supabase e fora da VPS; aviso ao Renato se a cópia de um dia falhar; restauração testada uma vez por mês num Supabase vazio — local, pela linha de comando, enquanto não houver vaga de projeto (Q13) —, com data e tempo anotados. A cópia é a única tarefa automática que usa a senha do banco e a chave mestra. Onde a cópia roda, onde moram a senha do banco e a chave mestra que ela usa, e onde fica a chave da cifra (nunca junto da cópia, e recuperável se a VPS ou o Supabase se perderem) ainda não está decidido: entra em §12.5 (linha da tarefa) e em §12.1 (Variáveis e segredos) quando o OPS-1 for desenhado; inventário na Q15. Aceite: dado o banco de ontem, quando a restauração roda num Supabase vazio (local ou projeto), então os contatos, as cobranças e um passaporte escolhido ao acaso abrem iguais aos de produção. **Hoje não existe cópia nenhuma** (plano gratuito) |
+| Cópia de segurança | **OPS-1** (P0, ⬜): cópia diária do banco **e de todos os depósitos de arquivos** (hoje `documentos` e `observacoes`; `pessoas` e `financeiro` quando o 7.16 os criar — o PDF do contrato mora em `pessoas`), cifrada, guardada fora do Supabase e fora da VPS; aviso ao Renato se a cópia de um dia falhar; restauração testada uma vez por mês num Supabase vazio — local, pela linha de comando, enquanto não houver vaga de projeto (Q13) —, com data e tempo anotados. A cópia é a única tarefa automática que usa a senha do banco e a chave mestra. Onde a cópia roda, onde moram a senha do banco e a chave mestra que ela usa, e onde fica a chave da cifra (nunca junto da cópia, e recuperável se a VPS ou o Supabase se perderem) ainda não está decidido: entra em §12.5 (linha da tarefa) e em §12.1 (Variáveis e segredos) quando o OPS-1 for desenhado; inventário na Q15. Aceite: dado o banco de ontem, quando a restauração roda num Supabase vazio (local ou projeto), então os contatos, as cobranças e um passaporte escolhido ao acaso abrem iguais aos de produção. **Hoje não existe cópia automática** (plano gratuito): só a manual de 17/nov, feita pelo Renato antes da 0037 (`pg_dump`, cifrada com 7-Zip) |
 | Operação | **OPS-2** (P0, ⬜): um monitor de fora confere `app.duliconsulting.com/api/versao` a cada 5 minutos e avisa o Renato se cair (vê o app, não o banco); o roteiro "o app caiu" está em §12.8 |
 | Registro de quem fez o quê | **AUD-1** (P1, ⬜): quem criou, alterou ou apagou cobrança e parcela, e quem aprovou ou recusou documento, guardado num registro que ninguém edita |
 
@@ -433,7 +433,7 @@ inteiro no DuliHub.
 
 | Precisa estar pronto | Módulo |
 |---|---|
-| Tudo marcado ✅ acima, **sem defeito Grave ou Importante aberto** em `docs/revisao-2026-11.md`, e as migrations 0037 e 0038 aplicadas | — |
+| Tudo marcado ✅ acima, **sem defeito Grave ou Importante aberto** em `docs/revisao-2026-11.md` | — |
 | Cópia de segurança diária com restauração testada (OPS-1) e monitor de queda (OPS-2) | §8 |
 | Contrato e assinatura | 7.5 |
 | A pagar, despesas e fluxo de caixa | 7.8 |
@@ -553,7 +553,7 @@ GitHub ──envio no main──▶ Easypanel monta o Dockerfile ──▶ app n
 
 | Camada | O que garante | Exemplo |
 |---|---|---|
-| **Banco** (RLS, chaves compostas, gatilhos) | O que **não pode** acontecer, venha o pedido de onde vier | Uma organização não lê a outra; contato não muda de organização; contato não é apagado de vez; negócio não nasce ganho (migration 0038, ainda não aplicada) |
+| **Banco** (RLS, chaves compostas, gatilhos) | O que **não pode** acontecer, venha o pedido de onde vier | Uma organização não lê a outra; contato não muda de organização; contato não é apagado de vez; negócio não nasce ganho (migration 0038) |
 | **Regras puras** (`src/features/<domínio>/regras.ts`) | As contas e decisões do negócio, testadas sem banco | Parcelas que fecham no centavo; para onde o cartão vai ao ser solto |
 | **Telas** | Só desenham e pedem | — |
 

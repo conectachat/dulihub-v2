@@ -9,10 +9,8 @@ precisar ler 38 migrations para responder "onde está X e quem pode tocar".
 resumo delas; se divergir, a migration vence e este arquivo está errado.
 **Toda migration atualiza este arquivo no mesmo commit.**
 
-Situação: 0001 a 0036 aplicadas. **0037 e 0038 estão escritas e ainda não
-aplicadas** — o que vem só delas aparece marcado "(0037/0038, ainda não
-aplicada)". Colunas atuais: `src/lib/supabase/database.types.ts` (gerado, não
-se edita à mão).
+Situação: 0001 a 0038 aplicadas. Colunas atuais:
+`src/lib/supabase/database.types.ts` (gerado, não se edita à mão).
 
 ---
 
@@ -52,7 +50,7 @@ Funções de gatilho (ninguém chama direto): `set_updated_at`, `handle_new_user
 `protect_terminal_stages`, `protect_system_statuses`, `seed_organization` /
 `seed_new_organization`, `processo_do_mesmo_contato`,
 `pasta_so_resolve_aprovada`, `arquivo_pendente_reabre_pasta`, `marcar_lapide`,
-`negocio_nasce_aberto` (0038, ainda não aplicada). Agendada:
+`negocio_nasce_aberto` (0038). Agendada:
 `limpar_lapides` (§2.7).
 
 ---
@@ -69,7 +67,7 @@ Legenda de "quem": **membros** = qualquer membro da organização da linha;
 
 | Tabela | Para que serve | Pai / organização vem de | Quem lê | Quem grava | Regras especiais |
 |---|---|---|---|---|---|
-| `organizations` | A Duli (raiz) e cada parceiro, com marca e dados fiscais. `is_test` marca a organização dos testes. | É a própria. | Membros dela; **qualquer membro da Duli** lê todas. | Criar: dono da raiz. Alterar: gestão dela ou dono da raiz. Apagar: ninguém (sem policy). | Uma raiz só (índice). Ao nascer, gatilho semeia funil padrão (Novo Lead / Ganho / Perdido) e os três status de etapa (0019). `type` e `is_test` não mudam pela API (0036); nascer já `is_test` pela API é recusado (0037, ainda não aplicada). |
+| `organizations` | A Duli (raiz) e cada parceiro, com marca e dados fiscais. `is_test` marca a organização dos testes. | É a própria. | Membros dela; **qualquer membro da Duli** lê todas. | Criar: dono da raiz. Alterar: gestão dela ou dono da raiz. Apagar: ninguém (sem policy). | Uma raiz só (índice). Ao nascer, gatilho semeia funil padrão (Novo Lead / Ganho / Perdido) e os três status de etapa (0019). `type` e `is_test` não mudam pela API (0036); nascer já `is_test` pela API é recusado (0037). |
 | `profiles` | Espelho de `auth.users`: nome, e-mail, foto, telefone. | Usuário (`id` = `auth.users.id`). | O próprio e colegas de alguma organização em comum. | Criar: gatilho `handle_new_user`. Alterar: só o próprio. Apagar: ninguém pela API (cascade de `auth.users`). | Não vai ao espelho offline (`AGENTS.md`). |
 | `organization_members` | Quem trabalha em qual organização, e com que papel. Cliente não entra aqui. | `organization_id`. | Membros da mesma organização; qualquer membro da Duli lê todas. | Gestão da organização ou dono da raiz. | Gatilho `organization_members_guarda` (0036): ninguém altera nem remove a própria linha, nem se associa sozinho (exceto dono da raiz); linha não muda de pessoa nem de organização; só dono (daquela organização ou da raiz) cria, altera ou remove um `owner`. Único `(organization_id, user_id)`. |
 
@@ -77,7 +75,7 @@ Legenda de "quem": **membros** = qualquer membro da organização da linha;
 
 | Tabela | Para que serve | Pai / organização vem de | Quem lê | Quem grava | Regras especiais |
 |---|---|---|---|---|---|
-| `people` | Cadastro único da pessoa: contato, lead e cliente são a mesma linha com `lifecycle_stage`. Dados da ficha, endereço, documentos. `deleted_at` = lixeira. | `organization_id` próprio (quem trouxe a pessoa); `assigned_organization_id` = organização atribuída. | Membros; atribuída; cliente. | Criar: membros. Alterar: membros e atribuída; o cliente altera o próprio, com colunas travadas. Apagar de vez: só gestão **e** só em organização `is_test` (0036). | `people_guard_self_update`: no portal, o cliente não muda organização, atribuída, estágio, `user_id`, CPF, RG, órgão, `created_by`, `deleted_at`. `people_organizacao_fixa`: `organization_id` nunca muda; `assigned_organization_id` só muda por gestão da dona ou dono da raiz (0036); a mesma regra vale ao **criar** já atribuído (0037, ainda não aplicada). Um login por pessoa; `legacy_id` único por organização. |
+| `people` | Cadastro único da pessoa: contato, lead e cliente são a mesma linha com `lifecycle_stage`. Dados da ficha, endereço, documentos. `deleted_at` = lixeira. | `organization_id` próprio (quem trouxe a pessoa); `assigned_organization_id` = organização atribuída. | Membros; atribuída; cliente. | Criar: membros. Alterar: membros e atribuída; o cliente altera o próprio, com colunas travadas. Apagar de vez: só gestão **e** só em organização `is_test` (0036). | `people_guard_self_update`: no portal, o cliente não muda organização, atribuída, estágio, `user_id`, CPF, RG, órgão, `created_by`, `deleted_at`. `people_organizacao_fixa`: `organization_id` nunca muda; `assigned_organization_id` só muda por gestão da dona ou dono da raiz (0036); a mesma regra vale ao **criar** já atribuído (0037). Um login por pessoa; `legacy_id` único por organização. |
 | `tags` | Etiquetas da organização. | `organization_id` próprio. | Membros. | Gestão (0018). | Nome único por organização, sem diferenciar maiúscula. |
 | `person_tags` | Etiqueta aplicada a uma pessoa. | Da pessoa; chave composta amarra pessoa **e** tag à mesma organização. | Quem alcança a pessoa (`can_access_person`: membros, atribuída, cliente). | Membros. | Chave é o par `(person_id, tag_id)`, sem `id`: **sem lápide** (0029b) — o espelho relê inteira. `guard_child_row` congela vínculo se quem edita não é da organização. |
 | `person_dependents` | Cônjuge e filhos do contratante, para os formulários americanos. | Da pessoa. | Quem alcança a pessoa. | Membros (na prática, via `salvar_cadastro`). | `relationship` ∈ spouse/child/other; nome e país obrigatórios; no máximo 10 por ficha (regra da função). Fora do manifesto por ora. |
@@ -92,7 +90,7 @@ Legenda de "quem": **membros** = qualquer membro da organização da linha;
 |---|---|---|---|---|---|
 | `pipelines` | Funis de venda. | `organization_id` próprio. | Membros. | Gestão (0018). | Um funil padrão por organização. Semeado ao criar a organização. |
 | `pipeline_stages` | Colunas do funil. | Do funil (coluna desde 0027). | Membros. | Gestão. | Uma etapa de ganho e uma de perda por funil, nunca as duas na mesma; ganho/perda **não se apagam**, só se renomeiam (0005). `probability` 0–100. |
-| `opportunities` | Negócio de uma pessoa (a pessoa pode ter vários). Valor, moeda, etapa, status open/won/lost. | Da pessoa; funil da mesma organização; etapa do mesmo funil. | Quem alcança a pessoa — inclui cliente e atribuída. | Membros (0017). | Encerrado ⇔ tem `closed_at`. `guard_child_row`. Nasce sempre aberto e em etapa não terminal; ganhar/perder é mover (0038, ainda não aplicada). |
+| `opportunities` | Negócio de uma pessoa (a pessoa pode ter vários). Valor, moeda, etapa, status open/won/lost. | Da pessoa; funil da mesma organização; etapa do mesmo funil. | Quem alcança a pessoa — inclui cliente e atribuída. | Membros (0017). | Encerrado ⇔ tem `closed_at`. `guard_child_row`. Nasce sempre aberto e em etapa não terminal; ganhar/perder é mover (0038). |
 | `products` | Catálogo de produtos/serviços da organização. | `organization_id` próprio. | Membros. | **Membros** (policy da 0004, não passou pela 0018). | Produto usado num negócio não pode ser apagado (FK sem cascade). |
 | `opportunity_products` | Produto dentro de um negócio, com o preço da negociação congelado. | Do negócio (coluna desde 0027). | Quem alcança o negócio (`can_access_opportunity`). | **Também `can_access_opportunity`** — inclui o cliente (ver §7). | `product_id` é FK simples, sem organização. |
 
@@ -201,10 +199,10 @@ Só um uso: a edição simultânea das Observações (0024).
 
 | Tabela / objeto | Migrations |
 |---|---|
-| `organizations` | 0001, 0002 (Duli), 0003, 0015 (organização de teste), 0019 (semente), 0036, 0037\* |
+| `organizations` | 0001, 0002 (Duli), 0003, 0015 (organização de teste), 0019 (semente), 0036, 0037 |
 | `profiles` | 0001, 0003, 0013 (`handle_new_user`) |
 | `organization_members` | 0001, 0002, 0003, 0028, 0029, 0036 |
-| `people` | 0001, 0003, 0006, 0007, 0013, 0016, 0029, 0036, 0037\* |
+| `people` | 0001, 0003, 0006, 0007, 0013, 0016, 0029, 0036, 0037 |
 | `tags` | 0004, 0016, 0018, 0028, 0029 |
 | `person_tags` | 0004, 0016, 0017, 0028, 0029b |
 | `person_dependents`, `registration_forms` | 0035 |
@@ -212,7 +210,7 @@ Só um uso: a edição simultânea das Observações (0024).
 | `activities`, `files` | 0004, 0016, 0017, 0028, 0029 |
 | `pipelines` | 0004, 0005, 0016, 0018, 0019, 0029 |
 | `pipeline_stages` | 0004, 0005, 0009, 0016, 0018, 0019, 0027, 0028, 0029 |
-| `opportunities` | 0004, 0016, 0017, 0020, 0022, 0029, 0038\* |
+| `opportunities` | 0004, 0016, 0017, 0020, 0022, 0029, 0038 |
 | `products` | 0004, 0029 |
 | `opportunity_products` | 0004, 0027, 0028, 0029 |
 | `document_types` | 0008, 0011, 0016, 0018, 0029 |
@@ -233,8 +231,6 @@ Só um uso: a edição simultânea das Observações (0024).
 | Storage | `documentos` 0020; `observacoes` 0024 |
 | Tempo real | 0024 |
 | Dados de teste | 0015, 0021 (organização `parceiro-teste`, `is_test` desde 0036) |
-
-\* ainda não aplicada.
 
 ---
 

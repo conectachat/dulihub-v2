@@ -181,15 +181,14 @@ describe("o papel decide, não a associação", () => {
       expect(recusou(resposta)).toBe(true);
     });
 
-    it("a organização atribuída não toma o contato para si", async () => {
-      // Se o passo anterior tiver passado (versão antiga), o parceiro já
-      // enxerga o contato; aqui tenta levá-lo.
-      const resposta = await parceiro
+    it("colaborador não cria contato já atribuído a um parceiro", async () => {
+      // Sem nome de propósito: se a regra deixasse passar, a restrição de
+      // nome obrigatório recusaria (23502) e nada ficaria na carteira.
+      const resposta = await staff
         .from("people")
-        .update({ organization_id: parceiraId })
-        .eq("id", permanenteId)
+        .insert({ organization_id: duliId, assigned_organization_id: parceiraId } as never)
         .select("id");
-      expect(recusou(resposta)).toBe(true);
+      expect(resposta.error?.code).toBe("42501");
     });
 
     it("o dono não muda a organização do próprio contato, nem sem histórico", async () => {
@@ -200,12 +199,17 @@ describe("o papel decide, não a associação", () => {
         .single();
       contatoDoParceiro = data!.id;
 
+      // A troca vem junto com a atribuição à própria organização: assim a
+      // linha nova passa na policy (pela coluna atribuída) e só o gatilho a
+      // barra. Trocar só a organização seria recusado pela policy sozinha, e
+      // o teste não provaria nada sobre o gatilho.
       const resposta = await parceiro
         .from("people")
-        .update({ organization_id: duliId })
+        .update({ organization_id: duliId, assigned_organization_id: parceiraId })
         .eq("id", contatoDoParceiro)
         .select("id");
-      expect(recusou(resposta)).toBe(true);
+      expect(resposta.error?.code).toBe("42501");
+      expect(resposta.error?.message).toMatch(/não muda de organização/);
     });
   });
 });
