@@ -16,7 +16,9 @@
 
 **Fora deste plano:** as entregas 2 a 4. Cada uma terá o seu plano, escrito quando a anterior estiver no ar.
 
-**Histórico:** rodada 1 do Code Reviewer no plano em 17/nov. Corrigidos C1–C3, I1–I10 e os menores. A medição da produção (I3) mudou a regra do DDI (ver "Dados de hoje").
+**Histórico:**
+- **Rodada 1** do Code Reviewer no plano, 17/nov: corrigidos C1–C3, I1–I10 e os menores. A medição da produção (I3) mudou a regra do DDI (ver "Dados de hoje").
+- **Rodada 2:** corrigidos N1 (espaço e dígito iguais em JS e SQL, com caso NBSP), N2 (contatos de apoio próprios para lixeira e guarda) e os menores N3–N11.
 
 ## Dados de hoje (medidos em 17/nov, só leitura, fora da organização de teste)
 
@@ -53,7 +55,7 @@ Os 4 contatos sem e-mail ou telefone só cobram os campos quando alguém os edit
   - função usada em **índice** ou por função `invoker` precisa de `grant execute … to authenticated`, porque o Postgres a avalia com o papel de quem grava. Revogar de `authenticated` derruba todo `insert` em `people`.
 - **Testes:**
   - teste vermelho antes do código;
-  - teste de RLS que grava só grava na organização de teste ("Parceiro de Teste"), com dado **aleatório por rodada**: `const sufixo = crypto.randomUUID().replace(/\D/g, "").slice(0, 8)`, usado em nome, e-mail e telefone;
+  - teste de RLS que grava só grava na organização de teste ("Parceiro de Teste"), com dado **aleatório por rodada**: `const sufixo = crypto.randomUUID().replace(/\D/g, "").slice(0, 8).padEnd(8, "0")`, usado em nome, e-mail e telefone;
   - ele limpa em `finally` o que criou, pelo id;
   - não conta o total de uma tabela, só pelo nome único da tentativa (o CI de `b653195` caiu por contagem);
   - a pessoa "Cliente de Teste" (`fixture()`) nunca é apagada.
@@ -66,14 +68,18 @@ Os 4 contatos sem e-mail ou telefone só cobram os campos quando alguém os edit
 - **Server Action** devolve `ActionState` (`@/lib/action-state`), com sucesso por `gravou()`. Dado do banco é tipado por `Tables<>`/`Enums<>` ou validado por Zod; nunca `as unknown as`.
 - **Antes de cada commit:** `bun run verify` verde, lint zero, nunca `--no-verify`.
 - **Push:** é do Renato, nos três pontos marcados (fim da T3, fim da T6, fim da T9). Migration nova não fica no ar com a tela antiga mais que o necessário (spec §12.7.4).
-- **Mensagens de validação de contato** (cópia exata, iguais no TS e no SQL; o espaço em volta é aparado antes, inclusive tab e NBSP):
+- **Espaço e dígito, iguais em JS e SQL.** O `\s` e o `\d` mudam com o locale do Postgres, e no JS incluem caracteres que o banco não inclui. Por isso nenhuma das duas regras usa `\s` ou `\d`:
+  - **ESPACO** é o conjunto explícito `[ \t\n\r\f\v ﻿]`. No SQL, NBSP e BOM entram por `chr(160)` e `chr(65279)`;
+  - **dígito** é `[0-9]`;
+  - **aparar** é tirar ESPACO do começo e do fim (`private.aparar` no SQL; a mesma regex no TS), e vazio vira nulo.
+- **Mensagens de validação de contato** (cópia exata, iguais no TS e no SQL; valem sobre o valor já aparado; `contato_valido` apara por dentro):
 
 | Campo | Situação | Mensagem |
 |---|---|---|
 | `email` | vazio | `Informe o e-mail` |
-| `email` | fora de `^[^@\s]+@[^@\s]+\.[^@\s]+$` | `E-mail inválido` |
+| `email` | fora de `^[^@ESPACO]+@[^@ESPACO]+\.[^@ESPACO]+$` | `E-mail inválido` |
 | `ddi` | vazio | `Informe o DDI` |
-| `ddi` | fora de `^\+?\d{1,4}$` | `DDI inválido (ex.: +55)` |
+| `ddi` | fora de `^\+?[0-9]{1,4}$` | `DDI inválido (ex.: +55)` |
 | `telefone` | vazio | `Informe o telefone` |
 | `telefone` | menos de 8 ou mais de 15 dígitos | `O telefone precisa ter de 8 a 15 dígitos` |
 
@@ -127,7 +133,7 @@ Não é código. Quem executa **para aqui** e espera o Renato dizer "cópia feit
 - [ ] **Passo 1:** o Renato copia a *connection string* (modo **Session**, porta 5432) em Supabase → Connect.
 - [ ] **Passo 2:** o Renato roda **no terminal dele, fora desta conversa** (a senha não pode entrar na transcrição), gravando **fora do repositório**:
 
-  ```bash
+  ```powershell
   pg_dump "<connection string com a senha>" -Fc -f "C:\Backups\dulihub\dulihub-2026-11-17.dump"
   pg_restore --list "C:\Backups\dulihub\dulihub-2026-11-17.dump" | Select-Object -First 5
   ```
@@ -223,7 +229,7 @@ export function erroDeContato(contato: Contato): { campo: CampoDeContato; mensag
 export const CASOS_DE_CONTATO: { nome: string; contato: Contato; erro: string | null }[];
 ```
 
-Reaproveita `soDigitos` de `src/lib/documentos.ts`. O aparo usa a mesma regra do SQL: `^\s+|\s+$`, inclusive tab e NBSP.
+Reaproveita `soDigitos` de `src/lib/documentos.ts`. O aparo e as regex usam o conjunto ESPACO e `[0-9]` das restrições globais, nunca `\s` ou `\d`.
 
 - [ ] **Passo 1: `CASOS_DE_CONTATO`.** Cada caso tem e-mail **diferente** dos outros, para a paridade da T7 não achar parecido entre casos.
 
@@ -240,6 +246,7 @@ Reaproveita `soDigitos` de `src/lib/documentos.ts`. O aparo usa a mesma regra do
   | telefone curto (7 dígitos) | `caso9@teste.dulihub` | `+55` | `9999-000` | `O telefone precisa ter de 8 a 15 dígitos` |
   | telefone longo (16 dígitos) | `caso10@teste.dulihub` | `+1` | `1234567890123456` | `O telefone precisa ter de 8 a 15 dígitos` |
   | EUA | `caso11@teste.dulihub` | `+1` | `(305) 555-0111` | `null` |
+  | NBSP em volta | ` caso12@teste.dulihub ` | ` +55` | `31999990012 ` | `null` |
 - [ ] **Passo 2: testes que falham** em `contato.test.ts`:
   - `it.each(CASOS_DE_CONTATO)("$nome", …)`, com `expect(erroDeContato(c.contato)?.mensagem ?? null).toBe(c.erro)`;
   - o campo certo: "sem DDI" → `campo = "ddi"`, "sem telefone" → `"telefone"`;
@@ -258,10 +265,10 @@ Reaproveita `soDigitos` de `src/lib/documentos.ts`. O aparo usa a mesma regra do
 **Interfaces — produz:**
 - **Correção de dado, antes de tudo:** `update public.people set phone_country_code = '+' || btrim(phone_country_code) where btrim(phone_country_code) ~ '^\d{1,4}$'`. O comentário registra a medição de "Dados de hoje".
 - **Funções auxiliares** (`immutable`, `set search_path = ''`; `revoke execute … from public, anon`; `grant execute … to authenticated`, com um comentário dizendo que o índice e as funções `invoker` as avaliam com o papel de quem grava):
-  - `private.aparar(t text) returns text` — `regexp_replace(t, '^\s+|\s+$', '', 'g')`, vazio → null;
+  - `private.aparar(t text) returns text` — tira o conjunto ESPACO do começo e do fim (regex montada com `chr(160)` e `chr(65279)`, sem `\s`), vazio → null;
   - `private.normalizar_ddi(ddi text) returns text`;
   - `private.telefone_nacional(ddi text, numero text) returns text` — dígitos do número; tira os dígitos do DDI da frente quando o número tem mais de 11 dígitos e começa por eles; vazio → null;
-  - `private.contato_valido(email text, ddi text, telefone text) returns text` — a mensagem da tabela, ou null.
+  - `private.contato_valido(email text, ddi text, telefone text) returns text` — apara as três entradas por dentro e devolve a mensagem da tabela, ou null; regex com ESPACO e `[0-9]`.
 - **Índices:**
   - `people_email_normalizado` em `(organization_id, lower(private.aparar(email)))`;
   - `people_telefone_nacional` em `(organization_id, private.telefone_nacional(phone_country_code, phone))`;
@@ -272,31 +279,37 @@ Reaproveita `soDigitos` de `src/lib/documentos.ts`. O aparo usa a mesma regra do
   - no máximo 10 linhas, em ordem de nome;
   - `revoke … from public, anon; grant … to authenticated`.
 - **`public.salvar_cadastro`:** `create or replace` com o cabeçalho inteiro da 0035 (`security invoker`, `set search_path = ''`).
+  - No passo 1, o aparo de cada campo troca `btrim` por `private.aparar`, para o valor gravado ser o mesmo valor validado.
   - O `phone_country_code` **continua** nas exceções de "Ficha incompleta" (0035:254 e :266).
   - Depois do passo 1, normaliza o DDI.
   - Quando qualquer uma das chaves `email`, `phone_country_code` ou `phone` está em `p_dados`, ou quando `p_completo`, calcula o valor final de cada uma (o de `p_dados` se presente, senão o da linha) e lança `private.contato_valido(...)` como `P0001` se não for nulo.
   - Isso substitui a conferência de e-mail própria da 0035.
 
 - [ ] **Passo 1: testes que falham**, em `tests/rls/contatos.test.ts`, como `parceiro`, com dado aleatório por rodada:
-  - **Contatos de apoio:**
-    - Carlos, com `+55`, telefone `"31" + sufixo` e e-mail `carlos.<sufixo>@teste.dulihub`;
-    - Antigo, **sem DDI**, com telefone `"31" + sufixo2`.
-
-    Os dois são apagados em `afterAll`.
+  - **Contatos de apoio** (todos apagados em `afterAll`):
+    - Carlos, com `+55`, telefone `"31" + sufixo` e e-mail `carlos.<sufixo>@teste.dulihub` — fica **fora** da lixeira o tempo todo (`salvar_cadastro` não acha quem está na lixeira);
+    - Antigo, **sem DDI**, com telefone `"31" + sufixo2`;
+    - Lixeira, criado já com `deleted_at` e telefone `"31" + sufixo3`;
+    - SemEmail, sem e-mail, só para a guarda.
   - `"acha pelo telefone com o DDI digitado junto"`: `contatos_parecidos(null, '+55', '55' + telefoneDoCarlos)`, com `.some(p => p.id === carlos && p.bate_telefone)`.
   - `"acha o contato antigo sem DDI"`: `contatos_parecidos(null, '+55', '55' + telefoneDoAntigo)` acha o Antigo.
   - `"acha pelo e-mail com espaço e maiúscula"`.
-  - `"acha quem está na lixeira, marcado"`.
+  - `"acha quem está na lixeira, marcado"`: pelo telefone do contato Lixeira, `na_lixeira = true`.
+  - `"um e-mail com tab é gravado aparado"`: `salvar_cadastro(carlos, {email: "\tnovo.<sufixo>@teste.dulihub"})`, e a linha fica sem o tab.
   - `"não avisa sobre o próprio contato"`: com `p_ignorar = carlos`, a lista não contém Carlos.
   - `"entrada vazia não bate com ninguém"`: `contatos_parecidos('', '', '')` → zero linhas.
   - `"não mostra contato de outra organização"`: o colaborador da Duli com o telefone do Carlos, e a lista `not.toContain(carlos)`.
   - `"DDI 55 grava como +55"`: `salvar_cadastro(carlos, {phone_country_code: "55"})`, e a linha fica `+55`.
   - `"a equipe não apaga o e-mail pela ficha"`: `{email: ""}` → `Informe o e-mail`.
   - `"a ficha completa exige o DDI"`: ficha completa com `phone_country_code: ""` → `Informe o DDI`.
-  - `"contato antigo sem e-mail ainda vai para a lixeira"`: este é uma **guarda**, verde desde o início.
+  - `"contato antigo sem e-mail ainda vai para a lixeira"`: com o contato SemEmail. É uma **guarda**, verde desde o início.
 - [ ] **Passo 2: vermelho.** `bun x vitest run tests/rls/contatos.test.ts --no-file-parallelism`. Esperado: FALHA (função inexistente), exceto a guarda.
 - [ ] **Passo 3:** escrever a 0040, com o comentário do topo dizendo as decisões (obrigatório na tela e na função e não `not null`, spec §6.1; número nacional, Foco 1; correção dos DDIs). Aplicar.
-- [ ] **Passo 4: logo depois de aplicar, antes de qualquer outra coisa,** gravar um contato na organização de teste pela API (como `parceiro`: `insert` em `people` com nome, e-mail, `+55` e telefone) e apagá-lo. Se falhar, a causa provável é o grant das auxiliares.
+- [ ] **Passo 4: logo depois de aplicar, antes de qualquer outra coisa:**
+  - gravar um contato na organização de teste pela API (como `parceiro`: `insert` em `people` com nome, e-mail, `+55` e telefone) e apagá-lo. Se falhar, a causa provável é o grant das auxiliares;
+  - conferir a correção dos dados, só lendo: `select count(*) from people where phone_country_code ~ '^\s*[0-9]'` → `0`.
+
+  O comentário da 0040 registra que a correção carimba o `updated_at` das 76 linhas (os aparelhos as baixam de novo, numa página) e que o `update` vale para todas as organizações, inclusive a de teste.
 - [ ] **Passo 5:** regenerar os tipos e atualizar o banco.md. Rodar o comando do Passo 2. Esperado: PASS. Rodar também `bun x vitest run tests/rls/ficha-de-cadastro.test.ts --no-file-parallelism`. Esperado: PASS.
 - [ ] **Passo 6:** commit `feat(banco): contato com formato, DDI corrigido e busca de parecidos (0040)`.
 
@@ -306,7 +319,7 @@ A partir daqui, a tela antiga continua no ar com a função nova. Editar Dados c
 
 **Arquivos:**
 - Criar:
-  - `src/lib/parecidos.ts`;
+  - `src/lib/parecidos.ts` e `src/lib/parecidos.test.ts`;
   - `src/components/aviso-de-duplicado.tsx` e `.test.tsx`;
   - `src/features/people/actions.test.ts`;
   - `src/app/(app)/contatos/person-dialog.test.tsx`.
@@ -338,7 +351,9 @@ A partir daqui, a tela antiga continua no ar com a função nova. Editar Dados c
 - **Produz, em `form-dialog.tsx`:**
   - `FormDialog` fica genérico, `<E extends ActionState = ActionState>`, com a prop nova `aviso?: (estado: E, acoes: { fechar: () => void; reenviarCom: (extra: Record<string, string>) => void }) => React.ReactNode`, desenhada acima do `FieldError`;
   - o estado do formulário vive num componente interno, com `key` nova a cada abertura: reabrir não mostra aviso velho;
-  - as outras 5 telas que usam `FormDialog` não mudam.
+  - o interno fecha o diálogo assim: a ação entregue ao `useActionState` é embrulhada e chama `fechar()` quando o resultado tem `ok`, **dentro da transição**. Nunca por `setState` do pai durante a renderização do filho (o React acusa), nem por `useEffect` (barrado pela regra de lint `set-state-in-effect`);
+  - o comentário do componente registra o efeito colateral: fechar o diálogo no meio de uma gravação descarta o resultado, inclusive um erro;
+  - as outras 5 telas que usam `FormDialog` não mudam a forma de chamar (o `E` é deduzido como `ActionState`).
 - **Produz, em `formulario-do-cadastro.tsx`:**
   - a mesma prop `aviso` (opcional), usada só pela equipe (`controles-da-ficha.tsx`);
   - resposta com `parecidos` conta como **não gravou**: não chama `aoGravar`.
@@ -357,10 +372,10 @@ A partir daqui, a tela antiga continua no ar com a função nova. Editar Dados c
   Cada parecido é uma linha com "Telefone já cadastrado em" ou "E-mail já cadastrado em", o link `/contatos/<id>` (`target="_blank"`) com o nome, o estágio entre parênteses e "· na lixeira" quando for o caso.
 - **Ações:**
   - `createPerson` e `updatePerson` passam a devolver `Promise<EstadoComConfirmacao>`;
-  - `updatePerson` lê a linha atual e só confere parecidos se e-mail, DDI ou telefone **mudaram**, passando `ignorar: id`;
+  - `updatePerson` lê a linha atual e só confere parecidos se e-mail, DDI ou telefone **mudaram**, passando `ignorar: id`. "Mudou" compara valores normalizados: o e-mail aparado e em minúscula, o DDI por `normalizarDdi` e o telefone por `soDigitos`. Só redigitar a máscara não dispara a busca. (A regra espera o OK do Renato; ver a pergunta no fim.)
   - sem `formData.get(CAMPO_CONFIRMAR_PARECIDO) === "1"` e com parecidos, devolvem `{ error: null, parecidos, token: novoId() }` e **não gravam**;
   - `salvarCadastro` segue a mesma regra, com `ignorar: personId`, e devolve `EstadoDaFicha & { parecidos?: ContatoParecido[] }`.
-- **Regra no schema:** `personSchema` usa `erroDeContato` num `superRefine`, pondo a mensagem no campo devolvido, e grava o DDI normalizado. `fichaDoFormulario` aplica `erroDeContato` **nos dois modos** e põe a mensagem em `campos[email|phone_country_code|phone]`. O `phone_country_code` sai de `OPCIONAIS`.
+- **Regra no schema:** `personSchema` usa `erroDeContato` num `superRefine`, pondo a mensagem no campo devolvido, e grava o DDI normalizado. `fichaDoFormulario` aplica `erroDeContato` **nos dois modos** e põe a mensagem em `campos[email|phone_country_code|phone]`. Nesses três campos, a mensagem de `erroDeContato` **vence** o "Preencha este campo" do laço genérico (cadastro/schema.ts:129-133), para a frase ser a mesma no modo completo, no parcial e no SQL. O `phone_country_code` sai de `OPCIONAIS`.
 
 - [ ] **Passo 1: testes que falham.**
   - **`people/schema.test.ts`:**
@@ -382,7 +397,12 @@ A partir daqui, a tela antiga continua no ar com a função nova. Editar Dados c
     - `"marca quem está na lixeira e oferece Restaurar"`;
     - `"no criar, Não pergunta 'Criar outro contato com essas informações?' e Criar mesmo assim confirma"`;
     - `"no editar, Sim abre o existente e não grava"`.
-  - **`people/actions.test.ts`**, com `vi.mock` de `@/lib/supabase/server`, `@/lib/organizacao` e `@/lib/parecidos`:
+  - **`people/actions.test.ts`**, o primeiro teste de Server Action da base. Mocks:
+    - `vi.mock("next/cache")`, porque `revalidatePath` fora de requisição lança erro;
+    - `@/lib/supabase/server` e `@/lib/organizacao`;
+    - `@/lib/parecidos` **parcial** (`importOriginal`), trocando só `buscarParecidos`, para `CAMPO_CONFIRMAR_PARECIDO` continuar existindo.
+
+    Os casos:
     - `"createPerson com parecido e sem confirmação não insere"`;
     - `"com confirmação, insere"`;
     - `"updatePerson sem mudar e-mail, DDI ou telefone não busca parecidos"`;
@@ -438,7 +458,7 @@ public.criar_oportunidade(
   - o negócio, com a organização da pessoa, `pipeline_id` e `probability` da etapa, `status 'open'`, `owner_id` e `created_by = auth.uid()`;
   - a promoção a `opportunity`, sem rebaixar `client`.
 - **Devolve** `{"situacao":"criada","negocio":…,"pessoa":…}`.
-- **Em `src/lib/parecidos.ts`:** `respostaDaCriacao` (Zod), de `Json` para `{ situacao: "criada"; negocio: string; pessoa: string } | { situacao: "precisa_confirmar"; parecidos: ContatoParecido[]; oportunidades: OportunidadeExistente[] }`, convertendo as chaves para camelCase.
+- **Em `src/lib/parecidos.ts`:** `respostaDaCriacao` (Zod), de `Json` para `{ situacao: "criada"; negocio: string; pessoa: string } | { situacao: "precisa_confirmar"; parecidos: ContatoParecido[]; oportunidades: OportunidadeExistente[] }`, convertendo as chaves para camelCase. A RPC devolve só uma das duas listas, então as duas têm `.default([])`.
 
 - [ ] **Passo 1: testes que falham.** Como `parceiro`, na organização de teste, com dado aleatório; tudo que tiver `situacao = criada` é apagado pelo `pessoa` devolvido, em `finally`.
   - `"contato novo e negócio nascem juntos"`: a pessoa está na organização de teste, com `opportunity`; o negócio tem `owner_id` = `parceiro`.
@@ -479,8 +499,9 @@ public.criar_oportunidade(
   - `criada` revalida `/crm`, `/contatos` e `/`.
 - **"Sim, é a mesma pessoa":**
   - grava o `person_id` num campo **oculto** e mostra o nome do escolhido, porque o seletor só tem os 500 primeiros e não tem a lixeira;
+  - enquanto o escolhido vem do aviso, o seletor visível sai do formulário (para não haver dois `name="person_id"`, já que `formData.get` devolve o primeiro);
   - troca para `existente` e reenvia;
-  - se o parecido está na lixeira, chama antes `restorePerson`, passado do `crm/page.tsx` como prop.
+  - se o parecido está na lixeira, chama antes `restorePerson`, importado direto em `opportunity-dialog.tsx` (que está em `app/`). Assim `quadro.tsx:273` e `crm/page.tsx`, que desenham o diálogo, não mudam.
 
 - [ ] **Passo 1: testes que falham:**
   - `opportunity-dialog.test.tsx`, com `vi.mock("@/features/opportunities/actions")`:
