@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Data | 17/nov/2026 |
-| Estado | Rodada 4 da revisão (Code Reviewer). **Ainda sem plano** |
+| Estado | Revisada em 4 rodadas pelo Code Reviewer; a última sem nenhum ajuste pendente. **Aguarda a aprovação do Renato. Ainda sem plano** |
 | Quem decidiu | Renato, no brainstorming de 17/nov |
 | Requisitos com ID | Em `docs/spec.md`: 7.2, 7.3, 7.4, 7.6, 7.7, 7.1 e o módulo novo 7.16 Clientes |
 | Este documento | O **como**: banco, funções, telas, testes e o critério de aceite de cada entrega |
@@ -125,8 +125,13 @@ nenhum dado é digitado duas vezes.
     e também o `update` do `on delete set null (col)`. Por exemplo, apagar um tipo
     de visto nas Configurações anula `visa_type_id` no item de um negócio ganho, e
     apagar um negócio anula `payment_plan_id` no link.
-  - Nenhum gatilho deste desenho escreve em tabela travada. Se um dia algum
-    escrever, herda essa liberação, e isso tem de ser pensado na hora.
+  - Nenhum gatilho deste desenho escreve em tabela travada, com **uma** exceção:
+    `quem_tem_processo_e_cliente` faz `update people`, e passa pela regra (2) de
+    `estagio_do_cliente` (gestão ou marca), não pela liberação de nível.
+  - `estagio_do_cliente` **não usa** a liberação de nível. A regra "cliente não
+    volta" é absoluta, em qualquer profundidade.
+  - Se um dia outro gatilho escrever em tabela travada, herda a liberação, e isso
+    tem de ser pensado na hora.
   - A RLS não se aplica às ações da chave estrangeira (o Postgres as executa como
     dono da tabela; `paginas.test.ts:88` já depende disso).
   - Como pessoa só se apaga na organização de teste (0036), a limpeza dos testes
@@ -625,7 +630,7 @@ quando os vistos entram.
 |---|---|
 | `opportunity_items` | `id`, `organization_id`, `opportunity_id`, `visa_type_id` (nulo), `visa_name text not null`, `amount numeric(12,2) not null check (amount >= 0)`, `currency char(3) check in ('BRL','USD')`, `position int`, `created_by`, `created_at`, `updated_at`, `unique (id, organization_id)`. FK `(opportunity_id, organization_id)` → `opportunities`, com cascade. FK `(visa_type_id, organization_id)` → `visa_types`, `on delete set null (visa_type_id)`. RLS com leitura e escrita separadas, como `opportunities` (0017), mais o `guard_child_row`. Lápide e `updated_at`. Gatilho de trava: item de negócio ganho não é inserido, alterado nem apagado (só a cascata passa, §3). O gatilho lê o negócio com `select … for share`, para não correr junto com o Ganho. Fica fora do espelho |
 | `projects.opportunity_item_id uuid` | Índice único parcial (quando não nulo). FK `(opportunity_item_id, organization_id)` → `opportunity_items`, `on delete set null (opportunity_item_id)` |
-| `projects`, exclusão | A policy `for all` se divide em select, insert e update, **sem** delete. Um gatilho recusa o `delete` direto, com frase, e deixa passar só a cascata (§3). Os testes que apagam processo direto (fumaça `rotas.test.ts:258` e os de processo) passam a limpar apagando a pessoa de teste. O plano confere, no primeiro teste, que a cascata de `people` atravessa a RLS de `projects` |
+| `projects`, exclusão | A policy `for all` se divide em select, insert e update, **sem** delete: pela API, o delete direto apaga 0 linhas. Um gatilho é a segunda camada (recusa o delete direto e deixa passar só a cascata, §3). Os testes que apagam processo direto (fumaça `rotas.test.ts:258` e os de processo) passam a limpar apagando a pessoa descartável. O plano confere, no primeiro teste, que a cascata de `people` atravessa a RLS de `projects` |
 | `criar_processo` | Ganha `p_item uuid default null` (gravado em `opportunity_item_id`), com `drop` + `create` na migration A. O padrão nulo mantém funcionando o "Novo processo" do código antigo entre a migration e o deploy. Todos os chamadores são atualizados para a assinatura nova: `projects/actions.ts:35`, quatro testes de RLS e `rotas.test.ts:248` |
 | Marca de transação | `ganhar_negocio`, `reabrir_negocio` e `marcar_como_cliente` ligam `dulihub.via_ganho` e a desligam no fim (§3) |
 | Gatilho `ganho_so_pela_funcao` em `opportunities` | `before update`: mudar `status` para ou de `won`, ou o `stage_id` para ou de uma etapa de ganho, sem a marca `via_ganho`, é recusado, também na organização de teste: os testes usam as funções. Entra só na **migration B** (abaixo), depois que o código que usa as funções estiver no ar |
