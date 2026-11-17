@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Data | 17/nov/2026 |
-| Estado | Rodada 2 da revisão (Code Reviewer). **Ainda sem plano** |
+| Estado | Rodada 3 da revisão (Code Reviewer). **Ainda sem plano** |
 | Quem decidiu | Renato, no brainstorming de 17/nov |
 | Requisitos com ID | Em `docs/spec.md`: 7.2, 7.3, 7.4, 7.6, 7.7, 7.1 e o módulo novo 7.16 Clientes |
 | Este documento | O **como**: banco, funções, telas, testes e o critério de aceite de cada entrega |
@@ -25,6 +25,15 @@ Nada aqui está construído. Cada requisito nasce ⬜.
   - Notas em ordem cronológica;
   - "+ Novo processo";
   - o aviso de duplicado mostra o link do contato.
+
+**O que mudou da rodada 2 para a 3:**
+- **Travas e organização de teste:** a liberação vale só para exclusão em cascata,
+  para as travas poderem ser provadas na organização de teste (I1).
+- **Marcas de transação:** uma por recurso, desligadas no fim da função (I2).
+- **Publicação em duas fases:** fechados os três buracos (I3).
+- **Quem torna alguém cliente:** só a gestão ou o Ganho (I4).
+- **Prova da forma de pagamento:** a inserção direta de resposta é recusada (I5).
+- **Os menores M1–M9.**
 
 ---
 
@@ -90,8 +99,8 @@ nenhum dado é digitado duas vezes.
   - `on delete set null` em chave composta **sempre** leva a coluna entre parênteses,
     por exemplo `on delete set null (opportunity_item_id)`. Sem ela, o Postgres
     tentaria anular `organization_id`, que é `not null` (0020:68-70).
-  - Toda tabela nova ganha lápide, com o gatilho `marcar_lapide`, e `updated_at` com
-    gatilho.
+  - Toda tabela nova ganha `id`, lápide (com o gatilho `marcar_lapide`, que grava
+    `old.id`) e `updated_at` com gatilho.
 - **A organização vem do registro-pai.** Item e forma de pagamento herdam do negócio.
   Cobrança e processo herdam **da pessoa**, o que corrige o I24 neste caminho.
 - **Dinheiro:** soma por moeda, nunca uma na outra; nenhum saldo guardado; contas em
@@ -99,8 +108,29 @@ nenhum dado é digitado duas vezes.
 - **Uma porta para quem não tem login: a ficha.** Este desenho a **alarga** com uma
   terceira função (§6.4), com as mesmas travas, e o `AGENTS.md` muda junto.
 - **Contato nunca é apagado de vez; agora processo também não.**
-- **Organização de teste.** Toda trava nova de "não apagar" ou "não mudar" deixa
-  passar na organização `is_test`, como na 0036, para os testes limparem o que criam.
+- **Travas e a limpeza dos testes.**
+  - Toda trava nova de "não apagar" ou "não mudar" vale **também na organização de
+    teste**, para update e para delete direto. Só assim a suíte prova cada trava sem
+    gravar lixo permanente na Duli.
+  - A única liberação é a **exclusão em cascata**: a trava deixa passar quando
+    `pg_trigger_depth() > 1`, isto é, quando a linha está sendo apagada porque a
+    linha-mãe foi apagada.
+  - Como pessoa só se apaga na organização de teste (0036), a limpeza dos testes
+    (apagar a pessoa) continua levando tudo junto.
+  - Teste que hoje apaga negócio, processo ou cobrança **diretamente** passa a limpar
+    apagando a pessoa de teste.
+- **Marcas de transação.** Uma função que precisa abrir uma trava liga uma marca
+  própria do recurso, com `set_config('dulihub.via_ganho', 'on', true)`, e a
+  **desliga no fim**, inclusive no caminho de erro, como a 0025:51-56 faz.
+  - As marcas são `dulihub.via_ganho` (negócio e pessoa no Ganho, reabrir, marcar
+    cliente), `dulihub.via_forma` (forma de pagamento e respostas) e
+    `dulihub.via_ficha` (colunas novas de `registration_forms`). Uma não abre a trava
+    da outra.
+  - Só funções com essa disciplina ligam marca. `set_config` não é chamável pelo
+    PostgREST.
+  - O `pg_graphql`, que executaria várias mutações numa transação só, **não está
+    instalado** no projeto (conferido em 17/nov) e deve continuar assim. Se um dia
+    for ligado, este desenho precisa ser revisto.
 - **Coluna ou tabela que o código lê sai em duas fases (spec §12.7):** primeiro o
   código para de ler, e só depois do deploy a migration a retira.
 - **Função que muda de assinatura** é apagada e recriada (`drop function` +
@@ -215,7 +245,7 @@ ao ar em duas fases (§6.3).
 |---|---|
 | Aplicar e fazer commit das migrations 0037 e 0038, que estão hoje fora do git, com os testes já alterados em `tests/rls/` | Mexem na mesma área (criação de negócio, atribuição) |
 | Cópia do banco (`pg_dump`, spec §12.7) antes de cada migration destas entregas | Não há banco de teste nem cópia automática (OPS-1) |
-| **Quarta conta de teste:** `staff` da organização de teste (`teste-staff`), no `tests/rls/README.md` e no `.env.local` | Hoje o único `staff` é da Duli. Sem esta conta, provar "staff que não é dono é recusado" exigiria ganhar um negócio **real**, e o M17 e o PRO-12 tornam esse estrago permanente |
+| **Quarta conta de teste:** `staff` da organização de teste (`teste-staff`). A associação nasce numa fixture idempotente, como a 0015. A conta entra no `tests/rls/README.md`, no `.env.local` e nos segredos do GitHub, para o CI | Hoje o único `staff` é da Duli. Sem esta conta, provar "staff que não é dono é recusado" exigiria ganhar um negócio **real**, e o M17 e o PRO-12 tornam esse estrago permanente |
 | **Processo-sentinela** na Duli: "Teste de segurança — não apagar", no padrão de `papeis.test.ts:36` | Serve para provar que apagar processo na organização real é recusado, sem arriscar processo de cliente |
 
 ### 6.1 Entrega 1 — contato completo e sem duplicata
@@ -240,8 +270,10 @@ ao ar em duas fases (§6.3).
 O formato mora em **uma** função SQL, `private.contato_valido(email, ddi, telefone)
 returns text`, que devolve a frase do erro ou nulo. Ela é usada por `salvar_cadastro`
 e por `criar_oportunidade`, e substitui a expressão de e-mail própria da 0035. O Zod
-repete a mesma regra, e um teste roda a **mesma lista de casos** contra os dois (Zod
-e a função, pela RPC de teste), para eles não divergirem.
+repete a mesma regra, e um teste roda a **mesma lista de casos** contra os dois, para
+eles não divergirem. O lado do banco é provado chamando `criar_oportunidade` com
+contato novo, na organização de teste, sem criar outra função exposta só para o
+teste.
 
 **Não** vira `not null` no banco: há as 3 linhas antigas, a importação em lotes e a
 lixeira — mandar um desses 3 para a lixeira não pode falhar por falta de e-mail. O
@@ -284,7 +316,7 @@ para este contato?".
 | `private.contato_valido(email text, ddi text, telefone text) returns text` | `immutable`. A frase do erro, ou nulo |
 | Índices em `people` | `(organization_id, lower(btrim(email)))` e `(organization_id, private.telefone_normalizado(phone_country_code, phone))` |
 | `public.contatos_parecidos(p_email text, p_ddi text, p_telefone text, p_ignorar uuid default null)` | `security invoker`, `stable`. Devolve `id, full_name, lifecycle_stage, na_lixeira, bate_email, bate_telefone`. A RLS decide quem aparece. `p_ignorar` exclui o próprio contato na edição |
-| `public.criar_oportunidade(p_contato uuid, p_novo_contato jsonb, p_etapa uuid, p_titulo text, p_origem text, p_confirmar_contato_parecido boolean, p_confirmar_outra_oportunidade boolean) returns jsonb` | `security invoker`, numa transação. Exatamente um entre `p_contato` e `p_novo_contato`. A **organização do contato novo é a do funil de `p_etapa`**, e o pedido é recusado se quem chama não é membro dela (nunca "a primeira associação"). Valida com `contato_valido`, confere parecidos e oportunidades, e devolve `precisa_confirmar` (§4.5) quando falta confirmação. Insere o negócio com a organização da pessoa, dono = quem chamou e etapa aberta (0038). Promove a pessoa a `opportunity` sem rebaixar cliente |
+| `public.criar_oportunidade(p_contato uuid, p_novo_contato jsonb, p_etapa uuid, p_titulo text, p_origem text, p_confirmar_contato_parecido boolean, p_confirmar_outra_oportunidade boolean, p_valor numeric default null, p_moeda text default null) returns jsonb` | `security invoker`, numa transação. `p_valor` e `p_moeda` existem só até a fase 2 da entrega 3, quando a função é recriada sem eles (`drop` + `create`); o código da fase 1 já não os manda. Exatamente um entre `p_contato` e `p_novo_contato`. A **organização do contato novo é a do funil de `p_etapa`**, e o pedido é recusado se quem chama não é membro dela (nunca "a primeira associação"). Valida com `contato_valido`, confere parecidos e oportunidades, e devolve `precisa_confirmar` (§4.5) quando falta confirmação. Insere o negócio com a organização da pessoa, dono = quem chamou e etapa aberta (0038). Promove a pessoa a `opportunity` sem rebaixar cliente |
 | `salvar_cadastro` | Recusa apagar e-mail, telefone ou DDI e usa `contato_valido`. Muda o corpo, não a assinatura |
 
 `createOpportunity` passa a chamar `criar_oportunidade`. `createPerson`,
@@ -292,7 +324,8 @@ para este contato?".
 gravar sem a confirmação.
 
 **Entre a entrega 1 e a 3:** o formulário de nova oportunidade **mantém** o campo de
-valor e moeda. Ele só sai quando os vistos entram.
+valor e moeda, gravado por `criar_oportunidade` (`p_valor`, `p_moeda`). Ele só sai
+quando os vistos entram.
 
 **Telas**
 
@@ -340,7 +373,7 @@ valor e moeda. Ele só sai quando os vistos entram.
 | CLI-11 | **Cliente desde**: gravado quando a pessoa vira cliente e editável à mão | P0 |
 | CLI-12 | **Marcar como cliente** à mão, só para a gestão | P0 |
 | CLI-13 | **Cliente não volta a ser lead**, garantido no banco (fecha o M17) | P0 |
-| CLI-14 | **Quem tem processo ou cobrança é cliente**: criar um ou outro promove a pessoa. Substitui o CON-3 | P0 |
+| CLI-14 | **Quem tem processo ou cobrança é cliente**: criar um ou outro para quem ainda não é cliente o promove, com registro no histórico. Fora do Ganho, isso é só da gestão, a mesma regra do CLI-12. Substitui o CON-3 | P0 |
 
 **Cliente desde: as regras**
 
@@ -361,11 +394,11 @@ valor e moeda. Ele só sai quando os vistos entram.
 |---|---|
 | `people.client_since date` | Preenchido com as regras acima. Editável pela equipe no diálogo do cliente |
 | `people.owner_id uuid` | Dono. FK composta `(organization_id, owner_id)` → `organization_members (organization_id, user_id)`, `on delete set null (owner_id)`: só membro da organização da pessoa pode ser dono. Um consultor de organização **atribuída** nunca é dono (efeito do desenho, registrado) |
-| `person_participants` | Chave `(person_id, user_id)`, mais `organization_id`, `created_at`, `created_by`, `updated_at`. FK `(person_id, organization_id)` → `people`, com cascade. FK `(organization_id, user_id)` → `organization_members`, com cascade. RLS: membros da organização leem e gravam. Lápide e `updated_at`. Fica fora do espelho |
-| `opportunity_participants` | O mesmo desenho, ligado a `opportunities` |
+| `person_participants` | `id` (chave, para a lápide funcionar), `unique (person_id, user_id)`, mais `organization_id`, `created_at`, `created_by`, `updated_at`. FK `(person_id, organization_id)` → `people`, com cascade. FK `(organization_id, user_id)` → `organization_members`, com cascade. RLS: membros da organização leem e gravam. Lápide e `updated_at`. Fica fora do espelho |
+| `opportunity_participants` | O mesmo desenho (com `id`), ligado a `opportunities` |
 | `opportunities.owner_id` | Um gatilho só deixa trocar o dono do negócio quem é o dono atual ou a gestão (C2) |
 | Gatilho `cliente_nao_volta` em `people` | Recusa sempre, inclusive sem usuário, o update com `old.lifecycle_stage = 'client'` e `new.lifecycle_stage <> 'client'`. A importação deixa de mandar rebaixamento |
-| Gatilho `quem_tem_processo_e_cliente` | `after insert` em `projects` e em `receivables`: promove a pessoa a `client` quando ainda não é (o `client_since` segue as regras acima). Cobrança criada sem internet, pela fila, promove quando sobe |
+| Gatilho `quem_tem_processo_e_cliente` | `before insert` em `projects` e em `receivables`, quando a pessoa ainda não é cliente: com a marca `via_ganho` (o Ganho já promoveu antes), passa; sem a marca, só passa se quem cria é da **gestão**, e então promove a pessoa a `client` (o `client_since` segue as regras acima) e registra no histórico "Virou cliente (processo ‹título›)" ou "(cobrança ‹título›)". Quem não é da gestão recebe "Só a gestão torna alguém cliente; use o Ganho". Na tela isso não aparece, porque "+ Novo processo" e "Criar cobrança" só existem no perfil de quem já é cliente; a trava cobre a API e a fila |
 | `public.marcar_como_cliente(p_pessoa uuid, p_desde date)` | `security invoker`. Confere a gestão **no banco**, grava o estágio, o `client_since` e o histórico numa transação. **Não tem volta** pelo app: a tela avisa antes, e corrigir um engano só se faz pelo dono do banco, no SQL Editor |
 | `people_guard_self_update` | No portal, o cliente também não muda `owner_id` nem `client_since` |
 | Leitura de `notes` e `activities` | A policy passa de `can_access_person` (que inclui o cliente logado) para **membros da organização e da organização atribuída**. O cliente do portal deixa de ler (POR-2). A escrita não muda. `can_access_person` continua valendo para as outras tabelas |
@@ -373,7 +406,7 @@ valor e moeda. Ele só sai quando os vistos entram.
 | Depósito `pessoas` | Privado, até 20 MB, os mesmos tipos de arquivo do depósito `documentos`. Policies de leitura, gravação e exclusão pela pasta da organização, como na 0020 |
 | `installment_files` | `id`, `organization_id`, `installment_id`, `kind` (`boleto`, `nota_fiscal`, `comprovante` ou `outro`), `filename`, `storage_path` (com `check` de caminho), `mime_type`, `size_bytes`, `uploaded_by`, `created_at` e `updated_at`. FK `(installment_id, organization_id)` → `installments`. Lápide. RLS de membros. Fica fora do espelho |
 | Depósito `financeiro` | Privado, como `pessoas`. Caminho `{org}/{pessoa}/{cobrança}/{parcela}/{arquivo}/{nome}`: a pasta da pessoa vem primeiro, para a anonimização (CON-7) apagar de uma vez |
-| Parcela ou cobrança com anexo | Um gatilho recusa apagar parcela que tem anexo (frase: "Remova os anexos antes"), para nenhum arquivo ficar órfão no depósito. A organização de teste passa |
+| Parcela ou cobrança com anexo | Gatilhos em `receivables` e `installments` recusam o delete **direto** (`pg_trigger_depth() = 1`) quando há anexo ("Remova os anexos antes"), para nenhum arquivo ficar órfão no depósito. A cascata vinda da pessoa (só possível na organização de teste) passa. Para isso funcionar sem internet, `excluirCobranca` (`escritas-locais.ts:200-211`) passa a mandar **só** o delete da cobrança, e as parcelas vão em cascata no servidor: a recusa vem inteira, como um conflito só, em vez de deixar a cobrança pela metade |
 
 **Telas e rotas**
 
@@ -451,8 +484,11 @@ valor e moeda. Ele só sai quando os vistos entram.
   - o menu lateral (desktop e celular; conferir que sete itens cabem no celular);
   - a lista `TOPO` da fumaça.
 
-**Testes que mudam:** `portal-do-cliente.test.ts:77-87` ("lê a nota que o consultor
-escreveu sobre ele") é **invertido**: o cliente deixa de ler.
+**Testes e textos que mudam:**
+- `portal-do-cliente.test.ts:77-87` ("lê a nota que o consultor escreveu sobre ele")
+  é **invertido**: o cliente deixa de ler.
+- A dica de `projetos/page.tsx:41` ("nasce na ficha do contato") passa a apontar
+  para o Ganho e para Clientes › Projetos.
 
 **Critério de aceite**
 
@@ -470,15 +506,18 @@ escreveu sobre ele") é **invertido**: o cliente deixa de ler.
 - Update de `lifecycle_stage` de `client` para `opportunity` pela API é recusado
   (teste de RLS vermelho antes). Sem usuário, a recusa é conferida à mão no SQL
   Editor, porque a suíte só entra com login.
-- Criar processo pelo "+ Novo processo" para um contato que ainda não era cliente o
-  torna cliente, com `client_since` de hoje. Criar cobrança pela tela Financeiro faz
-  o mesmo.
+- Teste de RLS, na organização de teste:
+  - `teste-staff` chamando `criar_processo` ou inserindo em `receivables` para um
+    lead é recusado;
+  - a gestão fazendo o mesmo torna o lead cliente, com `client_since` de hoje e
+    "Virou cliente (…)" no histórico.
 - O depósito `pessoas`:
   - documento enviado na aba Documentos vai para a pasta da organização;
   - usuário de outra organização não lê;
   - teste de RLS e de Storage.
 - O boleto anexado à parcela 2 aparece só nela e abre por URL assinada. Apagar a
-  parcela 2 é recusado enquanto houver anexo.
+  parcela 2, ou a cobrança inteira, é recusado enquanto houver anexo, inclusive na
+  organização de teste. Apagar a pessoa de teste leva tudo.
 - `marcar_como_cliente` chamado por `staff` é recusado no banco.
 - Fumaça: `/clientes` e `/clientes/<id>` respondem 200. O cliente usado é criado e
   limpo pelo próprio teste, numa organização que a conta da fumaça enxerga.
@@ -546,31 +585,37 @@ escreveu sobre ele") é **invertido**: o cliente deixa de ler.
   - Negócio **ganho**, ou com forma de pagamento já respondida, não se exclui. A
     frase diz "Reabra ou encerre os processos; o negócio ganho fica como registro".
   - O botão "Excluir" do quadro (`quadro.tsx:197-203`) segue a mesma regra.
-  - A organização de teste passa, para os testes limparem.
+  - Vale também na organização de teste. Só a cascata da pessoa passa (§3).
 - **Encerradas (CRM-16).**
   - O quadro mostra as etapas abertas. As colunas Ganho e Perdido mostram só os
     encerrados **nos últimos 30 dias**.
-  - A tela **CRM › Encerradas** lista todos os ganhos e perdidos: título, contato,
-    situação, data de encerramento e totais, com busca por título ou contato e
-    filtro ganha/perdida. Clicar abre a tela do negócio (`/crm/[id]`), que continua
-    existindo.
+  - `getBoard` (`opportunities/queries.ts:83-92`) passa a trazer "aberto, ou
+    encerrado há até 30 dias". O título das colunas Ganho e Perdido diz "últimos 30
+    dias".
+  - A tela **CRM › Encerradas** (`/crm/encerradas`):
+    - lista todos os ganhos e perdidos: título, contato, situação, data de
+      encerramento e totais;
+    - busca por título ou contato e filtra ganha/perdida;
+    - mostra 50 por página, com o total, sem corte silencioso;
+    - clicar abre a tela do negócio (`/crm/[id]`), que continua existindo.
 
 **Banco**
 
 | Peça | Descrição |
 |---|---|
-| `opportunity_items` | `id`, `organization_id`, `opportunity_id`, `visa_type_id` (nulo), `visa_name text not null`, `amount numeric(12,2) not null check (amount >= 0)`, `currency char(3) check in ('BRL','USD')`, `position int`, `created_by`, `created_at`, `updated_at`, `unique (id, organization_id)`. FK `(opportunity_id, organization_id)` → `opportunities`, com cascade. FK `(visa_type_id, organization_id)` → `visa_types`, `on delete set null (visa_type_id)`. RLS com leitura e escrita separadas, como `opportunities` (0017), mais o `guard_child_row`. Lápide e `updated_at`. Gatilho de trava: item de negócio ganho não é inserido, alterado nem apagado. O gatilho lê o negócio com `select … for share`, para não correr junto com o Ganho; a organização de teste passa. Fica fora do espelho |
+| `opportunity_items` | `id`, `organization_id`, `opportunity_id`, `visa_type_id` (nulo), `visa_name text not null`, `amount numeric(12,2) not null check (amount >= 0)`, `currency char(3) check in ('BRL','USD')`, `position int`, `created_by`, `created_at`, `updated_at`, `unique (id, organization_id)`. FK `(opportunity_id, organization_id)` → `opportunities`, com cascade. FK `(visa_type_id, organization_id)` → `visa_types`, `on delete set null (visa_type_id)`. RLS com leitura e escrita separadas, como `opportunities` (0017), mais o `guard_child_row`. Lápide e `updated_at`. Gatilho de trava: item de negócio ganho não é inserido, alterado nem apagado (só a cascata passa, §3). O gatilho lê o negócio com `select … for share`, para não correr junto com o Ganho. Fica fora do espelho |
 | `projects.opportunity_item_id uuid` | Índice único parcial (quando não nulo). FK `(opportunity_item_id, organization_id)` → `opportunity_items`, `on delete set null (opportunity_item_id)` |
-| `projects`, exclusão | A policy `for all` se divide em select, insert e update. Um `projects_delete` vale **só** para a organização `is_test` (cópia da 0036:174-182), mais um gatilho que recusa `delete` fora dela, com frase |
+| `projects`, exclusão | A policy `for all` se divide em select, insert e update, **sem** delete. Um gatilho recusa o `delete` direto, com frase, e deixa passar só a cascata (§3). Os testes que apagam processo direto (fumaça `rotas.test.ts:258` e os de processo) passam a limpar apagando a pessoa de teste. O plano confere, no primeiro teste, que a cascata de `people` atravessa a RLS de `projects` |
 | `criar_processo` | Ganha `p_item uuid` (gravado em `opportunity_item_id`), com `drop` + `create`. Todos os chamadores são atualizados para a assinatura nova: `projects/actions.ts:35`, quatro testes de RLS e `rotas.test.ts:248` |
-| Marca de transação | `ganhar_negocio`, `reabrir_negocio` e as funções da forma de pagamento (§6.4) fazem `set_config('dulihub.via_funcao', 'on', true)`. Essa marca só vale dentro da transação, e `set_config` não é chamável pela API |
-| Gatilho `ganho_so_pela_funcao` em `opportunities` | `before update`: mudar `status` para ou de `won`, ou o `stage_id` para ou de uma etapa de ganho, sem a marca, é recusado. A organização de teste **não** passa: os testes usam as funções |
+| Marca de transação | `ganhar_negocio`, `reabrir_negocio` e `marcar_como_cliente` ligam `dulihub.via_ganho` e a desligam no fim (§3) |
+| Gatilho `ganho_so_pela_funcao` em `opportunities` | `before update`: mudar `status` para ou de `won`, ou o `stage_id` para ou de uma etapa de ganho, sem a marca `via_ganho`, é recusado, também na organização de teste: os testes usam as funções. Entra só na **migration B** (abaixo), depois que o código que usa as funções estiver no ar |
 | Gatilho do dono do negócio | `before update of owner_id`: só passa se quem chama é o dono atual ou a gestão |
 | `public.ganhar_negocio(p_negocio uuid, p_cobrancas_sem_confirmacao boolean default false, p_simular boolean default false) returns jsonb` | `security invoker`, numa transação, com estes passos: (1) trava o negócio (`for update`); (2) confere o CRM-10 e as regras acima; (3) põe a marca e move para a etapa de ganho do funil, com `closed_at`; (4) registra no histórico "Oportunidade ganha — virou cliente" ou "Oportunidade ganha", conforme a pessoa já fosse cliente; (5) pessoa: estágio, `client_since`, dono e participantes (regras acima); (6) para cada item sem processo, `criar_processo`; (7) as cobranças (§6.4); (8) devolve `{ processos: [...], cobrancas: [...], avisos: [...] }`. Com `p_simular`, faz as conferências e devolve o mesmo formato **sem gravar** — é o que o resumo mostra |
 | `public.reabrir_negocio(p_negocio uuid)` | Confere o CRM-10, põe a marca, volta para a primeira etapa aberta, limpa `closed_at` e registra no histórico. Não toca em pessoa, processo nem cobrança |
 | `aplicarEtapa` (`mover.ts`) | Passa a recusar a etapa de ganho e sair do ganho. `ganharOportunidade` e a reabertura chamam as funções do banco |
-| **Fase 1** (migration A) | Cria `opportunity_items` e copia o valor de cada negócio existente para um item **sem visto** (`visa_name` = título do negócio). O código novo deixa de ler `value`, `currency`, `products` e `opportunity_products` |
-| **Fase 2** (migration B, só depois que o código da fase 1 estiver no ar) | Apaga `opportunities.value` e `currency`, `products` e `opportunity_products` e, **na mesma migration**, recria `public.sync_manifesto()` sem as duas tabelas. A lista de tabelas mora dentro da função, que monta o SQL na hora: o Postgres não sabe que ela depende delas, e sem isso a sincronia de todos os aparelhos quebra (C1). Também atualiza os tipos e o esquema do Dexie, se algo deles citar as colunas |
+| **Fase 1, migration A** (antes do deploy) | Cria `opportunity_items`, `ganhar_negocio`, `reabrir_negocio` e as colunas e gatilhos que **não** recusam nada do código antigo. Copia o valor de cada negócio existente para um item **sem visto** (`visa_name` = título do negócio). O código antigo continua funcionando |
+| **Deploy da fase 1** | O código novo usa itens e as funções do Ganho, e deixa de ler e gravar `value`, `currency`, `products` e `opportunity_products` |
+| **Fase 2, migration B** (só depois que o código da fase 1 estiver no ar) | (1) **Recopia**, antes de apagar, todo negócio com `value` e sem item, porque o código antigo pode ter gravado valor na janela entre a migration A e o deploy; (2) cria o gatilho `ganho_so_pela_funcao` e a trava do dono do negócio; (3) apaga `opportunities.value` e `currency`, `products` e `opportunity_products`; (4) **na mesma migration**, recria `public.sync_manifesto()` sem as duas tabelas. A lista de tabelas mora dentro da função, que monta o SQL na hora: o Postgres não sabe que ela depende delas, e sem isso a sincronia de todos os aparelhos quebra (C1); (5) recria `criar_oportunidade` sem `p_valor` e `p_moeda`. Também atualiza os tipos e o esquema do Dexie, se algo deles citar as colunas |
 
 **Telas**
 
@@ -631,6 +676,16 @@ escreveu sobre ele") é **invertido**: o cliente deixa de ler.
 - Excluir negócio ganho (fora da organização de teste) é recusado com frase.
 - Depois da migration da fase 2, `sync_manifesto()` responde sem erro, e
   `tests/rls/sincronia.test.ts` passa.
+- Entre a migration A e o deploy, ganhar e reabrir pelo código antigo continuam
+  funcionando (não há gatilho ainda).
+- Um negócio criado com valor nessa janela vira item na migration B.
+
+**Testes que mudam:**
+- `funil.test.ts:166-186` ganha e reabre por `aplicarEtapa`; passa a usar
+  `ganhar_negocio` e `reabrir_negocio`.
+- O `TOPO` da fumaça ganha `/crm/encerradas`.
+- Os testes que apagam negócio ou processo direto passam a apagar a pessoa de
+  teste.
 
 ### 6.4 Entrega 4 — forma de pagamento na ficha
 
@@ -639,8 +694,8 @@ escreveu sobre ele") é **invertido**: o cliente deixa de ler.
 | FIC-7 | **Enviar ficha** pela oportunidade abre a janela da **forma de pagamento**: vistos e total, as partes (cartão até 10x sem juros ou até 18x com juros, parcelas iguais até 36, entrada com forma e moeda + parcelas, à vista), com as datas. Depois vem o resumo e a confirmação, e só então o link | P0 |
 | FIC-8 | O cliente, depois dos dados pessoais, vê a forma de pagamento e responde **Confirmo** ou **Há algo errado** (motivo opcional) | P0 |
 | FIC-9 | Recusada: o dono ajusta e reenvia. O link novo abre **direto no pagamento**, com "seus dados já foram recebidos ✓", e não aceita dados pessoais | P0 |
-| FIC-10 | **Confirmação pela equipe** (o cliente confirmou por fora): dono do negócio ou gestão, registrando quem confirmou | P0 |
-| FIC-11 | **Cotação usada (C6)**: campo da equipe na forma de pagamento. O cliente nunca vê | P1 |
+| FIC-10 | **Confirmação pela equipe** (o cliente confirmou por fora, até sem link): dono do negócio ou gestão, a partir de `rascunho` ou `enviada`, registrando quem confirmou | P0 |
+| FIC-11 | **Cotação usada (C6)**: campo da equipe na forma de pagamento, editável em qualquer estado (a cotação muitas vezes só se sabe depois). O cliente nunca vê, e ela não entra na cópia | P1 |
 | REC-6 | As cobranças nascem no Ganho, da forma de pagamento confirmada, uma por parte, uma vez só | P0 |
 | INI-8 | Início: aviso de forma de pagamento **recusada** (some quando o dono reenvia) e de **confirmada — pronto para o contrato** (some no Ganho) | P0 |
 
@@ -666,24 +721,30 @@ escreveu sobre ele") é **invertido**: o cliente deixa de ler.
 
   | Estado | Editar partes | O que muda o estado |
   |---|---|---|
-  | `rascunho` | Sim | Enviar → `enviada` |
-  | `enviada` | **Não.** "Editar" cancela o link aberto e volta a `rascunho`, com aviso: "o link enviado deixa de valer" | Resposta do cliente → `confirmada` ou `recusada`; confirmação pela equipe → `confirmada`; editar → `rascunho` |
+  | `rascunho` | Sim | Enviar → `enviada`; confirmação pela equipe → `confirmada` |
+  | `enviada` | **Não.** "Editar" cancela o link aberto e volta a `rascunho`, com aviso: "o link enviado deixa de valer" | Resposta do cliente → `confirmada` ou `recusada`; confirmação pela equipe → `confirmada` (cancela o link); editar → `rascunho` |
   | `recusada` | Não. "Ajustar" volta a `rascunho` | Ajustar → `rascunho` |
-  | `confirmada` | Não. "Refazer" volta a `rascunho`, **só enquanto a forma não gerou cobrança** | Refazer → `rascunho`; Ganho → gera as cobranças |
+  | `confirmada` | Não. "Refazer" volta a `rascunho` | Refazer → `rascunho`; Ganho → gera as cobranças |
 
-  - **Forma que já gerou cobrança não se refaz.** A tela diz "Ajuste na aba
-    Financeiro do cliente". Isso fecha a duplicata do C4: as cobranças existentes
-    são a verdade a partir daí.
-  - **Mudança de estado e escrita** em partes e parcelas só pelas funções abaixo (a
-    marca de transação de §6.3). Um gatilho recusa o resto, inclusive o `update`
-    direto de `payment_plans.status` pela API. A organização de teste passa.
+  - **Forma que já gerou cobrança fica congelada.** O Ganho grava
+    `payment_plans.charges_created_at`. Com ele preenchido, **nenhuma** volta a
+    `rascunho` é aceita, de qualquer estado (Editar, Ajustar ou Refazer), e o Ganho
+    não gera cobrança de novo. A tela diz "Ajuste na aba Financeiro do cliente".
+    Isso fecha a duplicata do C4, inclusive depois de "criar as cobranças mesmo
+    assim": as cobranças existentes são a verdade a partir daí.
+  - **Mudança de estado e escrita** em partes e parcelas só pelas funções abaixo,
+    com a marca `via_forma` (§3). Um gatilho recusa o resto, inclusive o `update`
+    direto de `payment_plans.status` pela API, também na organização de teste.
+  - **A cotação** (`reference_rate`, `reference_rate_note`) é a exceção: membros a
+    editam direto, em qualquer estado.
 - **A prova.**
   - A resposta guarda a **cópia** do que o cliente viu (vistos, partes e parcelas,
     **sem** a cotação), montada no banco a partir da forma **no estado `enviada`**.
     Como uma forma enviada não se edita, o cliente confirma exatamente o que viu.
-  - Respostas não se alteram nem se apagam (exceto na organização de teste).
-  - A equipe só consegue registrar a decisão `confirmada_pela_equipe`, nunca uma
-    resposta "do cliente".
+  - Respostas não se alteram nem se apagam (só a cascata da pessoa de teste passa).
+  - Resposta só nasce pelas funções: a do cliente por `responder_forma_de_pagamento`
+    e a da equipe por `confirmar_forma_de_pagamento_pela_equipe`, que confere o
+    CRM-10. Inserção direta pela API é recusada.
 - **O link.**
   - Continua de uso único, com 15 dias e um aberto por pessoa.
   - Com forma de pagamento, ele não fecha ao enviar os dados: fecha quando o
@@ -696,6 +757,11 @@ escreveu sobre ele") é **invertido**: o cliente deixa de ler.
   - **Gerar link novo com um link de pagamento aberto** (de outra oportunidade, ou
     pelo "Gerar link da ficha" do contato): é **recusado**, e a frase diz qual link
     está aberto e oferece cancelá-lo.
+  - **Enviar a forma com uma ficha comum aberta** (sem forma, ainda não
+    respondida): a ficha comum é cancelada e substituída. A janela avisa antes: "o
+    link da ficha enviado em ‹data› deixa de valer".
+  - **Cancelar um link de pagamento** ("Cancelar link" de hoje) passa por
+    `voltar_forma_para_rascunho`, para a forma não ficar `enviada` sem link.
 - **Sem oportunidade.** "Gerar link da ficha" no contato continua como hoje, sem forma
   de pagamento.
 
@@ -703,21 +769,21 @@ escreveu sobre ele") é **invertido**: o cliente deixa de ler.
 
 | Peça | Descrição |
 |---|---|
-| `payment_plans` | `id`, `organization_id`, `opportunity_id` (único: uma forma por negócio), `status` (`rascunho`, `enviada`, `confirmada` ou `recusada`), `reference_rate numeric(12,4)`, `reference_rate_note text`, `created_by`, `created_at`, `updated_at`. FK `(opportunity_id, organization_id)` → `opportunities`, com cascade. RLS de leitura: só membros (o cliente nunca lê). Escrita só pelas funções (gatilho). Lápide |
+| `payment_plans` | `id`, `organization_id`, `opportunity_id` (único: uma forma por negócio), `status` (`rascunho`, `enviada`, `confirmada` ou `recusada`), `reference_rate numeric(12,4)`, `reference_rate_note text`, `charges_created_at timestamptz`, `created_by`, `created_at`, `updated_at`. FK `(opportunity_id, organization_id)` → `opportunities`, com cascade. RLS de leitura: só membros (o cliente nunca lê). Escrita só pelas funções, com a marca `via_forma`; o gatilho deixa membros mudarem direto só `reference_rate` e `reference_rate_note`. Lápide |
 | `payment_plan_parts` | `id`, `organization_id`, `plan_id`, `position`, `label text`, `method` (o mesmo `check` de `installments.method`), `currency` (BRL ou USD), `total numeric(12,2) > 0`, `installments_count int` (de 1 a 36), `card_with_interest boolean`. `check`: com `method = 'cartao'`, sem juros vai até 10 e com juros até 18; nos outros métodos, `card_with_interest` é nulo. FK composta para o plano, com cascade. `updated_at`, lápide e gatilho de trava (lê o plano com `for share`) |
 | `payment_plan_installments` | `id`, `organization_id`, `part_id`, `number`, `amount numeric(12,2) > 0`, `due_on date`, `unique (part_id, number)`. No cartão, uma linha só. `updated_at`, lápide e a mesma trava |
-| `payment_plan_responses` | `id`, `organization_id`, `plan_id`, `registration_form_id`, `decision` (`confirmada`, `recusada` ou `confirmada_pela_equipe`), `reason text` (até 500), `snapshot jsonb not null`, `answered_at`, `answered_by`. `check`: quando a decisão é `confirmada_pela_equipe`, `answered_by` é obrigatório e `registration_form_id` é nulo; nas outras duas, o contrário. Gatilho `before insert`: com usuário logado, força `decision = 'confirmada_pela_equipe'`, `answered_by = auth.uid()`, `registration_form_id = null`, `answered_at = now()` e **remonta a cópia no banco**. Update e delete são recusados, exceto na organização de teste |
-| `registration_forms` | Ganha `payment_plan_id` (FK composta, `on delete set null (payment_plan_id)`), `mode` (`completa` ou `so_pagamento`, padrão `completa`) e `closed_at`. A migration copia `closed_at = submitted_at` nas linhas que existem. O índice "um link aberto por pessoa" passa a valer onde `closed_at` e `cancelled_at` são nulos. `gerarLink` e `cancelarLink` (`cadastro/actions.ts:86`, `:119`) passam a olhar `closed_at` |
+| `payment_plan_responses` | `id`, `organization_id`, `plan_id`, `registration_form_id`, `decision` (`confirmada`, `recusada` ou `confirmada_pela_equipe`), `reason text` (até 500), `snapshot jsonb not null`, `answered_at`, `answered_by`. `check`: quando a decisão é `confirmada_pela_equipe`, `answered_by` é obrigatório e `registration_form_id` é nulo; nas outras duas, o contrário. Gatilho `before insert`: sem a marca `via_forma`, recusa. Com a marca, confere o estado da forma (`enviada` para o cliente; `rascunho` ou `enviada` para a equipe) e, com usuário logado, força `decision = 'confirmada_pela_equipe'`, `answered_by = auth.uid()`, `registration_form_id = null` e `answered_at = now()` (defesa a mais). A cópia é sempre montada no banco, pela função. Update e delete são recusados; só a cascata passa (§3) |
+| `registration_forms` | Ganha `payment_plan_id` (FK composta, `on delete set null (payment_plan_id)`), `mode` (`completa` ou `so_pagamento`, padrão `completa`) e `closed_at`. A migration copia `closed_at = submitted_at` nas linhas que existem. O índice "um link aberto por pessoa" passa a valer onde `closed_at` e `cancelled_at` são nulos. `gerarLink` e `cancelarLink` (`cadastro/actions.ts:86`, `:119`) passam a olhar `closed_at`. Um gatilho congela `mode`, `closed_at` e `payment_plan_id` fora das funções (marca `via_ficha`; a policy de hoje deixa membros gravarem a linha inteira, 0035:150-153) e confere que a pessoa do link é a pessoa do negócio da forma |
 | `receivables.payment_plan_part_id` | Único quando não nulo. FK composta, `on delete set null (payment_plan_part_id)` |
 | Token | Gerado no banco em **base64url** (`+` vira `-`, `/` vira `_`, sem `=`) a partir de 32 bytes aleatórios. É o formato que `publico-queries.ts:21` aceita |
-| `public.salvar_forma_de_pagamento(p_negocio uuid, p_forma jsonb)` | `security invoker`, numa transação, com a marca. Só em `rascunho`. **Mantém os ids** das partes que continuam, por `position`. Valida somas, limites e moedas. A organização vem do negócio |
-| `public.enviar_forma_de_pagamento(p_negocio uuid, p_pedir_dados_de_novo boolean) returns text` | `security invoker`, com a marca. Exige pelo menos um item e a forma completa. Recusa se a pessoa tem outro link de pagamento aberto. Cria o link com `payment_plan_id` e o modo, põe a forma em `enviada`, registra no histórico e devolve o token |
-| `public.voltar_forma_para_rascunho(p_negocio uuid)` | `security invoker`, com a marca. Cobre o "Editar" de uma forma enviada (cancela o link), o "Ajustar" de uma recusada e o "Refazer" de uma confirmada **sem cobrança** |
-| `public.confirmar_forma_de_pagamento_pela_equipe(p_negocio uuid, p_observacao text)` | `security invoker`, com a marca. Confere o CRM-10. Só para forma `enviada`. Grava a resposta (o gatilho força os campos), põe a forma em `confirmada` e fecha o link |
+| `public.salvar_forma_de_pagamento(p_negocio uuid, p_forma jsonb)` | `security invoker`, numa transação, com a marca `via_forma`. Só em `rascunho`. **Mantém os ids** das partes que continuam, por `position`. Valida somas, limites e moedas. A organização vem do negócio |
+| `public.enviar_forma_de_pagamento(p_negocio uuid, p_pedir_dados_de_novo boolean) returns text` | `security invoker`, com as marcas `via_forma` e `via_ficha`. Exige pelo menos um item e a forma completa. Recusa se a pessoa tem outro link de pagamento aberto; cancela a ficha comum aberta, se houver. Cria o link com `payment_plan_id` e o modo, põe a forma em `enviada`, registra no histórico e devolve o token |
+| `public.voltar_forma_para_rascunho(p_negocio uuid)` | `security invoker`, com as marcas. Cobre o "Editar" de uma forma enviada (cancela o link), o "Ajustar" de uma recusada, o "Refazer" de uma confirmada e o "Cancelar link". Recusa sempre que `charges_created_at` está preenchido |
+| `public.confirmar_forma_de_pagamento_pela_equipe(p_negocio uuid, p_observacao text)` | `security invoker`, com as marcas. Confere o CRM-10 e a forma completa. Vale a partir de `rascunho` ou de `enviada` (cancela o link aberto). Grava a resposta, com a cópia montada no banco, e põe a forma em `confirmada` |
 | `abrir_ficha_de_cadastro` (anônima) | `drop` + `create`, e depois `revoke … from public, anon, authenticated` e `grant … to anon`, como na 0035:432-433. Novas situações: `aberta`, `aguardando_pagamento` (dados enviados, pagamento pendente, ou modo `so_pagamento`), `respondida` e as de hoje. Devolve `modo` e `forma_de_pagamento jsonb` (vistos e partes com parcelas) **só** na situação `aguardando_pagamento`. **Nunca** devolve cotação, documento ou endereço. Pessoa na lixeira dá a situação de hoje (0035:411) |
 | `enviar_ficha_de_cadastro` (anônima) | Recusa o modo `so_pagamento`. No modo `completa` com forma, grava os dados e deixa o link aberto. Sem forma, fecha como hoje (`closed_at`) |
-| `public.responder_forma_de_pagamento(p_token text, p_aceita boolean, p_motivo text)` (anônima, **nova**) | `security definer`, só `anon` executa, com as travas da 0035: o token é a única chave e a linha é travada antes de gravar. Exige `aguardando_pagamento`, a forma em `enviada` e a pessoa fora da lixeira. Monta a cópia **no banco**. Do navegador chegam só sim, não e o motivo (até 500 caracteres). Grava a resposta, muda a forma, registra no histórico e fecha o link |
-| `ganhar_negocio`, passo (7) | Só cria cobranças se nenhuma parte da forma tem cobrança ainda. Cria uma cobrança por parte, com a organização **da pessoa**: título "‹rótulo› — ‹vistos›", `amount` = total, a moeda da parte e `payment_plan_part_id`. As parcelas copiam as da forma, com o `method` da parte. No cartão, uma parcela com a anotação "Nx com/sem juros" |
+| `public.responder_forma_de_pagamento(p_token text, p_aceita boolean, p_motivo text)` (anônima, **nova**) | `security definer`, só `anon` executa, com as travas da 0035: o token é a única chave e a linha é travada antes de gravar. Liga as marcas `via_forma` e `via_ficha` e as desliga no fim. Exige `aguardando_pagamento`, a forma em `enviada` e a pessoa fora da lixeira. Monta a cópia **no banco**. Do navegador chegam só sim, não e o motivo (até 500 caracteres). Grava a resposta, muda a forma, registra no histórico e fecha o link |
+| `ganhar_negocio`, passo (7) | Com a marca `via_forma`. Só cria cobranças se `charges_created_at` é nulo, e o grava ao criar. Cria uma cobrança por parte, com a organização **da pessoa**: título "‹rótulo› — ‹vistos›", `amount` = total, a moeda da parte e `payment_plan_part_id`. As parcelas copiam as da forma, com o `method` da parte. No cartão, uma parcela com a anotação "Nx com/sem juros" |
 
 **Telas**
 
@@ -769,13 +835,23 @@ escreveu sobre ele") é **invertido**: o cliente deixa de ler.
 - **Forma enviada não se edita:** `salvar_forma_de_pagamento` em `enviada` é recusado.
   "Editar" cancela o link: abrir o link antigo mostra "cancelado", e
   `responder_forma_de_pagamento` com ele não grava.
-- **A prova não se forja** (teste de RLS vermelho antes):
-  - membro da equipe inserindo em `payment_plan_responses` com `decision =
-    'confirmada'` grava, na verdade, `confirmada_pela_equipe`, com o próprio id;
+- **A prova não se forja** (teste de RLS vermelho antes, na organização de teste):
+  - inserção direta em `payment_plan_responses` pela API, com qualquer `decision`,
+    é recusada;
   - `update payment_plans set status = 'confirmada'` pela API é recusado;
-  - `update` e `delete` em `payment_plan_responses` são recusados.
-- **Sem cobrança duplicada:** Ganho com forma confirmada → reabrir → "Refazer" é
-  recusado ("Ajuste na aba Financeiro"). Ganhar de novo não cria cobrança.
+  - `update` e `delete` em `payment_plan_responses` são recusados;
+  - `update registration_forms set mode = 'completa'` (ou `closed_at`, ou
+    `payment_plan_id`) pela API é recusado.
+- **Sem cobrança duplicada:**
+  - Ganho com forma confirmada → reabrir → "Refazer" é recusado ("Ajuste na aba
+    Financeiro"), e ganhar de novo não cria cobrança;
+  - depois de "criar as cobranças mesmo assim" com a forma `enviada`, "Editar" é
+    recusado do mesmo jeito.
+- **Cotação:** com a forma `confirmada`, a equipe anota a cotação do C6, e a cópia
+  guardada não muda.
+- **Confirmação sem link:** "Confirmar pela equipe" numa forma em `rascunho` a deixa
+  `confirmada`, sem nenhum link ter sido enviado.
+- **Cancelar o link** de uma forma `enviada` a deixa em `rascunho`.
 - **Token inválido:** `responder_forma_de_pagamento` com token vencido, já respondido,
   cancelado ou inventado não grava nada.
 - **Quem executa as funções anônimas:**
@@ -913,5 +989,15 @@ pagamento já chega pronta da ficha.
 |---|
 | As quatro abordagens do §4 |
 | Quem tem processo ou cobrança é cliente, garantido por gatilho (substitui o CON-3) |
-| O quadro mostra Ganho e Perdido só dos últimos 30 dias, e o resto fica em Encerradas |
 | "Cliente desde" dos atuais vem do primeiro processo ou da primeira cobrança |
+| As travas valem também na organização de teste; só a exclusão em cascata passa |
+| Uma marca de transação por recurso, desligada no fim da função |
+
+**Minhas, de produto, levadas ao Renato junto com a rodada 3**
+
+| Decisão |
+|---|
+| O quadro mostra Ganho e Perdido só dos últimos 30 dias, e o resto fica em Encerradas |
+| Fora do Ganho, só a gestão torna alguém cliente (processo, cobrança ou "marcar como cliente"), sempre com registro no histórico |
+| A cotação do C6 é editável em qualquer estado da forma |
+| "Confirmar pela equipe" vale também sem link enviado (forma em rascunho) |

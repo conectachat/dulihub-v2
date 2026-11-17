@@ -127,7 +127,9 @@ Lead entra → conversa → proposta → ficha → contrato → assinatura → G
    estágios.
 2. **Lead não é cliente.** Enquanto o negócio está no funil, a pessoa não tem
    processo nem financeiro à vista. O **Ganho** — contrato assinado — é o que a
-   faz cliente, e cliente não volta a ser lead (hoje só a tela garante — M17).
+   faz cliente; fora dele, só a gestão, marcando à mão ou criando processo ou
+   cobrança (CLI-12, CLI-14). Cliente não volta a ser lead (hoje só a tela
+   garante — M17; passa ao banco com o CLI-13).
 3. **Negócio não é pessoa.** A mesma pessoa pode ter vários negócios ao longo do
    tempo.
 4. **Molde e cópia.** O tipo de visto é o molde de etapas e pastas; o processo
@@ -222,9 +224,9 @@ Dizer o que precisa de atenção hoje.
 | FIC-6 | Endereço preenchido pelo CEP | P2 | ⬜ |
 | FIC-7 | **Enviar ficha** pela oportunidade abre a **forma de pagamento** (cartão até 10x sem juros / 18x com juros, parcelas iguais até 36, entrada + parcelas, à vista; cada parte na sua moeda, com as datas), resumo e confirmação antes do link | P0 | ⬜ |
 | FIC-8 | O cliente, depois dos dados pessoais, **confirma** a forma de pagamento ou diz **o que está errado** | P0 | ⬜ |
-| FIC-9 | Recusada: o dono ajusta e reenvia; o link novo abre direto no pagamento, sem mostrar de novo os dados pessoais | P0 | ⬜ |
-| FIC-10 | Confirmação da forma de pagamento pela equipe, registrando quem | P0 | ⬜ |
-| FIC-11 | Cotação usada (C6) anotada na forma de pagamento; só a equipe vê | P1 | ⬜ |
+| FIC-9 | Recusada: o dono ajusta e reenvia; o link novo abre direto no pagamento, sem mostrar de novo os dados pessoais, e não aceita dados pessoais | P0 | ⬜ |
+| FIC-10 | Confirmação da forma de pagamento pela equipe (dono do negócio ou gestão), também sem link enviado, registrando quem | P0 | ⬜ |
+| FIC-11 | Cotação usada (C6) anotada na forma de pagamento, em qualquer estado; só a equipe vê | P1 | ⬜ |
 
 Critério de aceite de FIC-7 a FIC-11: `docs/superpowers/specs/2026-11-17-contato-oportunidade-cliente-design.md` §6.4.
 
@@ -405,7 +407,7 @@ que é própria. Desenho técnico e critério de aceite de cada requisito:
 | CLI-11 | Cliente desde: gravado quando a pessoa passa a ser cliente, editável à mão; os atuais recebem a data do primeiro processo ou cobrança | P0 | ⬜ |
 | CLI-12 | Marcar como cliente à mão, só a gestão (conferido no banco) | P0 | ⬜ |
 | CLI-13 | Cliente não volta a ser lead, garantido no banco (fecha o M17) | P0 | ⬜ |
-| CLI-14 | Quem tem processo ou cobrança é cliente: criar um ou outro promove a pessoa; os contatos assim hoje viram clientes na migration. Substitui o CON-3 | P0 | ⬜ |
+| CLI-14 | Quem tem processo ou cobrança é cliente: criar um ou outro promove a pessoa, com registro no histórico — fora do Ganho, só a gestão; os contatos assim hoje viram clientes na migration. Substitui o CON-3 | P0 | ⬜ |
 
 ---
 
