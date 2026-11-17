@@ -69,7 +69,7 @@ Os 4 contatos sem e-mail ou telefone só cobram os campos quando alguém os edit
 - **Antes de cada commit:** `bun run verify` verde, lint zero, nunca `--no-verify`.
 - **Push:** é do Renato, nos três pontos marcados (fim da T3, fim da T6, fim da T9). Migration nova não fica no ar com a tela antiga mais que o necessário (spec §12.7.4).
 - **Espaço e dígito, iguais em JS e SQL.** O `\s` e o `\d` mudam com o locale do Postgres, e no JS incluem caracteres que o banco não inclui. Por isso nenhuma das duas regras usa `\s` ou `\d`:
-  - **ESPACO** é o conjunto explícito `[ \t\n\r\f\v ﻿]`. No SQL, NBSP e BOM entram por `chr(160)` e `chr(65279)`;
+  - **ESPACO** é o conjunto explícito `[ \t\n\r\f\v\u00a0\ufeff]`. No SQL, NBSP e BOM entram por `chr(160)` e `chr(65279)`;
   - **dígito** é `[0-9]`;
   - **aparar** é tirar ESPACO do começo e do fim (`private.aparar` no SQL; a mesma regex no TS), e vazio vira nulo.
 - **Mensagens de validação de contato** (cópia exata, iguais no TS e no SQL; valem sobre o valor já aparado; `contato_valido` apara por dentro):
@@ -246,7 +246,7 @@ Reaproveita `soDigitos` de `src/lib/documentos.ts`. O aparo e as regex usam o co
   | telefone curto (7 dígitos) | `caso9@teste.dulihub` | `+55` | `9999-000` | `O telefone precisa ter de 8 a 15 dígitos` |
   | telefone longo (16 dígitos) | `caso10@teste.dulihub` | `+1` | `1234567890123456` | `O telefone precisa ter de 8 a 15 dígitos` |
   | EUA | `caso11@teste.dulihub` | `+1` | `(305) 555-0111` | `null` |
-  | NBSP em volta | ` caso12@teste.dulihub ` | ` +55` | `31999990012 ` | `null` |
+  | NBSP em volta | `\u00a0caso12@teste.dulihub\u00a0` | `\u00a0+55` | `31999990012\u00a0` | `null` |
 - [ ] **Passo 2: testes que falham** em `contato.test.ts`:
   - `it.each(CASOS_DE_CONTATO)("$nome", …)`, com `expect(erroDeContato(c.contato)?.mensagem ?? null).toBe(c.erro)`;
   - o campo certo: "sem DDI" → `campo = "ddi"`, "sem telefone" → `"telefone"`;
@@ -504,7 +504,7 @@ public.criar_oportunidade(
   - se o parecido está na lixeira, chama antes `restorePerson`, importado direto em `opportunity-dialog.tsx` (que está em `app/`). Assim `quadro.tsx:273` e `crm/page.tsx`, que desenham o diálogo, não mudam.
 
 - [ ] **Passo 1: testes que falham:**
-  - `opportunity-dialog.test.tsx`, com `vi.mock("@/features/opportunities/actions")`:
+  - `opportunity-dialog.test.tsx`, com `vi.mock("@/features/opportunities/actions")` e `vi.mock("@/features/people/actions")` (para afirmar que `restorePerson` foi chamado):
     - `"Novo contato mostra nome, DDI, telefone e e-mail obrigatórios"`;
     - `"parecido: Sim usa o existente mesmo fora da lista e reenvia"`: na segunda chamada, `modo_contato = existente` e `person_id` = o id do parecido;
     - `"parecido na lixeira: Sim restaura antes de usar"`;
