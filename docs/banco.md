@@ -9,7 +9,8 @@ precisar ler 38 migrations para responder "onde está X e quem pode tocar".
 resumo delas; se divergir, a migration vence e este arquivo está errado.
 **Toda migration atualiza este arquivo no mesmo commit.**
 
-Situação: 0001 a 0038 aplicadas. Colunas atuais:
+Situação: 0001 a 0038 e 0040 aplicadas; a 0039 (conta de teste
+`teste-staff`) vem a seguir, quando a conta existir. Colunas atuais:
 `src/lib/supabase/database.types.ts` (gerado, não se edita à mão).
 
 ---
@@ -43,6 +44,20 @@ O schema `private` não é publicado pelo PostgREST. As auxiliares de RLS são
 | `can_access_opportunity(negócio)` | `can_access_person` da pessoa dona do negócio. | 0013 |
 | `campos_da_ficha()` | Lista fechada dos 20 campos de `people` que a ficha de cadastro pode gravar. | 0035 |
 
+Auxiliares de formato do contato (0040). Não são de RLS: são `immutable`,
+**sem** `security definer`, e executáveis por `authenticated` porque o índice
+de `people` e as funções `invoker` as avaliam com o papel de quem grava —
+revogar derruba todo `insert` em `people`. A mesma regra está em
+`src/lib/contato.ts`, e `src/lib/contato.casos.ts` prova as duas.
+
+| Função | O que faz |
+|---|---|
+| `espaco()` | O conjunto ESPACO: espaço, tab, `\n`, `\r`, `\f`, `\v`, NBSP e BOM. Nunca `\s`, que muda com o locale. |
+| `aparar(t)` | Tira ESPACO das pontas; vazio vira nulo. |
+| `normalizar_ddi(ddi)` | "55" e "+55" → "+55"; fora do formato, devolve aparado. |
+| `telefone_nacional(ddi, número)` | Os dígitos do número, sem o DDI da frente quando ele veio junto (mais de 11 dígitos e começando por ele). É por ele que dois telefones se comparam. |
+| `contato_valido(e-mail, ddi, telefone)` | A primeira regra que falha (e-mail → DDI → telefone), com a mensagem exata da tela; nulo se está tudo certo. |
+
 Funções de gatilho (ninguém chama direto): `set_updated_at`, `handle_new_user`
 (cria `profiles` quando nasce usuário), `people_guard_self_update`,
 `people_organizacao_fixa`, `organizations_campos_fixos`,
@@ -75,7 +90,7 @@ Legenda de "quem": **membros** = qualquer membro da organização da linha;
 
 | Tabela | Para que serve | Pai / organização vem de | Quem lê | Quem grava | Regras especiais |
 |---|---|---|---|---|---|
-| `people` | Cadastro único da pessoa: contato, lead e cliente são a mesma linha com `lifecycle_stage`. Dados da ficha, endereço, documentos. `deleted_at` = lixeira. | `organization_id` próprio (quem trouxe a pessoa); `assigned_organization_id` = organização atribuída. | Membros; atribuída; cliente. | Criar: membros. Alterar: membros e atribuída; o cliente altera o próprio, com colunas travadas. Apagar de vez: só gestão **e** só em organização `is_test` (0036). | `people_guard_self_update`: no portal, o cliente não muda organização, atribuída, estágio, `user_id`, CPF, RG, órgão, `created_by`, `deleted_at`. `people_organizacao_fixa`: `organization_id` nunca muda; `assigned_organization_id` só muda por gestão da dona ou dono da raiz (0036); a mesma regra vale ao **criar** já atribuído (0037). Um login por pessoa; `legacy_id` único por organização. |
+| `people` | Cadastro único da pessoa: contato, lead e cliente são a mesma linha com `lifecycle_stage`. Dados da ficha, endereço, documentos. `deleted_at` = lixeira. | `organization_id` próprio (quem trouxe a pessoa); `assigned_organization_id` = organização atribuída. | Membros; atribuída; cliente. | Criar: membros. Alterar: membros e atribuída; o cliente altera o próprio, com colunas travadas. Apagar de vez: só gestão **e** só em organização `is_test` (0036). | `people_guard_self_update`: no portal, o cliente não muda organização, atribuída, estágio, `user_id`, CPF, RG, órgão, `created_by`, `deleted_at`. `people_organizacao_fixa`: `organization_id` nunca muda; `assigned_organization_id` só muda por gestão da dona ou dono da raiz (0036); a mesma regra vale ao **criar** já atribuído (0037). Um login por pessoa; `legacy_id` único por organização. E-mail, DDI e telefone são obrigatórios na tela e em `salvar_cadastro`, não `not null` na coluna (0040): contato antigo sem eles continua existindo e só os cobra ao ser editado. DDI gravado sempre como "+NN" (0040 corrigiu 76 linhas). Índices `people_email_normalizado` e `people_telefone_nacional` servem a `contatos_parecidos`; mudar `aparar` ou `telefone_nacional` exige `reindex` deles. |
 | `tags` | Etiquetas da organização. | `organization_id` próprio. | Membros. | Gestão (0018). | Nome único por organização, sem diferenciar maiúscula. |
 | `person_tags` | Etiqueta aplicada a uma pessoa. | Da pessoa; chave composta amarra pessoa **e** tag à mesma organização. | Quem alcança a pessoa (`can_access_person`: membros, atribuída, cliente). | Membros. | Chave é o par `(person_id, tag_id)`, sem `id`: **sem lápide** (0029b) — o espelho relê inteira. `guard_child_row` congela vínculo se quem edita não é da organização. |
 | `person_dependents` | Cônjuge e filhos do contratante, para os formulários americanos. | Da pessoa. | Quem alcança a pessoa. | Membros (na prática, via `salvar_cadastro`). | `relationship` ∈ spouse/child/other; nome e país obrigatórios; no máximo 10 por ficha (regra da função). Fora do manifesto por ora. |
@@ -148,7 +163,8 @@ rodam numa transação só.
 |---|---|---|---|
 | `abrir_ficha_de_cadastro(token)` | Devolve a situação do link (aberta/enviada/cancelada/expirada), o nome da organização e — só se aberta — nome, e-mail e telefone. Token desconhecido não devolve linha. | **Só `anon`** | definer |
 | `enviar_ficha_de_cadastro(token, dados, consentimento)` | Trava o link, confere prazo e consentimento, guarda o "antes", grava a ficha completa via `salvar_cadastro`, marca enviada e registra atividade. Uso único. | **Só `anon`** | definer |
-| `salvar_cadastro(pessoa, dados, completo)` | Grava os campos da ficha (lista fechada), valida CPF (11 dígitos), datas, sexo, estado civil e e-mail; se vier `dependents`, substitui a lista (máx. 10). Devolve o que gravou, normalizado. | `authenticated` | invoker |
+| `salvar_cadastro(pessoa, dados, completo)` | Grava os campos da ficha (lista fechada, aparados por `private.aparar`), valida CPF (11 dígitos), datas, sexo e estado civil; normaliza o DDI; quando a ficha traz e-mail, DDI ou telefone — ou é completa —, o contato final passa por `private.contato_valido` (0040): a equipe não apaga o e-mail pela ficha. Se vier `dependents`, substitui a lista (máx. 10). Devolve o que gravou, normalizado. | `authenticated` | invoker |
+| `contatos_parecidos(e-mail, ddi, telefone, ignorar?)` | Quem tem o mesmo e-mail (aparado, sem maiúscula) ou o mesmo telefone nacional, com `na_lixeira`, `bate_email` e `bate_telefone`. Entrada vazia nunca bate; `ignorar` tira o próprio contato; no máximo 10, por nome (0040). Sob a RLS de quem chama: outra organização não aparece. | `authenticated` | invoker |
 | `criar_processo(pessoa, visto, título, negócio?)` | Cria o processo e copia do visto as etapas (com o status padrão) e as pastas exigidas, ligando cada pasta ao "pai visível" e calculando o prazo. | `authenticated` | invoker |
 | `reordenar_irmaos(tabela, ids[])` | Grava a ordem final de uma lista; idempotente (serve à fila offline). Recusa se alguma linha não for alcançável. Tabelas: `pipeline_stages`, `stage_statuses`, `document_types`, `visa_stages`, `visa_type_documents`, `project_stages`, `project_documents`. | `authenticated` | invoker |
 | `swap_positions(tabela, a, b)` | Troca duas linhas de posição. Mesmas sete tabelas (0026). Não é idempotente — para a fila, usar `reordenar_irmaos`. | `authenticated` | invoker |
@@ -202,7 +218,7 @@ Só um uso: a edição simultânea das Observações (0024).
 | `organizations` | 0001, 0002 (Duli), 0003, 0015 (organização de teste), 0019 (semente), 0036, 0037 |
 | `profiles` | 0001, 0003, 0013 (`handle_new_user`) |
 | `organization_members` | 0001, 0002, 0003, 0028, 0029, 0036 |
-| `people` | 0001, 0003, 0006, 0007, 0013, 0016, 0029, 0036, 0037 |
+| `people` | 0001, 0003, 0006, 0007, 0013, 0016, 0029, 0036, 0037, 0040 (DDI corrigido, índices) |
 | `tags` | 0004, 0016, 0018, 0028, 0029 |
 | `person_tags` | 0004, 0016, 0017, 0028, 0029b |
 | `person_dependents`, `registration_forms` | 0035 |
@@ -227,7 +243,8 @@ Só um uso: a edição simultânea das Observações (0024).
 | `receivables`, `installments` | 0033 |
 | `deleted_rows` | 0029, 0031 (limpeza), 0032 e 0033 (manifesto) |
 | Auxiliares de RLS | 0001 → 0003 (para `private`) → 0013 (versão atual); `current_user_is_root_owner` na 0036 |
-| RPCs | `swap_positions` 0014/0023/0026; `criar_processo` 0020; `compactar_pagina` 0024/0025; `sync_manifesto` 0030/0032/0033; `reordenar_irmaos` 0030; ficha 0035; `set_default_stage_status` 0010 |
+| Auxiliares de formato do contato | 0040 |
+| RPCs | `swap_positions` 0014/0023/0026; `criar_processo` 0020; `compactar_pagina` 0024/0025; `sync_manifesto` 0030/0032/0033; `reordenar_irmaos` 0030; ficha 0035 (`salvar_cadastro` refeita na 0040); `contatos_parecidos` 0040; `set_default_stage_status` 0010 |
 | Storage | `documentos` 0020; `observacoes` 0024 |
 | Tempo real | 0024 |
 | Dados de teste | 0015, 0021 (organização `parceiro-teste`, `is_test` desde 0036) |

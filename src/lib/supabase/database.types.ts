@@ -1859,6 +1859,22 @@ export type Database = {
         }
         Returns: undefined
       }
+      contatos_parecidos: {
+        Args: {
+          p_ddi: string
+          p_email: string
+          p_ignorar?: string
+          p_telefone: string
+        }
+        Returns: {
+          bate_email: boolean
+          bate_telefone: boolean
+          full_name: string
+          id: string
+          lifecycle_stage: Database["public"]["Enums"]["person_lifecycle_stage"]
+          na_lixeira: boolean
+        }[]
+      }
       criar_processo: {
         Args: {
           p_opportunity?: string
