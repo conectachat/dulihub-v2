@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
 
-import { buscarParecidos, contatoMudou } from "./parecidos";
+import { buscarParecidos, contatoMudou, respostaDaCriacao } from "./parecidos";
 import type { Database } from "./supabase/database.types";
 
 /**
@@ -83,6 +83,61 @@ describe("buscarParecidos", () => {
     expect(r.parecidos).toEqual([]);
     expect(r.error).toBeTruthy();
     expect(r.error).not.toContain("permission denied");
+  });
+});
+
+describe("respostaDaCriacao", () => {
+  it("respostaDaCriacao traduz as duas situações e recusa formato desconhecido", () => {
+    expect(
+      respostaDaCriacao.parse({ situacao: "criada", negocio: "n1", pessoa: "p1" }),
+    ).toEqual({ situacao: "criada", negocio: "n1", pessoa: "p1" });
+
+    expect(
+      respostaDaCriacao.parse({
+        situacao: "precisa_confirmar",
+        parecidos: [
+          {
+            id: "p1",
+            nome: "Carlos Souza",
+            estagio: "client",
+            na_lixeira: true,
+            bate_email: false,
+            bate_telefone: true,
+          },
+        ],
+      }),
+    ).toEqual({
+      situacao: "precisa_confirmar",
+      parecidos: [
+        {
+          id: "p1",
+          nome: "Carlos Souza",
+          estagio: "client",
+          naLixeira: true,
+          bateEmail: false,
+          bateTelefone: true,
+        },
+      ],
+      oportunidades: [],
+    });
+
+    expect(
+      respostaDaCriacao.parse({
+        situacao: "precisa_confirmar",
+        oportunidades: [
+          { id: "n1", titulo: "EB-2 NIW", status: "won", criada_em: "2026-10-01T12:00:00+00:00" },
+        ],
+      }),
+    ).toEqual({
+      situacao: "precisa_confirmar",
+      parecidos: [],
+      oportunidades: [
+        { id: "n1", titulo: "EB-2 NIW", status: "won", criadaEm: "2026-10-01T12:00:00+00:00" },
+      ],
+    });
+
+    expect(respostaDaCriacao.safeParse({ situacao: "outra" }).success).toBe(false);
+    expect(respostaDaCriacao.safeParse(null).success).toBe(false);
   });
 });
 

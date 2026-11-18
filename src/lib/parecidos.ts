@@ -1,10 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
 
 import type { ActionState } from "./action-state";
 import { aparar, normalizarDdi, type Contato } from "./contato";
 import { soDigitos } from "./documentos";
 import { traduzirErro } from "./erros";
-import type { Database, Enums } from "./supabase/database.types";
+import { Constants, type Database, type Enums } from "./supabase/database.types";
 
 /**
  * Contato já cadastrado (CON-8): o que a busca devolve, o que a ação manda
@@ -79,6 +80,59 @@ export async function buscarParecidos(
     error: null,
   };
 }
+
+const parecidoDaCriacao = z
+  .object({
+    id: z.string(),
+    nome: z.string(),
+    estagio: z.enum(Constants.public.Enums.person_lifecycle_stage),
+    na_lixeira: z.boolean(),
+    bate_email: z.boolean(),
+    bate_telefone: z.boolean(),
+  })
+  .transform(
+    (p): ContatoParecido => ({
+      id: p.id,
+      nome: p.nome,
+      estagio: p.estagio,
+      naLixeira: p.na_lixeira,
+      bateEmail: p.bate_email,
+      bateTelefone: p.bate_telefone,
+    }),
+  );
+
+const oportunidadeDaCriacao = z
+  .object({
+    id: z.string(),
+    titulo: z.string(),
+    status: z.enum(Constants.public.Enums.opportunity_status),
+    criada_em: z.string(),
+  })
+  .transform(
+    (o): OportunidadeExistente => ({
+      id: o.id,
+      titulo: o.titulo,
+      status: o.status,
+      criadaEm: o.criada_em,
+    }),
+  );
+
+/**
+ * A resposta de `criar_oportunidade` (0041), de `Json` para o que a tela usa.
+ * Ou criou (o negócio e a pessoa), ou parou para perguntar — com os contatos
+ * parecidos **ou** as oportunidades anteriores do contato; a função manda só
+ * uma das listas, e a outra vem vazia.
+ */
+export const respostaDaCriacao = z.discriminatedUnion("situacao", [
+  z.object({ situacao: z.literal("criada"), negocio: z.string(), pessoa: z.string() }),
+  z.object({
+    situacao: z.literal("precisa_confirmar"),
+    parecidos: z.array(parecidoDaCriacao).default([]),
+    oportunidades: z.array(oportunidadeDaCriacao).default([]),
+  }),
+]);
+
+export type RespostaDaCriacao = z.output<typeof respostaDaCriacao>;
 
 /**
  * O e-mail, o DDI ou o telefone mudaram de verdade? Compara normalizado:

@@ -1875,6 +1875,20 @@ export type Database = {
           na_lixeira: boolean
         }[]
       }
+      criar_oportunidade: {
+        Args: {
+          p_confirmar_contato_parecido: boolean
+          p_confirmar_outra_oportunidade: boolean
+          p_contato?: string
+          p_etapa: string
+          p_moeda?: string
+          p_novo_contato?: Json
+          p_origem?: string
+          p_titulo: string
+          p_valor?: number
+        }
+        Returns: Json
+      }
       criar_processo: {
         Args: {
           p_opportunity?: string

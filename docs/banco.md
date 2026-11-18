@@ -9,7 +9,7 @@ precisar ler 38 migrations para responder "onde está X e quem pode tocar".
 resumo delas; se divergir, a migration vence e este arquivo está errado.
 **Toda migration atualiza este arquivo no mesmo commit.**
 
-Situação: 0001 a 0038 e 0040 aplicadas; a 0039 (conta de teste
+Situação: 0001 a 0038, 0040 e 0041 aplicadas; a 0039 (conta de teste
 `teste-staff`) vem a seguir, quando a conta existir. Colunas atuais:
 `src/lib/supabase/database.types.ts` (gerado, não se edita à mão).
 
@@ -164,6 +164,7 @@ rodam numa transação só.
 | `abrir_ficha_de_cadastro(token)` | Devolve a situação do link (aberta/enviada/cancelada/expirada), o nome da organização e — só se aberta — nome, e-mail e telefone. Token desconhecido não devolve linha. | **Só `anon`** | definer |
 | `enviar_ficha_de_cadastro(token, dados, consentimento)` | Trava o link, confere prazo e consentimento, guarda o "antes", grava a ficha completa via `salvar_cadastro`, marca enviada e registra atividade. Uso único. | **Só `anon`** | definer |
 | `salvar_cadastro(pessoa, dados, completo)` | Grava os campos da ficha (lista fechada, aparados por `private.aparar`), valida CPF (11 dígitos), datas, sexo e estado civil; normaliza o DDI; quando a ficha traz e-mail, DDI ou telefone — ou é completa —, o contato final passa por `private.contato_valido` (0040): a equipe não apaga o e-mail pela ficha. Se vier `dependents`, substitui a lista (máx. 10). Devolve o que gravou, normalizado. | `authenticated` | invoker |
+| `criar_oportunidade(etapa, título, confirmar_parecido, confirmar_outra, contato?, novo_contato?, origem?, valor?, moeda?)` | Cria o negócio com contato existente **ou** novo, numa transação (0041). Confere antes de gravar: um contato só; a etapa visível, de uma organização sua (senão `42501`) e aberta; título; contato existente da organização da etapa e fora da lixeira; contato novo com nome e `contato_valido`. Contato parecido ou oportunidade anterior do contato, sem confirmação, **não é erro**: devolve `{"situacao":"precisa_confirmar"}` com a lista. Criado: o contato novo nasce na organização da etapa, o negócio com dono e autor = quem chama, e a pessoa vira `opportunity` (cliente não regride). | `authenticated` | invoker |
 | `contatos_parecidos(e-mail, ddi, telefone, ignorar?)` | Quem tem o mesmo e-mail (aparado, sem maiúscula) ou o mesmo telefone nacional, com `na_lixeira`, `bate_email` e `bate_telefone`. Entrada vazia nunca bate; `ignorar` tira o próprio contato; no máximo 10, por nome (0040). Sob a RLS de quem chama: outra organização não aparece. | `authenticated` | invoker |
 | `criar_processo(pessoa, visto, título, negócio?)` | Cria o processo e copia do visto as etapas (com o status padrão) e as pastas exigidas, ligando cada pasta ao "pai visível" e calculando o prazo. | `authenticated` | invoker |
 | `reordenar_irmaos(tabela, ids[])` | Grava a ordem final de uma lista; idempotente (serve à fila offline). Recusa se alguma linha não for alcançável. Tabelas: `pipeline_stages`, `stage_statuses`, `document_types`, `visa_stages`, `visa_type_documents`, `project_stages`, `project_documents`. | `authenticated` | invoker |
@@ -244,7 +245,7 @@ Só um uso: a edição simultânea das Observações (0024).
 | `deleted_rows` | 0029, 0031 (limpeza), 0032 e 0033 (manifesto) |
 | Auxiliares de RLS | 0001 → 0003 (para `private`) → 0013 (versão atual); `current_user_is_root_owner` na 0036 |
 | Auxiliares de formato do contato | 0040 |
-| RPCs | `swap_positions` 0014/0023/0026; `criar_processo` 0020; `compactar_pagina` 0024/0025; `sync_manifesto` 0030/0032/0033; `reordenar_irmaos` 0030; ficha 0035 (`salvar_cadastro` refeita na 0040); `contatos_parecidos` 0040; `set_default_stage_status` 0010 |
+| RPCs | `swap_positions` 0014/0023/0026; `criar_processo` 0020; `compactar_pagina` 0024/0025; `sync_manifesto` 0030/0032/0033; `reordenar_irmaos` 0030; ficha 0035 (`salvar_cadastro` refeita na 0040); `contatos_parecidos` 0040; `criar_oportunidade` 0041; `set_default_stage_status` 0010 |
 | Storage | `documentos` 0020; `observacoes` 0024 |
 | Tempo real | 0024 |
 | Dados de teste | 0015, 0021 (organização `parceiro-teste`, `is_test` desde 0036) |
