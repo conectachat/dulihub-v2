@@ -529,6 +529,58 @@ export type Database = {
           },
         ]
       }
+      opportunity_participants: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          opportunity_id: string
+          organization_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          opportunity_id: string
+          organization_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          opportunity_id?: string
+          organization_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunity_participants_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_participants_membro"
+            columns: ["organization_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "organization_members"
+            referencedColumns: ["organization_id", "user_id"]
+          },
+          {
+            foreignKeyName: "opportunity_participants_opportunity_same_org"
+            columns: ["opportunity_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
       opportunity_products: {
         Row: {
           created_at: string
@@ -711,6 +763,7 @@ export type Database = {
           nationality: string | null
           notes: string | null
           organization_id: string
+          owner_id: string | null
           phone: string | null
           phone_country_code: string | null
           tax_id: string | null
@@ -747,6 +800,7 @@ export type Database = {
           nationality?: string | null
           notes?: string | null
           organization_id: string
+          owner_id?: string | null
           phone?: string | null
           phone_country_code?: string | null
           tax_id?: string | null
@@ -783,6 +837,7 @@ export type Database = {
           nationality?: string | null
           notes?: string | null
           organization_id?: string
+          owner_id?: string | null
           phone?: string | null
           phone_country_code?: string | null
           tax_id?: string | null
@@ -810,6 +865,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_owner_membro"
+            columns: ["organization_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "organization_members"
+            referencedColumns: ["organization_id", "user_id"]
           },
           {
             foreignKeyName: "people_user_id_fkey"
@@ -860,6 +922,58 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "person_dependents_person_same_org"
+            columns: ["person_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      person_participants: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          organization_id: string
+          person_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id: string
+          person_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id?: string
+          person_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_participants_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_participants_membro"
+            columns: ["organization_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "organization_members"
+            referencedColumns: ["organization_id", "user_id"]
+          },
+          {
+            foreignKeyName: "person_participants_person_same_org"
             columns: ["person_id", "organization_id"]
             isOneToOne: false
             referencedRelation: "people"

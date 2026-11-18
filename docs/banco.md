@@ -9,7 +9,7 @@ precisar ler 38 migrations para responder "onde está X e quem pode tocar".
 resumo delas; se divergir, a migration vence e este arquivo está errado.
 **Toda migration atualiza este arquivo no mesmo commit.**
 
-Situação: 0001 a 0043 aplicadas (a 0039 depois da 0042, quando a conta
+Situação: 0001 a 0044 aplicadas (a 0039 depois da 0042, quando a conta
 `teste-staff` passou a existir). Colunas atuais:
 `src/lib/supabase/database.types.ts` (gerado, não se edita à mão).
 
@@ -91,9 +91,10 @@ Legenda de "quem": **membros** = qualquer membro da organização da linha;
 
 | Tabela | Para que serve | Pai / organização vem de | Quem lê | Quem grava | Regras especiais |
 |---|---|---|---|---|---|
-| `people` | Cadastro único da pessoa: contato, lead e cliente são a mesma linha com `lifecycle_stage`. Dados da ficha, endereço, documentos. `deleted_at` = lixeira. | `organization_id` próprio (quem trouxe a pessoa); `assigned_organization_id` = organização atribuída. | Membros; atribuída; cliente. | Criar: membros. Alterar: membros e atribuída; o cliente altera o próprio, com colunas travadas. Apagar de vez: só gestão **e** só em organização `is_test` (0036). | `people_guard_self_update`: no portal, o cliente não muda organização, atribuída, estágio, `user_id`, CPF, RG, órgão, `created_by`, `deleted_at`. `people_organizacao_fixa`: `organization_id` nunca muda; `assigned_organization_id` só muda por gestão da dona ou dono da raiz (0036); a mesma regra vale ao **criar** já atribuído (0037). Um login por pessoa; `legacy_id` único por organização. E-mail, DDI e telefone são obrigatórios na tela e em `salvar_cadastro`, não `not null` na coluna (0040): contato antigo sem eles continua existindo e só os cobra ao ser editado. DDI gravado sempre como "+NN" (0040 corrigiu 76 linhas). Índices `people_email_normalizado` e `people_telefone_nacional` servem a `contatos_parecidos`; mudar `aparar` ou `telefone_nacional` exige `reindex` deles. |
+| `people` | Cadastro único da pessoa: contato, lead e cliente são a mesma linha com `lifecycle_stage`. Dados da ficha, endereço, documentos. `deleted_at` = lixeira. | `organization_id` próprio (quem trouxe a pessoa); `assigned_organization_id` = organização atribuída. | Membros; atribuída; cliente. | Criar: membros. Alterar: membros e atribuída; o cliente altera o próprio, com colunas travadas. Apagar de vez: só gestão **e** só em organização `is_test` (0036). | `people_guard_self_update`: no portal, o cliente não muda organização, atribuída, estágio, `user_id`, CPF, RG, órgão, `created_by`, `deleted_at`, `owner_id` (0044). **Dono** (`owner_id`, 0044): FK composta `(organization_id, owner_id)` → `organization_members (organization_id, user_id)`, `on delete set null (owner_id)` — só membro da organização da pessoa é dono (consultor de organização atribuída nunca é), e o membro que sai deixa o dono nulo (conferido no catálogo: `confdeltype = 'n'`, `confdelsetcols = {owner_id}`). `people_organizacao_fixa`: `organization_id` nunca muda; `assigned_organization_id` só muda por gestão da dona ou dono da raiz (0036); a mesma regra vale ao **criar** já atribuído (0037). Um login por pessoa; `legacy_id` único por organização. E-mail, DDI e telefone são obrigatórios na tela e em `salvar_cadastro`, não `not null` na coluna (0040): contato antigo sem eles continua existindo e só os cobra ao ser editado. DDI gravado sempre como "+NN" (0040 corrigiu 76 linhas). Índices `people_email_normalizado` e `people_telefone_nacional` servem a `contatos_parecidos`; mudar `aparar` ou `telefone_nacional` exige `reindex` deles. |
 | `tags` | Etiquetas da organização. | `organization_id` próprio. | Membros. | Gestão (0018). | Nome único por organização, sem diferenciar maiúscula. |
 | `person_tags` | Etiqueta aplicada a uma pessoa. | Da pessoa; chave composta amarra pessoa **e** tag à mesma organização. | Quem alcança a pessoa (`can_access_person`: membros, atribuída, cliente). | Membros. | Chave é o par `(person_id, tag_id)`, sem `id`: **sem lápide** (0029b) — o espelho relê inteira. `guard_child_row` congela vínculo se quem edita não é da organização. |
+| `person_participants` | Quem acompanha o cliente, além do dono (CLI-10). | Da pessoa; FK composta com `people` (cascade) e com `organization_members` (cascade: membro que sai deixa de participar). | Membros (não a atribuída). | Membros. | Único `(person_id, user_id)`. Lápide e `updated_at`. Fora do manifesto (0044). |
 | `person_dependents` | Cônjuge e filhos do contratante, para os formulários americanos. | Da pessoa. | Quem alcança a pessoa. | Membros (na prática, via `salvar_cadastro`). | `relationship` ∈ spouse/child/other; nome e país obrigatórios; no máximo 10 por ficha (regra da função). Fora do manifesto por ora. |
 | `registration_forms` | Link da ficha de cadastro (token) e a resposta do lead: `answers`, `previous` (o que havia antes), texto do consentimento, conferência. | Da pessoa. | Membros. Anônimo: só pelas funções da ficha. | Membros; o envio do lead grava via `enviar_ficha_de_cadastro`. | Token ≥ 40 caracteres, único. Um link em aberto por pessoa (vencido conta como aberto). Enviada exige resposta; conferida exige enviada. Fora do manifesto por ora. |
 | `notes` | Notas sobre a pessoa (opcionalmente ligadas a um negócio). | Da pessoa. | Quem alcança a pessoa — inclui cliente e atribuída. | Membros da organização dona (0017). | `guard_child_row` congela `organization_id`, `person_id`, `opportunity_id`, `created_by` para quem não é membro. |
@@ -106,7 +107,8 @@ Legenda de "quem": **membros** = qualquer membro da organização da linha;
 |---|---|---|---|---|---|
 | `pipelines` | Funis de venda. | `organization_id` próprio. | Membros. | Gestão (0018). | Um funil padrão por organização. Semeado ao criar a organização. |
 | `pipeline_stages` | Colunas do funil. | Do funil (coluna desde 0027). | Membros. | Gestão. | Uma etapa de ganho e uma de perda por funil, nunca as duas na mesma; ganho/perda **não se apagam**, só se renomeiam (0005). `probability` 0–100. |
-| `opportunities` | Negócio de uma pessoa (a pessoa pode ter vários). Valor, moeda, etapa, status open/won/lost. | Da pessoa; funil da mesma organização; etapa do mesmo funil. | Quem alcança a pessoa — inclui cliente e atribuída. | Membros (0017). | Encerrado ⇔ tem `closed_at`. `guard_child_row`. Nasce sempre aberto e em etapa não terminal; ganhar/perder é mover (0038). |
+| `opportunities` | Negócio de uma pessoa (a pessoa pode ter vários). Valor, moeda, etapa, status open/won/lost. | Da pessoa; funil da mesma organização; etapa do mesmo funil. | Quem alcança a pessoa — inclui cliente e atribuída. | Membros (0017). | Encerrado ⇔ tem `closed_at`. `guard_child_row`. Nasce sempre aberto e em etapa não terminal; ganhar/perder é mover (0038). `opportunities_dono_protegido` (0044): trocar `owner_id` só o dono atual ou a gestão ("Só o dono do negócio ou a gestão trocam o dono.", P0001); repetir o mesmo valor passa; sem usuário e em cascata, passa. |
+| `opportunity_participants` | Quem acompanha o negócio, além do dono (CLI-10; a tela vem na entrega 3). | Do negócio; FK composta com `opportunities` (cascade) e com `organization_members` (cascade). | Membros. | Membros. | Único `(opportunity_id, user_id)`. Lápide e `updated_at`. Fora do manifesto (0044). |
 | `products` | Catálogo de produtos/serviços da organização. | `organization_id` próprio. | Membros. | **Membros** (policy da 0004, não passou pela 0018). | Produto usado num negócio não pode ser apagado (FK sem cascade). |
 | `opportunity_products` | Produto dentro de um negócio, com o preço da negociação congelado. | Do negócio (coluna desde 0027). | Quem alcança o negócio (`can_access_opportunity`). | **Também `can_access_opportunity`** — inclui o cliente (ver §7). | `product_id` é FK simples, sem organização. |
 
@@ -220,7 +222,8 @@ Só um uso: a edição simultânea das Observações (0024).
 | `organizations` | 0001, 0002 (Duli), 0003, 0015 (organização de teste), 0019 (semente), 0036, 0037 |
 | `profiles` | 0001, 0003, 0013 (`handle_new_user`) |
 | `organization_members` | 0001, 0002, 0003, 0028, 0029, 0036, 0039 (staff de teste) |
-| `people` | 0001, 0003, 0006, 0007, 0013, 0016, 0029, 0036, 0037, 0040 (DDI corrigido, índices) |
+| `people` | 0001, 0003, 0006, 0007, 0013, 0016, 0029, 0036, 0037, 0040 (DDI corrigido, índices), 0044 (`owner_id`) |
+| `person_participants`, `opportunity_participants` | 0044 |
 | `tags` | 0004, 0016, 0018, 0028, 0029 |
 | `person_tags` | 0004, 0016, 0017, 0028, 0029b |
 | `person_dependents`, `registration_forms` | 0035 |
@@ -228,7 +231,7 @@ Só um uso: a edição simultânea das Observações (0024).
 | `activities`, `files` | 0004, 0016, 0017, 0028, 0029 |
 | `pipelines` | 0004, 0005, 0016, 0018, 0019, 0029 |
 | `pipeline_stages` | 0004, 0005, 0009, 0016, 0018, 0019, 0027, 0028, 0029 |
-| `opportunities` | 0004, 0016, 0017, 0020, 0022, 0029, 0038 |
+| `opportunities` | 0004, 0016, 0017, 0020, 0022, 0029, 0038, 0044 (trava do dono) |
 | `products` | 0004, 0029 |
 | `opportunity_products` | 0004, 0027, 0028, 0029 |
 | `document_types` | 0008, 0011, 0016, 0018, 0029 |
