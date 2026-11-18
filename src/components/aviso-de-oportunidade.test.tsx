@@ -6,7 +6,7 @@ import { formatarData } from "@/lib/formatar";
 import { AvisoDeOportunidade } from "./aviso-de-oportunidade";
 
 /**
- * O contato escolhido já tem oportunidade (CRM-11): mostrar qual, em que
+ * O contato escolhido já tem oportunidade (CRM-12): mostrar qual, em que
  * situação e de quando, antes de criar outra — um cliente pode ter fechado um
  * visto e agora pedir outro, mas também pode ser o mesmo negócio em dobro.
  */

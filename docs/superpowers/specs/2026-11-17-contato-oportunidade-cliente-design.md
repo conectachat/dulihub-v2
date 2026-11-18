@@ -309,7 +309,8 @@ decisão nova.
   - o e-mail, sem diferenciar maiúscula e sem espaço;
   - o telefone, pelo **número nacional** (`private.telefone_nacional`): os dígitos do
     número, tirando o DDI da frente quando ele foi digitado junto e o número tem mais
-    de 11 dígitos. Assim "+55 5531…" acha o contato antigo "31…" gravado sem DDI.
+    de 11 dígitos — ou, com DDI 1, 11 dígitos começando por 1 (0042: código de área
+    americano nunca começa por 1). Assim "+55 5531…" acha o contato antigo "31…" gravado sem DDI.
     Avisa em mais casos, nunca em menos (refinado no plano, Foco 1).
 - **O DDI** aceita "55" ou "+55" e grava sempre "+55", na tela e no banco. A 0040
   corrigiu os 76 contatos que a importação gravou sem o "+".

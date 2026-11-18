@@ -210,6 +210,52 @@ describe("FormularioDoCadastro", () => {
     expect(aoGravar).not.toHaveBeenCalled();
   });
 
+  it("editar depois do aviso tira o aviso; reenviar duas vezes seguidas manda uma vez só", async () => {
+    // Revisão de 18/nov, I1 e I2.
+    const COM_PARECIDO: EstadoDaFicha = {
+      error: null,
+      parecidos: [
+        {
+          id: "p1",
+          nome: "Carlos Souza",
+          estagio: "client",
+          naLixeira: false,
+          bateEmail: true,
+          bateTelefone: false,
+        },
+      ],
+    };
+    let soltar: (estado: EstadoDaFicha) => void = () => {};
+    const enviar = vi
+      .fn<(fd: FormData) => Promise<EstadoDaFicha>>()
+      .mockResolvedValueOnce(COM_PARECIDO)
+      .mockImplementationOnce(() => new Promise((resolver) => (soltar = resolver)))
+      .mockResolvedValue(COM_PARECIDO);
+    const { aoGravar } = montar({
+      enviar,
+      aviso: (estado, { reenviarCom }) =>
+        estado.parecidos?.length ? (
+          <button type="button" onClick={() => reenviarCom({ confirmar: "1" })}>
+            Salvar mesmo assim
+          </button>
+        ) : null,
+    });
+
+    enviarFormulario();
+    const confirmar = await screen.findByRole("button", { name: "Salvar mesmo assim" });
+    fireEvent.click(confirmar);
+    fireEvent.click(confirmar);
+    await waitFor(() => expect(enviar).toHaveBeenCalledTimes(2));
+    soltar({ error: null });
+    await waitFor(() => expect(aoGravar).toHaveBeenCalledTimes(1));
+    expect(enviar).toHaveBeenCalledTimes(2);
+
+    enviarFormulario();
+    await screen.findByRole("button", { name: "Salvar mesmo assim" });
+    fireEvent.change(screen.getByLabelText("Telefone *"), { target: { value: "98888880000" } });
+    expect(screen.queryByRole("button", { name: "Salvar mesmo assim" })).toBeNull();
+  });
+
   it("o aviso reenvia o mesmo formulário com o campo extra", async () => {
     const enviar = vi
       .fn<(fd: FormData) => Promise<EstadoDaFicha>>()

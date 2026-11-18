@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useState } from "react";
+import { Fragment, startTransition, useState } from "react";
 
 import { FieldError } from "@/components/field-error";
 import { SubmitButton } from "@/components/submit-button";
@@ -17,9 +17,14 @@ import {
 import type { ActionState } from "@/lib/action-state";
 import { useFormulario } from "@/lib/use-formulario";
 
-/** O que o aviso pode fazer: fechar o diálogo, ou reenviar com confirmação. */
+/**
+ * O que o aviso pode fazer: fechar o diálogo, ou reenviar com confirmação —
+ * uma vez por resposta, e nunca durante um envio (`enviando` serve para
+ * desabilitar o botão).
+ */
 export type AcoesDoAviso = {
   fechar: () => void;
+  enviando: boolean;
   reenviarCom: (extra: Record<string, string>) => void;
 };
 
@@ -146,18 +151,38 @@ function CorpoDoFormulario<E extends ActionState>({
 
   const { estado, enviar, reenviarCom, enviando } = useFormulario<E>(acaoQueFecha);
 
+  // O aviso respondido (a marca da resposta que ele mostra): confirmar de
+  // novo a mesma resposta não reenvia. O `useActionState` enfileira e roda
+  // todo envio — dois cliques em "Criar mesmo assim" criavam dois contatos
+  // (revisão de 18/nov, I1).
+  const [confirmado, setConfirmado] = useState<string | undefined>(undefined);
+  // O aviso dispensado por edição: mexeu no formulário, o aviso some, e o
+  // próximo Salvar confere de novo. Senão a confirmação levaria um valor que
+  // ninguém conferiu (I2).
+  const [dispensado, setDispensado] = useState<string | undefined>(undefined);
+
   const acoes: AcoesDoAviso = {
     fechar,
+    enviando,
     reenviarCom: (extra) => {
-      if (formulario) reenviarCom(formulario, extra);
+      if (!formulario || enviando || confirmado === estado.token) return;
+      setConfirmado(estado.token);
+      reenviarCom(formulario, extra);
     },
   };
 
+  const avisoNaTela = aviso && estado.token !== dispensado ? aviso(estado, acoes) : null;
+
   return (
-    <form ref={setFormulario} onSubmit={enviar} className="space-y-4">
+    <form
+      ref={setFormulario}
+      onSubmit={enviar}
+      onChange={() => setDispensado(estado.token)}
+      className="space-y-4"
+    >
       {children}
 
-      {aviso ? aviso(estado, acoes) : null}
+      {avisoNaTela ? <Fragment key={estado.token}>{avisoNaTela}</Fragment> : null}
 
       <FieldError mensagem={estado.error} />
 

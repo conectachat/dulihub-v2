@@ -39,15 +39,22 @@ export function AvisoDeDuplicado({
   aoUsarExistente,
   aoRestaurar,
   aoGravarMesmoAssim,
+  enviando = false,
 }: {
   parecidos: ContatoParecido[];
   modo: "criar" | "editar";
   /** "Sim, é a mesma pessoa". */
   aoUsarExistente: (id: string) => void;
-  /** Só para quem está na lixeira. */
+  /**
+   * Só ao criar, para quem está na lixeira. Na edição não se passa: restaurar
+   * o outro deixaria dois contatos ativos para a mesma pessoa — "Sim" só abre
+   * o existente (spec §6.1).
+   */
   aoRestaurar?: (id: string) => Promise<ActionState>;
   /** "Não" → "Criar/Salvar mesmo assim". */
   aoGravarMesmoAssim: () => void;
+  /** Um envio em curso: os botões que gravam ficam desabilitados. */
+  enviando?: boolean;
 }) {
   const [outraPessoa, setOutraPessoa] = useState(false);
   const [restaurando, iniciar] = useTransition();
@@ -91,7 +98,7 @@ export function AvisoDeDuplicado({
                 size="sm"
                 variant="outline"
                 className="rounded-xl"
-                disabled={restaurando}
+                disabled={restaurando || enviando}
                 onClick={() => restaurar(p.id)}
               >
                 {restaurando ? "Restaurando..." : "Restaurar"}
@@ -102,6 +109,7 @@ export function AvisoDeDuplicado({
                 size="sm"
                 variant="outline"
                 className="rounded-xl"
+                disabled={enviando}
                 onClick={() => aoUsarExistente(p.id)}
               >
                 Sim, é a mesma pessoa
@@ -129,7 +137,13 @@ export function AvisoDeDuplicado({
           >
             Voltar
           </Button>
-          <Button type="button" size="sm" className="rounded-xl" onClick={aoGravarMesmoAssim}>
+          <Button
+            type="button"
+            size="sm"
+            className="rounded-xl"
+            disabled={enviando}
+            onClick={aoGravarMesmoAssim}
+          >
             {modo === "criar" ? "Criar mesmo assim" : "Salvar mesmo assim"}
           </Button>
         </div>

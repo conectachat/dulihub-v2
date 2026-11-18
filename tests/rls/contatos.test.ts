@@ -35,8 +35,10 @@ describe("contato completo e parecidos (0040)", () => {
   const telCarlos = `31${s1}`;
   const telAntigo = `31${s2}`;
   const telLixeira = `31${s3}`;
+  // Número americano de 10 dígitos: código de área 305, nunca começando por 1.
+  const telAmericano = `(305) ${s3.slice(0, 3)}-${s3.slice(3, 7)}`;
 
-  const ids = { carlos: "", antigo: "", lixeira: "", semEmail: "" };
+  const ids = { carlos: "", antigo: "", lixeira: "", semEmail: "", americano: "" };
 
   async function parecidos(
     quem: Cliente,
@@ -99,6 +101,13 @@ describe("contato completo e parecidos (0040)", () => {
           phone_country_code: "+55",
           phone: `32${s1}`,
         },
+        {
+          organization_id: org,
+          full_name: `Americano ${s3}`,
+          email: `americano.${s3}@teste.dulihub`,
+          phone_country_code: "+1",
+          phone: telAmericano,
+        },
       ])
       .select("id, full_name");
     if (error) throw new Error(`Contatos de apoio não criados: ${error.message}`);
@@ -108,6 +117,7 @@ describe("contato completo e parecidos (0040)", () => {
     ids.antigo = id("Antigo ");
     ids.lixeira = id("Lixeira ");
     ids.semEmail = id("SemEmail ");
+    ids.americano = id("Americano ");
   }, 60_000);
 
   afterAll(async () => {
@@ -144,6 +154,14 @@ describe("contato completo e parecidos (0040)", () => {
   it("acha o contato antigo sem DDI", async () => {
     const lista = await parecidos(parceiro, { ddi: "+55", telefone: `55${telAntigo}` });
     expect(lista.some((p) => p.id === ids.antigo && p.bate_telefone)).toBe(true);
+  });
+
+  it("acha o número americano colado com o 1 do país na frente", async () => {
+    // Revisão de 18/nov, I3: "+1 (305) …" colado do WhatsApp vira 11 dígitos,
+    // e a regra só tirava o DDI acima de 11. Código de área americano nunca
+    // começa por 1, então o "1" da frente é sempre o do país.
+    const lista = await parecidos(parceiro, { ddi: "+1", telefone: `1 ${telAmericano}` });
+    expect(lista.some((p) => p.id === ids.americano && p.bate_telefone)).toBe(true);
   });
 
   it("acha pelo e-mail com espaço e maiúscula", async () => {

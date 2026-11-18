@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createPerson } from "@/features/people/actions";
+import { createPerson, restorePerson, updatePerson } from "@/features/people/actions";
 import { gravou } from "@/lib/action-state";
 import { CAMPO_CONFIRMAR_PARECIDO, type EstadoComConfirmacao } from "@/lib/parecidos";
 
@@ -75,6 +75,35 @@ describe("PersonDialog", () => {
     expect(segunda.get(CAMPO_CONFIRMAR_PARECIDO)).toBe("1");
     expect(segunda.get("full_name")).toBe("Carla Souza");
     await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("na edição, o parecido na lixeira abre sem restaurar", async () => {
+    // Revisão de 18/nov, M1: restaurar o outro deixaria dois contatos ativos
+    // para a mesma pessoa. Na edição, "Sim" só abre o existente (spec §6.1).
+    vi.mocked(updatePerson).mockResolvedValue({
+      ...COM_PARECIDO,
+      parecidos: [{ ...COM_PARECIDO.parecidos![0], naLixeira: true }],
+    });
+    render(
+      <PersonDialog
+        person={{
+          id: "p5",
+          full_name: "Carla Souza",
+          email: "carla@example.com",
+          phone: "31 99999-0000",
+          phone_country_code: "+55",
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Editar Carla Souza" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByText(/na lixeira/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Restaurar" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Sim, é a mesma pessoa" }));
+    expect(push).toHaveBeenCalledWith("/contatos/p1");
+    expect(restorePerson).not.toHaveBeenCalled();
   });
 
   it("Sim, é a mesma pessoa abre o existente e fecha sem gravar", async () => {

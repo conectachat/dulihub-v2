@@ -12,8 +12,7 @@ vi.mock("@/features/cadastro/actions", () => ({
   cancelarLink: vi.fn(),
   marcarConferida: vi.fn(),
 }));
-// "Sim, é a mesma pessoa" no aviso de duplicado navega e pode restaurar.
-vi.mock("@/features/people/actions", () => ({ restorePerson: vi.fn() }));
+// "Sim, é a mesma pessoa" no aviso de duplicado navega para o existente.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
 
 /**

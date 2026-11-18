@@ -7,7 +7,7 @@ import { formatarData } from "@/lib/formatar";
 import type { OportunidadeExistente } from "@/lib/parecidos";
 
 /**
- * "Este contato já tem oportunidade" (CRM-11): quais, em que situação e de
+ * "Este contato já tem oportunidade" (CRM-12): quais, em que situação e de
  * quando — com o link para conferir — antes de criar outra. Um cliente pode
  * ter fechado um visto e agora pedir outro; também pode ser o mesmo negócio
  * em dobro.
@@ -22,9 +22,12 @@ const SITUACAO: Record<OportunidadeExistente["status"], string> = {
 export function AvisoDeOportunidade({
   oportunidades,
   aoCriarOutra,
+  enviando = false,
 }: {
   oportunidades: OportunidadeExistente[];
   aoCriarOutra: () => void;
+  /** Um envio em curso: "Criar outra" fica desabilitado. */
+  enviando?: boolean;
 }) {
   return (
     <div role="alert" className="space-y-3 rounded-2xl border bg-warning/15 p-4 text-sm">
@@ -51,7 +54,13 @@ export function AvisoDeOportunidade({
 
       <div className="flex flex-wrap items-center justify-end gap-2">
         <span className="mr-auto">Criar outra oportunidade para este contato?</span>
-        <Button type="button" size="sm" className="rounded-xl" onClick={aoCriarOutra}>
+        <Button
+          type="button"
+          size="sm"
+          className="rounded-xl"
+          disabled={enviando}
+          onClick={aoCriarOutra}
+        >
           Criar outra
         </Button>
       </div>

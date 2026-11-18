@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Fragment, startTransition, useState, useTransition } from "react";
 import { Plus, Trash2 } from "lucide-react";
 
 import { FieldError } from "@/components/field-error";
@@ -151,7 +151,7 @@ export function FormularioDoCadastro({
    */
   aviso?: (
     estado: EstadoDaFicha,
-    acoes: { reenviarCom: (extra: Record<string, string>) => void },
+    acoes: { enviando: boolean; reenviarCom: (extra: Record<string, string>) => void },
   ) => React.ReactNode;
 }) {
   // Estado, não `ref`: o aviso é desenhado com `reenviarCom`, e ler `ref`
@@ -164,6 +164,10 @@ export function FormularioDoCadastro({
   );
   const [estado, setEstado] = useState<EstadoDaFicha>({ error: null });
   const [enviando, iniciar] = useTransition();
+  // Cada resposta com parecidos ganha um número. O aviso dela confirma uma
+  // vez só (I1) e some quando o formulário é editado (I2) — o mesmo que o
+  // `FormDialog` faz com a marca da resposta.
+  const [controleDoAviso, setControleDoAviso] = useState({ numero: 0, confirmado: -1, dispensado: -1 });
 
   const erros = estado.campos ?? {};
   const exige = modo === "completa";
@@ -198,22 +202,36 @@ export function FormularioDoCadastro({
   function gravar(formData: FormData) {
     iniciar(async () => {
       const resposta = await enviar(formData);
-      if (resposta.error) recusar(resposta);
-      // Com parecidos, não gravou: mostra a pergunta e espera.
-      else if (resposta.parecidos?.length) setEstado(resposta);
-      else aoGravar();
+      // Depois do `await`, a atualização só entra na transição se for
+      // embrulhada de novo. Sem isso o aviso aparecia com `enviando` ainda
+      // verdadeiro, e o clique rápido em "Salvar mesmo assim" se perdia.
+      startTransition(() => {
+        if (resposta.error) recusar(resposta);
+        // Com parecidos, não gravou: mostra a pergunta e espera.
+        else if (resposta.parecidos?.length) {
+          setEstado(resposta);
+          setControleDoAviso((a) => ({ ...a, numero: a.numero + 1 }));
+        } else aoGravar();
+      });
     });
   }
 
   function reenviarCom(extra: Record<string, string>) {
-    if (!formulario) return;
+    if (!formulario || enviando || controleDoAviso.confirmado === controleDoAviso.numero) return;
+    setControleDoAviso((a) => ({ ...a, confirmado: a.numero }));
     const formData = new FormData(formulario);
     for (const [campo, valor] of Object.entries(extra)) formData.set(campo, valor);
     gravar(formData);
   }
 
   return (
-    <form ref={setFormulario} onSubmit={aoEnviar} noValidate className="space-y-8">
+    <form
+      ref={setFormulario}
+      onSubmit={aoEnviar}
+      onChange={() => setControleDoAviso((a) => ({ ...a, dispensado: a.numero }))}
+      noValidate
+      className="space-y-8"
+    >
       <Secao titulo="Dados do contratante">
         <Campo
           nome="full_name"
@@ -498,7 +516,11 @@ export function FormularioDoCadastro({
       ) : null}
 
       <div className="space-y-3">
-        {aviso ? aviso(estado, { reenviarCom }) : null}
+        {aviso && controleDoAviso.dispensado !== controleDoAviso.numero ? (
+          // A chave remonta o aviso a cada resposta: nada do aviso anterior
+          // (o "Não" já clicado) sobra para os parecidos novos (M3).
+          <Fragment key={controleDoAviso.numero}>{aviso(estado, { enviando, reenviarCom })}</Fragment>
+        ) : null}
         <FieldError mensagem={estado.error} />
         <div className="flex flex-wrap justify-end gap-2">
           {rodape}

@@ -58,18 +58,19 @@ export function PersonDialog({ person }: { person?: PersonFormValues }) {
           </Button>
         )
       }
-      aviso={(estado, { fechar, reenviarCom }) =>
+      aviso={(estado, { fechar, reenviarCom, enviando }) =>
         estado.parecidos?.length ? (
           <AvisoDeDuplicado
-            key={estado.token}
             parecidos={estado.parecidos}
             modo={person ? "editar" : "criar"}
             aoUsarExistente={(id) => {
               fechar();
               router.push(`/contatos/${id}`);
             }}
-            aoRestaurar={restaurar}
+            // Na edição, restaurar o outro deixaria dois contatos ativos.
+            aoRestaurar={person ? undefined : restaurar}
             aoGravarMesmoAssim={() => reenviarCom({ [CAMPO_CONFIRMAR_PARECIDO]: "1" })}
+            enviando={enviando}
           />
         ) : null
       }

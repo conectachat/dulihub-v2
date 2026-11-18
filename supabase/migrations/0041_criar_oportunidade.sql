@@ -1,7 +1,7 @@
 -- 0041 — criar oportunidade, com contato existente ou novo, numa gravação só
 --
--- Oportunidade não existe sem contato (CRM-11), e o contato pode nascer junto
--- dela (CRM-12). Spec
+-- Oportunidade nasce com contato existente ou novo, numa gravação só (CRM-11),
+-- e avisa da oportunidade anterior do mesmo contato (CRM-12). Spec
 -- docs/superpowers/specs/2026-11-17-contato-oportunidade-cliente-design.md,
 -- §4.5 e §6.1.
 --

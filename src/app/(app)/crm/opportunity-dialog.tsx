@@ -87,26 +87,26 @@ export function OpportunityDialog({
           {label}
         </Button>
       }
-      aviso={(estado, { reenviarCom }) => {
+      aviso={(estado, { reenviarCom, enviando }) => {
         if (estado.parecidos?.length) {
           const parecidos = estado.parecidos;
           return (
             <AvisoDeDuplicado
-              key={estado.token}
               parecidos={parecidos}
               modo="criar"
               aoUsarExistente={(id) => usarExistente(id, parecidos, reenviarCom)}
               aoRestaurar={restaurar}
               aoGravarMesmoAssim={() => reenviarCom({ [CAMPO_CONFIRMAR_PARECIDO]: "1" })}
+              enviando={enviando}
             />
           );
         }
         if (estado.oportunidades?.length) {
           return (
             <AvisoDeOportunidade
-              key={estado.token}
               oportunidades={estado.oportunidades}
               aoCriarOutra={() => reenviarCom({ [CAMPO_CONFIRMAR_OPORTUNIDADE]: "1" })}
+              enviando={enviando}
             />
           );
         }

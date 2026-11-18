@@ -25,7 +25,6 @@ import {
   salvarCadastro,
 } from "@/features/cadastro/actions";
 import type { CadastroDoContato } from "@/features/cadastro/queries";
-import { restorePerson } from "@/features/people/actions";
 import { comAviso } from "@/lib/avisar";
 import { CAMPO_CONFIRMAR_PARECIDO } from "@/lib/parecidos";
 
@@ -50,12 +49,6 @@ export function EditarCadastro({
   const [aberto, setAberto] = useState(false);
   const router = useRouter();
 
-  async function restaurar(id: string) {
-    const dados = new FormData();
-    dados.set("id", id);
-    return restorePerson(dados);
-  }
-
   return (
     <Dialog open={aberto} onOpenChange={setAberto}>
       <DialogTrigger asChild>
@@ -79,8 +72,10 @@ export function EditarCadastro({
           dependentes={dependentes}
           enviar={(formData) => salvarCadastro(personId, formData)}
           aoGravar={() => setAberto(false)}
-          aviso={(estado, { reenviarCom }) =>
+          aviso={(estado, { reenviarCom, enviando }) =>
             estado.parecidos?.length ? (
+              // Edição: sem "Restaurar" — restaurar o outro deixaria dois
+              // contatos ativos para a mesma pessoa; "Sim" só abre o existente.
               <AvisoDeDuplicado
                 parecidos={estado.parecidos}
                 modo="editar"
@@ -88,8 +83,8 @@ export function EditarCadastro({
                   setAberto(false);
                   router.push(`/contatos/${id}`);
                 }}
-                aoRestaurar={restaurar}
                 aoGravarMesmoAssim={() => reenviarCom({ [CAMPO_CONFIRMAR_PARECIDO]: "1" })}
+                enviando={enviando}
               />
             ) : null
           }

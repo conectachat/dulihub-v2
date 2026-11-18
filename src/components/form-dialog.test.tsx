@@ -124,6 +124,42 @@ describe("FormDialog com aviso", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
+  it("confirmar duas vezes seguidas manda uma vez só", async () => {
+    // Revisão de 18/nov, I1: o useActionState enfileira e roda todos os
+    // envios — dois cliques no "Criar mesmo assim" criavam dois contatos.
+    let soltar: (estado: EstadoComAviso) => void = () => {};
+    const acao = vi
+      .fn<(a: EstadoComAviso, d: FormData) => Promise<EstadoComAviso>>()
+      .mockResolvedValueOnce(PEDE_CONFIRMACAO)
+      .mockImplementationOnce(() => new Promise((resolver) => (soltar = resolver)))
+      .mockResolvedValue(gravou());
+    montarComAviso(acao);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Salvar" }));
+    const confirmar = await screen.findByRole("button", { name: "Confirmar" });
+    fireEvent.click(confirmar);
+    fireEvent.click(confirmar);
+    await vi.waitFor(() => expect(acao).toHaveBeenCalledTimes(2));
+
+    soltar(gravou());
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(acao).toHaveBeenCalledTimes(2);
+  });
+
+  it("editar o formulário depois do aviso tira o aviso", async () => {
+    // Revisão de 18/nov, I2: o aviso velho confirmaria o valor novo, que
+    // ninguém conferiu. Mexeu, some — o próximo Salvar confere de novo.
+    const acao = vi.fn(async () => PEDE_CONFIRMACAO);
+    montarComAviso(acao);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Salvar" }));
+    await screen.findByRole("button", { name: "Confirmar" });
+
+    fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Outro" } });
+
+    expect(screen.queryByRole("button", { name: "Confirmar" })).toBeNull();
+  });
+
   it("reabrir não mostra o aviso da abertura anterior", async () => {
     const acao = vi.fn(async () => PEDE_CONFIRMACAO);
     montarComAviso(acao);
