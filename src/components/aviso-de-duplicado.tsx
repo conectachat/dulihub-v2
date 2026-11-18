@@ -109,6 +109,9 @@ export function AvisoDeDuplicado({
                 className="rounded-xl"
                 disabled={restaurando}
                 onClick={() => restaurar(p.id)}
+                // Com mais de um parecido, o leitor de tela precisa saber de
+                // quem é cada botão; o nome começa pelo texto visível.
+                aria-label={`${restaurando ? "Restaurando" : "Restaurar"} ${p.nome}`}
               >
                 {restaurando ? "Restaurando..." : "Restaurar"}
               </Button>
@@ -120,6 +123,7 @@ export function AvisoDeDuplicado({
                 className="rounded-xl"
                 disabled={restaurando}
                 onClick={() => aoUsarExistente(p.id)}
+                aria-label={`Sim, é a mesma pessoa: ${p.nome}`}
               >
                 Sim, é a mesma pessoa
               </Button>

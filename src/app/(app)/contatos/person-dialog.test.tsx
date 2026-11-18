@@ -102,8 +102,8 @@ describe("PersonDialog", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Salvar" }));
 
     expect(await screen.findByText(/na lixeira/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Restaurar" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Sim, é a mesma pessoa" }));
+    expect(screen.queryByRole("button", { name: /^Restaurar / })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /^Sim, é a mesma pessoa/ }));
     expect(push).toHaveBeenCalledWith("/contatos/p1");
     expect(restorePerson).not.toHaveBeenCalled();
   });
@@ -141,7 +141,7 @@ describe("PersonDialog", () => {
     render(<PersonDialog />);
 
     await preencherEEnviar();
-    fireEvent.click(await screen.findByRole("button", { name: "Sim, é a mesma pessoa" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Sim, é a mesma pessoa/ }));
 
     expect(push).toHaveBeenCalledWith("/contatos/p1");
     expect(createPerson).toHaveBeenCalledTimes(1);

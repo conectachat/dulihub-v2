@@ -47,6 +47,20 @@ describe("AvisoDeDuplicado", () => {
     expect(link).toHaveAttribute("target", "_blank");
   });
 
+  it("com mais de um parecido, cada botão diz de quem é", () => {
+    // Revisão de 18/nov (4ª): no leitor de tela, dois "Sim, é a mesma
+    // pessoa" iguais não dizem qual contato cada um escolhe.
+    montar({
+      parecidos: [PARECIDO, { ...PARECIDO, id: "p2", nome: "Ana Lima", naLixeira: true }],
+      aoRestaurar: vi.fn(async () => gravou()),
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Sim, é a mesma pessoa: Carlos Souza" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Restaurar Ana Lima" })).toBeInTheDocument();
+  });
+
   it("e-mail e telefone juntos dizem os dois", () => {
     montar({ parecidos: [{ ...PARECIDO, bateEmail: true }] });
 
@@ -61,7 +75,7 @@ describe("AvisoDeDuplicado", () => {
     });
 
     expect(screen.getByText(/na lixeira/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Restaurar" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Restaurar / }));
 
     await waitFor(() => expect(aoUsarExistente).toHaveBeenCalledWith("p1"));
     expect(aoRestaurar).toHaveBeenCalledWith("p1");
@@ -76,9 +90,9 @@ describe("AvisoDeDuplicado", () => {
       aoRestaurar,
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Restaurar" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Restaurar / }));
 
-    expect(screen.getByRole("button", { name: "Sim, é a mesma pessoa" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Sim, é a mesma pessoa/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Não, é outra pessoa" })).toBeDisabled();
   });
 
@@ -96,7 +110,7 @@ describe("AvisoDeDuplicado", () => {
   it("no editar, Sim abre o existente e não grava", () => {
     const { aoGravarMesmoAssim, aoUsarExistente } = montar({ modo: "editar" });
 
-    fireEvent.click(screen.getByRole("button", { name: "Sim, é a mesma pessoa" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Sim, é a mesma pessoa/ }));
 
     expect(aoUsarExistente).toHaveBeenCalledWith("p1");
     expect(aoGravarMesmoAssim).not.toHaveBeenCalled();

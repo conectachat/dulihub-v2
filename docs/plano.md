@@ -229,6 +229,15 @@ Os 4 contatos antigos sem e-mail e os 4 sem telefone só cobram os campos
 quando alguém os edita. Próximas: entrega 2 (Clientes) e 3 (vistos e Ganho),
 cada uma com o seu plano.
 
+Revisão de código independente das entregas 0 e 1 (18/nov, 4ª rodada): nada
+crítico. Corrigidos o diálogo sem rolagem no celular, a edição pela lista de
+`/contatos` que apagava Empresa e Cargo (defeito de setembro), a chave de
+serviço sem permissão nas auxiliares do contato e o telefone antigo sem DDI
+com o 55 colado (0043), mais testes que faltavam e dois detalhes do aviso.
+**Fica para a entrega que mexer na importação:** `migration/import-people.mjs`
+grava o DDI como veio ("55"); rodado de novo, desfaz a correção da 0040 — a
+busca não é afetada, mas o `banco.md` promete "+NN".
+
 ---
 
 ## 3. Pendências do Renato

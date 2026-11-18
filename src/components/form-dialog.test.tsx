@@ -156,6 +156,22 @@ describe("FormDialog com aviso", () => {
     expect(acao).toHaveBeenCalledTimes(2);
   });
 
+  it("resposta sem token ainda se confirma", async () => {
+    // Revisão de 18/nov (4ª): a trava comparava `token` com o último
+    // confirmado, e os dois começavam `undefined` — uma ação que esquecesse
+    // o `token` desenharia um "Criar mesmo assim" que não faz nada.
+    const acao = vi
+      .fn<(a: EstadoComAviso, d: FormData) => Promise<EstadoComAviso>>()
+      .mockResolvedValueOnce({ error: null, aviso: true })
+      .mockResolvedValueOnce(gravou());
+    montarComAviso(acao);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Salvar" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirmar" }));
+
+    await vi.waitFor(() => expect(acao).toHaveBeenCalledTimes(2));
+  });
+
   it("editar o formulário depois do aviso tira o aviso", async () => {
     // Revisão de 18/nov, I2: o aviso velho confirmaria o valor novo, que
     // ninguém conferiu. Mexeu, some — o próximo Salvar confere de novo.

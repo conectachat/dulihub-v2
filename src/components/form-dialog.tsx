@@ -170,7 +170,9 @@ function CorpoDoFormulario<E extends ActionState>({
   // mesmo assim" criavam dois contatos (revisão de 18/nov, I1). A proteção
   // principal é o aviso sair da tela durante o envio (`!enviando` abaixo);
   // esta marca é a segunda linha: a mesma resposta não se confirma duas vezes.
-  const [confirmado, setConfirmado] = useState<string | undefined>(undefined);
+  // Guarda a própria resposta, não o `token`: cada envio devolve um objeto
+  // novo, e uma resposta sem `token` não vira botão morto (revisão de 18/nov).
+  const [confirmado, setConfirmado] = useState<E | null>(null);
   // Mexeu no formulário depois do último envio — inclusive com o envio ainda
   // em curso? Então o aviso na tela, ou o que ainda vai chegar, fala de um
   // valor que não é mais o da tela: some, e o próximo Salvar confere de novo.
@@ -181,8 +183,8 @@ function CorpoDoFormulario<E extends ActionState>({
   const acoes: AcoesDoAviso = {
     fechar,
     reenviarCom: (extra) => {
-      if (!formulario || enviando || confirmado === estado.token) return;
-      setConfirmado(estado.token);
+      if (!formulario || enviando || confirmado === estado) return;
+      setConfirmado(estado);
       setAlterado(false);
       reenviarCom(formulario, extra);
     },

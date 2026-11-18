@@ -302,6 +302,70 @@ describe("criar oportunidade com contato novo ou existente (0041)", () => {
     expect(error?.code).toBe("42501");
   });
 
+  it("contato de outra organização é recusado, mesmo visível por atribuição", async () => {
+    // Revisão de 18/nov (4ª): a conferência da 0041 que impede pendurar o
+    // contato de uma organização no funil de outra não tinha teste. O
+    // contato é do parceiro, atribuído à Duli: o colaborador o enxerga, e o
+    // funil é o da Duli. Confirmações ligadas: se a conferência regredir,
+    // quem barra é a chave composta da etapa, e nada fica gravado na Duli.
+    const { data: daDuli, error: erroOrg } = await duli
+      .from("organizations")
+      .select("id")
+      .eq("slug", "duli")
+      .single();
+    if (erroOrg) throw new Error(`Duli ilegível: ${erroOrg.message}`);
+    const { data: funilDaDuli, error: erroFunil } = await duli
+      .from("pipelines")
+      .select("id")
+      .eq("organization_id", daDuli.id)
+      .eq("is_default", true)
+      .single();
+    if (erroFunil) throw new Error(`Funil da Duli ilegível: ${erroFunil.message}`);
+    const { data: etapasDaDuli, error: erroEtapas } = await duli
+      .from("pipeline_stages")
+      .select("id, is_won, is_lost")
+      .eq("pipeline_id", funilDaDuli.id)
+      .order("position");
+    if (erroEtapas) throw new Error(`Etapas da Duli ilegíveis: ${erroEtapas.message}`);
+    const abertaDaDuli = etapasDaDuli.find((e) => !e.is_won && !e.is_lost)!.id;
+
+    // O dono da parceira cria já atribuído à Duli (0037: gestão da dona pode).
+    const { data: atribuido, error: erroAtribuido } = await parceiro
+      .from("people")
+      .insert({
+        organization_id: org,
+        assigned_organization_id: daDuli.id,
+        full_name: `Atribuído ${s}`,
+        email: `atribuido.${s}@teste.dulihub`,
+        phone_country_code: "+55",
+        phone: `37${s}`,
+        lifecycle_stage: "contact",
+        deleted_at: null,
+      })
+      .select("id")
+      .single();
+    if (erroAtribuido) throw new Error(`Atribuído não criado: ${erroAtribuido.message}`);
+
+    try {
+      const visivel = await duli.from("people").select("id").eq("id", atribuido.id);
+      expect(visivel.data).toHaveLength(1);
+
+      const { resposta, error } = await criar({
+        quem: duli,
+        etapa: abertaDaDuli,
+        contato: atribuido.id,
+        confirmarParecido: true,
+        confirmarOutra: true,
+      });
+
+      expect(resposta).toBeNull();
+      expect(error?.message).toBe("O contato não é da organização deste funil.");
+    } finally {
+      await parceiro.from("opportunities").delete().eq("person_id", atribuido.id);
+      await parceiro.from("people").delete().eq("id", atribuido.id);
+    }
+  });
+
   it("cliente continua cliente", async () => {
     const { resposta, error } = await criar({ contato: ids.cliente, confirmarOutra: true });
 

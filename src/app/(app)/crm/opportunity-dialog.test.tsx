@@ -85,7 +85,7 @@ describe("OpportunityDialog", () => {
     await preencherContatoNovo();
     fireEvent.click(screen.getByRole("button", { name: "Criar oportunidade" }));
 
-    fireEvent.click(await screen.findByRole("button", { name: "Sim, é a mesma pessoa" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Sim, é a mesma pessoa/ }));
 
     await vi.waitFor(() => expect(createOpportunity).toHaveBeenCalledTimes(2));
     expect(chamada(0).get("modo_contato")).toBe("novo");
@@ -104,7 +104,7 @@ describe("OpportunityDialog", () => {
     await preencherContatoNovo();
     fireEvent.click(screen.getByRole("button", { name: "Criar oportunidade" }));
 
-    fireEvent.click(await screen.findByRole("button", { name: "Restaurar" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Restaurar / }));
 
     await vi.waitFor(() => expect(createOpportunity).toHaveBeenCalledTimes(2));
     expect(vi.mocked(restorePerson).mock.calls[0][0].get("id")).toBe("p9");
@@ -159,7 +159,7 @@ describe("OpportunityDialog", () => {
     await preencherContatoNovo();
     fireEvent.click(screen.getByRole("button", { name: "Criar oportunidade" }));
 
-    fireEvent.click(await screen.findByRole("button", { name: "Restaurar" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Restaurar / }));
     fireEvent.click(screen.getByRole("button", { name: "Contato existente" }));
     soltar({ error: null, ok: true, token: "r1" });
 
@@ -174,7 +174,7 @@ describe("OpportunityDialog", () => {
     abrir();
     await preencherContatoNovo();
     fireEvent.click(screen.getByRole("button", { name: "Criar oportunidade" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Sim, é a mesma pessoa" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Sim, é a mesma pessoa/ }));
     await screen.findByRole("button", { name: "Criar outra" });
 
     fireEvent.click(screen.getByRole("button", { name: "Trocar" }));
