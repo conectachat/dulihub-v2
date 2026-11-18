@@ -21,7 +21,7 @@ import { ESTADO_INICIAL, type ActionState } from "./action-state";
  * (o `useFormStatus` não enxerga envio por `onSubmit`).
  *
  * `reenviarCom` manda o mesmo formulário de novo com campos a mais — é a
- * confirmação de um aviso ("é outra pessoa, grave mesmo assim", CON-8). O
+ * confirmação de um aviso ("é outra pessoa, grave mesmo assim", CON-4). O
  * campo extra só existe nesse envio: nunca fica no formulário, então trocar
  * o e-mail e salvar de novo pergunta outra vez.
  */

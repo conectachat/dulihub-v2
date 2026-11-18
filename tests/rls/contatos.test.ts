@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { entrarComo, fixture, type Cliente } from "./clientes";
 
 /**
- * Contato completo e sem duplicata, no banco (0040; CON-4, CON-8).
+ * Contato completo e sem duplicata, no banco (0040; CON-8, CON-4).
  *
  * - `contatos_parecidos` acha o mesmo e-mail ou o mesmo telefone mesmo
  *   digitados de outro jeito: espaço, maiúscula, DDI junto do número, contato

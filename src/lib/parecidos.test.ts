@@ -5,7 +5,7 @@ import { buscarParecidos, contatoMudou, respostaDaCriacao } from "./parecidos";
 import type { Database } from "./supabase/database.types";
 
 /**
- * O aviso "já cadastrado" (CON-8) depende de duas traduções: a da RPC
+ * O aviso "já cadastrado" (CON-4) depende de duas traduções: a da RPC
  * `contatos_parecidos` para o que a tela mostra, e a de "o contato mudou?" na
  * edição — só redigitar a máscara do telefone não pode disparar o aviso.
  */

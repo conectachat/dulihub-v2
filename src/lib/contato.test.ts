@@ -4,7 +4,7 @@ import { erroDeContato, normalizarDdi } from "./contato";
 import { CASOS_DE_CONTATO } from "./contato.casos";
 
 /**
- * Todo contato tem e-mail, DDI e telefone (CON-4). A regra existe duas vezes —
+ * Todo contato tem e-mail, DDI e telefone (CON-8). A regra existe duas vezes —
  * aqui e em `private.contato_valido` — e a lista de casos é a mesma nas duas.
  */
 describe("erroDeContato", () => {

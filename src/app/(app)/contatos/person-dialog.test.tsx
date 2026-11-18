@@ -8,7 +8,7 @@ import { CAMPO_CONFIRMAR_PARECIDO, type EstadoComConfirmacao } from "@/lib/parec
 import { PersonDialog } from "./person-dialog";
 
 /**
- * Novo contato com e-mail ou telefone que já existem (CON-8): o diálogo
+ * Novo contato com e-mail ou telefone que já existem (CON-4): o diálogo
  * mostra o aviso e não fecha; "Criar mesmo assim" reenvia o mesmo
  * formulário, agora com a confirmação.
  */

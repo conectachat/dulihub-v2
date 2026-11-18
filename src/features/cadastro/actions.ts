@@ -24,7 +24,7 @@ import { fichaDoFormulario } from "./schema";
  * ser editada por quem está logado é a RLS, não este arquivo.
  *
  * Trocou o e-mail, o DDI ou o telefone para um que já existe em outro
- * contato? Não grava: devolve os parecidos (CON-8), como a edição de
+ * contato? Não grava: devolve os parecidos (CON-4), como a edição de
  * contato. Só o reenvio com `CAMPO_CONFIRMAR_PARECIDO` grava assim mesmo.
  */
 export async function salvarCadastro(

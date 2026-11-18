@@ -12,7 +12,7 @@
 --   terminal, título vazio). Aqui todas as conferências vêm antes de qualquer
 --   gravação, e o que grava, grava junto.
 -- - **Devolve `jsonb` e não erro quando precisa perguntar** (spec §4.5):
---   contato parecido (CON-8) e oportunidade anterior do mesmo contato não são
+--   contato parecido (CON-4) e oportunidade anterior do mesmo contato não são
 --   falhas, são perguntas. A resposta é `{"situacao":"precisa_confirmar", …}`
 --   com a lista, e a tela reenvia com a confirmação. Erro (`P0001`, `42501`)
 --   fica para o que não se confirma.

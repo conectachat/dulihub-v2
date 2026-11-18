@@ -8,7 +8,7 @@ import { traduzirErro } from "./erros";
 import { Constants, type Database, type Enums } from "./supabase/database.types";
 
 /**
- * Contato já cadastrado (CON-8): o que a busca devolve, o que a ação manda
+ * Contato já cadastrado (CON-4): o que a busca devolve, o que a ação manda
  * para a tela, e o nome do campo que confirma "é outra pessoa, grave mesmo
  * assim".
  *

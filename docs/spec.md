@@ -185,8 +185,8 @@ Dizer o que precisa de atenção hoje.
 | CON-1 | Lista, busca, filtro por tag, criar, editar | P0 | 🟡 — editar diz que salvou sem gravar (I7) |
 | CON-2 | Excluir com lixeira e restaurar; nunca apagar de vez (§6.8) | P0 | 🟡 — lixeira sem confirmação, e o caso do contato continua aparecendo (I8) |
 | CON-3 | Ficha enxuta para quem não é cliente; completa para cliente (ou para quem já tem processo/cobrança). Será substituído pelo CLI-14 (17/nov): quem tem processo ou cobrança passa a ser cliente | P0 | ✅ |
-| CON-4 | Aviso de contato já cadastrado (mesmo e-mail ou telefone, inclusive na lixeira) ao criar e ao editar: mostra quem, qual dado e o link do contato; pergunta "É a mesma pessoa?" (ao editar, "sim" não salva e abre o existente) e, no "não", "Criar/salvar mesmo assim?" (17/nov: sobe para P0) | P0 | ⬜ |
-| CON-8 | Nome, telefone (com DDI) e e-mail obrigatórios ao criar e editar contato; o contato pode existir sem oportunidade (17/nov) | P0 | ⬜ |
+| CON-4 | Aviso de contato já cadastrado (mesmo e-mail ou telefone, inclusive na lixeira) ao criar e ao editar: mostra quem, qual dado e o link do contato; pergunta "É a mesma pessoa?" (ao editar, "sim" não salva e abre o existente) e, no "não", "Criar/salvar mesmo assim?" (17/nov: sobe para P0) | P0 | ✅ |
+| CON-8 | Nome, telefone (com DDI) e e-mail obrigatórios ao criar e editar contato; o contato pode existir sem oportunidade (17/nov) | P0 | ✅ |
 | CON-5 | Histórico: notas, ligações, reuniões, movimentos do funil, ficha recebida | P0 | 🟡 — hora da atividade grava 3 h antes (I6) |
 | CON-6 | Mesclar dois contatos da mesma pessoa, levando negócios, processos, cobranças e histórico | P1 | ⬜ |
 | CON-7 | Pedido do titular (LGPD): exportar os dados da pessoa; e, a pedido, **anonimizar** — a linha fica (§6.8) e as cobranças também, mas nome vira "Titular removido" e saem e-mail, telefone, CPF, RG, passaporte, endereço, nascimento, dependentes, respostas da ficha e os arquivos dos depósitos | P1 | ⬜ — depende de Q17 |
@@ -205,8 +205,8 @@ Dizer o que precisa de atenção hoje.
 | CRM-8 | Dias na etapa e previsão de fechamento | P2 | ⬜ (oferecido em 3/out, não escolhido) |
 | CRM-9 | Entrada automática de lead (agendamento, Calendly, formulário do site) | P1 | ⬜ — ver 7.12 |
 | CRM-10 | **Ganho e reabrir um ganho** (critério de aceite deste e de CRM-11 a CRM-15, CON-4, CON-8, PRO-12: `docs/superpowers/specs/2026-11-17-contato-oportunidade-cliente-design.md`): só o dono do negócio e a linha ascendente dele (decisão de 6/nov). Hoje qualquer pessoa da equipe consegue. Até a Q10, a gestão (`owner`/`admin`) faz o papel da linha ascendente. Vale também para trocar o dono do negócio, e é garantido no banco, por qualquer caminho | P0 | ⬜ |
-| CRM-11 | Nova oportunidade com "contato existente" ou "novo contato" no mesmo formulário, numa gravação só | P0 | ⬜ |
-| CRM-12 | Aviso de oportunidade já existente para o contato (título, situação, data de criação), com confirmação para criar outra | P0 | ⬜ |
+| CRM-11 | Nova oportunidade com "contato existente" ou "novo contato" no mesmo formulário, numa gravação só | P0 | ✅ |
+| CRM-12 | Aviso de oportunidade já existente para o contato (título, situação, data de criação), com confirmação para criar outra | P0 | ✅ |
 | CRM-13 | Um ou mais **vistos** do catálogo na oportunidade, cada um com valor e moeda sugeridos do visto e gravados no item; total por moeda | P0 | ⬜ |
 | CRM-14 | **Ganho com resumo** (vistos, valores, forma de pagamento, o que vai acontecer) e, só após confirmar, numa gravação só: ganho, histórico, cliente, dono, **um processo por visto** e as cobranças | P0 | ⬜ |
 | CRM-15 | Reabrir um ganho pede confirmação também no quadro (I3); ganhar de novo não duplica processo nem cobrança | P0 | ⬜ |

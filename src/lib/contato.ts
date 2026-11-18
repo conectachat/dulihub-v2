@@ -1,7 +1,7 @@
 import { soDigitos } from "./documentos";
 
 /**
- * Regras de formato do contato (CON-4): todo contato tem e-mail, DDI e
+ * Regras de formato do contato (CON-8): todo contato tem e-mail, DDI e
  * telefone. A mesma regra mora no banco, em `private.contato_valido` (0040), e
  * `contato.casos.ts` prova que as duas dizem o mesmo.
  *

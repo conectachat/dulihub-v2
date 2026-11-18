@@ -23,7 +23,7 @@ import { personFromForm } from "./schema";
  * oportunidade e `client` quando uma é ganha — sem cópia entre tabelas,
  * porque contato, lead e cliente são a mesma linha.
  *
- * Antes de gravar, procura quem já tem o mesmo e-mail ou telefone (CON-8).
+ * Antes de gravar, procura quem já tem o mesmo e-mail ou telefone (CON-4).
  * Achando, **não grava**: devolve os parecidos, e a tela pergunta "É a mesma
  * pessoa?". Só o reenvio com `CAMPO_CONFIRMAR_PARECIDO` grava assim mesmo.
  */

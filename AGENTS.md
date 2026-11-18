@@ -161,6 +161,10 @@ telas incomoda; em trinta, ninguém consegue mais mudar nada.
 | Excluir, com aviso do que se perde | `ConfirmAction` |
 | Árvore em lista com recuo | `flattenTree` + `indentStyle` de `@/lib/tree` |
 | Escolher cor da paleta | `ColorPicker` |
+| Diálogo de criar/editar, inclusive com pergunta antes de gravar | `FormDialog` com a prop `aviso` (e `reenviarCom` para a confirmação) |
+| "Já existe contato com esse e-mail ou telefone" | `AvisoDeDuplicado` + `buscarParecidos` (`@/lib/parecidos`) |
+| "Este contato já tem oportunidade" | `AvisoDeOportunidade` |
+| Regra de e-mail, DDI e telefone | `erroDeContato` / `errosDeContato` (`@/lib/contato`) — a mesma de `private.contato_valido` |
 
 Falta um? Extraia para `src/components/` na segunda cópia, não na terceira.
 
@@ -245,7 +249,7 @@ primeiro sucesso, e a segunda gravação não seria percebida.
 Para diálogo, use `FormDialog` (`@/components/form-dialog`): ele embrulha a
 ação e fecha quando a resposta tem `ok`, dentro da transição; o formulário
 vive num componente interno com `key` nova a cada abertura. Ação que para
-para perguntar (contato parecido, CON-8) devolve o aviso sem `ok`, e a prop
+para perguntar (contato parecido, CON-4) devolve o aviso sem `ok`, e a prop
 `aviso` o desenha, com `reenviarCom` para a confirmação.
 
 ### Limpar formulário depois do sucesso: `key`, não `useEffect`

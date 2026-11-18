@@ -35,11 +35,11 @@ const CAMPO_DO_FORMULARIO: Record<CampoDeContato, "email" | "phone_country_code"
 
 /**
  * Nome, e-mail, DDI e telefone são obrigatórios (decisão de 17/nov, spec
- * §6.1, CON-4).
+ * §6.1, CON-8).
  *
  * Antes só o nome era: o contato entrava com o que se sabia e ia sendo
  * completado. Mas contato hoje só nasce junto de uma oportunidade, e sem
- * e-mail e telefone não há como avisar que ele já existe (CON-8) — os
+ * e-mail e telefone não há como avisar que ele já existe (CON-4) — os
  * duplicados eram o defeito maior. Empresa e cargo continuam opcionais.
  *
  * A regra de formato é a de `src/lib/contato.ts`, a mesma do banco

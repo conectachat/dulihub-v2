@@ -26,7 +26,7 @@ type ModoDoContato = "existente" | "novo";
  * Nova oportunidade: com um contato que já existe ou com um contato novo,
  * que nasce junto (CRM-11, CRM-12). Dois avisos podem parar o envio:
  *
- * - **contato parecido** (CON-8) — "Sim, é a mesma pessoa" troca para o
+ * - **contato parecido** (CON-4) — "Sim, é a mesma pessoa" troca para o
  *   existente e reenvia. O escolhido vai num campo oculto e o nome aparece no
  *   lugar do seletor, porque o seletor só traz os 500 primeiros e não traz a
  *   lixeira; enquanto ele está lá, o seletor sai do formulário, para não

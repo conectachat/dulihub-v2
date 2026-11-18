@@ -1,7 +1,7 @@
 -- 0040 — contato completo: e-mail, DDI e telefone, e a busca de parecidos
 --
--- Todo contato tem nome, e-mail, DDI e telefone (CON-4), e quem cria ou edita
--- é avisado quando o e-mail ou o telefone já existem (CON-8). Spec
+-- Todo contato tem nome, e-mail, DDI e telefone (CON-8), e quem cria ou edita
+-- é avisado quando o e-mail ou o telefone já existem (CON-4). Spec
 -- docs/superpowers/specs/2026-11-17-contato-oportunidade-cliente-design.md,
 -- §6.1.
 --

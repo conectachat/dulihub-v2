@@ -14,7 +14,7 @@ export type EstadoDaFicha = {
   campos?: Record<string, string>;
   /**
    * Só na porta da equipe: e-mail ou telefone novos que já existem em outro
-   * contato (CON-8). Com eles, **não gravou** — a tela pergunta antes.
+   * contato (CON-4). Com eles, **não gravou** — a tela pergunta antes.
    */
   parecidos?: ContatoParecido[];
 };

@@ -20,7 +20,7 @@ import { personFromForm, personSchema } from "./schema";
  * Daí a forma destes testes: montam um `FormData` **com os mesmos `name` da
  * tela**, em vez do objeto ideal que a gente imagina que ela envia.
  *
- * Desde 17/nov, nome, e-mail, DDI e telefone são obrigatórios (CON-4, spec
+ * Desde 17/nov, nome, e-mail, DDI e telefone são obrigatórios (CON-8, spec
  * §6.1). A regra de formato é a de `src/lib/contato.ts`, a mesma do banco.
  */
 

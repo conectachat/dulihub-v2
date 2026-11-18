@@ -106,7 +106,7 @@ const ehBrasil = (pais: string | null) =>
  * Do formulário para o objeto que `salvar_cadastro` recebe.
  *
  * `completa` é a porta do lead: tudo obrigatório, menos o complemento.
- * `parcial` é a da equipe: nome, e-mail, DDI e telefone (CON-4) — e o que for
+ * `parcial` é a da equipe: nome, e-mail, DDI e telefone (CON-8) — e o que for
  * preenchido ainda precisa estar certo.
  *
  * E-mail, DDI e telefone seguem `src/lib/contato.ts`, a regra do banco

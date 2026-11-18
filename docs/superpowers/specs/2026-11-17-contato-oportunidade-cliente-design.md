@@ -307,8 +307,12 @@ decisão nova.
 - **O que se compara**, entre os contatos que o usuário enxerga, **inclusive os da
   lixeira**:
   - o e-mail, sem diferenciar maiúscula e sem espaço;
-  - o telefone, pelos dígitos com o DDI. Quando o contato antigo não tem DDI, vale o
-    número nacional.
+  - o telefone, pelo **número nacional** (`private.telefone_nacional`): os dígitos do
+    número, tirando o DDI da frente quando ele foi digitado junto e o número tem mais
+    de 11 dígitos. Assim "+55 5531…" acha o contato antigo "31…" gravado sem DDI.
+    Avisa em mais casos, nunca em menos (refinado no plano, Foco 1).
+- **O DDI** aceita "55" ou "+55" e grava sempre "+55", na tela e no banco. A 0040
+  corrigiu os 76 contatos que a importação gravou sem o "+".
 - **Onde vale:** diálogo do contato, Dados cadastrais (equipe) e `criar_oportunidade`.
   **Não** vale na ficha pública: o anônimo não pode saber quem mais está cadastrado.
 - **O aviso** diz qual campo bateu e com quem, por exemplo "Telefone já cadastrado em
@@ -334,11 +338,12 @@ para este contato?".
 
 | Peça | Descrição |
 |---|---|
-| `private.telefone_normalizado(ddi text, numero text) returns text` | `immutable`. Só os dígitos de DDI + número |
-| `private.contato_valido(email text, ddi text, telefone text) returns text` | `immutable`. A frase do erro, ou nulo |
-| Índices em `people` | `(organization_id, lower(btrim(email)))` e `(organization_id, private.telefone_normalizado(phone_country_code, phone))` |
+| `private.telefone_nacional(ddi text, numero text) returns text` | `immutable`. Os dígitos do número, sem o DDI da frente quando veio junto (0040) |
+| `private.aparar`, `private.normalizar_ddi`, `private.espaco` | `immutable`. Aparo pelo mesmo conjunto de espaços do TypeScript (sem `\s`), e "55" → "+55" (0040) |
+| `private.contato_valido(email text, ddi text, telefone text) returns text` | `immutable`. A frase do erro, ou nulo — as mesmas de `src/lib/contato.ts` |
+| Índices em `people` | `(organization_id, lower(private.aparar(email)))` e `(organization_id, private.telefone_nacional(phone_country_code, phone))` |
 | `public.contatos_parecidos(p_email text, p_ddi text, p_telefone text, p_ignorar uuid default null)` | `security invoker`, `stable`. Devolve `id, full_name, lifecycle_stage, na_lixeira, bate_email, bate_telefone`. A RLS decide quem aparece. `p_ignorar` exclui o próprio contato na edição |
-| `public.criar_oportunidade(p_contato uuid, p_novo_contato jsonb, p_etapa uuid, p_titulo text, p_origem text, p_confirmar_contato_parecido boolean, p_confirmar_outra_oportunidade boolean, p_valor numeric default null, p_moeda text default null) returns jsonb` | `security invoker`, numa transação. `p_valor` e `p_moeda` existem só até a fase 2 da entrega 3, quando a função é recriada sem eles (`drop` + `create`); o código da fase 1 já não os manda. Exatamente um entre `p_contato` e `p_novo_contato`. A **organização do contato novo é a do funil de `p_etapa`**, e o pedido é recusado se quem chama não é membro dela (nunca "a primeira associação"). Valida com `contato_valido`, confere parecidos e oportunidades, e devolve `precisa_confirmar` (§4.5) quando falta confirmação. Insere o negócio com a organização da pessoa, dono = quem chamou e etapa aberta (0038). Promove a pessoa a `opportunity` sem rebaixar cliente |
+| `public.criar_oportunidade(p_etapa uuid, p_titulo text, p_confirmar_contato_parecido boolean, p_confirmar_outra_oportunidade boolean, p_contato uuid default null, p_novo_contato jsonb default null, p_origem text default null, p_valor numeric default null, p_moeda text default null) returns jsonb` | `security invoker`, numa transação (0041). Os opcionais ficam no fim, com `default null`, para os tipos gerados os marcarem como opcionais; a chamada é por nome. `p_valor` e `p_moeda` existem só até a fase 2 da entrega 3, quando a função é recriada sem eles (`drop` + `create`); o código da fase 1 já não os manda. Exatamente um entre `p_contato` e `p_novo_contato`. A **organização do contato novo é a do funil de `p_etapa`**, e o pedido é recusado se quem chama não é membro dela (nunca "a primeira associação"). Valida com `contato_valido`, confere parecidos e oportunidades, e devolve `precisa_confirmar` (§4.5) quando falta confirmação. Insere o negócio com a organização da pessoa, dono = quem chamou e etapa aberta (0038). Promove a pessoa a `opportunity` sem rebaixar cliente |
 | `salvar_cadastro` | Recusa apagar e-mail, telefone ou DDI e usa `contato_valido`. Muda o corpo, não a assinatura |
 
 `createOpportunity` passa a chamar `criar_oportunidade`. `createPerson`,
@@ -436,7 +441,7 @@ quando os vistos entram.
   - lista as pessoas com `lifecycle_stage = 'client'` e fora da lixeira, em ordem de
     nome;
   - a busca acha por nome, e-mail ou dígitos do telefone, usando
-    `telefone_normalizado` e o índice;
+    `telefone_nacional` e o índice (0040);
   - mostra 50 por página, com o total ("mostrando 50 de 72"), sem corte silencioso
     (o M1);
   - lista vazia usa `EmptyState`. No celular, cada linha vira um cartão;

@@ -23,9 +23,9 @@ export type PersonFormValues = {
 };
 
 /**
- * Criar ou editar contato. Nome, telefone e e-mail são obrigatórios (CON-4);
+ * Criar ou editar contato. Nome, telefone e e-mail são obrigatórios (CON-8);
  * e-mail ou telefone que já existem param o envio com o aviso "É a mesma
- * pessoa?" (CON-8).
+ * pessoa?" (CON-4).
  */
 export function PersonDialog({ person }: { person?: PersonFormValues }) {
   const router = useRouter();

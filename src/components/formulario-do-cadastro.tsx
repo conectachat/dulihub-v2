@@ -145,7 +145,7 @@ export function FormularioDoCadastro({
   rodape?: React.ReactNode;
   /**
    * Só a porta da equipe: a pergunta que a ação devolveu sem gravar (contato
-   * parecido, CON-8), desenhada acima do erro. `reenviarCom` manda o mesmo
+   * parecido, CON-4), desenhada acima do erro. `reenviarCom` manda o mesmo
    * formulário de novo com o campo de confirmação. Quem fecha o diálogo é
    * quem o abriu — o formulário não é dono dele.
    */

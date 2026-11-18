@@ -42,7 +42,7 @@ type Acao<E extends ActionState> = (anterior: E, formData: FormData) => Promise<
  *   por `useFormulario` (G4 da revisão de novembro).
  * - **O erro fica dentro do formulário**, acima dos botões, onde o olho está.
  *   O `aviso`, quando há, fica logo acima do erro: é a pergunta que a ação
- *   devolveu sem gravar (CON-8), com a confirmação por `reenviarCom`.
+ *   devolveu sem gravar (CON-4), com a confirmação por `reenviarCom`.
  * - **Reabrir começa do zero.** O estado do formulário vive num componente
  *   interno com `key` nova a cada abertura: nenhum valor digitado nem aviso
  *   velho sobrevive de uma abertura para outra.

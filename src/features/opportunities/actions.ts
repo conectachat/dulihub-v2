@@ -42,7 +42,7 @@ const texto = (valor: FormDataEntryValue | null) => (typeof valor === "string" ?
  * uma transação só: nunca fica contato órfão de um negócio que falhou.
  *
  * A função confere tudo (etapa aberta, contato fora da lixeira, formato do
- * contato novo) e pode parar para perguntar: contato parecido (CON-8) ou
+ * contato novo) e pode parar para perguntar: contato parecido (CON-4) ou
  * oportunidade anterior do contato. Aí a resposta vai sem `ok`, com a lista,
  * e a tela reenvia com a confirmação.
  *

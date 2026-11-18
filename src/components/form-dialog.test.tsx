@@ -65,7 +65,7 @@ describe("FormDialog", () => {
 });
 
 /**
- * O aviso entre o envio e a gravação (CON-8): a ação devolve "parecidos" sem
+ * O aviso entre o envio e a gravação (CON-4): a ação devolve "parecidos" sem
  * gravar, o diálogo mostra o aviso e a confirmação reenvia o mesmo
  * formulário com um campo a mais. A confirmação nunca fica guardada no
  * formulário — só existe no clique.

@@ -14,7 +14,7 @@ import { OpportunityDialog } from "./opportunity-dialog";
 
 /**
  * Nova oportunidade com contato existente ou novo (CRM-11, CRM-12), e os dois
- * avisos: contato parecido (CON-8) e oportunidade anterior do contato.
+ * avisos: contato parecido (CON-4) e oportunidade anterior do contato.
  */
 
 vi.mock("@/features/opportunities/actions", () => ({ createOpportunity: vi.fn() }));

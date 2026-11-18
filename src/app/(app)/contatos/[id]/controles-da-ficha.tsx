@@ -36,7 +36,7 @@ import { CAMPO_CONFIRMAR_PARECIDO } from "@/lib/parecidos";
 
 /**
  * Editar a ficha pela equipe. Nome, telefone e e-mail são obrigatórios; trocar
- * o e-mail ou o telefone para um que já existe pergunta antes (CON-8).
+ * o e-mail ou o telefone para um que já existe pergunta antes (CON-4).
  */
 export function EditarCadastro({
   personId,

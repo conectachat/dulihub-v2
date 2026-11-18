@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createPerson, updatePerson } from "./actions";
 
 /**
- * As ações de contato com o aviso de parecidos (CON-8). O primeiro teste de
+ * As ações de contato com o aviso de parecidos (CON-4). O primeiro teste de
  * Server Action da base: o banco é falso aqui — o que se prova é a decisão da
  * ação (procurar ou não, gravar ou não), e a busca de verdade tem a sua prova
  * em `tests/rls/contatos.test.ts`.

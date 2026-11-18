@@ -7,7 +7,7 @@ import type { ContatoParecido } from "@/lib/parecidos";
 import { AvisoDeDuplicado } from "./aviso-de-duplicado";
 
 /**
- * O aviso de contato já cadastrado (CON-8): diz o que bateu e com quem,
+ * O aviso de contato já cadastrado (CON-4): diz o que bateu e com quem,
  * deixa conferir pelo link, e pergunta antes de duplicar — "É a mesma
  * pessoa?"; no "Não", "Criar outro contato com essas informações?".
  */

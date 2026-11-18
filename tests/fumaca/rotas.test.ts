@@ -374,9 +374,18 @@ describe("com um lead de verdade", () => {
     const meio = etapas!.find((e) => !e.is_won && !e.is_lost)!;
     etapaDoMeio = meio.name;
 
+    // Contato completo, como a equipe agora é obrigada a cadastrar (CON-8).
+    const sufixo = crypto.randomUUID().replace(/\D/g, "").slice(0, 8).padEnd(8, "0");
     const { data: pessoa, error: erroPessoa } = await supabase
       .from("people")
-      .insert({ organization_id: org, full_name: NOME, lifecycle_stage: "opportunity" })
+      .insert({
+        organization_id: org,
+        full_name: NOME,
+        email: `fumaca.${sufixo}@teste.dulihub`,
+        phone_country_code: "+55",
+        phone: `31${sufixo}`,
+        lifecycle_stage: "opportunity",
+      })
       .select("id")
       .single();
     if (erroPessoa) throw new Error(`Lead da fumaça não criado: ${erroPessoa.message}`);

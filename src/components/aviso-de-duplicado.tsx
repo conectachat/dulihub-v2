@@ -9,7 +9,7 @@ import type { ActionState } from "@/lib/action-state";
 import type { ContatoParecido } from "@/lib/parecidos";
 
 /**
- * "Já existe um contato com esse e-mail ou telefone" (CON-8).
+ * "Já existe um contato com esse e-mail ou telefone" (CON-4).
  *
  * Mostra o que bateu e com quem — com o link do contato, para conferir antes
  * de responder — e pergunta "É a mesma pessoa?":
