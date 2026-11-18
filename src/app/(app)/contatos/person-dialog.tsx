@@ -1,12 +1,16 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Pencil, Plus } from "lucide-react";
 
+import { AvisoDeDuplicado } from "@/components/aviso-de-duplicado";
 import { FormDialog } from "@/components/form-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createPerson, updatePerson } from "@/features/people/actions";
+import { createPerson, restorePerson, updatePerson } from "@/features/people/actions";
+import { DDI_PADRAO } from "@/lib/contato";
+import { CAMPO_CONFIRMAR_PARECIDO, type EstadoComConfirmacao } from "@/lib/parecidos";
 
 export type PersonFormValues = {
   id: string;
@@ -18,12 +22,25 @@ export type PersonFormValues = {
   job_title?: string | null;
 };
 
+/**
+ * Criar ou editar contato. Nome, telefone e e-mail são obrigatórios (CON-4);
+ * e-mail ou telefone que já existem param o envio com o aviso "É a mesma
+ * pessoa?" (CON-8).
+ */
 export function PersonDialog({ person }: { person?: PersonFormValues }) {
+  const router = useRouter();
+
+  async function restaurar(id: string) {
+    const dados = new FormData();
+    dados.set("id", id);
+    return restorePerson(dados);
+  }
+
   return (
-    <FormDialog
+    <FormDialog<EstadoComConfirmacao>
       acao={person ? updatePerson : createPerson}
       titulo={person ? "Editar contato" : "Novo contato"}
-      descricao="Só o nome é obrigatório. O resto pode ser completado depois."
+      descricao="Nome, telefone e e-mail são obrigatórios."
       gatilho={
         person ? (
           <Button
@@ -41,6 +58,21 @@ export function PersonDialog({ person }: { person?: PersonFormValues }) {
           </Button>
         )
       }
+      aviso={(estado, { fechar, reenviarCom }) =>
+        estado.parecidos?.length ? (
+          <AvisoDeDuplicado
+            key={estado.token}
+            parecidos={estado.parecidos}
+            modo={person ? "editar" : "criar"}
+            aoUsarExistente={(id) => {
+              fechar();
+              router.push(`/contatos/${id}`);
+            }}
+            aoRestaurar={restaurar}
+            aoGravarMesmoAssim={() => reenviarCom({ [CAMPO_CONFIRMAR_PARECIDO]: "1" })}
+          />
+        ) : null
+      }
     >
       {person ? <input type="hidden" name="id" value={person.id} /> : null}
 
@@ -57,32 +89,35 @@ export function PersonDialog({ person }: { person?: PersonFormValues }) {
 
       <div className="grid gap-4 sm:grid-cols-[6rem_1fr]">
         <div className="space-y-2">
-          <Label htmlFor="phone_country_code">DDI</Label>
+          <Label htmlFor="phone_country_code">DDI *</Label>
           <Input
             id="phone_country_code"
             name="phone_country_code"
-            placeholder="+55"
-            defaultValue={person?.phone_country_code ?? "+55"}
+            placeholder={DDI_PADRAO}
+            defaultValue={person?.phone_country_code ?? DDI_PADRAO}
+            required
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="phone">Telefone</Label>
+          <Label htmlFor="phone">Telefone *</Label>
           <Input
             id="phone"
             name="phone"
             inputMode="tel"
             defaultValue={person?.phone ?? ""}
+            required
           />
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">E-mail *</Label>
         <Input
           id="email"
           name="email"
           type="email"
           defaultValue={person?.email ?? ""}
+          required
         />
       </div>
 

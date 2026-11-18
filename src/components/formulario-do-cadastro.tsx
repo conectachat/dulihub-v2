@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Plus, Trash2 } from "lucide-react";
 
 import { FieldError } from "@/components/field-error";
@@ -18,6 +18,7 @@ import {
   type CampoDaFicha,
   type Dependente,
 } from "@/features/cadastro/schema";
+import { DDI_PADRAO } from "@/lib/contato";
 import { formatarCep, formatarCpf } from "@/lib/documentos";
 import { novoId } from "@/lib/id";
 import { cn } from "@/lib/utils";
@@ -127,6 +128,7 @@ export function FormularioDoCadastro({
   rotuloDoEnvio,
   rotuloEnviando = "Enviando...",
   rodape,
+  aviso,
 }: {
   /** `completa`: o lead preenche tudo. `parcial`: a equipe completa aos poucos. */
   modo: "completa" | "parcial";
@@ -141,8 +143,20 @@ export function FormularioDoCadastro({
   rotuloEnviando?: string;
   /** Botões ao lado do envio (o "Cancelar" do diálogo). */
   rodape?: React.ReactNode;
+  /**
+   * Só a porta da equipe: a pergunta que a ação devolveu sem gravar (contato
+   * parecido, CON-8), desenhada acima do erro. `reenviarCom` manda o mesmo
+   * formulário de novo com o campo de confirmação. Quem fecha o diálogo é
+   * quem o abriu — o formulário não é dono dele.
+   */
+  aviso?: (
+    estado: EstadoDaFicha,
+    acoes: { reenviarCom: (extra: Record<string, string>) => void },
+  ) => React.ReactNode;
 }) {
-  const formulario = useRef<HTMLFormElement>(null);
+  // Estado, não `ref`: o aviso é desenhado com `reenviarCom`, e ler `ref`
+  // durante o desenho é o que o compilador do React proíbe.
+  const [formulario, setFormulario] = useState<HTMLFormElement | null>(null);
   // Chave estável para as linhas que já vêm: id aleatório aqui sairia
   // diferente no servidor e no navegador, e a hidratação reclamaria.
   const [linhas, setLinhas] = useState<Linha[]>(() =>
@@ -158,7 +172,7 @@ export function FormularioDoCadastro({
     setEstado(novo);
     // Leva o olho (e o teclado do celular) ao primeiro campo com problema.
     requestAnimationFrame(() => {
-      formulario.current
+      formulario
         ?.querySelector<HTMLElement>('[aria-invalid="true"]')
         ?.focus();
     });
@@ -178,15 +192,28 @@ export function FormularioDoCadastro({
       return;
     }
 
+    gravar(formData);
+  }
+
+  function gravar(formData: FormData) {
     iniciar(async () => {
       const resposta = await enviar(formData);
       if (resposta.error) recusar(resposta);
+      // Com parecidos, não gravou: mostra a pergunta e espera.
+      else if (resposta.parecidos?.length) setEstado(resposta);
       else aoGravar();
     });
   }
 
+  function reenviarCom(extra: Record<string, string>) {
+    if (!formulario) return;
+    const formData = new FormData(formulario);
+    for (const [campo, valor] of Object.entries(extra)) formData.set(campo, valor);
+    gravar(formData);
+  }
+
   return (
-    <form ref={formulario} onSubmit={aoEnviar} noValidate className="space-y-8">
+    <form ref={setFormulario} onSubmit={aoEnviar} noValidate className="space-y-8">
       <Secao titulo="Dados do contratante">
         <Campo
           nome="full_name"
@@ -270,7 +297,7 @@ export function FormularioDoCadastro({
             nome="email"
             rotulo="E-mail"
             type="email"
-            obrigatorio={exige}
+            obrigatorio
             defaultValue={inicial.email ?? ""}
             autoComplete="email"
             erro={erros.email}
@@ -279,15 +306,16 @@ export function FormularioDoCadastro({
             <Campo
               nome="phone_country_code"
               rotulo="DDI"
-              placeholder="+55"
-              defaultValue={inicial.phone_country_code ?? "+55"}
+              placeholder={DDI_PADRAO}
+              obrigatorio
+              defaultValue={inicial.phone_country_code ?? DDI_PADRAO}
               erro={erros.phone_country_code}
             />
             <Campo
               nome="phone"
               rotulo="Telefone"
               inputMode="tel"
-              obrigatorio={exige}
+              obrigatorio
               defaultValue={inicial.phone ?? ""}
               autoComplete="tel-national"
               erro={erros.phone}
@@ -470,6 +498,7 @@ export function FormularioDoCadastro({
       ) : null}
 
       <div className="space-y-3">
+        {aviso ? aviso(estado, { reenviarCom }) : null}
         <FieldError mensagem={estado.error} />
         <div className="flex flex-wrap justify-end gap-2">
           {rodape}

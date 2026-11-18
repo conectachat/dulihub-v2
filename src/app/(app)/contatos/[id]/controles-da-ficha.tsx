@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Check, Copy, Link2, MessageCircle, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 
+import { AvisoDeDuplicado } from "@/components/aviso-de-duplicado";
 import { FormularioDoCadastro } from "@/components/formulario-do-cadastro";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
@@ -23,14 +25,19 @@ import {
   salvarCadastro,
 } from "@/features/cadastro/actions";
 import type { CadastroDoContato } from "@/features/cadastro/queries";
+import { restorePerson } from "@/features/people/actions";
 import { comAviso } from "@/lib/avisar";
+import { CAMPO_CONFIRMAR_PARECIDO } from "@/lib/parecidos";
 
 /**
  * Os botões do cartão "Dados cadastrais" — a parte que precisa do navegador:
  * abrir o diálogo, copiar o link, chamar as ações.
  */
 
-/** Editar a ficha pela equipe. Só o nome é obrigatório. */
+/**
+ * Editar a ficha pela equipe. Nome, telefone e e-mail são obrigatórios; trocar
+ * o e-mail ou o telefone para um que já existe pergunta antes (CON-8).
+ */
 export function EditarCadastro({
   personId,
   ficha,
@@ -41,6 +48,13 @@ export function EditarCadastro({
   dependentes: CadastroDoContato["dependentes"];
 }) {
   const [aberto, setAberto] = useState(false);
+  const router = useRouter();
+
+  async function restaurar(id: string) {
+    const dados = new FormData();
+    dados.set("id", id);
+    return restorePerson(dados);
+  }
 
   return (
     <Dialog open={aberto} onOpenChange={setAberto}>
@@ -55,7 +69,7 @@ export function EditarCadastro({
         <DialogHeader>
           <DialogTitle>Dados cadastrais</DialogTitle>
           <DialogDescription>
-            Só o nome é obrigatório aqui. O cliente, pelo link, preenche tudo.
+            Nome, telefone e e-mail são obrigatórios. O cliente, pelo link, preenche tudo.
           </DialogDescription>
         </DialogHeader>
 
@@ -65,6 +79,20 @@ export function EditarCadastro({
           dependentes={dependentes}
           enviar={(formData) => salvarCadastro(personId, formData)}
           aoGravar={() => setAberto(false)}
+          aviso={(estado, { reenviarCom }) =>
+            estado.parecidos?.length ? (
+              <AvisoDeDuplicado
+                parecidos={estado.parecidos}
+                modo="editar"
+                aoUsarExistente={(id) => {
+                  setAberto(false);
+                  router.push(`/contatos/${id}`);
+                }}
+                aoRestaurar={restaurar}
+                aoGravarMesmoAssim={() => reenviarCom({ [CAMPO_CONFIRMAR_PARECIDO]: "1" })}
+              />
+            ) : null
+          }
           rotuloDoEnvio="Salvar"
           rotuloEnviando="Salvando..."
           rodape={

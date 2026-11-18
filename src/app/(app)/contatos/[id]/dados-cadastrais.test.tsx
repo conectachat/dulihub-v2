@@ -12,6 +12,9 @@ vi.mock("@/features/cadastro/actions", () => ({
   cancelarLink: vi.fn(),
   marcarConferida: vi.fn(),
 }));
+// "Sim, é a mesma pessoa" no aviso de duplicado navega e pode restaurar.
+vi.mock("@/features/people/actions", () => ({ restorePerson: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
 
 /**
  * O cartão "Dados cadastrais" da ficha do contato: o que a equipe lê antes de

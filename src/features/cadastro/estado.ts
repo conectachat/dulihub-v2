@@ -1,3 +1,5 @@
+import type { ContatoParecido } from "@/lib/parecidos";
+
 /**
  * O que as ações da ficha devolvem para o formulário.
  *
@@ -10,4 +12,9 @@ export type EstadoDaFicha = {
   error: string | null;
   /** Erro por campo, na chave do campo (`tax_id`, `dependents.0`, `aceite`). */
   campos?: Record<string, string>;
+  /**
+   * Só na porta da equipe: e-mail ou telefone novos que já existem em outro
+   * contato (CON-8). Com eles, **não gravou** — a tela pergunta antes.
+   */
+  parecidos?: ContatoParecido[];
 };

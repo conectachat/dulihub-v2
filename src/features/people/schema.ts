@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { aparar, erroDeContato, normalizarDdi, type CampoDeContato } from "@/lib/contato";
+
 /**
  * Campo de texto opcional vindo de formulário.
  *
@@ -16,24 +18,51 @@ const textoOpcional = z
   .transform((v) => (v ? v : null));
 
 /**
- * Só o nome é obrigatório.
- *
- * Um cadastro que exige muito campo não é preenchido — e no app antigo isso
- * produziu contatos pela metade espalhados por três tabelas. Aqui o contato
- * entra com o que se sabe e vai sendo completado; o formulário de onboarding
- * é que exige tudo, na hora certa.
+ * E-mail, DDI e telefone: aparados pelo mesmo conjunto de espaços do banco
+ * (`aparar`), vazio vira `null` — a obrigatoriedade é de `erroDeContato`.
  */
-export const personSchema = z.object({
-  full_name: z.string().trim().min(1, "Informe o nome"),
-  email: textoOpcional.refine(
-    (v) => v === null || z.string().email().safeParse(v).success,
-    { message: "Email inválido" },
-  ),
-  phone_country_code: textoOpcional,
-  phone: textoOpcional,
-  company: textoOpcional,
-  job_title: textoOpcional,
-});
+const textoDeContato = z
+  .string()
+  .nullish()
+  .transform((v) => aparar(v));
+
+/** O campo do formulário onde cada erro de contato aparece. */
+const CAMPO_DO_FORMULARIO: Record<CampoDeContato, "email" | "phone_country_code" | "phone"> = {
+  email: "email",
+  ddi: "phone_country_code",
+  telefone: "phone",
+};
+
+/**
+ * Nome, e-mail, DDI e telefone são obrigatórios (decisão de 17/nov, spec
+ * §6.1, CON-4).
+ *
+ * Antes só o nome era: o contato entrava com o que se sabia e ia sendo
+ * completado. Mas contato hoje só nasce junto de uma oportunidade, e sem
+ * e-mail e telefone não há como avisar que ele já existe (CON-8) — os
+ * duplicados eram o defeito maior. Empresa e cargo continuam opcionais.
+ *
+ * A regra de formato é a de `src/lib/contato.ts`, a mesma do banco
+ * (`private.contato_valido`), com as mesmas mensagens. O DDI grava com o "+".
+ * Os 4 contatos antigos sem e-mail ou telefone só cobram os campos quando
+ * alguém os edita.
+ */
+export const personSchema = z
+  .object({
+    full_name: z.string().trim().min(1, "Informe o nome"),
+    email: textoDeContato,
+    phone_country_code: textoDeContato,
+    phone: textoDeContato,
+    company: textoOpcional,
+    job_title: textoOpcional,
+  })
+  .superRefine((v, ctx) => {
+    const erro = erroDeContato({ email: v.email, ddi: v.phone_country_code, telefone: v.phone });
+    if (erro) {
+      ctx.addIssue({ code: "custom", path: [CAMPO_DO_FORMULARIO[erro.campo]], message: erro.mensagem });
+    }
+  })
+  .transform((v) => ({ ...v, phone_country_code: normalizarDdi(v.phone_country_code) }));
 
 export type PersonInput = z.infer<typeof personSchema>;
 

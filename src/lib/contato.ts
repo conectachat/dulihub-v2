@@ -35,24 +35,48 @@ export function normalizarDdi(ddi: string | null): string | null {
   return FORMATO_DDI.test(aparado) ? `+${soDigitos(aparado)}` : aparado;
 }
 
-/** A primeira regra que falha, na ordem e-mail → DDI → telefone. */
+function erroDoEmail(valor: string | null): string | null {
+  const email = aparar(valor);
+  if (email === null) return "Informe o e-mail";
+  return FORMATO_EMAIL.test(email) ? null : "E-mail inválido";
+}
+
+function erroDoDdi(valor: string | null): string | null {
+  const ddi = aparar(valor);
+  if (ddi === null) return "Informe o DDI";
+  return FORMATO_DDI.test(ddi) ? null : "DDI inválido (ex.: +55)";
+}
+
+function erroDoTelefone(valor: string | null): string | null {
+  const telefone = aparar(valor);
+  if (telefone === null) return "Informe o telefone";
+  const digitos = soDigitos(telefone).length;
+  return digitos < 8 || digitos > 15 ? "O telefone precisa ter de 8 a 15 dígitos" : null;
+}
+
+/**
+ * O erro de cada campo, independente dos outros — para a ficha apontar o
+ * e-mail e o telefone de uma vez, em vez de um por envio.
+ */
+export function errosDeContato(contato: Contato): Partial<Record<CampoDeContato, string>> {
+  const erros: Partial<Record<CampoDeContato, string>> = {};
+  const email = erroDoEmail(contato.email);
+  const ddi = erroDoDdi(contato.ddi);
+  const telefone = erroDoTelefone(contato.telefone);
+  if (email) erros.email = email;
+  if (ddi) erros.ddi = ddi;
+  if (telefone) erros.telefone = telefone;
+  return erros;
+}
+
+/** A primeira regra que falha, na ordem e-mail → DDI → telefone (a mesma do banco). */
 export function erroDeContato(
   contato: Contato,
 ): { campo: CampoDeContato; mensagem: string } | null {
-  const email = aparar(contato.email);
-  if (email === null) return { campo: "email", mensagem: "Informe o e-mail" };
-  if (!FORMATO_EMAIL.test(email)) return { campo: "email", mensagem: "E-mail inválido" };
-
-  const ddi = aparar(contato.ddi);
-  if (ddi === null) return { campo: "ddi", mensagem: "Informe o DDI" };
-  if (!FORMATO_DDI.test(ddi)) return { campo: "ddi", mensagem: "DDI inválido (ex.: +55)" };
-
-  const telefone = aparar(contato.telefone);
-  if (telefone === null) return { campo: "telefone", mensagem: "Informe o telefone" };
-  const digitos = soDigitos(telefone).length;
-  if (digitos < 8 || digitos > 15) {
-    return { campo: "telefone", mensagem: "O telefone precisa ter de 8 a 15 dígitos" };
+  const erros = errosDeContato(contato);
+  for (const campo of ["email", "ddi", "telefone"] as const) {
+    const mensagem = erros[campo];
+    if (mensagem) return { campo, mensagem };
   }
-
   return null;
 }

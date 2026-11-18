@@ -1,3 +1,4 @@
+import { errosDeContato, normalizarDdi } from "@/lib/contato";
 import { cpfValido, soDigitos } from "@/lib/documentos";
 import { hojeEmSaoPaulo } from "@/lib/formatar";
 
@@ -5,7 +6,7 @@ import { hojeEmSaoPaulo } from "@/lib/formatar";
  * A ficha de cadastro: os campos, as listas e a tradução do formulário.
  *
  * É o "FORMULÁRIO DE CADASTRO" em PDF que o Renato mandava pelo WhatsApp,
- * campo por campo. As mesmas regras estão no banco (`salvar_cadastro`, 0035),
+ * campo por campo. As mesmas regras estão no banco (`salvar_cadastro`, 0035 e 0040),
  * que é quem garante; aqui elas existem para o erro aparecer **no campo**,
  * antes do envio.
  *
@@ -41,7 +42,7 @@ export const CAMPOS_DA_FICHA = [
 export type CampoDaFicha = (typeof CAMPOS_DA_FICHA)[number];
 
 /** O que pode ficar em branco mesmo na ficha do lead. */
-const OPCIONAIS: readonly CampoDaFicha[] = ["address_complement", "phone_country_code"];
+const OPCIONAIS: readonly CampoDaFicha[] = ["address_complement"];
 
 // Valores em português porque é o que o cadastro antigo já guardava nestas
 // colunas (`masculino`, `solteiro`). Trocar agora seria migrar dado à toa.
@@ -98,17 +99,19 @@ function nascimentoValido(data: string, hoje: string): boolean {
   return data >= "1900-01-01" && data <= hoje;
 }
 
-const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-
 const ehBrasil = (pais: string | null) =>
   pais !== null && ["brasil", "brazil"].includes(pais.toLowerCase());
 
 /**
  * Do formulário para o objeto que `salvar_cadastro` recebe.
  *
- * `completa` é a porta do lead: tudo obrigatório, menos complemento e DDI.
- * `parcial` é a da equipe: só o nome — mas o que for preenchido ainda precisa
- * estar certo.
+ * `completa` é a porta do lead: tudo obrigatório, menos o complemento.
+ * `parcial` é a da equipe: nome, e-mail, DDI e telefone (CON-4) — e o que for
+ * preenchido ainda precisa estar certo.
+ *
+ * E-mail, DDI e telefone seguem `src/lib/contato.ts`, a regra do banco
+ * (`private.contato_valido`, 0040), nos dois modos e com as mesmas frases:
+ * nesses três campos a mensagem dela vence o "Preencha este campo".
  *
  * Os dependentes vêm em quatro campos repetidos (`dep_full_name`, …), uma
  * posição por linha da tela. Linha toda em branco é ignorada; linha começada
@@ -144,12 +147,23 @@ export function fichaDoFormulario(
   conferir("birth_date", (d) => nascimentoValido(d, hoje), "Data de nascimento inválida");
   conferir("gender", (v) => v in SEXOS, "Escolha uma opção");
   conferir("marital_status", (v) => v in ESTADOS_CIVIS, "Escolha uma opção");
-  conferir("email", (v) => EMAIL.test(v), "E-mail inválido");
   conferir(
     "address_postal_code",
     (v) => !ehBrasil(dados.address_country) || soDigitos(v).length === 8,
     "CEP precisa ter 8 dígitos",
   );
+
+  const contato = errosDeContato({
+    email: dados.email,
+    ddi: dados.phone_country_code,
+    telefone: dados.phone,
+  });
+  if (contato.email) campos.email = contato.email;
+  if (contato.ddi) campos.phone_country_code = contato.ddi;
+  if (contato.telefone) campos.phone = contato.telefone;
+
+  // "55" grava como "+55", como no banco.
+  if (!campos.phone_country_code) dados.phone_country_code = normalizarDdi(dados.phone_country_code);
 
   // Só os dígitos: a máscara é da tela.
   if (dados.tax_id !== null && !campos.tax_id) dados.tax_id = soDigitos(dados.tax_id);

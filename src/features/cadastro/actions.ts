@@ -8,6 +8,7 @@ import { falhou, type ActionState } from "@/lib/action-state";
 import { traduzirErro } from "@/lib/erros";
 import { resultado } from "@/lib/gravar";
 import { contextoAtual } from "@/lib/organizacao";
+import { buscarParecidos, CAMPO_CONFIRMAR_PARECIDO, contatoMudou } from "@/lib/parecidos";
 import { createClient } from "@/lib/supabase/server";
 
 import type { EstadoDaFicha } from "./estado";
@@ -21,16 +22,44 @@ import { fichaDoFormulario } from "./schema";
  * usa — a lista de campos e as regras moram lá, e as duas portas não têm como
  * divergir. A função é `security invoker`: quem decide se esta pessoa pode
  * ser editada por quem está logado é a RLS, não este arquivo.
+ *
+ * Trocou o e-mail, o DDI ou o telefone para um que já existe em outro
+ * contato? Não grava: devolve os parecidos (CON-8), como a edição de
+ * contato. Só o reenvio com `CAMPO_CONFIRMAR_PARECIDO` grava assim mesmo.
  */
 export async function salvarCadastro(
   personId: string,
   formData: FormData,
 ): Promise<EstadoDaFicha> {
-  // A equipe completa aos poucos: só o nome é obrigatório.
+  // A equipe completa aos poucos: nome, e-mail, DDI e telefone obrigatórios.
   const ficha = fichaDoFormulario(formData, "parcial");
   if (!ficha.ok) return { error: ficha.erro, campos: ficha.campos };
 
   const supabase = await createClient();
+
+  if (formData.get(CAMPO_CONFIRMAR_PARECIDO) !== "1") {
+    const { data: atual, error: erroAtual } = await supabase
+      .from("people")
+      .select("email, phone_country_code, phone")
+      .eq("id", personId)
+      .maybeSingle();
+    if (erroAtual) return { error: traduzirErro(erroAtual) };
+    if (!atual) return { error: "Contato não encontrado." };
+
+    const novo = {
+      email: ficha.dados.email,
+      ddi: ficha.dados.phone_country_code,
+      telefone: ficha.dados.phone,
+    };
+    const antes = { email: atual.email, ddi: atual.phone_country_code, telefone: atual.phone };
+
+    if (contatoMudou(antes, novo)) {
+      const busca = await buscarParecidos(supabase, { ...novo, ignorar: personId });
+      if (busca.error) return { error: busca.error };
+      if (busca.parecidos.length > 0) return { error: null, parecidos: busca.parecidos };
+    }
+  }
+
   const { error } = await supabase.rpc("salvar_cadastro", {
     p_person: personId,
     p_dados: ficha.dados,

@@ -19,11 +19,22 @@ import { ESTADO_INICIAL, type ActionState } from "./action-state";
  *
  * Uso: `<form key={chave} onSubmit={enviar}>`, e o botão recebe `enviando`
  * (o `useFormStatus` não enxerga envio por `onSubmit`).
+ *
+ * `reenviarCom` manda o mesmo formulário de novo com campos a mais — é a
+ * confirmação de um aviso ("é outra pessoa, grave mesmo assim", CON-8). O
+ * campo extra só existe nesse envio: nunca fica no formulário, então trocar
+ * o e-mail e salvar de novo pergunta outra vez.
  */
-export function useFormulario(
-  acao: (anterior: ActionState, dados: FormData) => Promise<ActionState>,
+export function useFormulario<E extends ActionState = ActionState>(
+  acao: (anterior: E, dados: FormData) => Promise<E>,
 ) {
-  const [estado, despachar, enviando] = useActionState(acao, ESTADO_INICIAL);
+  // O React tipa o estado como `Awaited<E>`, que o TypeScript não reduz a `E`
+  // enquanto `E` é genérico; para um objeto, os dois são o mesmo tipo. O
+  // estado inicial é o da casa: os campos a mais de `E` são todos opcionais.
+  const [estado, despachar, enviando] = useActionState<E, FormData>(
+    acao as (anterior: Awaited<E>, dados: FormData) => Promise<E>,
+    ESTADO_INICIAL as Awaited<E>,
+  );
   const chave = useChaveDoSucesso(estado);
 
   function enviar(evento: FormEvent<HTMLFormElement>) {
@@ -32,14 +43,20 @@ export function useFormulario(
     startTransition(() => despachar(dados));
   }
 
-  return { estado, enviar, enviando, chave };
+  function reenviarCom(formulario: HTMLFormElement, extra: Record<string, string>) {
+    const dados = new FormData(formulario);
+    for (const [campo, valor] of Object.entries(extra)) dados.set(campo, valor);
+    startTransition(() => despachar(dados));
+  }
+
+  return { estado, enviar, reenviarCom, enviando, chave };
 }
 
 /**
  * A marca do último **sucesso** — para `key` de formulário que deve voltar
  * limpo depois de gravar, e só então.
  *
- * Ajustada durante a renderização, como `useDialogOnSuccess`, sem efeito.
+ * Ajustada durante a renderização, sem efeito.
  */
 export function useChaveDoSucesso(estado: ActionState): string {
   const [chave, setChave] = useState("inicial");

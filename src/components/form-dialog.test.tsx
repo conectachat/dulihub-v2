@@ -63,3 +63,79 @@ describe("FormDialog", () => {
     expect(acao.mock.calls[0][1].get("nome")).toBe("Gisele");
   });
 });
+
+/**
+ * O aviso entre o envio e a gravação (CON-8): a ação devolve "parecidos" sem
+ * gravar, o diálogo mostra o aviso e a confirmação reenvia o mesmo
+ * formulário com um campo a mais. A confirmação nunca fica guardada no
+ * formulário — só existe no clique.
+ */
+type EstadoComAviso = ActionState & { aviso?: boolean };
+
+const PEDE_CONFIRMACAO: EstadoComAviso = { error: null, token: "aviso-1", aviso: true };
+
+function montarComAviso(acao: (a: EstadoComAviso, d: FormData) => Promise<EstadoComAviso>) {
+  render(
+    <FormDialog
+      acao={acao}
+      gatilho={<button type="button">Novo contato</button>}
+      titulo="Novo contato"
+      aviso={(estado, { reenviarCom }) =>
+        estado.aviso ? (
+          <button type="button" onClick={() => reenviarCom({ confirmar: "1" })}>
+            Confirmar
+          </button>
+        ) : null
+      }
+    >
+      <input aria-label="Nome" name="nome" />
+    </FormDialog>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Novo contato" }));
+}
+
+describe("FormDialog com aviso", () => {
+  it("reenviarCom manda o FormData do formulário mais o campo extra", async () => {
+    const acao = vi
+      .fn<(a: EstadoComAviso, d: FormData) => Promise<EstadoComAviso>>()
+      .mockResolvedValueOnce(PEDE_CONFIRMACAO)
+      .mockResolvedValueOnce(gravou());
+    montarComAviso(acao);
+
+    fireEvent.change(await screen.findByLabelText("Nome"), { target: { value: "Gisele" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirmar" }));
+
+    await vi.waitFor(() => expect(acao).toHaveBeenCalledTimes(2));
+    expect(acao.mock.calls[0][1].get("confirmar")).toBeNull();
+    const segunda = acao.mock.calls[1][1];
+    expect(segunda.get("nome")).toBe("Gisele");
+    expect(segunda.get("confirmar")).toBe("1");
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("estado com parecidos e sem ok não fecha o diálogo", async () => {
+    const acao = vi.fn(async () => PEDE_CONFIRMACAO);
+    montarComAviso(acao);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByRole("button", { name: "Confirmar" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("reabrir não mostra o aviso da abertura anterior", async () => {
+    const acao = vi.fn(async () => PEDE_CONFIRMACAO);
+    montarComAviso(acao);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Salvar" }));
+    await screen.findByRole("button", { name: "Confirmar" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    fireEvent.click(screen.getByRole("button", { name: "Novo contato" }));
+    await screen.findByLabelText("Nome");
+    expect(screen.queryByRole("button", { name: "Confirmar" })).toBeNull();
+  });
+});

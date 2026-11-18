@@ -242,7 +242,11 @@ O `token` é o que permite fechar diálogo e limpar formulário **sem**
 renderização. Comparar `ok` não serve — ele continua verdadeiro depois do
 primeiro sucesso, e a segunda gravação não seria percebida.
 
-`useDialogOnSuccess` (`@/lib/use-dialog-on-success`) faz isso para diálogo.
+Para diálogo, use `FormDialog` (`@/components/form-dialog`): ele embrulha a
+ação e fecha quando a resposta tem `ok`, dentro da transição; o formulário
+vive num componente interno com `key` nova a cada abertura. Ação que para
+para perguntar (contato parecido, CON-8) devolve o aviso sem `ok`, e a prop
+`aviso` o desenha, com `reenviarCom` para a confirmação.
 
 ### Limpar formulário depois do sucesso: `key`, não `useEffect`
 

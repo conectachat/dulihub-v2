@@ -153,17 +153,95 @@ describe("FormularioDoCadastro", () => {
     expect(enviar.mock.calls[0][0].getAll("dep_full_name")).toEqual(["Bia de Teste"]);
   });
 
-  it("na porta da equipe só o nome é obrigatório", async () => {
+  it("na porta da equipe, só nome, e-mail e telefone são obrigatórios", async () => {
     const { enviar } = montar({
       modo: "parcial",
-      inicial: { full_name: "Ana" },
+      inicial: {
+        full_name: "Ana",
+        email: "ana@example.com",
+        phone_country_code: "+55",
+        phone: "98999990000",
+      },
       rotuloDoEnvio: "Enviar ficha",
     });
 
     // Sem asterisco: o campo existe, mas não é exigido.
     expect(screen.getByLabelText("CPF")).toBeTruthy();
+    expect(screen.getByLabelText("E-mail *")).toBeTruthy();
     enviarFormulario();
 
     await waitFor(() => expect(enviar).toHaveBeenCalledTimes(1));
+  });
+
+  it("na porta da equipe, e-mail vazio é apontado no campo", async () => {
+    const { enviar } = montar({
+      modo: "parcial",
+      inicial: { full_name: "Ana", phone_country_code: "+55", phone: "98999990000" },
+    });
+
+    enviarFormulario();
+
+    expect(await screen.findByText("Informe o e-mail")).toBeInTheDocument();
+    expect(enviar).not.toHaveBeenCalled();
+  });
+
+  it("resposta com parecidos não chama aoGravar e mostra o aviso", async () => {
+    const enviar = vi.fn<(fd: FormData) => Promise<EstadoDaFicha>>(async () => ({
+      error: null,
+      parecidos: [
+        {
+          id: "p1",
+          nome: "Carlos Souza",
+          estagio: "client",
+          naLixeira: false,
+          bateEmail: true,
+          bateTelefone: false,
+        },
+      ],
+    }));
+    const { aoGravar } = montar({
+      enviar,
+      aviso: (estado) => (estado.parecidos?.length ? <p>Já existe: {estado.parecidos[0].nome}</p> : null),
+    });
+
+    enviarFormulario();
+
+    expect(await screen.findByText("Já existe: Carlos Souza")).toBeInTheDocument();
+    expect(aoGravar).not.toHaveBeenCalled();
+  });
+
+  it("o aviso reenvia o mesmo formulário com o campo extra", async () => {
+    const enviar = vi
+      .fn<(fd: FormData) => Promise<EstadoDaFicha>>()
+      .mockResolvedValueOnce({
+        error: null,
+        parecidos: [
+          {
+            id: "p1",
+            nome: "Carlos Souza",
+            estagio: "client",
+            naLixeira: false,
+            bateEmail: true,
+            bateTelefone: false,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ error: null });
+    const { aoGravar } = montar({
+      enviar,
+      aviso: (estado, { reenviarCom }) =>
+        estado.parecidos?.length ? (
+          <button type="button" onClick={() => reenviarCom({ confirmar: "1" })}>
+            Salvar mesmo assim
+          </button>
+        ) : null,
+    });
+
+    enviarFormulario();
+    fireEvent.click(await screen.findByRole("button", { name: "Salvar mesmo assim" }));
+
+    await waitFor(() => expect(aoGravar).toHaveBeenCalledTimes(1));
+    expect(enviar.mock.calls[1][0].get("confirmar")).toBe("1");
+    expect(enviar.mock.calls[1][0].get("full_name")).toBe("Ana de Teste");
   });
 });

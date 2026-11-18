@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { CASOS_DE_CONTATO } from "@/lib/contato.casos";
+
 import { CAMPOS_DA_FICHA, fichaDoFormulario } from "./schema";
 
 /**
@@ -79,13 +81,35 @@ describe("fichaDoFormulario — completa (a porta do lead)", () => {
     expect(Object.keys(r.campos).sort()).toEqual(["address_city", "national_id"]);
   });
 
-  it("complemento e DDI podem ficar em branco", () => {
-    const r = fichaDoFormulario(
-      formulario({ ...COMPLETA, address_complement: "", phone_country_code: "" }),
-      "completa",
-    );
+  it("o complemento pode ficar em branco", () => {
+    const r = fichaDoFormulario(formulario({ ...COMPLETA, address_complement: "" }), "completa");
 
     expect(r.ok).toBe(true);
+  });
+
+  it("o DDI não: sem ele, a mensagem é a mesma do banco", () => {
+    const r = fichaDoFormulario(formulario({ ...COMPLETA, phone_country_code: "" }), "completa");
+
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.campos.phone_country_code).toBe("Informe o DDI");
+  });
+
+  it("e-mail e telefone vazios dizem cada um a sua frase, não 'Preencha este campo'", () => {
+    const r = fichaDoFormulario(formulario({ ...COMPLETA, email: "", phone: "" }), "completa");
+
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.campos.email).toBe("Informe o e-mail");
+    expect(r.campos.phone).toBe("Informe o telefone");
+  });
+
+  it("DDI sem o mais grava com o mais", () => {
+    const r = fichaDoFormulario(formulario({ ...COMPLETA, phone_country_code: "55" }), "completa");
+
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.dados.phone_country_code).toBe("+55");
   });
 
   it("CPF com dígito errado é recusado no campo", () => {
@@ -201,13 +225,48 @@ describe("fichaDoFormulario — dependentes", () => {
 });
 
 describe("fichaDoFormulario — parcial (a porta da equipe)", () => {
-  it("só o nome é obrigatório", () => {
+  it("só o nome não basta: e-mail, DDI e telefone também são obrigatórios", () => {
     const r = fichaDoFormulario(formulario({ full_name: "Ana" }), "parcial");
+
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.campos.email).toBe("Informe o e-mail");
+    expect(r.campos.tax_id).toBeUndefined();
+  });
+
+  it("nome e contato bastam; o resto pode ficar em branco", () => {
+    const r = fichaDoFormulario(
+      formulario({
+        full_name: "Ana",
+        email: "ana@example.com",
+        phone_country_code: "+55",
+        phone: "98999990000",
+      }),
+      "parcial",
+    );
 
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.dados.full_name).toBe("Ana");
     expect(r.dados.tax_id).toBeNull();
+  });
+
+  it.each(CASOS_DE_CONTATO)("a regra comum: $nome", (c) => {
+    const r = fichaDoFormulario(
+      formulario({
+        full_name: "Ana",
+        email: c.contato.email ?? "",
+        phone_country_code: c.contato.ddi ?? "",
+        phone: c.contato.telefone ?? "",
+      }),
+      "parcial",
+    );
+
+    const campo = { email: "email", ddi: "phone_country_code", telefone: "phone" } as const;
+    const erro = r.ok
+      ? null
+      : (r.campos[campo.email] ?? r.campos[campo.ddi] ?? r.campos[campo.telefone] ?? null);
+    expect(erro).toBe(c.erro);
   });
 
   it("sem nome, recusa", () => {
