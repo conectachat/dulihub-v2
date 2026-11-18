@@ -9,7 +9,7 @@ precisar ler 38 migrations para responder "onde está X e quem pode tocar".
 resumo delas; se divergir, a migration vence e este arquivo está errado.
 **Toda migration atualiza este arquivo no mesmo commit.**
 
-Situação: 0001 a 0045 aplicadas (a 0039 depois da 0042, quando a conta
+Situação: 0001 a 0046 aplicadas (a 0039 depois da 0042, quando a conta
 `teste-staff` passou a existir). Colunas atuais:
 `src/lib/supabase/database.types.ts` (gerado, não se edita à mão).
 
@@ -41,6 +41,7 @@ O schema `private` não é publicado pelo PostgREST. As auxiliares de RLS são
 | `current_user_is_root_owner()` | O usuário é **dono** (`owner`) da organização raiz. Exigido para criar organização e para mexer em organização/associação alheia. | 0036 |
 | `current_user_manages(org)` | O usuário é `owner` ou `admin` da organização informada. | 0013 |
 | `can_access_person(pessoa)` | O usuário alcança a pessoa: é membro da organização dona, ou da organização atribuída, ou **é a própria pessoa** (`people.user_id`). | 0013 |
+| `equipe_alcanca_pessoa(pessoa)` | `can_access_person` **sem** o ramo do cliente: membro da organização dona ou da atribuída. Lê notas e atividades (POR-2). | 0046 |
 | `can_access_opportunity(negócio)` | `can_access_person` da pessoa dona do negócio. | 0013 |
 | `campos_da_ficha()` | Lista fechada dos 20 campos de `people` que a ficha de cadastro pode gravar. | 0035 |
 
@@ -97,8 +98,8 @@ Legenda de "quem": **membros** = qualquer membro da organização da linha;
 | `person_participants` | Quem acompanha o cliente, além do dono (CLI-10). | Da pessoa; FK composta com `people` (cascade) e com `organization_members` (cascade: membro que sai deixa de participar). | Membros (não a atribuída). | Membros. | Único `(person_id, user_id)`. Lápide e `updated_at`. Fora do manifesto (0044). |
 | `person_dependents` | Cônjuge e filhos do contratante, para os formulários americanos. | Da pessoa. | Quem alcança a pessoa. | Membros (na prática, via `salvar_cadastro`). | `relationship` ∈ spouse/child/other; nome e país obrigatórios; no máximo 10 por ficha (regra da função). Fora do manifesto por ora. |
 | `registration_forms` | Link da ficha de cadastro (token) e a resposta do lead: `answers`, `previous` (o que havia antes), texto do consentimento, conferência. | Da pessoa. | Membros. Anônimo: só pelas funções da ficha. | Membros; o envio do lead grava via `enviar_ficha_de_cadastro`. | Token ≥ 40 caracteres, único. Um link em aberto por pessoa (vencido conta como aberto). Enviada exige resposta; conferida exige enviada. Fora do manifesto por ora. |
-| `notes` | Notas sobre a pessoa (opcionalmente ligadas a um negócio). | Da pessoa. | Quem alcança a pessoa — inclui cliente e atribuída. | Membros da organização dona (0017). | `guard_child_row` congela `organization_id`, `person_id`, `opportunity_id`, `created_by` para quem não é membro. |
-| `activities` | Histórico (ligação, mudança de etapa, ficha recebida…). `type` é texto livre. | Da pessoa. | Quem alcança a pessoa. | Membros. | Mesmo `guard_child_row`. A ficha enviada grava aqui `registration_submitted`. Virar cliente grava `virou_cliente` (0045: "Virou cliente (processo ‹título›)", "Virou cliente (cobrança ‹título›)", "Marcado como cliente"); a tela trata como registro do sistema, sem apagar. |
+| `notes` | Notas sobre a pessoa (opcionalmente ligadas a um negócio). | Da pessoa. | A equipe: membros e atribuída (`equipe_alcanca_pessoa`, 0046). O cliente do portal **não** lê. | Membros da organização dona (0017). | `guard_child_row` congela `organization_id`, `person_id`, `opportunity_id`, `created_by` para quem não é membro. |
+| `activities` | Histórico (ligação, mudança de etapa, ficha recebida…). `type` é texto livre. | Da pessoa. | A equipe: membros e atribuída (0046). O cliente do portal **não** lê. | Membros. | Mesmo `guard_child_row`. A ficha enviada grava aqui `registration_submitted`. Virar cliente grava `virou_cliente` (0045: "Virou cliente (processo ‹título›)", "Virou cliente (cobrança ‹título›)", "Marcado como cliente"); a tela trata como registro do sistema, sem apagar. |
 | `files` | Registro de arquivo do CRM (bucket + caminho). | Da pessoa. | Quem alcança a pessoa. | Membros. | Único `(bucket, path)`. `guard_child_row`. Nenhuma migration cria bucket com policy para estes arquivos. |
 
 ### 2.3 CRM
@@ -228,8 +229,8 @@ Só um uso: a edição simultânea das Observações (0024).
 | `tags` | 0004, 0016, 0018, 0028, 0029 |
 | `person_tags` | 0004, 0016, 0017, 0028, 0029b |
 | `person_dependents`, `registration_forms` | 0035 |
-| `notes` | 0004, 0016, 0017, 0029 |
-| `activities`, `files` | 0004, 0016, 0017, 0028, 0029 |
+| `notes` | 0004, 0016, 0017, 0029, 0046 (só a equipe lê) |
+| `activities`, `files` | 0004, 0016, 0017, 0028, 0029; `activities` 0046 (só a equipe lê) |
 | `pipelines` | 0004, 0005, 0016, 0018, 0019, 0029 |
 | `pipeline_stages` | 0004, 0005, 0009, 0016, 0018, 0019, 0027, 0028, 0029 |
 | `opportunities` | 0004, 0016, 0017, 0020, 0022, 0029, 0038, 0044 (trava do dono) |

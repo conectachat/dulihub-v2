@@ -18,6 +18,9 @@ import { entrarComo, fixture, type Cliente } from "./clientes";
  *
  * Testar agora custa pouco. Descobrir na Fase 6, com o portal no ar, custa a
  * confiança de quem confiou o processo de imigração à Duli.
+ *
+ * Desde a 0046 (POR-2) o cliente também **não lê** notas nem histórico: são
+ * anotações da equipe sobre ele, não comunicação com ele.
  */
 
 const CORPO_ORIGINAL =
@@ -28,6 +31,7 @@ describe("o cliente do portal alcança o que é dele, e só isso", () => {
   let consultor: Cliente;
   let notaId: string;
   let pessoaId: string;
+  let atividadeId: string | null = null;
 
   beforeAll(async () => {
     cliente = await entrarComo("cliente");
@@ -56,6 +60,21 @@ describe("o cliente do portal alcança o que é dele, e só isso", () => {
     }
     notaId = data.id;
     pessoaId = data.person_id;
+
+    // Uma atividade da equipe sobre o cliente, para a metade `activities`
+    // ter o que esconder.
+    const atividade = await consultor
+      .from("activities")
+      .insert({
+        organization_id: pessoa.organization_id,
+        person_id: pessoa.id,
+        type: "call",
+        description: "Ligação registrada pela suíte do portal.",
+      })
+      .select("id")
+      .single();
+    if (atividade.error) throw new Error(`Atividade não criada: ${atividade.error.message}`);
+    atividadeId = atividade.data.id;
   }, 30_000);
 
   afterAll(async () => {
@@ -64,6 +83,7 @@ describe("o cliente do portal alcança o que é dele, e só isso", () => {
       .from("notes")
       .update({ body: CORPO_ORIGINAL })
       .eq("id", notaId);
+    if (atividadeId) await consultor.from("activities").delete().eq("id", atividadeId);
   });
 
   it("enxerga a si mesmo, e mais ninguém", async () => {
@@ -74,16 +94,23 @@ describe("o cliente do portal alcança o que é dele, e só isso", () => {
     expect(data![0].id).toBe(pessoaId);
   });
 
-  it("lê a nota que o consultor escreveu sobre ele", async () => {
-    // Ler é certo: é para isso que o portal existe.
-    const { data, error } = await cliente
-      .from("notes")
-      .select("body")
-      .eq("id", notaId)
-      .maybeSingle();
+  it("não lê as notas nem o histórico que a equipe escreveu sobre ele (POR-2)", async () => {
+    const [notas, atividades] = await Promise.all([
+      cliente.from("notes").select("id").eq("person_id", pessoaId),
+      cliente.from("activities").select("id").eq("person_id", pessoaId),
+    ]);
+    expect(notas.error).toBeNull();
+    expect(notas.data).toEqual([]);
+    expect(atividades.error).toBeNull();
+    expect(atividades.data).toEqual([]);
 
-    expect(error).toBeNull();
-    expect(data!.body).toBe(CORPO_ORIGINAL);
+    // A equipe continua lendo as duas.
+    const [daEquipe, historico] = await Promise.all([
+      consultor.from("notes").select("body").eq("id", notaId).maybeSingle(),
+      consultor.from("activities").select("id").eq("id", atividadeId!),
+    ]);
+    expect(daEquipe.data?.body).toBe(CORPO_ORIGINAL);
+    expect(historico.data).toHaveLength(1);
   });
 
   it("não reescreve a nota do consultor", async () => {
