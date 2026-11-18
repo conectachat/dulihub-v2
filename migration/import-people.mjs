@@ -15,7 +15,11 @@
  *
  * O estágio final segue a hierarquia: cliente vence oportunidade, que vence
  * contato. Uma pessoa que é cliente hoje entra como cliente, mesmo que também
- * exista como lead antigo.
+ * exista como lead antigo. E o banco novo também conta: quem já é cliente
+ * aqui nunca volta a lead porque o app antigo ainda o tem como lead — o
+ * banco recusaria o lote inteiro desde a 0045 (`estagioFinal`).
+ *
+ * O DDI é gravado como "+NN", como a 0040 normalizou (`ddiGravado`).
  *
  * PODE RODAR QUANTAS VEZES QUISER. O casamento é feito por `legacy_id`, então
  * a segunda execução atualiza em vez de duplicar.
@@ -29,6 +33,8 @@
  */
 
 import { createInterface } from "node:readline";
+
+import { ddiGravado, estagioFinal } from "./regras-da-importacao.mjs";
 
 const OLD = {
   url: "https://tqbvyshfeoneipcfipzx.supabase.co",
@@ -79,10 +85,10 @@ async function login({ url, key }, email, password) {
 }
 
 /** Baixa uma tabela inteira, paginando pelo header Range do PostgREST. */
-async function fetchAll({ url, key }, token, table, select = "*") {
+async function fetchAll({ url, key }, token, table, select = "*", filtro = "") {
   const rows = [];
   for (let offset = 0; ; offset += PAGE) {
-    const res = await fetch(`${url}/rest/v1/${table}?select=${select}`, {
+    const res = await fetch(`${url}/rest/v1/${table}?select=${select}${filtro}`, {
       headers: {
         apikey: key,
         Authorization: `Bearer ${token}`,
@@ -173,6 +179,7 @@ function normalize(person) {
   row.extra_phones = Array.isArray(row.extra_phones) ? row.extra_phones : [];
   row.created_at = row.created_at ?? new Date().toISOString();
   row.full_name = row.full_name ?? "Sem nome";
+  row.phone_country_code = ddiGravado(row.phone_country_code);
 
   return row;
 }
@@ -322,7 +329,26 @@ async function main() {
   console.log(`  client_profiles... ${clients.length}`);
   console.log(`  soma bruta........ ${contacts.length + leads.length + clients.length}`);
 
-  const people = mergePeople({ contacts, leads, clients });
+  const fundidas = mergePeople({ contacts, leads, clients });
+
+  // O banco novo tem vida própria: quem já é cliente aqui fica cliente.
+  console.log("Lendo os estágios que o app novo já tem...");
+  const existentes = await fetchAll(
+    NEW,
+    newToken,
+    "people",
+    "legacy_id,lifecycle_stage",
+    `&organization_id=eq.${organizationId}&legacy_id=not.is.null`,
+  );
+  const estagioNoBanco = new Map(existentes.map((e) => [e.legacy_id, e.lifecycle_stage]));
+  let mantidos = 0;
+  const people = fundidas.map((p) => {
+    const final = estagioFinal(estagioNoBanco.get(p.legacy_id), p.lifecycle_stage);
+    if (final !== p.lifecycle_stage) mantidos += 1;
+    return { ...p, lifecycle_stage: final };
+  });
+  console.log(`  já mais adiante no app novo (mantidos): ${mantidos}`);
+
   const byStage = people.reduce((acc, p) => {
     acc[p.lifecycle_stage] = (acc[p.lifecycle_stage] ?? 0) + 1;
     return acc;
