@@ -7,7 +7,7 @@ policy.
 
 ## Uma vez, na máquina
 
-Os três usuários existem em Authentication → Users do projeto Supabase, criados
+Os quatro usuários existem em Authentication → Users do projeto Supabase, criados
 com **Auto Confirm User** marcado:
 
 | Email | Papel na fixture |
@@ -15,10 +15,11 @@ com **Auto Confirm User** marcado:
 | `teste-parceiro@duliconsulting.com` | `owner` de "Parceiro de Teste" |
 | `teste-colaborador@duliconsulting.com` | `staff` da Duli |
 | `teste-cliente@duliconsulting.com` | cliente do portal, sem associação |
+| `teste-staff@duliconsulting.com` | `staff` de "Parceiro de Teste" |
 
-Depois de criados, aplicar `supabase/migrations/0015_fixture_de_teste.sql` — ela
-liga as associações por email e é idempotente, então rodar de novo não duplica
-nada.
+Depois de criados, aplicar `supabase/migrations/0015_fixture_de_teste.sql` e
+`0039_fixture_staff_de_teste.sql` — elas ligam as associações por email e são
+idempotentes, então rodar de novo não duplica nada.
 
 As senhas vão no `.env.local`, que o `git` ignora:
 
@@ -26,6 +27,7 @@ As senhas vão no `.env.local`, que o `git` ignora:
 RLS_SENHA_PARCEIRO=...
 RLS_SENHA_COLABORADOR=...
 RLS_SENHA_CLIENTE=...
+RLS_SENHA_STAFF=...
 ```
 
 ## Rodar

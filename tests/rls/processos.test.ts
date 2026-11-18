@@ -467,9 +467,11 @@ describe("processo criado a partir do molde", () => {
 
     it("o parceiro não sobe arquivo no espaço de outra organização", async () => {
       const { data: org } = await duli
-        .from("organization_members")
-        .select("organization_id")
-        .limit(1)
+        // Pelo slug: quem é da raiz enxerga as associações de todo mundo, e
+        // "a primeira" podia ser a de um parceiro.
+        .from("organizations")
+        .select("organization_id:id")
+        .eq("slug", "duli")
         .maybeSingle();
 
       const { error } = await parceiro.storage

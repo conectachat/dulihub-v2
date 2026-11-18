@@ -70,9 +70,11 @@ describe("uma organização não alcança dado da outra", () => {
 
   it("o parceiro não grava pessoa dentro da Duli", async () => {
     const { data: orgDaDuli } = await duli
-      .from("organization_members")
-      .select("organization_id")
-      .limit(1)
+      // Pelo slug: quem é da raiz enxerga as associações de todo mundo, e
+      // "a primeira" podia ser a de um parceiro.
+      .from("organizations")
+      .select("organization_id:id")
+      .eq("slug", "duli")
       .maybeSingle();
 
     const { data, error } = await parceiro

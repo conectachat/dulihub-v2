@@ -212,4 +212,20 @@ describe("o papel decide, não a associação", () => {
       expect(resposta.error?.message).toMatch(/não muda de organização/);
     });
   });
+
+  describe("a conta teste-staff (0039)", () => {
+    // Staff de parceiro, não da raiz: é quem as entregas 3 e 4 usam para
+    // provar o que um membro comum de parceiro vê e grava (spec §6.0).
+    // `staffDoTeste`, porque `staff` acima é o colaborador da Duli.
+    it("teste-staff é staff da organização de teste, e só dela", async () => {
+      const staffDoTeste = await entrarComo("staff");
+      const eu = (await staffDoTeste.auth.getUser()).data.user!.id;
+      const { data, error } = await staffDoTeste
+        .from("organization_members")
+        .select("role, organization:organizations(slug)")
+        .eq("user_id", eu);
+      expect(error).toBeNull();
+      expect(data).toEqual([{ role: "staff", organization: { slug: "parceiro-teste" } }]);
+    });
+  });
 });

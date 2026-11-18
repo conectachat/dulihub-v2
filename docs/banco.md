@@ -9,8 +9,8 @@ precisar ler 38 migrations para responder "onde está X e quem pode tocar".
 resumo delas; se divergir, a migration vence e este arquivo está errado.
 **Toda migration atualiza este arquivo no mesmo commit.**
 
-Situação: 0001 a 0038 e 0040 a 0042 aplicadas; a 0039 (conta de teste
-`teste-staff`) vem a seguir, quando a conta existir. Colunas atuais:
+Situação: 0001 a 0042 aplicadas (a 0039 por último, depois de a conta
+`teste-staff` existir). Colunas atuais:
 `src/lib/supabase/database.types.ts` (gerado, não se edita à mão).
 
 ---
@@ -218,7 +218,7 @@ Só um uso: a edição simultânea das Observações (0024).
 |---|---|
 | `organizations` | 0001, 0002 (Duli), 0003, 0015 (organização de teste), 0019 (semente), 0036, 0037 |
 | `profiles` | 0001, 0003, 0013 (`handle_new_user`) |
-| `organization_members` | 0001, 0002, 0003, 0028, 0029, 0036 |
+| `organization_members` | 0001, 0002, 0003, 0028, 0029, 0036, 0039 (staff de teste) |
 | `people` | 0001, 0003, 0006, 0007, 0013, 0016, 0029, 0036, 0037, 0040 (DDI corrigido, índices) |
 | `tags` | 0004, 0016, 0018, 0028, 0029 |
 | `person_tags` | 0004, 0016, 0017, 0028, 0029b |
@@ -248,7 +248,7 @@ Só um uso: a edição simultânea das Observações (0024).
 | RPCs | `swap_positions` 0014/0023/0026; `criar_processo` 0020; `compactar_pagina` 0024/0025; `sync_manifesto` 0030/0032/0033; `reordenar_irmaos` 0030; ficha 0035 (`salvar_cadastro` refeita na 0040); `contatos_parecidos` 0040; `criar_oportunidade` 0041; `set_default_stage_status` 0010 |
 | Storage | `documentos` 0020; `observacoes` 0024 |
 | Tempo real | 0024 |
-| Dados de teste | 0015, 0021 (organização `parceiro-teste`, `is_test` desde 0036) |
+| Dados de teste | 0015, 0021 (organização `parceiro-teste`, `is_test` desde 0036), 0039 (`teste-staff`, staff da `parceiro-teste`) |
 
 ---
 

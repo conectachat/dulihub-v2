@@ -123,9 +123,11 @@ describe("a receber", () => {
     // O cliente é do parceiro; a organização diz que é da Duli. A linha é
     // válida para a RLS de quem grava — quem barra é a chave composta.
     const { data: daDuli } = await duli
-      .from("organization_members")
-      .select("organization_id")
-      .limit(1)
+      // Pelo slug: quem é da raiz enxerga as associações de todo mundo, e
+      // "a primeira" podia ser a de um parceiro.
+      .from("organizations")
+      .select("organization_id:id")
+      .eq("slug", "duli")
       .single();
 
     const { error } = await duli.from("receivables").insert({
@@ -140,9 +142,11 @@ describe("a receber", () => {
 
   it("parcela não se pendura em cobrança de outra organização", async () => {
     const { data: daDuli } = await duli
-      .from("organization_members")
-      .select("organization_id")
-      .limit(1)
+      // Pelo slug: quem é da raiz enxerga as associações de todo mundo, e
+      // "a primeira" podia ser a de um parceiro.
+      .from("organizations")
+      .select("organization_id:id")
+      .eq("slug", "duli")
       .single();
 
     const { error } = await duli.from("installments").insert({

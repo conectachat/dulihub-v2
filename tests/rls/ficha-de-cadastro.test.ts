@@ -454,9 +454,11 @@ describe("ficha de cadastro por link", () => {
 
   it("a Duli não gera link para pessoa do parceiro", async () => {
     const { data: daDuli } = await duli
-      .from("organization_members")
-      .select("organization_id")
-      .limit(1)
+      // Pelo slug: quem é da raiz enxerga as associações de todo mundo, e
+      // "a primeira" podia ser a de um parceiro.
+      .from("organizations")
+      .select("organization_id:id")
+      .eq("slug", "duli")
       .single();
 
     // Carimbado com a organização do parceiro: a policy recusa.

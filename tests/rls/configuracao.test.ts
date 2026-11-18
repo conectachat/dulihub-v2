@@ -39,9 +39,11 @@ describe("colaborador lê a configuração, e não a altera", () => {
   beforeAll(async () => {
     staff = await entrarComo("colaborador");
     const { data } = await staff
-      .from("organization_members")
-      .select("organization_id")
-      .limit(1)
+      // Pelo slug: quem é da raiz enxerga as associações de todo mundo, e
+      // "a primeira" podia ser a de um parceiro.
+      .from("organizations")
+      .select("organization_id:id")
+      .eq("slug", "duli")
       .maybeSingle();
     organizationId = data!.organization_id;
   }, 30_000);

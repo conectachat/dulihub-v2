@@ -11,6 +11,7 @@ export const EMAILS = {
   parceiro: "teste-parceiro@duliconsulting.com",
   colaborador: "teste-colaborador@duliconsulting.com",
   cliente: "teste-cliente@duliconsulting.com",
+  staff: "teste-staff@duliconsulting.com",
 } as const;
 
 export type Papel = keyof typeof EMAILS;
@@ -19,6 +20,7 @@ export const SENHAS: Record<Papel, string> = {
   parceiro: "RLS_SENHA_PARCEIRO",
   colaborador: "RLS_SENHA_COLABORADOR",
   cliente: "RLS_SENHA_CLIENTE",
+  staff: "RLS_SENHA_STAFF",
 };
 
 /**

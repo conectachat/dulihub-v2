@@ -222,7 +222,7 @@ plano: `docs/superpowers/plans/2026-11-17-entregas-0-e-1-contato.md`.
 
 | Entrega | O que ficou pronto |
 |---|---|
-| 0 — casa em ordem | 0037 (contato não nasce atribuído a outra organização) e 0038 (negócio nasce aberto) aplicadas, depois da cópia do banco de 17/nov. **Falta:** a conta `teste-staff` (0039), que espera o Renato criar o usuário |
+| 0 — casa em ordem | 0037 (contato não nasce atribuído a outra organização) e 0038 (negócio nasce aberto) aplicadas, depois da cópia do banco de 17/nov; 0039 (18/nov) liga a conta `teste-staff` como staff da organização de teste, para as entregas 3 e 4 provarem o que um membro comum de parceiro não pode |
 | 1 — contato completo e sem duplicata | Nome, telefone (com DDI) e e-mail obrigatórios em todo caminho da equipe (CON-8); aviso de contato já cadastrado, com link e "É a mesma pessoa?" (CON-4); nova oportunidade com contato existente ou novo numa gravação só (CRM-11, 0041) e aviso de oportunidade anterior (CRM-12). A 0040 corrigiu os 76 DDIs gravados sem "+" |
 
 Os 4 contatos antigos sem e-mail e os 4 sem telefone só cobram os campos
