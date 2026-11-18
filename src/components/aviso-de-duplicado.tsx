@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { TriangleAlert } from "lucide-react";
 
 import { FieldError } from "@/components/field-error";
@@ -40,7 +40,6 @@ export function AvisoDeDuplicado({
   aoUsarExistente,
   aoRestaurar,
   aoGravarMesmoAssim,
-  enviando = false,
 }: {
   parecidos: ContatoParecido[];
   modo: "criar" | "editar";
@@ -54,12 +53,21 @@ export function AvisoDeDuplicado({
   aoRestaurar?: (id: string) => Promise<ActionState>;
   /** "Não" → "Criar/Salvar mesmo assim". */
   aoGravarMesmoAssim: () => void;
-  /** Um envio em curso: os botões que gravam ficam desabilitados. */
-  enviando?: boolean;
 }) {
   const [outraPessoa, setOutraPessoa] = useState(false);
   const [restaurando, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
+  // O aviso ainda está na tela? Se a pessoa editou o formulário ou trocou o
+  // contato enquanto o "Restaurar" rodava, o aviso sumiu — e o restaurar que
+  // termina depois não pode reenviar com o contato da lixeira por cima da
+  // escolha nova (revisão de 18/nov, rodada 3). Só a ref muda no efeito.
+  const naTela = useRef(true);
+  useEffect(() => {
+    naTela.current = true;
+    return () => {
+      naTela.current = false;
+    };
+  }, []);
 
   function restaurar(id: string) {
     if (!aoRestaurar) return;
@@ -67,7 +75,7 @@ export function AvisoDeDuplicado({
     iniciar(async () => {
       const resposta = await aoRestaurar(id);
       if (resposta.error) setErro(resposta.error);
-      else aoUsarExistente(id);
+      else if (naTela.current) aoUsarExistente(id);
     });
   }
 
@@ -99,7 +107,7 @@ export function AvisoDeDuplicado({
                 size="sm"
                 variant="outline"
                 className="rounded-xl"
-                disabled={restaurando || enviando}
+                disabled={restaurando}
                 onClick={() => restaurar(p.id)}
               >
                 {restaurando ? "Restaurando..." : "Restaurar"}
@@ -110,7 +118,7 @@ export function AvisoDeDuplicado({
                 size="sm"
                 variant="outline"
                 className="rounded-xl"
-                disabled={restaurando || enviando}
+                disabled={restaurando}
                 onClick={() => aoUsarExistente(p.id)}
               >
                 Sim, é a mesma pessoa
@@ -142,7 +150,7 @@ export function AvisoDeDuplicado({
             type="button"
             size="sm"
             className="rounded-xl"
-            disabled={restaurando || enviando}
+            disabled={restaurando}
             onClick={aoGravarMesmoAssim}
           >
             {modo === "criar" ? "Criar mesmo assim" : "Salvar mesmo assim"}

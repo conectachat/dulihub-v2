@@ -22,12 +22,9 @@ const SITUACAO: Record<OportunidadeExistente["status"], string> = {
 export function AvisoDeOportunidade({
   oportunidades,
   aoCriarOutra,
-  enviando = false,
 }: {
   oportunidades: OportunidadeExistente[];
   aoCriarOutra: () => void;
-  /** Um envio em curso: "Criar outra" fica desabilitado. */
-  enviando?: boolean;
 }) {
   return (
     <div role="alert" className="space-y-3 rounded-2xl border bg-warning/15 p-4 text-sm">
@@ -58,7 +55,6 @@ export function AvisoDeOportunidade({
           type="button"
           size="sm"
           className="rounded-xl"
-          disabled={enviando}
           onClick={aoCriarOutra}
         >
           Criar outra

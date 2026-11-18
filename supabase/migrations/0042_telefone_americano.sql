@@ -2,7 +2,8 @@
 --
 -- Revisão de código de 18/nov (I3). A 0040 tira o DDI da frente do número só
 -- quando ele tem mais de 11 dígitos — o que cobre o Brasil ("55" + 10 ou 11) e
--- o país com número longo (Portugal, Reino Unido…), mas não os EUA:
+-- o país cujo DDI mais o número passam de 11 dígitos (Portugal, Reino Unido…),
+-- mas não os EUA:
 -- "+1 (305) 555-0111", colado do WhatsApp, vira 11 dígitos ("13055550111") e
 -- não batia com o "(305) 555-0111" gravado. Para uma consultoria de imigração
 -- americana, é o país que mais aparece. Continua de fora o país cujo DDI mais o

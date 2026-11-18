@@ -146,6 +146,55 @@ describe("OpportunityDialog", () => {
     expect(screen.queryByRole("button", { name: "Não, é outra pessoa" })).toBeNull();
   });
 
+  it("restaurar que termina depois de o aviso sumir não envia nada", async () => {
+    // Revisão de 18/nov, rodada 3: o "Restaurar" em curso seguia e reenviava
+    // com o contato da lixeira, por cima da escolha que estava na tela.
+    let soltar: (estado: { error: null; ok: true; token: string }) => void = () => {};
+    vi.mocked(createOpportunity).mockResolvedValueOnce({
+      ...COM_PARECIDO,
+      parecidos: [{ ...PARECIDO, naLixeira: true }],
+    });
+    vi.mocked(restorePerson).mockImplementation(() => new Promise((resolver) => (soltar = resolver)));
+    abrir();
+    await preencherContatoNovo();
+    fireEvent.click(screen.getByRole("button", { name: "Criar oportunidade" }));
+
+    fireEvent.click(await screen.findByRole("button", { name: "Restaurar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Contato existente" }));
+    soltar({ error: null, ok: true, token: "r1" });
+
+    await new Promise((resolver) => setTimeout(resolver, 50));
+    expect(createOpportunity).toHaveBeenCalledTimes(1);
+  });
+
+  it("Trocar o contato escolhido no aviso tira o aviso seguinte", async () => {
+    vi.mocked(createOpportunity)
+      .mockResolvedValueOnce(COM_PARECIDO)
+      .mockResolvedValueOnce(COM_OPORTUNIDADE);
+    abrir();
+    await preencherContatoNovo();
+    fireEvent.click(screen.getByRole("button", { name: "Criar oportunidade" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Sim, é a mesma pessoa" }));
+    await screen.findByRole("button", { name: "Criar outra" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Trocar" }));
+
+    expect(screen.queryByRole("button", { name: "Criar outra" })).toBeNull();
+  });
+
+  it("clicar no modo que já está ativo não tira o aviso", async () => {
+    vi.mocked(createOpportunity).mockResolvedValueOnce(COM_OPORTUNIDADE);
+    abrir();
+    fireEvent.change(await screen.findByLabelText("Contato *"), { target: { value: "p2" } });
+    fireEvent.change(screen.getByLabelText("Título *"), { target: { value: "O-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Criar oportunidade" }));
+    await screen.findByRole("button", { name: "Criar outra" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Contato existente" }));
+
+    expect(screen.getByRole("button", { name: "Criar outra" })).toBeInTheDocument();
+  });
+
   it("o valor digitado vai junto", async () => {
     vi.mocked(createOpportunity).mockResolvedValueOnce(gravou());
     abrir();

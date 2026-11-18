@@ -27,13 +27,20 @@ type ModoDoContato = "existente" | "novo";
  * (o modo, o "Trocar"): tira o aviso da tela como uma edição faria — senão
  * ele ofereceria "Criar mesmo assim" para um contato que já não está na tela.
  */
-function BotaoQueDispensa({ onClick, ...props }: React.ComponentProps<typeof Button>) {
+function BotaoQueDispensa({
+  dispensa = true,
+  onClick,
+  ...props
+}: React.ComponentProps<typeof Button> & {
+  /** Falso quando o clique não muda nada (o modo que já está ativo). */
+  dispensa?: boolean;
+}) {
   const dispensar = useDispensarAviso();
   return (
     <Button
       {...props}
       onClick={(evento) => {
-        dispensar();
+        if (dispensa) dispensar();
         onClick?.(evento);
       }}
     />
@@ -105,7 +112,7 @@ export function OpportunityDialog({
           {label}
         </Button>
       }
-      aviso={(estado, { reenviarCom, enviando }) => {
+      aviso={(estado, { reenviarCom }) => {
         if (estado.parecidos?.length) {
           const parecidos = estado.parecidos;
           return (
@@ -115,7 +122,6 @@ export function OpportunityDialog({
               aoUsarExistente={(id) => usarExistente(id, parecidos, reenviarCom)}
               aoRestaurar={restaurar}
               aoGravarMesmoAssim={() => reenviarCom({ [CAMPO_CONFIRMAR_PARECIDO]: "1" })}
-              enviando={enviando}
             />
           );
         }
@@ -124,7 +130,6 @@ export function OpportunityDialog({
             <AvisoDeOportunidade
               oportunidades={estado.oportunidades}
               aoCriarOutra={() => reenviarCom({ [CAMPO_CONFIRMAR_OPORTUNIDADE]: "1" })}
-              enviando={enviando}
             />
           );
         }
@@ -147,6 +152,7 @@ export function OpportunityDialog({
             variant={modo === valor ? "default" : "outline"}
             className="rounded-xl"
             aria-pressed={modo === valor}
+            dispensa={modo !== valor}
             onClick={() => setModo(valor)}
           >
             {rotulo}

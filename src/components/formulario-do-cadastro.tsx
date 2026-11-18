@@ -151,7 +151,7 @@ export function FormularioDoCadastro({
    */
   aviso?: (
     estado: EstadoDaFicha,
-    acoes: { enviando: boolean; reenviarCom: (extra: Record<string, string>) => void },
+    acoes: { reenviarCom: (extra: Record<string, string>) => void },
   ) => React.ReactNode;
 }) {
   // Estado, não `ref`: o aviso é desenhado com `reenviarCom`, e ler `ref`
@@ -524,7 +524,7 @@ export function FormularioDoCadastro({
         {aviso && !alterado && !enviando ? (
           // A chave remonta o aviso a cada resposta: nada do aviso anterior
           // (o "Não" já clicado) sobra para os parecidos novos (M3).
-          <Fragment key={controleDoAviso.numero}>{aviso(estado, { enviando, reenviarCom })}</Fragment>
+          <Fragment key={controleDoAviso.numero}>{aviso(estado, { reenviarCom })}</Fragment>
         ) : null}
         <FieldError mensagem={estado.error} />
         <div className="flex flex-wrap justify-end gap-2">

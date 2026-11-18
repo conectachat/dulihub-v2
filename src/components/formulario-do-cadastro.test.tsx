@@ -256,6 +256,44 @@ describe("FormularioDoCadastro", () => {
     expect(screen.queryByRole("button", { name: "Salvar mesmo assim" })).toBeNull();
   });
 
+  it("editar durante o envio: o aviso que chega depois não aparece", async () => {
+    // Revisão de 18/nov, rodada 3: a mesma regra do FormDialog, provada aqui
+    // também — esta ficha tem a sua própria cópia da lógica.
+    const COM_PARECIDO: EstadoDaFicha = {
+      error: null,
+      parecidos: [
+        {
+          id: "p1",
+          nome: "Carlos Souza",
+          estagio: "client",
+          naLixeira: false,
+          bateEmail: true,
+          bateTelefone: false,
+        },
+      ],
+    };
+    let soltar: (estado: EstadoDaFicha) => void = () => {};
+    const enviar = vi
+      .fn<(fd: FormData) => Promise<EstadoDaFicha>>()
+      .mockImplementationOnce(() => new Promise((resolver) => (soltar = resolver)))
+      .mockResolvedValue(COM_PARECIDO);
+    montar({
+      enviar,
+      aviso: (estado) => (estado.parecidos?.length ? <p>Já existe</p> : null),
+    });
+
+    enviarFormulario();
+    fireEvent.change(screen.getByLabelText("Telefone *"), { target: { value: "98888880000" } });
+    soltar(COM_PARECIDO);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Enviar ficha" })).toBeEnabled());
+    expect(screen.queryByText("Já existe")).toBeNull();
+
+    enviarFormulario();
+    expect(await screen.findByText("Já existe")).toBeInTheDocument();
+    expect(enviar.mock.calls[1][0].get("phone")).toBe("98888880000");
+  });
+
   it("o aviso reenvia o mesmo formulário com o campo extra", async () => {
     const enviar = vi
       .fn<(fd: FormData) => Promise<EstadoDaFicha>>()

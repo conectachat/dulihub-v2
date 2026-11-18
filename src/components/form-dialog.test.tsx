@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { falhou, gravou, type ActionState } from "@/lib/action-state";
 
-import { FormDialog } from "./form-dialog";
+import { FormDialog, useDispensarAviso } from "./form-dialog";
 
 /**
  * Recusa não fecha o diálogo, nem apaga o que foi digitado (G4 da revisão de
@@ -182,6 +182,15 @@ describe("FormDialog com aviso", () => {
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
     expect(await screen.findByRole("button", { name: "Confirmar" })).toBeInTheDocument();
     expect(acao.mock.calls[1][1].get("nome")).toBe("Novo");
+  });
+
+  it("useDispensarAviso fora de um FormDialog avisa, em vez de não fazer nada", () => {
+    function Solto() {
+      useDispensarAviso();
+      return null;
+    }
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(() => render(<Solto />)).toThrow(/FormDialog/);
   });
 
   it("reabrir não mostra o aviso da abertura anterior", async () => {

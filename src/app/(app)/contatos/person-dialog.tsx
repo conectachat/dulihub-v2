@@ -58,7 +58,7 @@ export function PersonDialog({ person }: { person?: PersonFormValues }) {
           </Button>
         )
       }
-      aviso={(estado, { fechar, reenviarCom, enviando }) =>
+      aviso={(estado, { fechar, reenviarCom }) =>
         estado.parecidos?.length ? (
           <AvisoDeDuplicado
             parecidos={estado.parecidos}
@@ -70,7 +70,6 @@ export function PersonDialog({ person }: { person?: PersonFormValues }) {
             // Na edição, restaurar o outro deixaria dois contatos ativos.
             aoRestaurar={person ? undefined : restaurar}
             aoGravarMesmoAssim={() => reenviarCom({ [CAMPO_CONFIRMAR_PARECIDO]: "1" })}
-            enviando={enviando}
           />
         ) : null
       }

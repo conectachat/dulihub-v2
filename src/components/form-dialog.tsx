@@ -19,18 +19,16 @@ import { useFormulario } from "@/lib/use-formulario";
 
 /**
  * O que o aviso pode fazer: fechar o diálogo, ou reenviar com confirmação —
- * uma vez por resposta, e nunca durante um envio (`enviando` serve para
- * desabilitar o botão).
+ * uma vez por resposta. Durante um envio o aviso nem está na tela.
  */
 export type AcoesDoAviso = {
   fechar: () => void;
-  enviando: boolean;
   reenviarCom: (extra: Record<string, string>) => void;
 };
 
 type Acao<E extends ActionState> = (anterior: E, formData: FormData) => Promise<E>;
 
-const DispensarAviso = createContext<() => void>(() => {});
+const DispensarAviso = createContext<(() => void) | null>(null);
 
 /**
  * Para campo que muda o que vai ser enviado sem disparar `change` — um par de
@@ -38,7 +36,11 @@ const DispensarAviso = createContext<() => void>(() => {});
  * tira o aviso da tela como uma edição faria.
  */
 export function useDispensarAviso(): () => void {
-  return useContext(DispensarAviso);
+  const dispensar = useContext(DispensarAviso);
+  // Fora de um FormDialog não há aviso a tirar — e não fazer nada calado
+  // desligaria a proteção sem ninguém perceber.
+  if (!dispensar) throw new Error("useDispensarAviso só funciona dentro de um FormDialog.");
+  return dispensar;
 }
 
 /**
@@ -162,10 +164,10 @@ function CorpoDoFormulario<E extends ActionState>({
 
   const { estado, enviar, reenviarCom, enviando } = useFormulario<E>(acaoQueFecha);
 
-  // O aviso respondido (a marca da resposta que ele mostra): confirmar de
-  // novo a mesma resposta não reenvia. O `useActionState` enfileira e roda
-  // todo envio — dois cliques em "Criar mesmo assim" criavam dois contatos
-  // (revisão de 18/nov, I1).
+  // O `useActionState` enfileira e roda todo envio — dois cliques em "Criar
+  // mesmo assim" criavam dois contatos (revisão de 18/nov, I1). A proteção
+  // principal é o aviso sair da tela durante o envio (`!enviando` abaixo);
+  // esta marca é a segunda linha: a mesma resposta não se confirma duas vezes.
   const [confirmado, setConfirmado] = useState<string | undefined>(undefined);
   // Mexeu no formulário depois do último envio — inclusive com o envio ainda
   // em curso? Então o aviso na tela, ou o que ainda vai chegar, fala de um
@@ -176,7 +178,6 @@ function CorpoDoFormulario<E extends ActionState>({
 
   const acoes: AcoesDoAviso = {
     fechar,
-    enviando,
     reenviarCom: (extra) => {
       if (!formulario || enviando || confirmado === estado.token) return;
       setConfirmado(estado.token);

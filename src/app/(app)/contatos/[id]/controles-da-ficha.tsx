@@ -72,7 +72,7 @@ export function EditarCadastro({
           dependentes={dependentes}
           enviar={(formData) => salvarCadastro(personId, formData)}
           aoGravar={() => setAberto(false)}
-          aviso={(estado, { reenviarCom, enviando }) =>
+          aviso={(estado, { reenviarCom }) =>
             estado.parecidos?.length ? (
               // Edição: sem "Restaurar" — restaurar o outro deixaria dois
               // contatos ativos para a mesma pessoa; "Sim" só abre o existente.
@@ -84,7 +84,6 @@ export function EditarCadastro({
                   router.push(`/contatos/${id}`);
                 }}
                 aoGravarMesmoAssim={() => reenviarCom({ [CAMPO_CONFIRMAR_PARECIDO]: "1" })}
-                enviando={enviando}
               />
             ) : null
           }
