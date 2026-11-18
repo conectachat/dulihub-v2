@@ -5,7 +5,6 @@ import {
   enderecoDoCartao,
   etapasDeEntrada,
   motivoDaPerda,
-  recusaDaEtapaDeEntrada,
   trilhaDoFunil,
 } from "./regras";
 
@@ -161,9 +160,6 @@ describe("etapa de entrada", () => {
     expect(etapasDeEntrada(funil).map((e) => e.id)).toEqual(["novo"]);
   });
 
-  it("Ganho e Perdido recusam, com o caminho certo na mensagem", () => {
-    expect(recusaDaEtapaDeEntrada(funil[0])).toBeNull();
-    expect(recusaDaEtapaDeEntrada(funil[1])).toMatch(/mova o cartão/i);
-    expect(recusaDaEtapaDeEntrada(funil[2])).toMatch(/mova o cartão/i);
-  });
+  // A recusa de quem pedir mesmo assim é do banco: `criar_oportunidade`
+  // (0041) e o gatilho da 0038, provados em tests/rls/oportunidade-nova.test.ts.
 });

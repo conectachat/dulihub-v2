@@ -58,6 +58,7 @@ export function FormDialog<E extends ActionState = ActionState>({
   pendente = "Salvando...",
   abertoDeInicio = false,
   aviso,
+  aoAbrir,
   children,
 }: {
   acao: Acao<E>;
@@ -74,6 +75,11 @@ export function FormDialog<E extends ActionState = ActionState>({
   abertoDeInicio?: boolean;
   /** A pergunta que a ação devolveu sem gravar, desenhada acima do erro. */
   aviso?: (estado: E, acoes: AcoesDoAviso) => React.ReactNode;
+  /**
+   * A cada abertura — para quem guarda estado fora do formulário (o contato
+   * escolhido num aviso) voltar ao começo junto com ele.
+   */
+  aoAbrir?: () => void;
   /** Os campos. */
   children: React.ReactNode;
 }) {
@@ -81,7 +87,10 @@ export function FormDialog<E extends ActionState = ActionState>({
   const [abertura, setAbertura] = useState(0);
 
   function mudarAbertura(aberto: boolean) {
-    if (aberto) setAbertura((n) => n + 1);
+    if (aberto) {
+      setAbertura((n) => n + 1);
+      aoAbrir?.();
+    }
     setOpen(aberto);
   }
 

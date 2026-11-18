@@ -5,10 +5,18 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { falhou, gravou, type ActionState } from "@/lib/action-state";
+import { aparar, erroDeContato, normalizarDdi } from "@/lib/contato";
 import { traduzirErro } from "@/lib/erros";
-import { resultado, resultadoSemContagem } from "@/lib/gravar";
+import { resultado } from "@/lib/gravar";
+import { novoId } from "@/lib/id";
 import { parseMoney } from "@/lib/numbers";
 import { contextoAtual } from "@/lib/organizacao";
+import {
+  CAMPO_CONFIRMAR_OPORTUNIDADE,
+  CAMPO_CONFIRMAR_PARECIDO,
+  respostaDaCriacao,
+  type EstadoComConfirmacao,
+} from "@/lib/parecidos";
 
 import {
   aplicarEtapa,
@@ -16,96 +24,102 @@ import {
   etapaTerminal,
   type EtapaDeDestino,
 } from "./mover";
-import { motivoDaPerda, recusaDaEtapaDeEntrada } from "./regras";
+import { motivoDaPerda } from "./regras";
 
 const opportunitySchema = z.object({
-  person_id: z.string().uuid("Escolha um contato"),
   stage_id: z.string().uuid("Escolha uma etapa"),
   title: z.string().trim().min(1, "Informe um título"),
   value: z.string().nullish().transform(parseMoney),
   currency: z.enum(["BRL", "USD"]).default("BRL"),
-  source: z.string().trim().optional(),
+  source: z.string().trim().nullish(),
 });
 
+const texto = (valor: FormDataEntryValue | null) => (typeof valor === "string" ? valor : null);
+
+/**
+ * Cria o negócio com um contato existente **ou** com um contato novo, que
+ * nasce junto (CRM-11, CRM-12), pela função `criar_oportunidade` (0041) —
+ * uma transação só: nunca fica contato órfão de um negócio que falhou.
+ *
+ * A função confere tudo (etapa aberta, contato fora da lixeira, formato do
+ * contato novo) e pode parar para perguntar: contato parecido (CON-8) ou
+ * oportunidade anterior do contato. Aí a resposta vai sem `ok`, com a lista,
+ * e a tela reenvia com a confirmação.
+ *
+ * A organização do negócio vem **da pessoa** (e a do contato novo, da
+ * etapa), dentro da função — nunca da associação de quem clicou.
+ */
 export async function createOpportunity(
-  _prev: ActionState,
+  _prev: EstadoComConfirmacao,
   formData: FormData,
-): Promise<ActionState> {
+): Promise<EstadoComConfirmacao> {
   const parsed = opportunitySchema.safeParse({
-    person_id: formData.get("person_id"),
     stage_id: formData.get("stage_id"),
     title: formData.get("title"),
     value: formData.get("value"),
     currency: formData.get("currency") ?? "BRL",
     source: formData.get("source"),
   });
-
   if (!parsed.success) return falhou(parsed.error.issues[0].message);
 
-  const { supabase, userId, error: erroDoContexto } = await contextoAtual();
+  let contato: { p_contato: string } | { p_novo_contato: Record<string, string | null> };
+  if (formData.get("modo_contato") === "novo") {
+    const nome = aparar(texto(formData.get("novo_full_name")));
+    if (!nome) return falhou("Informe o nome");
+
+    const novo = {
+      email: aparar(texto(formData.get("novo_email"))),
+      ddi: aparar(texto(formData.get("novo_phone_country_code"))),
+      telefone: aparar(texto(formData.get("novo_phone"))),
+    };
+    const erro = erroDeContato(novo);
+    if (erro) return falhou(erro.mensagem);
+
+    contato = {
+      p_novo_contato: {
+        full_name: nome,
+        email: novo.email,
+        phone_country_code: normalizarDdi(novo.ddi),
+        phone: novo.telefone,
+      },
+    };
+  } else {
+    const id = texto(formData.get("person_id"));
+    if (!id || !z.string().uuid().safeParse(id).success) return falhou("Escolha um contato");
+    contato = { p_contato: id };
+  }
+
+  const { supabase, error: erroDoContexto } = await contextoAtual();
   if (erroDoContexto) return falhou(erroDoContexto);
 
-  // A organização do negócio vem **da pessoa**, não da associação de quem
-  // clicou. São coisas diferentes no dia em que existir parceiro, e usar a
-  // associação carimbaria um contato de uma organização com o id de outra —
-  // sem erro nenhum, porque a RLS aprova a linha resultante.
-  const { data: pessoa, error: erroDaPessoa } = await supabase
-    .from("people")
-    .select("organization_id")
-    .eq("id", parsed.data.person_id)
-    .maybeSingle();
-
-  if (erroDaPessoa) return falhou(traduzirErro(erroDaPessoa));
-  if (!pessoa) return falhou("Contato não encontrado.");
-
-  const { data: stage, error: stageError } = await supabase
-    .from("pipeline_stages")
-    .select("pipeline_id, probability, is_won, is_lost")
-    .eq("id", parsed.data.stage_id)
-    .maybeSingle();
-
-  if (stageError) return falhou(traduzirErro(stageError));
-  if (!stage) return falhou("Etapa não encontrada.");
-
-  // Ganho e Perdido têm porta própria (confirmação, motivo): não se nasce
-  // neles (G5).
-  const recusa = recusaDaEtapaDeEntrada(stage);
-  if (recusa) return falhou(recusa);
-
-  const { error } = await supabase.from("opportunities").insert({
-    organization_id: pessoa.organization_id,
-    person_id: parsed.data.person_id,
-    pipeline_id: stage.pipeline_id,
-    stage_id: parsed.data.stage_id,
-    title: parsed.data.title,
-    value: parsed.data.value,
-    currency: parsed.data.currency,
-    source: parsed.data.source || null,
-    probability: stage.probability,
-    status: "open",
-    closed_at: null,
-    owner_id: userId,
-    created_by: userId,
+  const { data, error } = await supabase.rpc("criar_oportunidade", {
+    p_etapa: parsed.data.stage_id,
+    p_titulo: parsed.data.title,
+    p_confirmar_contato_parecido: formData.get(CAMPO_CONFIRMAR_PARECIDO) === "1",
+    p_confirmar_outra_oportunidade: formData.get(CAMPO_CONFIRMAR_OPORTUNIDADE) === "1",
+    ...contato,
+    ...(parsed.data.source ? { p_origem: parsed.data.source } : {}),
+    ...(parsed.data.value !== null ? { p_valor: parsed.data.value } : {}),
+    p_moeda: parsed.data.currency,
   });
-
   if (error) return falhou(traduzirErro(error));
 
-  // Quem tem oportunidade deixa de ser simples contato. Cliente não regride.
-  //
-  // O `.neq` faz parte do filtro, então zero linhas aqui quer dizer "já era
-  // cliente" — resultado certo, não falha. Por isso a checagem é do erro, e
-  // não da contagem: `resultado()` leria o zero como recusa.
-  const promocao = resultadoSemContagem(
-    await supabase
-      .from("people")
-      .update({ lifecycle_stage: "opportunity" })
-      .eq("id", parsed.data.person_id)
-      .neq("lifecycle_stage", "client"),
-  );
-  if (promocao.error) return promocao;
+  const resposta = respostaDaCriacao.safeParse(data);
+  if (!resposta.success) return falhou("O servidor respondeu num formato inesperado.");
+
+  if (resposta.data.situacao === "precisa_confirmar") {
+    return {
+      error: null,
+      parecidos: resposta.data.parecidos,
+      oportunidades: resposta.data.oportunidades,
+      token: novoId(),
+    };
+  }
 
   revalidatePath("/crm");
   revalidatePath("/contatos");
+  // A tela Início conta quem tem oportunidade.
+  revalidatePath("/");
   return gravou();
 }
 
