@@ -1,0 +1,358 @@
+# Entrega 2 — Clientes — Plano de implementação
+
+> **Para quem executa:** SUB-SKILL OBRIGATÓRIA: superpowers:executing-plans (nativo, como nas entregas 0 e 1) ou superpowers:subagent-driven-development. Passos com checkbox (`- [ ]`). TDD em todo passo de código.
+
+## Contexto
+
+As entregas 0 e 1 estão no ar (commits até `276a693`, CI verde). A entrega 2 dá ao cliente um lugar próprio: item **Clientes** no menu, lista e perfil em abas (Dados cadastrais, Financeiro, Projetos, Documentos, Notas). Ela também leva para o banco as regras que hoje só a tela garante: cliente não volta a lead (M17); quem tem processo ou cobrança é cliente (substitui o CON-3); só a gestão marca cliente à mão; e o cliente do portal deixa de ler notas (POR-2). Requisitos CLI-1 a CLI-14.
+
+**Spec:** `docs/superpowers/specs/2026-11-17-contato-oportunidade-cliente-design.md` §3, §4.1, §6.2, §7–§10 e §13. Requisitos em `docs/spec.md:397-410`.
+
+**Objetivo:** o Renato abre Clientes, acha qualquer cliente por nome, e-mail ou telefone, e no perfil vê e mexe em tudo dele, com as regras de estágio garantidas no banco.
+
+**Arquitetura:**
+- **Banco primeiro.** Seis migrations (0044–0049) com teste de RLS vermelho antes. Todas são compatíveis com a tela antiga, então podem ir ao ar antes das telas (push 1).
+- **Clientes lê do servidor**, como Contatos e CRM. É uma exceção à regra "tela nova nasce migrada", registrada no `AGENTS.md` (spec §4.1). A aba Financeiro reaproveita `Cobrancas`, que lê do aparelho.
+- **O perfil é movido** de `contatos/[id]` para `clientes/[id]`. O que as duas rotas usam sobe para `src/components/perfil/`. `/contatos/[id]` de cliente redireciona.
+- **Arquivos:**
+  - os documentos do cliente vão para o depósito `pessoas` (navegador → depósito, e o registro gravado por Server Action);
+  - os anexos de parcela vão para o depósito `financeiro`, direto do navegador, porque a tela Financeiro é migrada e não tem `actions.ts`. Só funcionam com internet.
+
+**Fora deste plano:**
+- a entrega 3: vistos na oportunidade, `ganhar_negocio` e a marca `via_ganho`, regra (2) do estágio, "processo nunca é apagado" (PRO-12);
+- a tela de dono e participantes **da oportunidade**: a tabela entra aqui, a tela vai com a herança no Ganho.
+
+## Decisões deste plano (desvios da spec, cada um com o motivo)
+
+| # | Decisão | Por quê | Custo se errada |
+|---|---|---|---|
+| D1 | A regra (2) de `estagio_do_cliente` ("só a gestão ou a marca `via_ganho` tornam cliente") **vai para a entrega 3**. Aqui entra só a regra (1), "não volta", junto com o `client_since` | O Ganho de hoje (`features/opportunities/mover.ts:87-99`) promove por `update people` direto. Com a regra (2) já ativa, um colaborador que não é da gestão deixaria de conseguir ganhar negócio. Hoje o único membro real da Duli é o dono (T2), então o efeito prático é nulo nos dois sentidos; a regra entra com a marca, de uma vez, para não haver janela em que o Ganho de um colaborador novo quebre. A própria spec põe a trava do Ganho na migration B da entrega 3 (§6.3, linha 644). Até lá, promover pela API continua como hoje | Brecha que já existe hoje, por uma entrega a mais |
+| D2 | `quem_tem_processo_e_cliente` nasce **sem** o ramo da marca: pessoa que não é cliente → só a gestão cria processo ou cobrança, e isso a promove | Ninguém liga a marca antes da entrega 3 | Nenhum: a 3 acrescenta o ramo |
+| D3 | A busca de clientes é uma RPC `public.buscar_clientes`, `security invoker`, que devolve também o total | O PostgREST não filtra por `telefone_nacional`, e a lista precisa do total ("mostrando 50 de 72") | Uma função a mais para manter |
+| D4 | `files` está vazia (T2), e o app não a usa. O `check` de caminho `{org}/{pessoa}/{arquivo}/{nome}` vale para toda linha, e `bucket` fica restrito a `'pessoas'` | Sem linha antiga, a trava pode ser inteira. Um uso novo de `files` com outro depósito revê o `check` | Nenhum |
+| D5 | A aba Financeiro, ao abrir com rede, espera um `sincronizarAgora` e mostra "sincronizando…" | Cobre o I26 e o "logo depois do Ganho" com uma regra só | Uma sincronia a cada abertura da aba |
+| D6 | A âncora `#dados-cadastrais` não se converte no `redirect` (o servidor nunca a recebe). Os links passam a apontar direto para `/clientes/<id>?aba=dados`, por uma função `enderecoDaPessoa`. No perfil, um `#dados-cadastrais` que chegue mesmo assim abre a aba Dados | Limite do HTTP | Nenhum |
+| D7 | Promover nunca mexe no dono. A migration põe o dono da organização nos clientes atuais. Nos outros, o dono é escolhido em Editar | A herança do dono é do Ganho (entrega 3) | Cliente novo aparece com dono "—" até alguém escolher |
+| D8 | A trava de estágio se chama `people_trava_do_estagio`, para rodar **depois** de `people_guard_self_update`. Os gatilhos `before` rodam em ordem alfabética | O cliente do portal continua tendo a mudança desfeita em silêncio, sem erro novo | Nenhum |
+| D9 | A fumaça deixa de criar processo em "a primeira pessoa visível" (`rotas.test.ts:243`). Passa a usar uma pessoa descartável, promovida e apagada pelo próprio teste | Com o D2, o teste tornaria cliente, para sempre, quem estivesse lá | Nenhum |
+| D10 | Histórico com o tipo de atividade `virou_cliente`, de sistema e que ninguém apaga. Textos: "Oportunidade ganha — virou cliente" (no Ganho, em `mover.ts`), "Virou cliente (processo ‹título›)" e "Virou cliente (cobrança ‹título›)" (no gatilho), "Marcado como cliente" (na função) | Uma linha por promoção, escrita por quem promove | Textos a ajustar |
+| D11 | A importação passa a gravar o **maior** estágio entre o do banco e o do app antigo, e o DDI como "+NN" | Sem isso, rodar de novo rebaixa cliente (`import-people.mjs:205-279`, `366-375`), e a trava recusaria o lote inteiro. O DDI é o item 8 da 4ª revisão | Nenhum |
+
+## Restrições globais
+
+Valem as das entregas 0 e 1 (`docs/superpowers/plans/2026-11-17-entregas-0-e-1-contato.md`, "Restrições globais"):
+- `bun`, nunca o `.env.local`;
+- comandos de teste por arquivo;
+- migration, `database.types.ts` e `banco.md` no mesmo commit;
+- `drop` + `create` quando a assinatura muda, com `revoke`/`grant` depois;
+- dado de teste aleatório e limpo em `finally`;
+- nunca apagar o "Cliente de Teste";
+- tokens, raios e ícone como elemento;
+- `verify` verde antes de cada commit, nunca `--no-verify`.
+
+Valem também as da spec §3:
+- tabela nova com `id`, `unique (id, organization_id)`, chaves estrangeiras compostas, lápide e `updated_at`;
+- `on delete set null (coluna)`;
+- trava vale também na organização de teste, e só passa com `pg_trigger_depth() > 1`.
+
+Mais quatro:
+- **Fuso:** "hoje" no banco é `(now() at time zone 'America/Sao_Paulo')::date`.
+- **Gestão** é `private.current_user_manages(org)` (`0013:51-60`, owner ou admin). Nunca reimplementar.
+- **Erros novos**, cópia exata:
+
+  | Situação | Mensagem | Código |
+  |---|---|---|
+  | Rebaixar um cliente | "Cliente não volta a ser lead." | 42501 |
+  | Processo ou cobrança para quem não é cliente, sem ser da gestão | "Só a gestão torna alguém cliente; use o Ganho." | 42501 |
+  | Marcar como cliente sem ser da gestão | "Só a gestão marca alguém como cliente." | 42501 |
+  | Apagar parcela ou cobrança que tem anexo | "Remova os anexos antes." | 23503 |
+  | Trocar o dono do negócio sem ser o dono ou a gestão | "Só o dono do negócio ou a gestão trocam o dono." | 42501 |
+
+- **Push é do Renato, em dois pontos:** fim do T8 (banco) e fim do T16 (telas).
+
+## Foco da revisão
+
+Cada item tem teste na tarefa dona.
+
+1. **Cliente voltando a lead por qualquer caminho.** Pela API (T4), pela importação (T6) e pelo portal, com a mudança desfeita em silêncio (T4).
+2. **Promoção por processo ou cobrança sem ser da gestão:** pela API, por `criar_processo` e pela fila do Financeiro (T4).
+3. **Cliente do portal lendo notas ou histórico:** zero linhas, e ele continua lendo a própria pessoa (T5).
+4. **Arquivo órfão:** apagar parcela ou cobrança com anexo é recusado, inclusive na organização de teste; apagar a pessoa leva tudo; `excluirCobranca` sem internet manda só o delete da cobrança (T8).
+5. **Endereço:** `/contatos/<cliente>?x=1` vai para `/clientes/<id>?x=1`. `?novo-processo=` vai para a aba Projetos. `/contatos/<não cliente>` nunca mostra processos nem financeiro (T11 e T16).
+
+---
+
+## Mapa de arquivos
+
+| Arquivo | Responsabilidade |
+|---|---|
+| `supabase/migrations/0044_dono_e_participantes.sql` | `people.owner_id`, `person_participants`, `opportunity_participants`, trava do dono do negócio, `people_guard_self_update` com `owner_id` e `client_since` |
+| `0045_estagio_do_cliente.sql` | `people.client_since`, `people_trava_do_estagio`, `quem_tem_processo_e_cliente`, `marcar_como_cliente`, conversão dos dados (§7) |
+| `0046_notas_so_da_equipe.sql` | `private.equipe_alcanca_pessoa` e as policies de leitura de `notes` e `activities` |
+| `0047_documentos_do_cliente.sql` | `files.category`, `check` de caminho, chave composta da oportunidade, depósito `pessoas` |
+| `0048_anexos_da_parcela.sql` | `installment_files`, depósito `financeiro`, travas de delete com anexo |
+| `0049_buscar_clientes.sql` | `public.buscar_clientes` |
+| `migration/import-people.mjs` | Maior estágio e DDI "+NN" |
+| `src/features/clientes/{queries,documentos-actions,regras}.ts` | Lista, perfil e documentos |
+| `src/features/people/actions.ts` | `atualizarCliente`, `marcarComoCliente` |
+| `src/features/financeiro/{regras,escritas-locais}.ts` | `totaisPorMoeda`; `excluirCobranca` com um delete só |
+| `src/lib/pessoa.ts` | `enderecoDaPessoa(id, estagio, aba?)` e `revalidarPessoa(id)` |
+| `src/lib/arquivos.ts` | `arquivoAceito` e o limite de 20 MB, movidos de `features/projects` |
+| `src/components/copiar-texto.tsx`, `abas-na-url.tsx` | Copiar com "Copiado"; `Tabs` com `?aba=` |
+| `src/components/perfil/*` | Movidos de `contatos/[id]`: `DadosCadastrais`, `controles-da-ficha`, `Cobrancas`, `NovoProcessoDialog`, `PersonTags`, `Timeline` |
+| `src/app/(app)/clientes/page.tsx`, `clientes/[id]/page.tsx` e as abas | As telas |
+| `src/app/(app)/contatos/[id]/page.tsx` | Perfil enxuto, `redirect` e "Marcar como cliente" |
+| `src/components/app-sidebar.tsx` | Item Clientes |
+
+---
+
+## Fase A — banco
+
+### T1 [Renato] Cópia do banco
+- [ ] O Renato roda o `pg_dump` como em 17/nov e diz **"cópia feita"**. A 0045 converte contatos em clientes, e isso não tem volta. Nenhuma migration antes disso.
+
+### T2 Medir antes (só leitura, contagens, sem ler nomes) — feito em 18/nov
+
+| Medida | Valor |
+|---|---|
+| Clientes (1 é o "Cliente de Teste") | 28, nenhum na lixeira |
+| Não clientes com processo / com cobrança | 2 / 0 (nenhum na lixeira) |
+| Linhas em `files` | 0, e o app não lê `files` |
+| Membros: Duli | 1 `owner` (Renato) e 1 `staff` (`teste-colaborador`) |
+| Membros: `parceiro-teste` | 1 `owner` (`teste-parceiro`) e 1 `staff` (`teste-staff`) |
+| Organizações com mais de um `owner`, ou sem `owner` | 0 e 0 |
+| Negócios com `owner_id` | 2; o app não grava `owner_id` em lugar nenhum |
+
+Daí: a conversão promove 2 pessoas e põe dono em 28; o D4 vale para a tabela inteira; a trava do dono do negócio não quebra caminho de hoje.
+
+- [x] Contar:
+  - clientes, inclusive na lixeira;
+  - não clientes com processo ou com cobrança;
+  - `files` por `bucket`, e se alguma linha fere o formato `{org}/{pessoa}/{arquivo}/{nome}`;
+  - `files` com `opportunity_id` de outra organização;
+  - membros por papel em cada organização;
+  - quantas organizações têm mais de um `owner`.
+- [x] Anotar os números (tabela acima).
+
+### T3 0044 — dono e participantes (CLI-10)
+**Testes primeiro**, em `tests/rls/clientes-dono.test.ts`, como parceiro na organização de teste:
+- `owner_id` aceita um membro da organização da pessoa, e recusa o membro de outra (chave composta → `23503`);
+- "remover o membro anula o dono" é conferido no catálogo (`pg_constraint`, `confdeltype = 'n'` com a coluna), não por escrita: mexer em `organization_members` num teste é arriscado demais;
+- `person_participants`: o membro grava e lê. Colaborador da Duli não lê os participantes da pessoa da parceira. Duplicado `(person_id, user_id)` → `23505`;
+- `opportunity_participants`: o mesmo;
+- trocar `opportunities.owner_id`: o `teste-staff`, que não é dono, é recusado com a mensagem; o dono da parceira (gestão) consegue;
+- o cliente do portal mudando o próprio `owner_id`: a mudança é desfeita em silêncio. O mesmo para `client_since` fica no T4, onde a coluna nasce.
+
+**Migration:**
+- `people.owner_id uuid` com a FK `(organization_id, owner_id)` → `organization_members (organization_id, user_id)`, `on delete set null (owner_id)`;
+- as duas tabelas de participantes (spec §6.2): RLS de membros, lápide, `updated_at`, fora do espelho e do `sync_manifesto`;
+- gatilho `opportunities_dono_protegido` (`before update of owner_id`): sem usuário, passa;
+- `create or replace` de `private.people_guard_self_update` (`0013:89-110`) acrescentando `owner_id`. A 0045 o refaz com `client_since`.
+
+Antes de escrever o gatilho, procurar no app quem atualiza `opportunities.owner_id` (`grep owner_id src/`), para a trava não quebrar um caminho de hoje.
+
+- [ ] Vermelho → aplicar → verde → tipos → `banco.md` → commit `feat(banco): dono e participantes (0044)`.
+
+### T4 0045 — estágio do cliente (CLI-11, CLI-12, CLI-13, CLI-14)
+**Testes primeiro**, em `tests/rls/estagio-do-cliente.test.ts`, com pessoas descartáveis da organização de teste, apagadas pela pessoa:
+- `update` de `client` para `opportunity` pela API → "Cliente não volta a ser lead.";
+- passar a cliente preenche `client_since` com hoje (São Paulo). Quem já é cliente com data não tem a data trocada. `insert` já como `client` não preenche;
+- `teste-staff` com `criar_processo` para um lead → recusado com a mensagem; insert em `receivables` para um lead → recusado;
+- a gestão (parceiro) fazendo o mesmo → a pessoa vira `client` com `client_since` de hoje e uma atividade `virou_cliente` "Virou cliente (processo ‹título›)" ou "(cobrança ‹título›)";
+- processo ou cobrança para quem já é cliente não gera histórico novo;
+- `marcar_como_cliente`:
+  - chamado pelo `teste-staff` → "Só a gestão marca alguém como cliente.";
+  - pela gestão → estágio, `client_since = p_desde` e "Marcado como cliente";
+  - para quem já é cliente → erro "Já é cliente.";
+  - pessoa na lixeira → "Este contato está na lixeira. Restaure antes.";
+- o cliente do portal tentando rebaixar a si mesmo → mudança desfeita em silêncio, sem erro (D8).
+
+**Migration:**
+- `people.client_since date`;
+- gatilho `people_trava_do_estagio`, `before insert or update`: regra (1) sempre, inclusive sem usuário, mais o preenchimento do `client_since`;
+- `private.quem_tem_processo_e_cliente()`, `before insert` em `projects` e em `receivables`: pessoa que não é cliente → sem usuário, promove; da gestão, promove e registra; senão, recusa (D2);
+- `public.marcar_como_cliente(p_pessoa uuid, p_desde date default null) returns void`, `security invoker`, com `revoke`/`grant`;
+- `people_guard_self_update` com `owner_id` e `client_since` (T3);
+- **conversão (§7)**, sem usuário:
+  - não clientes fora da lixeira, com processo ou cobrança → `client`;
+  - todo cliente com `client_since` nulo → o menor entre o primeiro `started_on` e o primeiro `created_at` de cobrança (data de São Paulo);
+  - todo cliente com `owner_id` nulo → o `owner` mais antigo da organização (`order by created_at limit 1`).
+
+**Ajustes na suíte:**
+- rodar `bun run test:rls` inteiro depois de aplicar;
+- todo teste que cria processo ou cobrança para quem não é cliente com conta que não é da gestão passa a usar o "Cliente de Teste" ou uma pessoa promovida pela gestão;
+- fumaça (D9).
+
+- [ ] Vermelho → aplicar → verde → tipos → `banco.md` (seção `people`, travas, a função) → conferir à mão no SQL Editor que, sem usuário, o rebaixamento também é recusado → commit.
+
+### T5 0046 — notas só para a equipe (CLI-9, POR-2)
+- [ ] **Vermelho:** inverter `portal-do-cliente.test.ts:77-87`. O cliente lê zero linhas em `notes` e em `activities`. O teste "vê exatamente uma pessoa" continua verde.
+- [ ] **Migration:**
+  - `private.equipe_alcanca_pessoa(uuid)`: `can_access_person` sem o ramo `p.user_id = auth.uid()`, `security definer`, com `grant` a `authenticated`;
+  - `notes_select` e `activities_select` passam a usá-la;
+  - a escrita não muda.
+- [ ] Verde, inclusive `isolamento.test.ts` (a equipe ainda lê) → commit.
+
+### T6 Importação sem rebaixar
+- [ ] Teste de unidade, em `migration/import-people.test.mjs` ou com a regra extraída para uma função pura testável:
+  - `estagioFinal(doBanco, doAntigo)` devolve o maior na ordem `contact < opportunity < client`;
+  - `ddiGravado("55")` devolve "+55".
+- [ ] O script lê os `lifecycle_stage` existentes por `legacy_id` antes do upsert e grava o maior.
+- [ ] Commit. O script não roda nesta entrega.
+
+### T7 0047 — documentos do cliente (CLI-8, banco)
+- [ ] **Vermelho**, em `tests/rls/documentos-do-cliente.test.ts`:
+  - o parceiro envia para `pessoas/{org}/{pessoa}/{uuid}/teste.pdf` e grava em `files` com `category = 'passaporte'`;
+  - o colaborador da Duli não lê o objeto nem a linha;
+  - um caminho com outra organização na frente é recusado pelo `check`;
+  - `category = 'xyz'` → `23514`;
+  - a limpeza remove o objeto e a linha em `finally`.
+- [ ] **Migration:**
+  - `files.category` com `check`;
+  - o `check` de caminho e `bucket = 'pessoas'` (D4);
+  - a FK de `opportunity_id` composta, com `on delete set null (opportunity_id)` (tabela vazia: valida direto);
+  - o depósito `pessoas` e as 4 policies no padrão da 0020:273-313.
+- [ ] Verde → tipos → `banco.md` → commit.
+
+### T8 0048 — anexos da parcela (CLI-6, banco) e `excluirCobranca`
+- [ ] **Vermelho**, em `tests/rls/anexos-da-parcela.test.ts`, numa pessoa descartável promovida pela gestão:
+  - anexo na parcela 2 aparece só nela, e lê por URL assinada;
+  - delete direto da parcela 2 → "Remova os anexos antes.";
+  - delete direto da cobrança → a mesma recusa;
+  - apagar a pessoa leva tudo (cascata, `pg_trigger_depth() > 1`);
+  - o colaborador da Duli não lê o anexo;
+  - o objeto do depósito é removido em `finally`.
+- [ ] **Vermelho**, em `src/features/financeiro/escritas-locais.test.ts`:
+  - `excluirCobranca` enfileira **um** delete só, o da cobrança;
+  - a leitura local esconde as parcelas dela.
+- [ ] **Migration:**
+  - `installment_files` como na spec, com `check` de caminho de 6 partes, lápide, `updated_at` e fora do espelho;
+  - o depósito `financeiro`;
+  - os gatilhos de delete em `receivables` e `installments`.
+
+  Mudar `excluirCobranca` (`escritas-locais.ts:185-213`).
+- [ ] Verde → tipos → `banco.md` → `bun run verify` → commit.
+- [ ] **Push 1 [Renato].** A tela antiga continua funcionando: ninguém anexa ainda, e o Ganho de hoje passa (D1).
+
+---
+
+## Fase B — telas
+
+### T9 Totais por moeda (CLI-5)
+- [ ] **Vermelho**, em `financeiro/regras.test.ts`, para `totaisPorMoeda(cobrancas, hoje): Record<Moeda, {contratado, pago, saldo, vencido}>`:
+  - soma em centavos (`0.1 + 0.2` não vira `0.30000000000000004`);
+  - a moeda com total zero aparece;
+  - BRL e USD nunca se somam;
+  - vencido conta só parcela em aberto com vencimento antes de hoje (reaproveita `situacaoDaParcela`, `regras.ts:112-115`).
+- [ ] Implementar sobre `resumoDoRecebivel` (`regras.ts:153-183`), sem usar `somarPorMoeda` (`totals.ts:16-25`) → commit.
+
+### T10 Lista de Clientes (CLI-1) e 0049
+- [ ] **Vermelho (RLS):** `buscar_clientes`:
+  - acha por parte do nome, por "@dominio", por "9999" e pelo telefone com máscara e DDI;
+  - não traz lead, quem está na lixeira, nem cliente de outra organização;
+  - `total` é o total do filtro, não o da página;
+  - `%` e `_` na busca são literais.
+- [ ] **Migration 0049:** `buscar_clientes(p_busca text default '', p_limite int default 50, p_deslocamento int default 0) returns table (id, full_name, email, phone_country_code, phone, owner_id, client_since, total bigint)`:
+  - ordem por nome;
+  - total por `count(*) over ()`;
+  - filtro do telefone por `private.telefone_nacional(...) like '%' || dígitos || '%'`, só quando há dígitos.
+- [ ] **Vermelho (unidade):** `listarClientes` monta o "mostrando X de Y" e busca os nomes dos donos em `profiles` numa segunda consulta (conferir que a RLS de `profiles` deixa ler os colegas).
+- [ ] **Telas:**
+  - `clientes/page.tsx`: `PageHeader`, busca na URL (`?q=`, como `contatos/filters.tsx`), tabela no computador e cartões no celular, `EmptyState`, `?pagina=`;
+  - item "Clientes" no `NAV` depois do CRM (`app-sidebar.tsx:32-39`). Conferir que os 7 cabem na barra do celular.
+- [ ] Commit.
+
+### T11 Perfil do cliente: casca, cabeçalho e endereços (CLI-2, CLI-3)
+- [ ] **Vermelho (unidade):**
+  - `enderecoDaPessoa`: cliente → `/clientes/<id>?aba=…`; outro → `/contatos/<id>`;
+  - `CopiarTexto` põe "+55 31 99999-0000" na área de transferência e mostra "Copiado";
+  - `AbasNaUrl` troca `?aba=` sem rolar a página e abre a aba Dados com `#dados-cadastrais` (D6).
+- [ ] **Mover** os componentes compartilhados para `src/components/perfil/` (os imports do CRM também). Extrair o `copiar` de `LinkAberto` (`controles-da-ficha.tsx:131-139`) para `CopiarTexto`.
+- [ ] **`clientes/[id]/page.tsx`:**
+  - quem não é cliente → `redirect('/contatos/<id>')`;
+  - cabeçalho numa linha: nome e selo; telefone e e-mail com `CopiarTexto`; dono, cliente desde, `PersonTags` e Editar (T15);
+  - as 5 abas, com `?aba=` validado e `dados` como padrão.
+- [ ] **`contatos/[id]/page.tsx`:**
+  - cliente → `redirect` preservando a query;
+  - `novo-processo` → `?aba=projetos&novo-processo=`;
+  - sem cliente, o perfil enxuto: apagar `perfilCompleto` (`features/people/regras.ts:16-26`) e os cartões de processos e financeiro.
+- [ ] Commit.
+
+### T12 Abas Dados, Projetos, Notas e Financeiro (CLI-4, 5, 7, 9)
+- [ ] **Vermelho:**
+  - Notas: o campo Nova nota fica acima da linha do tempo. As "Observações do cadastro antigo" vêm por último. `virou_cliente` entra em `SYSTEM_TYPES` (`timeline-queries.ts:17`), sem botão de apagar;
+  - Financeiro: com rede, mostra "sincronizando…" até o `sincronizarAgora` acabar, e só então a lista. Sem rede, mostra a lista do aparelho (D5). Os totais por moeda vêm do T9.
+- [ ] **Aba Projetos:** a lista de `processosDoContato` com `BarraDeProgresso` e o selo, o clique abre o processo, e "+ Novo processo" com `?novo-processo=`.
+- [ ] **Aba Dados:** `DadosCadastrais` como está.
+- [ ] Commit.
+
+### T13 Aba Documentos (CLI-8, tela)
+- [ ] **Vermelho (unidade):** `caminhoDoDocumento(org, pessoa, id, nome)` e `documentosPorCategoria` (ordem: identidade, passaporte, comprovante de residência, contrato, outro).
+- [ ] **`features/clientes/documentos-actions.ts`:**
+  - `registrarDocumento` grava a linha de `files`, com a organização vinda da pessoa;
+  - `enderecoDoDocumento(id, baixar)` faz `createSignedUrl` de 300 s;
+  - `excluirDocumento` apaga a linha, depois o objeto.
+- [ ] **Tela:**
+  - envio no topo, com categoria, direto ao depósito, como `ArquivosDaPasta` (`projetos/[id]/documentos.tsx:459-568`), removendo o objeto se o registro falhar;
+  - lista agrupada por categoria;
+  - excluir com `ConfirmAction`.
+- [ ] Mover `arquivoAceito` para `src/lib/arquivos.ts`.
+- [ ] Commit.
+
+### T14 Anexos da parcela (CLI-6, tela)
+- [ ] **Vermelho (unidade):**
+  - `caminhoDoAnexo` com as 6 partes;
+  - sem rede, a parcela mostra "Anexos precisam de internet" e nenhum botão de enviar.
+- [ ] **Em `perfil/cobrancas.tsx`:**
+  - por parcela: anexar (com tipo), ver e baixar por URL assinada, e remover;
+  - o cliente de navegador grava em `installment_files` e no depósito, removendo o objeto se a linha falhar.
+- [ ] Registrar a exceção no `AGENTS.md` (T16).
+- [ ] Commit.
+
+### T15 Editar do cliente e Marcar como cliente (CLI-10, 11, 12)
+- [ ] **Vermelho (unidade):**
+  - `atualizarCliente` grava os campos de `PersonDialog`, mais `owner_id`, `client_since` e os participantes (a diferença entre a lista atual e a nova). A conferência de parecidos é a mesma de `updatePerson`;
+  - `marcarComoCliente` chama a RPC e redireciona para `/clientes/<id>`.
+- [ ] **Tela:**
+  - diálogo do cliente, com dono (membros da organização da pessoa) e participantes;
+  - em `/contatos/[id]`, "Marcar como cliente", só para a gestão (consultar o papel no servidor), com `ConfirmAction`, o aviso "não tem volta" e a data (hoje por padrão).
+- [ ] Commit.
+
+### T16 Endereços que mudam, fumaça e documentação
+- [ ] **Endereços:**
+  - `enderecoDoCartao` (`opportunities/regras.ts:133`) e o teste dele;
+  - `quadro.tsx:223` (âncora → `?aba=dados`) e `:243` (novo-processo);
+  - `ganharOportunidade`, que redireciona para `/clientes/<id>?aba=projetos` (`actions.ts:213`);
+  - `mover.ts`, que grava "Oportunidade ganha — virou cliente" quando a pessoa ainda não era cliente (D10);
+  - `crm/[id]/page.tsx:126`;
+  - `alertas.tsx:117` e `:148`;
+  - `projetos/page.tsx:63` e a dica da linha 41;
+  - `projetos/[id]/page.tsx:94`;
+  - `financeiro/lista.tsx:212`;
+  - os `revalidatePath('/contatos…')`, por `revalidarPessoa`.
+- [ ] **Fumaça:**
+  - `TOPO` com `/clientes`;
+  - um bloco que cria uma pessoa descartável, marca como cliente (parceiro), abre `/clientes/<id>` em cada `?aba=`, confere o `307` de `/contatos/<id>?x=1` para `/clientes/<id>?x=1`, e apaga a pessoa (D9).
+- [ ] **Documentação:**
+  - `docs/spec.md`: CLI-1 a 14, CON-3 substituído, M17, POR-2;
+  - `docs/banco.md`;
+  - `AGENTS.md`: a exceção de Clientes lendo do servidor, os anexos direto do navegador, e na tabela "UI" `CopiarTexto`, `AbasNaUrl` e `enderecoDaPessoa`;
+  - `docs/plano.md`;
+  - spec técnica: o D1, o D6, e a correção de que a 0025 **não** desliga a marca no caminho de erro (ela conta com o `is_local` e o fim da transação).
+- [ ] `bun run verify`, `bun run build`, fumaça local → commit.
+- [ ] **Revisão final** (Code Reviewer, em loop até não sobrar ajuste, classificando em crítico, importante, médio e cosmético) → correções com teste → **Push 2 [Renato]**.
+
+---
+
+## Verificação
+
+- Por tarefa: o teste vermelho visto, depois verde. `bun x vitest run <arquivo>` na unidade; `--no-file-parallelism` no RLS.
+- Antes de cada commit: `bun run verify` (tipos, lint, unidade e RLS).
+- No fim: `bun run build`, depois a fumaça local (`bun run dev` mais `bun run test:fumaca`), e o CI verde depois de cada push.
+- No banco: depois da 0045, contar (só leitura) clientes, clientes sem dono e clientes sem `client_since`, e conferir com o T2. No SQL Editor, conferir à mão a recusa do rebaixamento sem usuário.
+
+## Depois de aprovado
+
+1. Salvar este plano em `docs/superpowers/plans/2026-11-18-entrega-2-clientes.md` e fazer o commit.
+2. Rodar o Code Reviewer **no plano**, em rodadas, até não sobrar ajuste (método do Renato).
+3. Executar em modo nativo, com o registro em `.superpowers/sdd/`.
