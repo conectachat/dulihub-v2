@@ -176,11 +176,16 @@ export async function renomearCobranca(formData: FormData): Promise<ActionState>
 }
 
 /**
- * Exclui a cobrança e as parcelas dela.
+ * Exclui a cobrança; as parcelas vão em cascata no servidor.
  *
- * A cascata é escrita à mão pelo mesmo motivo do catálogo de pastas: o
- * Postgres apaga as filhas sozinho, o Dexie não. Sem os passos, as parcelas
- * de uma cobrança que já não existe ficariam na tela até a próxima sincronia.
+ * Um delete só, o da cobrança. Desde a 0048, apagar direto uma parcela com
+ * anexo é recusado ("Remova os anexos antes."): com um delete por parcela, a
+ * recusa da segunda deixaria a cobrança pela metade. Assim a recusa vem
+ * inteira, como um conflito só.
+ *
+ * Na tela, as parcelas somem junto porque a leitura local descarta parcela
+ * sem cobrança (`consultas-locais.ts`); a lápide de cada uma chega na
+ * sincronia seguinte.
  */
 export async function excluirCobranca(formData: FormData): Promise<ActionState> {
   const id = formData.get("id");
@@ -201,14 +206,7 @@ export async function excluirCobranca(formData: FormData): Promise<ActionState> 
     alvo: id,
     depende: dependeDe(await naFila(ctx), id),
     rotulo: `Excluir a cobrança ${cobranca.title}`,
-    passos: [
-      ...cobranca.parcelas.map((p) => ({
-        tipo: "delete" as const,
-        tabela: "installments",
-        id: p.id,
-      })),
-      { tipo: "delete", tabela: "receivables", id },
-    ],
+    passos: [{ tipo: "delete", tabela: "receivables", id }],
   });
 }
 

@@ -9,7 +9,7 @@ precisar ler 38 migrations para responder "onde está X e quem pode tocar".
 resumo delas; se divergir, a migration vence e este arquivo está errado.
 **Toda migration atualiza este arquivo no mesmo commit.**
 
-Situação: 0001 a 0047 aplicadas (a 0039 depois da 0042, quando a conta
+Situação: 0001 a 0048 aplicadas (a 0039 depois da 0042, quando a conta
 `teste-staff` passou a existir). Colunas atuais:
 `src/lib/supabase/database.types.ts` (gerado, não se edita à mão).
 
@@ -147,8 +147,9 @@ cliente ganha leitura só no portal (Fase 6).
 
 | Tabela | Para que serve | Pai / organização vem de | Quem lê | Quem grava | Regras especiais |
 |---|---|---|---|---|---|
-| `receivables` | Cobrança: título, valor, valor de tabela (desconto = diferença), moeda, notas. | Da pessoa; processo de origem da mesma organização (anulável). | Membros. | Membros. | Moeda só BRL ou USD, e as parcelas herdam. Valores ≥ 0; valor de tabela ≥ valor. Apagar o processo não apaga a cobrança. Nenhum saldo guardado. **Quem tem cobrança é cliente**: a mesma regra dos processos (0045, `receivables_quem_tem_processo_e_cliente`), também pela fila — a recusa vira conflito. |
-| `installments` | Parcelas: número, valor, vencimento, data de pagamento, cotação do dia, forma. | Da cobrança. | Membros. | Membros. | Número único por cobrança. Cotação só com data de pagamento. Forma ∈ pix/boleto/cartao/transferencia/cripto. Sem coluna de status: paga/vencida/pendente saem de `paid_on` e `due_on`. |
+| `receivables` | Cobrança: título, valor, valor de tabela (desconto = diferença), moeda, notas. | Da pessoa; processo de origem da mesma organização (anulável). | Membros. | Membros. | Moeda só BRL ou USD, e as parcelas herdam. Valores ≥ 0; valor de tabela ≥ valor. Apagar o processo não apaga a cobrança. Nenhum saldo guardado. **Quem tem cobrança é cliente**: a mesma regra dos processos (0045, `receivables_quem_tem_processo_e_cliente`), também pela fila — a recusa vira conflito. Apagar **direto** cobrança com anexo em alguma parcela é recusado ("Remova os anexos antes.", P0001, 0048); a cascata vinda da pessoa passa. |
+| `installments` | Parcelas: número, valor, vencimento, data de pagamento, cotação do dia, forma. | Da cobrança. | Membros. | Membros. | Número único por cobrança. Cotação só com data de pagamento. Forma ∈ pix/boleto/cartao/transferencia/cripto. Sem coluna de status: paga/vencida/pendente saem de `paid_on` e `due_on`. Apagar **direto** parcela com anexo é recusado ("Remova os anexos antes.", 0048); a cascata da cobrança ou da pessoa passa (`pg_trigger_depth() > 1`). |
+| `installment_files` | Anexo da parcela: boleto, nota fiscal, comprovante (CLI-6). | Da parcela (FK composta, cascade). | Membros. | Membros. | `kind` ∈ boleto/nota_fiscal/comprovante/outro. `storage_path` único, conferido pelo gatilho `installment_files_caminho` contra a parcela real: `{org}/{pessoa}/{cobrança}/{parcela}/{id da linha}/{nome}` (senão `23514`). Lápide e `updated_at`. Fora do manifesto: anexo só com internet (0048). |
 
 ### 2.7 Sincronia
 
@@ -192,6 +193,7 @@ primeira pasta do caminho é a organização**, e é ela que a policy confere.
 | Depósito | Guarda | Caminho | Quem lê | Quem grava / apaga | Limite |
 |---|---|---|---|---|---|
 | `documentos` | Arquivos que o cliente envia para as pastas do processo (`document_files`). | `{organização}/{processo}/{pasta}/{arquivo}` — a mesma regra está como `check` em `document_files.storage_path`. | Membros da organização da primeira pasta; a tela usa URL assinada de curta duração. | Membros: enviar, alterar e apagar. | 20 MB; PDF, JPEG, PNG, WEBP, HEIC, DOC/DOCX, XLS/XLSX. |
+| `financeiro` | Anexos da parcela (`installment_files`, 0048). | `{organização}/{pessoa}/{cobrança}/{parcela}/{arquivo}/{nome}` — conferido pelo gatilho de `installment_files`. | Membros da organização da primeira pasta; URL assinada de curta duração. | Membros: enviar, alterar e apagar. | 20 MB; os tipos de `documentos`. |
 | `pessoas` | Documentos do cliente (`files`, 0047). | `{organização}/{pessoa}/{arquivo}/{nome}` — conferido pelo `check` de `files`. A pessoa vem em segundo para a anonimização apagar a pasta de uma vez. | Membros da organização da primeira pasta; URL assinada de curta duração. | Membros: enviar, alterar e apagar. | 20 MB; os tipos de `documentos`. |
 | `observacoes` | Imagens e arquivos colados na página Observações. | `{organização}/{processo}/{uuid}-{nome}`. | Membros da organização da primeira pasta (servido pela rota `/api/observacoes/arquivo`). | Membros: enviar e apagar. **Sem policy de alteração.** | 20 MB; os mesmos tipos, mais GIF. |
 
@@ -248,12 +250,13 @@ Só um uso: a edição simultânea das Observações (0024).
 | `document_files` | 0020, 0026, 0028, 0029 |
 | `project_pages` | 0024, 0028, 0029 |
 | `project_page_updates` | 0024, 0025 |
-| `receivables`, `installments` | 0033, 0045 (quem tem cobrança é cliente) |
+| `receivables`, `installments` | 0033, 0045 (quem tem cobrança é cliente), 0048 (sem anexo para apagar direto) |
+| `installment_files` | 0048 |
 | `deleted_rows` | 0029, 0031 (limpeza), 0032 e 0033 (manifesto) |
 | Auxiliares de RLS | 0001 → 0003 (para `private`) → 0013 (versão atual); `current_user_is_root_owner` na 0036 |
 | Auxiliares de formato do contato | 0040; `telefone_nacional` 0042 (número americano com o 1 na frente) e 0043 (sem DDI, o 55 colado sai); `service_role` executa desde a 0043 |
 | RPCs | `swap_positions` 0014/0023/0026; `criar_processo` 0020; `compactar_pagina` 0024/0025; `sync_manifesto` 0030/0032/0033; `reordenar_irmaos` 0030; ficha 0035 (`salvar_cadastro` refeita na 0040); `contatos_parecidos` 0040; `criar_oportunidade` 0041; `marcar_como_cliente` 0045; `set_default_stage_status` 0010 |
-| Storage | `documentos` 0020; `observacoes` 0024; `pessoas` 0047 |
+| Storage | `documentos` 0020; `observacoes` 0024; `pessoas` 0047; `financeiro` 0048 |
 | Tempo real | 0024 |
 | Dados de teste | 0015, 0021 (organização `parceiro-teste`, `is_test` desde 0036), 0039 (`teste-staff`, staff da `parceiro-teste`) |
 

@@ -311,6 +311,63 @@ export type Database = {
           },
         ]
       }
+      installment_files: {
+        Row: {
+          created_at: string
+          filename: string
+          id: string
+          installment_id: string
+          kind: string
+          mime_type: string | null
+          organization_id: string
+          size_bytes: number | null
+          storage_path: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          filename: string
+          id?: string
+          installment_id: string
+          kind?: string
+          mime_type?: string | null
+          organization_id: string
+          size_bytes?: number | null
+          storage_path: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          filename?: string
+          id?: string
+          installment_id?: string
+          kind?: string
+          mime_type?: string | null
+          organization_id?: string
+          size_bytes?: number | null
+          storage_path?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "installment_files_installment_same_org"
+            columns: ["installment_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "installments"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "installment_files_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       installments: {
         Row: {
           amount: number

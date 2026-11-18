@@ -34,6 +34,7 @@ const { MARCA_DA_SINCRONIA } = await import("@/lib/local/sessao");
 const { criarCobranca, darBaixa, desfazerBaixa, excluirCobranca } = await import(
   "./escritas-locais",
 );
+const { cobrancasDoContato, parcelasDoAparelho } = await import("./consultas-locais");
 
 let banco: BancoLocal;
 let fila: BancoDaFila;
@@ -161,9 +162,7 @@ describe("criarCobranca", () => {
 });
 
 describe("excluirCobranca", () => {
-  it("leva as parcelas junto, num item só", async () => {
-    // O Postgres apaga as filhas sozinho; o Dexie não. Sem os passos, as
-    // parcelas de uma cobrança que já não existe ficariam na tela.
+  async function cobrancaComDuasParcelas() {
     await banco.tabela("receivables").put({
       id: "c1",
       organization_id: ORG,
@@ -177,11 +176,29 @@ describe("excluirCobranca", () => {
       { id: "p1", organization_id: ORG, receivable_id: "c1", number: 1, amount: 500, due_on: "2026-10-01", paid_on: null, method: "pix", updated_at: "2026-10-01T10:00:00Z" },
       { id: "p2", organization_id: ORG, receivable_id: "c1", number: 2, amount: 500, due_on: "2026-11-01", paid_on: null, method: "pix", updated_at: "2026-10-01T10:00:00Z" },
     ]);
+  }
+
+  it("manda só o delete da cobrança: as parcelas vão em cascata no servidor", async () => {
+    // Desde a 0048, apagar direto uma parcela com anexo é recusado. Com um
+    // delete por parcela, a recusa da segunda deixaria a cobrança pela
+    // metade; com um delete só, a recusa vem inteira, como um conflito.
+    await cobrancaComDuasParcelas();
 
     await excluirCobranca(formulario({ id: "c1", person_id: ERICK }));
 
     const [item] = await fila.fila.toArray();
-    expect(item.passos.map((p) => (p as { id: string }).id)).toEqual(["p1", "p2", "c1"]);
+    expect(item.passos).toEqual([{ tipo: "delete", tabela: "receivables", id: "c1" }]);
+  });
+
+  it("enquanto o delete não sobe, a cobrança e as parcelas somem da tela", async () => {
+    // O Dexie não apaga as filhas sozinho: quem as esconde é a leitura, que
+    // descarta parcela sem cobrança.
+    await cobrancaComDuasParcelas();
+
+    await excluirCobranca(formulario({ id: "c1", person_id: ERICK }));
+
+    expect(await cobrancasDoContato(banco, fila, ERICK, "2026-11-18")).toEqual([]);
+    expect(await parcelasDoAparelho(banco, fila)).toEqual([]);
   });
 });
 
