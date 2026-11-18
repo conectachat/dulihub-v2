@@ -20,7 +20,8 @@ As entregas 0 e 1 estão no ar (commits até `276a693`, CI verde). A entrega 2 d
 
 **Histórico:**
 - rodada 1 do Code Reviewer no plano (18/nov): 0 crítico; corrigidos I1–I4, M1–M12 e C1–C10;
-- rodada 2: 0 crítico; corrigidos I1 (teste da fila deixaria lead permanente na Duli), M1–M8 e C1–C11.
+- rodada 2: 0 crítico; corrigidos I1 (teste da fila deixaria lead permanente na Duli), M1–M8 e C1–C11;
+- rodada 3: 0 crítico; corrigidos I1 (saneamento do nome deixaria acento e o Storage recusaria), M1–M4 e C1–C6.
 
 **Fora deste plano:**
 - a entrega 3: vistos na oportunidade, `ganhar_negocio` e a marca `via_ganho`, regra (2) do estágio, "processo nunca é apagado" (PRO-12);
@@ -108,7 +109,7 @@ Cada item tem teste na tarefa dona.
 | `src/features/people/actions.ts` | `atualizarCliente`, `marcarComoCliente` |
 | `src/features/financeiro/{regras,escritas-locais,anexos}.ts` | `totaisPorMoeda`; `excluirCobranca` com um delete só; anexos da parcela pelo cliente de navegador |
 | `src/lib/pessoa.ts` | `enderecoDaPessoa(id, estagio, aba?)` e `revalidarPessoa(id)` |
-| `src/lib/arquivos.ts` | `arquivoAceito` e o limite de 20 MB, movidos de `features/projects` |
+| `src/lib/arquivos.ts` | `arquivoAceito`, o limite de 20 MB e `limparNome`, movidos de `features/projects` (`regras.ts:60-76`); `enviarERegistrar` |
 | `src/components/copiar-texto.tsx`, `abas-na-url.tsx` | Copiar com "Copiado"; `Tabs` com `?aba=` por `window.history.replaceState` (usado também em `projetos/[id]`) |
 | `src/components/perfil/*` | Movidos de `contatos/[id]` porque `contatos`, `clientes` ou `crm` os usam: `DadosCadastrais`, `controles-da-ficha`, `PersonTags`, `Timeline`. `Cobrancas` e `NovoProcessoDialog` só servem a `clientes/[id]` e vão para lá |
 | `src/app/(app)/clientes/page.tsx`, `clientes/[id]/page.tsx` e as abas | As telas |
@@ -179,7 +180,8 @@ Antes de escrever o gatilho, procurar no app quem atualiza `opportunities.owner_
   - para quem já é cliente → erro "Já é cliente.";
   - pessoa na lixeira → "Este contato está na lixeira. Restaure antes.";
 - o cliente do portal tentando rebaixar a si mesmo → mudança desfeita em silêncio, sem erro (D8);
-- trocar o `person_id` de um processo ou cobrança para um lead, pelo `teste-staff` → recusado (CLI-14 não se contorna por update);
+- trocar o `person_id` de um processo **sem** `opportunity_id` (com negócio, `projects_processo_do_mesmo_contato`, que roda antes, recusa com outra frase) ou de uma cobrança para um lead, pelo `teste-staff` → recusado (CLI-14 não se contorna por update);
+- o cliente do portal mudando o próprio `client_since` → desfeito em silêncio; o parceiro guarda o valor e o restaura em `finally` (exceção do "Cliente de Teste", como no T3);
 - em `tests/rls/fila.test.ts`: o **`teste-staff`** (`entrarComo("staff")`, staff do Parceiro de Teste — **nunca** o `colaborador`, que é da Duli, onde pessoa não se apaga) cria pela fila uma cobrança para um lead descartável do Parceiro de Teste → o item fica em conflito com a frase, e nada é gravado (o parceiro confere lendo `receivables` e apaga o lead em `finally`).
 
 **Migration, nesta ordem** (a ordem importa: com o gatilho criado antes, a conversão gravaria hoje como "cliente desde" dos 2 convertidos):
@@ -194,7 +196,7 @@ Antes de escrever o gatilho, procurar no app quem atualiza `opportunities.owner_
    - `public.marcar_como_cliente(p_pessoa uuid, p_desde date default null) returns void`, `security invoker`, com `revoke`/`grant`; `p_desde` nulo = hoje; no futuro, recusa;
    - `people_guard_self_update` com `owner_id` e `client_since` (T3).
 
-**Na tela, já neste passo** (o gatilho grava `virou_cliente` a partir do push 1): `virou_cliente` entra em `SYSTEM_TYPES` (`timeline-queries.ts:17`, sem botão de apagar) e em `LABELS`/`ICONS` de `timeline.tsx:38-57` ("Virou cliente"), com teste de unidade.
+**Na tela, já neste passo** (o gatilho grava `virou_cliente` desde que a 0045 é aplicada; até o push 1, a tela antiga o mostra como "Registro", e só a gestão promove): `virou_cliente` entra em `SYSTEM_TYPES` (`timeline-queries.ts:17`, sem botão de apagar) e em `LABELS`/`ICONS` de `timeline.tsx:38-57` ("Virou cliente"), com teste de unidade.
 
 **Ajustes na suíte:**
 - rodar `bun run test:rls` inteiro depois de aplicar;
@@ -295,25 +297,26 @@ Antes de escrever o gatilho, procurar no app quem atualiza `opportunities.owner_
 - [ ] **Mover** para `src/components/perfil/` os que mais de uma rota usa (ver Mapa), e `Cobrancas` e `NovoProcessoDialog` para `clientes/[id]/` (os imports do CRM também). Extrair o `copiar` de `LinkAberto` (`controles-da-ficha.tsx:131-139`) para `CopiarTexto`.
 - [ ] **`clientes/[id]/page.tsx`:**
   - quem não é cliente → `redirect('/contatos/<id>')`;
-  - cabeçalho numa linha: nome e selo; telefone e e-mail com `CopiarTexto`; dono, cliente desde, `PersonTags` e Editar (T15);
+  - cabeçalho numa linha (`flex-wrap`: quebra em duas ou três no celular, spec §10): nome e selo; telefone e e-mail com `CopiarTexto`; dono, cliente desde, `PersonTags` e Editar (T15);
+  - abas que **rolam na horizontal** no celular (spec §10): `TabsList` dentro de um contêiner `overflow-x-auto`, sem rolagem horizontal da página (`tabsListVariants` é `inline-flex w-fit`, `ui/tabs.tsx:28`); conferir em 375 px, junto com a barra de 7 itens;
   - as 5 abas, com `?aba=` validado e `dados` como padrão.
 - [ ] **`contatos/[id]/page.tsx`:**
   - cliente → `redirect` preservando a query;
   - `novo-processo` → `?aba=projetos&novo-processo=`;
-  - sem cliente, o perfil enxuto: apagar `perfilCompleto` (`features/people/regras.ts:16-26`) e os cartões de processos e financeiro.
+  - sem cliente, o perfil enxuto: apagar `perfilCompleto` (`features/people/regras.ts:16-26`), os cartões de processos e financeiro e o link "Criar processo" do negócio ganho (`contatos/[id]/page.tsx:251-258`). O aviso tracejado (`:318-323`) fica, com o texto novo "Processos e financeiro ficam no perfil de cliente, depois do Ganho."
 - [ ] Commit.
 
 ### T12 Abas Dados, Projetos, Notas e Financeiro (CLI-4, 5, 7, 9)
 - [ ] **Vermelho:**
-  - Notas: o campo Nova nota fica acima da linha do tempo (já é assim, `timeline.tsx:155`: teste de proteção, não vermelho). As "Observações do cadastro antigo" vêm por último. `virou_cliente` entra em `SYSTEM_TYPES` (`timeline-queries.ts:17`), sem botão de apagar;
+  - Notas: o campo Nova nota fica acima da linha do tempo (já é assim, `timeline.tsx:155`: teste de proteção, não vermelho). As "Observações do cadastro antigo" vêm por último (o `virou_cliente` já entrou no T4);
   - Financeiro: com rede, mostra "sincronizando…" até o `sincronizarAgora` acabar, **com prazo de 5 s**: passado o prazo, ou se a sincronia falhar, mostra a lista do aparelho com o indicador de sincronia (Wi-Fi sem saída não pode esconder o que já está no aparelho). Sem rede, mostra a lista do aparelho direto (D5). Teste também para "sincronia que não responde". Os totais por moeda vêm do T9.
 - [ ] **Aba Projetos:** a lista de `processosDoContato` com `BarraDeProgresso` e o selo, o clique abre o processo, e "+ Novo processo" com `?novo-processo=`.
 - [ ] **Aba Dados:** `DadosCadastrais` como está.
 - [ ] Commit.
 
 ### T13 Aba Documentos (CLI-8, tela)
-- [ ] **Vermelho (unidade):** `caminhoDoDocumento(org, pessoa, id, nome)` e `documentosPorCategoria` (ordem: identidade, passaporte, comprovante de residência, contrato, outro). O nome do arquivo é saneado (barra e caracteres de controle viram `-`), senão uma `/` no nome fere o `check` de 5 partes do T7 e o gatilho do T8.
-- [ ] **Extrair (segunda cópia, `AGENTS.md`):** para `src/lib/arquivos.ts`, `arquivoAceito`, o saneamento do nome e `enviarERegistrar(depósito, caminho, arquivo, registrar)` — envia o objeto, chama o registro e remove o objeto se o registro falhar. `ArquivosDaPasta` (`projetos/[id]/documentos.tsx:459-568`) passa a usá-los, e o T14 também; teste de unidade com o Storage falso.
+- [ ] **Vermelho (unidade):** `caminhoDoDocumento(org, pessoa, id, nome)` e `documentosPorCategoria` (ordem: identidade, passaporte, comprovante de residência, contrato, outro). O nome do arquivo passa pela `limparNome` **que já existe** (`features/projects/regras.ts:60-76`: sem acento, espaço, barra nem ponto extra) — não uma regra nova: o Storage recusa chave com caractere fora do ASCII (`InvalidKey`), e uma `/` feriria o `check` de 5 partes do T7 e o gatilho do T8. Teste com "Comprovante de residência.pdf" e com um nome com `/`.
+- [ ] **Extrair (segunda cópia, `AGENTS.md`):** para `src/lib/arquivos.ts`, `arquivoAceito`, `limparNome` (exportada; `caminhoDoArquivo` dos processos passa a importá-la) e `enviarERegistrar(storage, depósito, caminho, arquivo, registrar)` — recebe o `storage` como parâmetro (para o teste usar um falso), envia o objeto, chama o registro e remove o objeto se o registro falhar. `ArquivosDaPasta` (`projetos/[id]/documentos.tsx:459-568`) passa a usá-los, e o T14 também; teste de unidade com o Storage falso.
 - [ ] **`features/clientes/documentos-actions.ts`:**
   - `registrarDocumento` grava a linha de `files`, com a organização vinda da pessoa;
   - `enderecoDoDocumento(id, baixar)` faz `createSignedUrl` de 300 s;
@@ -330,6 +333,7 @@ Antes de escrever o gatilho, procurar no app quem atualiza `opportunities.owner_
   - sem rede, a parcela mostra "Anexos precisam de internet" e nenhum botão de enviar.
 - [ ] **Em `clientes/[id]/cobrancas.tsx`:**
   - por parcela: anexar (com tipo), ver e baixar por URL assinada, e remover;
+  - **excluir cobrança com anexo:** com internet, se alguma parcela tem anexo, o botão Excluir avisa "Remova os anexos antes." e **não** enfileira (a sobreposição apaga da tela até o item em conflito, `sobreposicao.ts:96-98`, e a cobrança sumiria até alguém descartar o conflito); teste de unidade;
   - código em `src/features/financeiro/anexos.ts`, com o cliente de navegador: a organização vem da parcela (registro-pai); a lista de anexos é lida por `installment_files` filtrado pela parcela; enviar = objeto, depois a linha (se a linha falhar, remove o objeto); remover = linha, depois o objeto.
 - [ ] Registrar a exceção no `AGENTS.md` (T16).
 - [ ] Commit.
@@ -344,8 +348,8 @@ Antes de escrever o gatilho, procurar no app quem atualiza `opportunities.owner_
 - [ ] Commit.
 
 ### T16 Endereços que mudam, fumaça e documentação
-- [ ] **Vermelho (I4 da rodada 1):** pelo mesmo caminho do app (`aplicarEtapa`, como `funil.test.ts:173-187` já faz contra o banco), ganhar o negócio de um lead grava exatamente uma atividade `virou_cliente` "Oportunidade ganha — virou cliente"; ganhar de novo para quem já é cliente não grava outra. O texto do Ganho aparece com o rótulo de `virou_cliente` que o T4 já pôs em `LABELS`/`ICONS` de `timeline.tsx` (`ACTIVITY_LABELS`, de `timeline-queries.ts:19`, não é lido por ninguém). Critério de aceite do §6.2: uma nota criada quando a pessoa era lead aparece, na linha do tempo, **abaixo** de "Oportunidade ganha — virou cliente" — conferir a ordem.
-- [ ] **Endereços.** Onde a pessoa é cliente por força (tem processo ou cobrança), o link vai direto para `/clientes/<id>`: `projetos/page.tsx:63`, `projetos/[id]/page.tsx:94`, `financeiro/lista.tsx:212`, `alertas.tsx:148`. Onde o estágio varia, ler `lifecycle_stage` e usar `enderecoDaPessoa`: `alertas.tsx:117` (e `painel/queries.ts:59,68,75` passa a ler o estágio), `crm/[id]/page.tsx:126`, `aviso-de-duplicado.tsx:95`. No quadro, `quadro.tsx:220-224` só troca a âncora quando o endereço é de cliente (no cartão aberto, o endereço é `/crm/<id>` e a âncora fica). Também:
+- [ ] **Vermelho (I4 da rodada 1):** pelo mesmo caminho do app (`aplicarEtapa`, como `funil.test.ts:173-187` já faz contra o banco), ganhar o negócio de um lead grava exatamente uma atividade `virou_cliente` "Oportunidade ganha — virou cliente"; ganhar de novo para quem já é cliente não grava outra. O texto do Ganho aparece com o rótulo de `virou_cliente` que o T4 já pôs em `LABELS`/`ICONS` de `timeline.tsx` (`ACTIVITY_LABELS`, de `timeline-queries.ts:19`, não é lido por ninguém). Critério de aceite do §6.2, a nota do lead **abaixo** de "Oportunidade ganha — virou cliente": extrair a junção e a ordenação de `getTimeline` (`timeline-queries.ts:96-98`, que usa o cliente de servidor e não roda na suíte) para a função pura `montarLinhaDoTempo` em `features/people/montagem.ts`, com teste de unidade da ordem; no teste de RLS, conferir `virou_cliente.occurred_at > nota.created_at`.
+- [ ] **Endereços.** Onde a pessoa é cliente por força (tem processo ou cobrança), o link vai direto para `/clientes/<id>`: `projetos/page.tsx:63`, `projetos/[id]/page.tsx:94`, `financeiro/lista.tsx:212`, `alertas.tsx:148`. Onde o estágio varia, ler `lifecycle_stage` e usar `enderecoDaPessoa`: `alertas.tsx:117` (e `painel/queries.ts:59,68,75` passa a ler o estágio), `crm/[id]/page.tsx:126`, `aviso-de-duplicado.tsx:95`, e a lista `contatos/page.tsx:106,143` (já lê `lifecycle_stage`). `alertas.test.tsx:106` muda junto com `alertas.tsx:117`. No quadro, `quadro.tsx:220-224` só troca a âncora quando o endereço é de cliente (no cartão aberto, o endereço é `/crm/<id>` e a âncora fica). Também:
   - `enderecoDoCartao` (`opportunities/regras.ts:133`) e o teste dele;
   - `quadro.tsx:243` (novo-processo → `/clientes/<id>?aba=projetos&novo-processo=`);
   - `ganharOportunidade`, que redireciona para `/clientes/<id>?aba=projetos` (`actions.ts:213`);
@@ -356,6 +360,7 @@ Antes de escrever o gatilho, procurar no app quem atualiza `opportunities.owner_
   - `TOPO` com `/clientes`;
   - "ficha de contato" (`rotas.test.ts:84-94`, `146-158`): `pessoaId` passa a ser escolhido com `.neq('lifecycle_stage','client')`, senão recebe 307 (a Duli tem 28 clientes); e o HTML **não** contém `id="processos"` nem `id="financeiro"`;
   - "ficha do contato" (`:308-316`) vira `/clientes/<id>?aba=projetos` (com o TITULO) e `?aba=financeiro`;
+  - o bloco do lead (`:437-449`) passa a esperar o texto novo do aviso ("ficam no perfil de cliente") e continua sem `Novo processo`;
   - um bloco que cria uma pessoa descartável, marca como cliente (parceiro), abre `/clientes/<id>` em cada `?aba=`, confere o `307` de `/contatos/<id>?x=1` para `/clientes/<id>?x=1`, e apaga a pessoa (D9).
 - [ ] **Documentação:**
   - `docs/spec.md`: CLI-1 a 14 (CLI-10, CLI-12 e CLI-14 em 🟡 até a entrega 3, D1 e D12), CON-3 substituído, M17, POR-2;
