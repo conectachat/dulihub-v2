@@ -310,7 +310,8 @@ decisão nova.
   - o telefone, pelo **número nacional** (`private.telefone_nacional`): os dígitos do
     número, tirando o DDI da frente quando ele foi digitado junto e o número tem mais
     de 11 dígitos — ou, com DDI 1, 11 dígitos começando por 1 (0042: código de área
-    americano nunca começa por 1). Ainda não cobre o país cujo DDI mais o número somam
+    americano nunca começa por 1). Sem DDI gravado, o país é o Brasil: "5531…" vira
+    "31…" (0043). Ainda não cobre o país cujo DDI mais o número somam
     11 dígitos ou menos (+7, +33, +34…) colado com o código do país. Assim "+55 5531…" acha o contato antigo "31…" gravado sem DDI.
     Avisa em mais casos, nunca em menos (refinado no plano, Foco 1).
 - **O DDI** aceita "55" ou "+55" e grava sempre "+55", na tela e no banco. A 0040

@@ -9,8 +9,8 @@ precisar ler 38 migrations para responder "onde está X e quem pode tocar".
 resumo delas; se divergir, a migration vence e este arquivo está errado.
 **Toda migration atualiza este arquivo no mesmo commit.**
 
-Situação: 0001 a 0042 aplicadas (a 0039 por último, depois de a conta
-`teste-staff` existir). Colunas atuais:
+Situação: 0001 a 0043 aplicadas (a 0039 depois da 0042, quando a conta
+`teste-staff` passou a existir). Colunas atuais:
 `src/lib/supabase/database.types.ts` (gerado, não se edita à mão).
 
 ---
@@ -45,9 +45,10 @@ O schema `private` não é publicado pelo PostgREST. As auxiliares de RLS são
 | `campos_da_ficha()` | Lista fechada dos 20 campos de `people` que a ficha de cadastro pode gravar. | 0035 |
 
 Auxiliares de formato do contato (0040). Não são de RLS: são `immutable`,
-**sem** `security definer`, e executáveis por `authenticated` porque o índice
-de `people` e as funções `invoker` as avaliam com o papel de quem grava —
-revogar derruba todo `insert` em `people`. A mesma regra está em
+**sem** `security definer`, e executáveis por `authenticated` e `service_role`
+(0043) porque o índice de `people` e as funções `invoker` as avaliam com o
+papel de quem grava — revogar derruba todo `insert` em `people` daquele papel.
+`anon` fica sem: a ficha pública grava por `security definer`. A mesma regra está em
 `src/lib/contato.ts`, e `src/lib/contato.casos.ts` prova as duas.
 
 | Função | O que faz |
@@ -55,7 +56,7 @@ revogar derruba todo `insert` em `people`. A mesma regra está em
 | `espaco()` | O conjunto ESPACO: espaço, tab, `\n`, `\r`, `\f`, `\v`, NBSP e BOM. Nunca `\s`, que muda com o locale. |
 | `aparar(t)` | Tira ESPACO das pontas; vazio vira nulo. |
 | `normalizar_ddi(ddi)` | "55" e "+55" → "+55"; fora do formato, devolve aparado. |
-| `telefone_nacional(ddi, número)` | Os dígitos do número, sem o DDI da frente quando ele veio junto (mais de 11 dígitos e começando por ele; com DDI 1, também 11 dígitos começando por 1 — 0042). Ainda não cobre o país cujo DDI mais o número somam 11 dígitos ou menos (+7, +33, +34…) colado com o código. É por ele que dois telefones se comparam. |
+| `telefone_nacional(ddi, número)` | Os dígitos do número, sem o DDI da frente quando ele veio junto (mais de 11 dígitos e começando por ele; com DDI 1, também 11 dígitos começando por 1 — 0042). Sem DDI, o país é o Brasil: "5531…" vira "31…" (0043). Ainda não cobre o país cujo DDI mais o número somam 11 dígitos ou menos (+7, +33, +34…) colado com o código. É por ele que dois telefones se comparam. |
 | `contato_valido(e-mail, ddi, telefone)` | A primeira regra que falha (e-mail → DDI → telefone), com a mensagem exata da tela; nulo se está tudo certo. |
 
 Funções de gatilho (ninguém chama direto): `set_updated_at`, `handle_new_user`
@@ -244,7 +245,7 @@ Só um uso: a edição simultânea das Observações (0024).
 | `receivables`, `installments` | 0033 |
 | `deleted_rows` | 0029, 0031 (limpeza), 0032 e 0033 (manifesto) |
 | Auxiliares de RLS | 0001 → 0003 (para `private`) → 0013 (versão atual); `current_user_is_root_owner` na 0036 |
-| Auxiliares de formato do contato | 0040; `telefone_nacional` 0042 (número americano com o 1 na frente) |
+| Auxiliares de formato do contato | 0040; `telefone_nacional` 0042 (número americano com o 1 na frente) e 0043 (sem DDI, o 55 colado sai); `service_role` executa desde a 0043 |
 | RPCs | `swap_positions` 0014/0023/0026; `criar_processo` 0020; `compactar_pagina` 0024/0025; `sync_manifesto` 0030/0032/0033; `reordenar_irmaos` 0030; ficha 0035 (`salvar_cadastro` refeita na 0040); `contatos_parecidos` 0040; `criar_oportunidade` 0041; `set_default_stage_status` 0010 |
 | Storage | `documentos` 0020; `observacoes` 0024 |
 | Tempo real | 0024 |

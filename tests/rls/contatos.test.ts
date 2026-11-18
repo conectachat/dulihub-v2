@@ -31,14 +31,16 @@ describe("contato completo e parecidos (0040)", () => {
   const s1 = novoSufixo();
   const s2 = novoSufixo();
   const s3 = novoSufixo();
+  const s4 = novoSufixo();
   const emailCarlos = `carlos.${s1}@teste.dulihub`;
   const telCarlos = `31${s1}`;
   const telAntigo = `31${s2}`;
   const telLixeira = `31${s3}`;
+  const telColado = `31${s4}`;
   // Número americano de 10 dígitos: código de área 305, nunca começando por 1.
   const telAmericano = `(305) ${s3.slice(0, 3)}-${s3.slice(3, 7)}`;
 
-  const ids = { carlos: "", antigo: "", lixeira: "", semEmail: "", americano: "" };
+  const ids = { carlos: "", antigo: "", lixeira: "", semEmail: "", americano: "", colado: "" };
 
   async function parecidos(
     quem: Cliente,
@@ -108,6 +110,15 @@ describe("contato completo e parecidos (0040)", () => {
           phone_country_code: "+1",
           phone: telAmericano,
         },
+        {
+          // Antigo, sem DDI, com o 55 do país colado no número — como a
+          // importação grava quando o app velho guardou assim.
+          organization_id: org,
+          full_name: `Colado ${s4}`,
+          email: `colado.${s4}@teste.dulihub`,
+          phone_country_code: null,
+          phone: `55 ${telColado}`,
+        },
       ])
       .select("id, full_name");
     if (error) throw new Error(`Contatos de apoio não criados: ${error.message}`);
@@ -118,6 +129,7 @@ describe("contato completo e parecidos (0040)", () => {
     ids.lixeira = id("Lixeira ");
     ids.semEmail = id("SemEmail ");
     ids.americano = id("Americano ");
+    ids.colado = id("Colado ");
   }, 60_000);
 
   afterAll(async () => {
@@ -154,6 +166,13 @@ describe("contato completo e parecidos (0040)", () => {
   it("acha o contato antigo sem DDI", async () => {
     const lista = await parecidos(parceiro, { ddi: "+55", telefone: `55${telAntigo}` });
     expect(lista.some((p) => p.id === ids.antigo && p.bate_telefone)).toBe(true);
+  });
+
+  it("acha o contato antigo sem DDI que tem o 55 colado no número", async () => {
+    // Revisão de 18/nov (4ª): sem DDI gravado, nada era tirado da frente, e
+    // "5531…" nunca batia com "+55 / 31…". Sem DDI, o país é o Brasil.
+    const lista = await parecidos(parceiro, { ddi: "+55", telefone: telColado });
+    expect(lista.some((p) => p.id === ids.colado && p.bate_telefone)).toBe(true);
   });
 
   it("acha o número americano colado com o 1 do país na frente", async () => {
