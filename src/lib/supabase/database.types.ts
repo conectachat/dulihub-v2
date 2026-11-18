@@ -237,6 +237,7 @@ export type Database = {
       files: {
         Row: {
           bucket: string
+          category: string
           created_at: string
           filename: string
           id: string
@@ -251,6 +252,7 @@ export type Database = {
         }
         Insert: {
           bucket: string
+          category?: string
           created_at?: string
           filename: string
           id?: string
@@ -265,6 +267,7 @@ export type Database = {
         }
         Update: {
           bucket?: string
+          category?: string
           created_at?: string
           filename?: string
           id?: string
@@ -279,11 +282,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "files_opportunity_id_fkey"
-            columns: ["opportunity_id"]
+            foreignKeyName: "files_opportunity_same_org"
+            columns: ["opportunity_id", "organization_id"]
             isOneToOne: false
             referencedRelation: "opportunities"
-            referencedColumns: ["id"]
+            referencedColumns: ["id", "organization_id"]
           },
           {
             foreignKeyName: "files_organization_id_fkey"

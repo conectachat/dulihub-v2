@@ -9,7 +9,7 @@ precisar ler 38 migrations para responder "onde está X e quem pode tocar".
 resumo delas; se divergir, a migration vence e este arquivo está errado.
 **Toda migration atualiza este arquivo no mesmo commit.**
 
-Situação: 0001 a 0046 aplicadas (a 0039 depois da 0042, quando a conta
+Situação: 0001 a 0047 aplicadas (a 0039 depois da 0042, quando a conta
 `teste-staff` passou a existir). Colunas atuais:
 `src/lib/supabase/database.types.ts` (gerado, não se edita à mão).
 
@@ -100,7 +100,7 @@ Legenda de "quem": **membros** = qualquer membro da organização da linha;
 | `registration_forms` | Link da ficha de cadastro (token) e a resposta do lead: `answers`, `previous` (o que havia antes), texto do consentimento, conferência. | Da pessoa. | Membros. Anônimo: só pelas funções da ficha. | Membros; o envio do lead grava via `enviar_ficha_de_cadastro`. | Token ≥ 40 caracteres, único. Um link em aberto por pessoa (vencido conta como aberto). Enviada exige resposta; conferida exige enviada. Fora do manifesto por ora. |
 | `notes` | Notas sobre a pessoa (opcionalmente ligadas a um negócio). | Da pessoa. | A equipe: membros e atribuída (`equipe_alcanca_pessoa`, 0046). O cliente do portal **não** lê. | Membros da organização dona (0017). | `guard_child_row` congela `organization_id`, `person_id`, `opportunity_id`, `created_by` para quem não é membro. |
 | `activities` | Histórico (ligação, mudança de etapa, ficha recebida…). `type` é texto livre. | Da pessoa. | A equipe: membros e atribuída (0046). O cliente do portal **não** lê. | Membros. | Mesmo `guard_child_row`. A ficha enviada grava aqui `registration_submitted`. Virar cliente grava `virou_cliente` (0045: "Virou cliente (processo ‹título›)", "Virou cliente (cobrança ‹título›)", "Marcado como cliente"); a tela trata como registro do sistema, sem apagar. |
-| `files` | Registro de arquivo do CRM (bucket + caminho). | Da pessoa. | Quem alcança a pessoa. | Membros. | Único `(bucket, path)`. `guard_child_row`. Nenhuma migration cria bucket com policy para estes arquivos. |
+| `files` | Documentos do cliente (CLI-8): passaporte, identidade, comprovante, contrato — os papéis da pessoa, fora do processo. | Da pessoa; negócio da mesma organização (FK composta, `on delete set null (opportunity_id)`, 0047). | Quem alcança a pessoa (`can_access_person`) — **limitação conhecida (D13):** a atribuída e o cliente do portal veem a lista, mas não abrem nem enviam (o depósito decide pela organização dona). | Membros. | Único `(bucket, path)`. `guard_child_row`. `category` ∈ identidade/passaporte/comprovante_residencia/contrato/outro (padrão `outro`). `check` de caminho (0047, a tabela inteira): `bucket = 'pessoas'` e `path` = `{org}/{pessoa}/{id da linha}/{nome}`, sem pasta a mais. Fora do manifesto. |
 
 ### 2.3 CRM
 
@@ -186,12 +186,13 @@ não tem login"). O aviso do Supabase para qualquer outra é defeito.
 
 ## 4. Arquivos (Storage)
 
-Os dois depósitos são privados: nada abre por link público. Em ambos, **a
+Os depósitos são privados: nada abre por link público. Em todos, **a
 primeira pasta do caminho é a organização**, e é ela que a policy confere.
 
 | Depósito | Guarda | Caminho | Quem lê | Quem grava / apaga | Limite |
 |---|---|---|---|---|---|
 | `documentos` | Arquivos que o cliente envia para as pastas do processo (`document_files`). | `{organização}/{processo}/{pasta}/{arquivo}` — a mesma regra está como `check` em `document_files.storage_path`. | Membros da organização da primeira pasta; a tela usa URL assinada de curta duração. | Membros: enviar, alterar e apagar. | 20 MB; PDF, JPEG, PNG, WEBP, HEIC, DOC/DOCX, XLS/XLSX. |
+| `pessoas` | Documentos do cliente (`files`, 0047). | `{organização}/{pessoa}/{arquivo}/{nome}` — conferido pelo `check` de `files`. A pessoa vem em segundo para a anonimização apagar a pasta de uma vez. | Membros da organização da primeira pasta; URL assinada de curta duração. | Membros: enviar, alterar e apagar. | 20 MB; os tipos de `documentos`. |
 | `observacoes` | Imagens e arquivos colados na página Observações. | `{organização}/{processo}/{uuid}-{nome}`. | Membros da organização da primeira pasta (servido pela rota `/api/observacoes/arquivo`). | Membros: enviar e apagar. **Sem policy de alteração.** | 20 MB; os mesmos tipos, mais GIF. |
 
 Nenhuma policy de Storage para cliente do portal nem para `anon`. A policy
@@ -230,7 +231,7 @@ Só um uso: a edição simultânea das Observações (0024).
 | `person_tags` | 0004, 0016, 0017, 0028, 0029b |
 | `person_dependents`, `registration_forms` | 0035 |
 | `notes` | 0004, 0016, 0017, 0029, 0046 (só a equipe lê) |
-| `activities`, `files` | 0004, 0016, 0017, 0028, 0029; `activities` 0046 (só a equipe lê) |
+| `activities`, `files` | 0004, 0016, 0017, 0028, 0029; `activities` 0046 (só a equipe lê); `files` 0047 (categoria, caminho, negócio composto) |
 | `pipelines` | 0004, 0005, 0016, 0018, 0019, 0029 |
 | `pipeline_stages` | 0004, 0005, 0009, 0016, 0018, 0019, 0027, 0028, 0029 |
 | `opportunities` | 0004, 0016, 0017, 0020, 0022, 0029, 0038, 0044 (trava do dono) |
@@ -252,7 +253,7 @@ Só um uso: a edição simultânea das Observações (0024).
 | Auxiliares de RLS | 0001 → 0003 (para `private`) → 0013 (versão atual); `current_user_is_root_owner` na 0036 |
 | Auxiliares de formato do contato | 0040; `telefone_nacional` 0042 (número americano com o 1 na frente) e 0043 (sem DDI, o 55 colado sai); `service_role` executa desde a 0043 |
 | RPCs | `swap_positions` 0014/0023/0026; `criar_processo` 0020; `compactar_pagina` 0024/0025; `sync_manifesto` 0030/0032/0033; `reordenar_irmaos` 0030; ficha 0035 (`salvar_cadastro` refeita na 0040); `contatos_parecidos` 0040; `criar_oportunidade` 0041; `marcar_como_cliente` 0045; `set_default_stage_status` 0010 |
-| Storage | `documentos` 0020; `observacoes` 0024 |
+| Storage | `documentos` 0020; `observacoes` 0024; `pessoas` 0047 |
 | Tempo real | 0024 |
 | Dados de teste | 0015, 0021 (organização `parceiro-teste`, `is_test` desde 0036), 0039 (`teste-staff`, staff da `parceiro-teste`) |
 
@@ -268,8 +269,9 @@ documentação sugere. Cada um merece teste RLS vermelho antes de mexer.
    portal ele poderia criar, alterar e apagar produto do próprio negócio. Não
    tem `guard_child_row`.
 2. **`opportunity_products.product_id` é chave simples**, sem organização:
-   produto de outra organização passa. Idem `opportunity_id` em `notes`,
-   `activities` e `files` (nota pode apontar para negócio de outra pessoa).
+   produto de outra organização passa. Idem `opportunity_id` em `notes` e
+   `activities` (nota pode apontar para negócio de outra pessoa); em `files`
+   a chave virou composta na 0047.
 3. **`products` ficou fora da 0018**: qualquer colaborador cria e apaga
    produto do catálogo, ao contrário de etiquetas, funil e vistos.
 4. **Organização atribuída lê, mas não escreve, o histórico.** Ela edita o
