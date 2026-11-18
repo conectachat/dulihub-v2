@@ -18,8 +18,12 @@ export type PersonFormValues = {
   email: string | null;
   phone: string | null;
   phone_country_code: string | null;
-  company?: string | null;
-  job_title?: string | null;
+  // Obrigatórios de propósito: o formulário grava todos os campos, e campo
+  // que não veio vira vazio por cima do que estava gravado. Opcionais, a
+  // lista de /contatos deixou de mandá-los e cada edição por ali apagava
+  // Empresa e Cargo (revisão de 18/nov).
+  company: string | null;
+  job_title: string | null;
 };
 
 /**

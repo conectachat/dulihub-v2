@@ -10,6 +10,8 @@ export type PersonListItem = Pick<
   | "email"
   | "phone"
   | "phone_country_code"
+  | "company"
+  | "job_title"
   | "lifecycle_stage"
   | "created_at"
   | "deleted_at"
@@ -45,8 +47,8 @@ export async function listPeople({
   let query = supabase
     .from("people")
     .select(
-      `id, full_name, email, phone, phone_country_code, lifecycle_stage,
-       created_at, deleted_at,
+      `id, full_name, email, phone, phone_country_code, company, job_title,
+       lifecycle_stage, created_at, deleted_at,
        person_tags(tag:tags(id, name, color)),
        opportunities(count)`,
     )
@@ -78,6 +80,9 @@ export async function listPeople({
       email: r.email,
       phone: r.phone,
       phone_country_code: r.phone_country_code,
+      // O diálogo de edição da lista grava os dois: sem eles aqui, apagava.
+      company: r.company,
+      job_title: r.job_title,
       lifecycle_stage: r.lifecycle_stage,
       created_at: r.created_at,
       deleted_at: r.deleted_at,

@@ -116,7 +116,9 @@ export function FormDialog<E extends ActionState = ActionState>({
     <Dialog open={open} onOpenChange={mudarAbertura}>
       <DialogTrigger asChild>{gatilho}</DialogTrigger>
 
-      <DialogContent className="sm:max-w-lg">
+      {/* Altura máxima e rolagem própria: o Radix trava a rolagem da página,
+          e no celular a oportunidade com contato novo passa da tela. */}
+      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{titulo}</DialogTitle>
           {descricao ? <DialogDescription>{descricao}</DialogDescription> : null}

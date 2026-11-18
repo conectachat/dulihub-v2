@@ -92,6 +92,8 @@ describe("PersonDialog", () => {
           email: "carla@example.com",
           phone: "31 99999-0000",
           phone_country_code: "+55",
+          company: null,
+          job_title: null,
         }}
       />,
     );
@@ -104,6 +106,34 @@ describe("PersonDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sim, é a mesma pessoa" }));
     expect(push).toHaveBeenCalledWith("/contatos/p1");
     expect(restorePerson).not.toHaveBeenCalled();
+  });
+
+  it("editar manda de volta a empresa e o cargo que o contato já tem", async () => {
+    // Revisão de 18/nov: pela lista de /contatos os dois chegavam vazios, e
+    // o Salvar gravava nulo por cima. O tipo agora os exige; aqui, o
+    // formulário os devolve.
+    vi.mocked(updatePerson).mockResolvedValue(gravou());
+    render(
+      <PersonDialog
+        person={{
+          id: "p6",
+          full_name: "Carla Souza",
+          email: "carla@example.com",
+          phone: "31 99999-0000",
+          phone_country_code: "+55",
+          company: "Duli",
+          job_title: "Diretora",
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Editar Carla Souza" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Salvar" }));
+
+    await vi.waitFor(() => expect(updatePerson).toHaveBeenCalledTimes(1));
+    const enviado = vi.mocked(updatePerson).mock.calls[0][1];
+    expect(enviado.get("company")).toBe("Duli");
+    expect(enviado.get("job_title")).toBe("Diretora");
   });
 
   it("Sim, é a mesma pessoa abre o existente e fecha sem gravar", async () => {

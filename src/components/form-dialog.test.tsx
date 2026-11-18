@@ -52,6 +52,16 @@ describe("FormDialog", () => {
     await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
+  it("tem altura máxima e rola: no celular o botão de salvar fica alcançável", async () => {
+    // Revisão de 18/nov (4ª): a oportunidade com contato novo passa da altura
+    // de um celular, e o Radix trava a rolagem da página — sem rolar o
+    // próprio diálogo, o "Salvar" ficava fora da tela.
+    montar(vi.fn(async () => gravou()));
+
+    const dialogo = await screen.findByRole("dialog");
+    expect(dialogo).toHaveClass("max-h-[90svh]", "overflow-y-auto");
+  });
+
   it("manda o que foi digitado para a ação", async () => {
     const acao = vi.fn<(a: ActionState, d: FormData) => Promise<ActionState>>(async () => gravou());
     montar(acao);
