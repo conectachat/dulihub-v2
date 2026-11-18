@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   ArrowRightLeft,
+  BadgeCheck,
   CalendarDays,
   ClipboardCheck,
   History,
@@ -43,6 +44,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   other: MessageSquare,
   stage_change: ArrowRightLeft,
   registration_submitted: ClipboardCheck,
+  virou_cliente: BadgeCheck,
 };
 
 const LABELS: Record<string, string> = {
@@ -54,6 +56,8 @@ const LABELS: Record<string, string> = {
   stage_change: "Movimento no funil",
   // Gravado pelo banco quando o cliente envia a ficha pelo link (0035).
   registration_submitted: "Ficha de cadastro",
+  // Gravado ao virar cliente: pelo Ganho, por processo ou cobrança, ou à mão (0045).
+  virou_cliente: "Virou cliente",
 };
 
 /**

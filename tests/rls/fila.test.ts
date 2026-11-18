@@ -187,4 +187,59 @@ describe("fila contra o banco", () => {
     const ainda = await parceiro.from("tags").select("id").eq("id", doParceiro).maybeSingle();
     expect(ainda.data?.id).toBe(doParceiro);
   }, 60_000);
+
+  it("cobrança pela fila para um lead, fora da gestão, vira conflito e nada é gravado (0045)", async () => {
+    // O `teste-staff` é staff do Parceiro de Teste: a recusa é a regra de
+    // quem promove, não a RLS. O `colaborador` é da Duli, onde pessoa não se
+    // apaga — o lead descartável ficaria para sempre.
+    const staff = await entrarComo("staff");
+    const sufixo = crypto.randomUUID().replace(/\D/g, "").slice(0, 8).padEnd(8, "0");
+    const { data: lead, error } = await parceiro
+      .from("people")
+      .insert({
+        organization_id: org,
+        full_name: `Lead da fila ${sufixo}`,
+        email: `lead.fila.${sufixo}@teste.dulihub`,
+        phone_country_code: "+55",
+        phone: `31${sufixo}0`,
+        lifecycle_stage: "opportunity",
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(`Lead descartável não criado: ${error.message}`);
+
+    try {
+      const cobranca = crypto.randomUUID();
+      const fila = armazem([
+        item("a", cobranca, [
+          {
+            tipo: "insert",
+            tabela: "receivables",
+            linha: {
+              id: cobranca,
+              organization_id: org,
+              person_id: lead.id,
+              title: `Cobrança da fila ${sufixo}`,
+              amount: 100,
+            },
+          },
+        ]),
+      ]);
+
+      const resultado = await drenar(transporteDaFila(staff), fila);
+
+      expect(resultado.subiram).toBe(0);
+      expect(resultado.conflitos).toBe(1);
+      expect(fila.itens[0].estado).toBe("conflito");
+      expect(fila.itens[0].motivo).toContain("Só a gestão torna alguém cliente; use o Ganho.");
+
+      const { data: gravadas } = await parceiro
+        .from("receivables")
+        .select("id")
+        .eq("person_id", lead.id);
+      expect(gravadas).toEqual([]);
+    } finally {
+      await parceiro.from("people").delete().eq("id", lead.id);
+    }
+  }, 60_000);
 });

@@ -745,6 +745,7 @@ export type Database = {
           assigned_organization_id: string | null
           birth_date: string | null
           birthplace: string | null
+          client_since: string | null
           company: string | null
           created_at: string
           created_by: string | null
@@ -782,6 +783,7 @@ export type Database = {
           assigned_organization_id?: string | null
           birth_date?: string | null
           birthplace?: string | null
+          client_since?: string | null
           company?: string | null
           created_at?: string
           created_by?: string | null
@@ -819,6 +821,7 @@ export type Database = {
           assigned_organization_id?: string | null
           birth_date?: string | null
           birthplace?: string | null
+          client_since?: string | null
           company?: string | null
           created_at?: string
           created_by?: string | null
@@ -2014,6 +2017,10 @@ export type Database = {
       }
       enviar_ficha_de_cadastro: {
         Args: { p_consentimento: string; p_dados: Json; p_token: string }
+        Returns: undefined
+      }
+      marcar_como_cliente: {
+        Args: { p_desde?: string; p_pessoa: string }
         Returns: undefined
       }
       reordenar_irmaos: {

@@ -223,30 +223,46 @@ describe("sem sessão", () => {
  * As telas de processo com um processo de verdade.
  *
  * A conta da Duli não tem processo, e lista vazia não desenha nada do que
- * importa — barra, selo, prazo, junções. Aqui o parceiro cria um processo da
- * fixture, as telas são pedidas com a sessão dele, e o processo é apagado no
- * fim. É a única gravação da fumaça, e fica toda dentro da organização de
- * teste.
+ * importa — barra, selo, prazo, junções. Aqui o parceiro cria um contato
+ * descartável e um processo dele, as telas são pedidas com a sessão dele, e
+ * o contato é apagado no fim — a cascata leva o processo e o link junto.
+ *
+ * Descartável, e não "a primeira pessoa visível": desde a 0045, o processo
+ * criado pela gestão torna cliente quem ainda não era, e isso não tem volta.
  */
 describe("com um processo de verdade", () => {
   let sessao: Awaited<ReturnType<typeof entrar>>;
   let processoId: string | null = null;
-  let pessoaDoParceiro: string;
-  let linkId: string | null = null;
-  const TITULO = `Processo da fumaça ${crypto.randomUUID().slice(0, 8)}`;
+  let pessoaDoParceiro: string | null = null;
+  const SUFIXO = crypto.randomUUID().replace(/\D/g, "").slice(0, 8).padEnd(8, "0");
+  const TITULO = `Processo da fumaça ${SUFIXO}`;
 
   beforeAll(async () => {
     sessao = await entrar("parceiro");
     const { supabase } = sessao;
 
-    const [{ data: pessoa }, { data: visto }] = await Promise.all([
-      supabase.from("people").select("id").limit(1).single(),
+    const [{ data: organizacao }, { data: visto }] = await Promise.all([
+      supabase.from("organizations").select("id").eq("slug", "parceiro-teste").single(),
       supabase.from("visa_types").select("id").eq("name", "Visto do Parceiro").single(),
     ]);
-    pessoaDoParceiro = pessoa!.id;
+
+    const { data: pessoa, error: erroPessoa } = await supabase
+      .from("people")
+      .insert({
+        organization_id: organizacao!.id,
+        full_name: `Contato da fumaça ${SUFIXO}`,
+        email: `fumaca.${SUFIXO}@teste.dulihub`,
+        phone_country_code: "+55",
+        phone: `31${SUFIXO}0`,
+        lifecycle_stage: "opportunity",
+      })
+      .select("id")
+      .single();
+    if (erroPessoa) throw new Error(`Contato da fumaça não criado: ${erroPessoa.message}`);
+    pessoaDoParceiro = pessoa.id;
 
     const { data, error } = await supabase.rpc("criar_processo", {
-      p_person: pessoa!.id,
+      p_person: pessoa.id,
       p_visa_type: visto!.id,
       p_title: TITULO,
     });
@@ -255,8 +271,7 @@ describe("com um processo de verdade", () => {
   }, 60_000);
 
   afterAll(async () => {
-    if (processoId) await sessao.supabase.from("projects").delete().eq("id", processoId);
-    if (linkId) await sessao.supabase.from("registration_forms").delete().eq("id", linkId);
+    if (pessoaDoParceiro) await sessao.supabase.from("people").delete().eq("id", pessoaDoParceiro);
   });
 
   it("a ficha de cadastro abre para o lead, sem login, pelo link", async () => {
@@ -266,28 +281,18 @@ describe("com um processo de verdade", () => {
     const { data: pessoa } = await sessao.supabase
       .from("people")
       .select("organization_id, full_name")
-      .eq("id", pessoaDoParceiro)
+      .eq("id", pessoaDoParceiro!)
       .single();
 
-    // Link em aberto de uma rodada anterior não pode travar esta.
-    await sessao.supabase
-      .from("registration_forms")
-      .delete()
-      .eq("person_id", pessoaDoParceiro)
-      .is("submitted_at", null);
-
-    const { data: link, error } = await sessao.supabase
+    const { error } = await sessao.supabase
       .from("registration_forms")
       .insert({
         organization_id: pessoa!.organization_id,
-        person_id: pessoaDoParceiro,
+        person_id: pessoaDoParceiro!,
         token,
         expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-      })
-      .select("id")
-      .single();
+      });
     if (error) throw new Error(`Link da fumaça não criado: ${error.message}`);
-    linkId = link.id;
 
     const resposta = await pedir(`/cadastro/${token}`, false);
     expect(resposta.status).toBe(200);

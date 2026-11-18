@@ -1,20 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 
-export type TimelineItem = {
-  id: string;
-  kind: "note" | "activity";
-  /** Para atividade: o tipo registrado. Para nota: sempre "note". */
-  type: string;
-  body: string;
-  occurredAt: string;
-  authorId: string | null;
-  authorName: string | null;
-  /** Registro gerado pelo sistema não se edita nem se apaga. */
-  system: boolean;
-};
+import { montarLinhaDoTempo, type TimelineItem } from "./montagem";
 
-/** Tipos que o sistema cria sozinho — não são lançamentos de quem usa. */
-const SYSTEM_TYPES = new Set(["stage_change", "registration_submitted"]);
+export type { TimelineItem };
 
 export const ACTIVITY_LABELS: Record<string, string> = {
   note: "Nota",
@@ -25,6 +13,8 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   stage_change: "Movimento no funil",
   // Gravado pelo banco quando o cliente envia a ficha pelo link (0035).
   registration_submitted: "Ficha de cadastro",
+  // Gravado ao virar cliente: pelo Ganho, por processo ou cobrança, ou à mão (0045).
+  virou_cliente: "Virou cliente",
 };
 
 /**
@@ -32,8 +22,8 @@ export const ACTIVITY_LABELS: Record<string, string> = {
  *
  * As duas tabelas continuam separadas no banco porque são conceitos
  * diferentes — nota é observação livre, atividade é algo que aconteceu numa
- * data. A fusão acontece aqui, na leitura, porque quem abre a ficha quer ler
- * a história em ordem, não alternar entre duas listas.
+ * data. A fusão acontece na leitura (`montarLinhaDoTempo`), porque quem abre
+ * a ficha quer ler a história em ordem, não alternar entre duas listas.
  */
 export async function getTimeline(personId: string): Promise<{
   items: TimelineItem[];
@@ -64,38 +54,5 @@ export async function getTimeline(personId: string): Promise<{
   const falha = notesError ?? activitiesError;
   if (falha) return { items: [], error: falha.message };
 
-  const nameOf = (author: { full_name: string | null; email: string } | null) =>
-    author?.full_name ?? author?.email ?? null;
-
-  const fromNotes: TimelineItem[] = (notes ?? []).map((r) => {
-    return {
-      id: r.id,
-      kind: "note",
-      type: "note",
-      body: r.body,
-      occurredAt: r.created_at,
-      authorId: r.created_by,
-      authorName: nameOf(r.author),
-      system: false,
-    };
-  });
-
-  const fromActivities: TimelineItem[] = (activities ?? []).map((r) => {
-    return {
-      id: r.id,
-      kind: "activity",
-      type: r.type,
-      body: r.description ?? "",
-      occurredAt: r.occurred_at,
-      authorId: r.created_by,
-      authorName: nameOf(r.author),
-      system: SYSTEM_TYPES.has(r.type),
-    };
-  });
-
-  const items = [...fromNotes, ...fromActivities].sort(
-    (a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt),
-  );
-
-  return { items, error: null };
+  return { items: montarLinhaDoTempo(notes ?? [], activities ?? []), error: null };
 }
