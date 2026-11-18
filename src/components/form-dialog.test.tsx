@@ -160,6 +160,30 @@ describe("FormDialog com aviso", () => {
     expect(screen.queryByRole("button", { name: "Confirmar" })).toBeNull();
   });
 
+  it("editar durante o envio: o aviso que chega depois não aparece", async () => {
+    // Revisão de 18/nov, rodada 2: o aviso era sobre o valor enviado, e a
+    // confirmação levaria o valor novo, que ninguém conferiu.
+    let soltar: (estado: EstadoComAviso) => void = () => {};
+    const acao = vi
+      .fn<(a: EstadoComAviso, d: FormData) => Promise<EstadoComAviso>>()
+      .mockImplementationOnce(() => new Promise((resolver) => (soltar = resolver)))
+      .mockResolvedValue({ ...PEDE_CONFIRMACAO, token: "aviso-2" });
+    montarComAviso(acao);
+
+    fireEvent.change(await screen.findByLabelText("Nome"), { target: { value: "Velho" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+    fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Novo" } });
+    soltar(PEDE_CONFIRMACAO);
+
+    await vi.waitFor(() => expect(screen.getByRole("button", { name: "Salvar" })).toBeEnabled());
+    expect(screen.queryByRole("button", { name: "Confirmar" })).toBeNull();
+
+    // O próximo Salvar confere o valor novo, e aí o aviso vale.
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+    expect(await screen.findByRole("button", { name: "Confirmar" })).toBeInTheDocument();
+    expect(acao.mock.calls[1][1].get("nome")).toBe("Novo");
+  });
+
   it("reabrir não mostra o aviso da abertura anterior", async () => {
     const acao = vi.fn(async () => PEDE_CONFIRMACAO);
     montarComAviso(acao);

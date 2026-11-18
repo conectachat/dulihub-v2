@@ -132,6 +132,20 @@ describe("OpportunityDialog", () => {
     await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
+  it("trocar o modo do contato tira o aviso", async () => {
+    // Revisão de 18/nov, rodada 2: o aviso continuava oferecendo "Criar
+    // mesmo assim" para um contato que já não estava na tela.
+    vi.mocked(createOpportunity).mockResolvedValueOnce(COM_PARECIDO);
+    abrir();
+    await preencherContatoNovo();
+    fireEvent.click(screen.getByRole("button", { name: "Criar oportunidade" }));
+    await screen.findByRole("button", { name: "Não, é outra pessoa" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Contato existente" }));
+
+    expect(screen.queryByRole("button", { name: "Não, é outra pessoa" })).toBeNull();
+  });
+
   it("o valor digitado vai junto", async () => {
     vi.mocked(createOpportunity).mockResolvedValueOnce(gravou());
     abrir();

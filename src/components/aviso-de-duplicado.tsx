@@ -15,8 +15,9 @@ import type { ContatoParecido } from "@/lib/parecidos";
  * de responder — e pergunta "É a mesma pessoa?":
  *
  * - **Sim**: usa o existente (no criar) ou abre o existente sem gravar a
- *   edição. Se ele está na lixeira, o botão é **Restaurar**, que restaura e
- *   então usa.
+ *   edição. Ao criar, se ele está na lixeira, o botão é **Restaurar**, que
+ *   restaura e então usa — e, enquanto restaura, nenhum outro botão grava.
+ *   Na edição não há Restaurar: deixaria dois contatos ativos.
  * - **Não**: pergunta de novo, "Criar outro contato com essas informações?"
  *   (ou "Salvar mesmo assim"), porque duplicar contato é o erro que se quer
  *   evitar; só o segundo clique grava.
@@ -109,7 +110,7 @@ export function AvisoDeDuplicado({
                 size="sm"
                 variant="outline"
                 className="rounded-xl"
-                disabled={enviando}
+                disabled={restaurando || enviando}
                 onClick={() => aoUsarExistente(p.id)}
               >
                 Sim, é a mesma pessoa
@@ -141,7 +142,7 @@ export function AvisoDeDuplicado({
             type="button"
             size="sm"
             className="rounded-xl"
-            disabled={enviando}
+            disabled={restaurando || enviando}
             onClick={aoGravarMesmoAssim}
           >
             {modo === "criar" ? "Criar mesmo assim" : "Salvar mesmo assim"}
@@ -154,6 +155,7 @@ export function AvisoDeDuplicado({
             size="sm"
             variant="ghost"
             className="rounded-xl"
+            disabled={restaurando}
             onClick={() => setOutraPessoa(true)}
           >
             Não, é outra pessoa

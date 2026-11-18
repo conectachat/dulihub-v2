@@ -5,7 +5,7 @@ import { Plus } from "lucide-react";
 
 import { AvisoDeDuplicado } from "@/components/aviso-de-duplicado";
 import { AvisoDeOportunidade } from "@/components/aviso-de-oportunidade";
-import { FormDialog } from "@/components/form-dialog";
+import { FormDialog, useDispensarAviso } from "@/components/form-dialog";
 import { NativeSelect } from "@/components/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,24 @@ import {
 } from "@/lib/parecidos";
 
 type ModoDoContato = "existente" | "novo";
+
+/**
+ * Botão que muda o contato que vai ser enviado sem ser campo de formulário
+ * (o modo, o "Trocar"): tira o aviso da tela como uma edição faria — senão
+ * ele ofereceria "Criar mesmo assim" para um contato que já não está na tela.
+ */
+function BotaoQueDispensa({ onClick, ...props }: React.ComponentProps<typeof Button>) {
+  const dispensar = useDispensarAviso();
+  return (
+    <Button
+      {...props}
+      onClick={(evento) => {
+        dispensar();
+        onClick?.(evento);
+      }}
+    />
+  );
+}
 
 /**
  * Nova oportunidade: com um contato que já existe ou com um contato novo,
@@ -122,7 +140,7 @@ export function OpportunityDialog({
             ["novo", "Novo contato"],
           ] as const
         ).map(([valor, rotulo]) => (
-          <Button
+          <BotaoQueDispensa
             key={valor}
             type="button"
             size="sm"
@@ -132,7 +150,7 @@ export function OpportunityDialog({
             onClick={() => setModo(valor)}
           >
             {rotulo}
-          </Button>
+          </BotaoQueDispensa>
         ))}
       </div>
 
@@ -142,7 +160,7 @@ export function OpportunityDialog({
             <Label>Contato *</Label>
             <div className="flex items-center justify-between gap-2 rounded-xl border px-3 py-1.5 text-sm">
               <span className="font-medium">{escolhido.nome}</span>
-              <Button
+              <BotaoQueDispensa
                 type="button"
                 variant="ghost"
                 size="sm"
@@ -150,7 +168,7 @@ export function OpportunityDialog({
                 onClick={() => setEscolhido(null)}
               >
                 Trocar
-              </Button>
+              </BotaoQueDispensa>
             </div>
             <input type="hidden" name="person_id" value={escolhido.id} />
           </div>

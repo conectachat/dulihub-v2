@@ -164,10 +164,13 @@ export function FormularioDoCadastro({
   );
   const [estado, setEstado] = useState<EstadoDaFicha>({ error: null });
   const [enviando, iniciar] = useTransition();
-  // Cada resposta com parecidos ganha um número. O aviso dela confirma uma
-  // vez só (I1) e some quando o formulário é editado (I2) — o mesmo que o
-  // `FormDialog` faz com a marca da resposta.
-  const [controleDoAviso, setControleDoAviso] = useState({ numero: 0, confirmado: -1, dispensado: -1 });
+  // Cada resposta com parecidos ganha um número, e o aviso dela confirma uma
+  // vez só (I1) — o mesmo que o `FormDialog` faz com a marca da resposta.
+  const [controleDoAviso, setControleDoAviso] = useState({ numero: 0, confirmado: -1 });
+  // Mexeu no formulário depois do último envio, mesmo com ele em curso? O
+  // aviso fala de um valor que não é mais o da tela: some, e o próximo envio
+  // confere de novo (I2). Repetir `true` não redesenha a ficha a cada tecla.
+  const [alterado, setAlterado] = useState(false);
 
   const erros = estado.campos ?? {};
   const exige = modo === "completa";
@@ -200,6 +203,7 @@ export function FormularioDoCadastro({
   }
 
   function gravar(formData: FormData) {
+    setAlterado(false);
     iniciar(async () => {
       const resposta = await enviar(formData);
       // Depois do `await`, a atualização só entra na transição se for
@@ -228,7 +232,7 @@ export function FormularioDoCadastro({
     <form
       ref={setFormulario}
       onSubmit={aoEnviar}
-      onChange={() => setControleDoAviso((a) => ({ ...a, dispensado: a.numero }))}
+      onChange={() => setAlterado(true)}
       noValidate
       className="space-y-8"
     >
@@ -516,7 +520,8 @@ export function FormularioDoCadastro({
       ) : null}
 
       <div className="space-y-3">
-        {aviso && controleDoAviso.dispensado !== controleDoAviso.numero ? (
+        {/* Durante um envio, o aviso na tela é o da resposta anterior — vencido. */}
+        {aviso && !alterado && !enviando ? (
           // A chave remonta o aviso a cada resposta: nada do aviso anterior
           // (o "Não" já clicado) sobra para os parecidos novos (M3).
           <Fragment key={controleDoAviso.numero}>{aviso(estado, { enviando, reenviarCom })}</Fragment>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, startTransition, useState } from "react";
+import { createContext, Fragment, startTransition, useContext, useState } from "react";
 
 import { FieldError } from "@/components/field-error";
 import { SubmitButton } from "@/components/submit-button";
@@ -29,6 +29,17 @@ export type AcoesDoAviso = {
 };
 
 type Acao<E extends ActionState> = (anterior: E, formData: FormData) => Promise<E>;
+
+const DispensarAviso = createContext<() => void>(() => {});
+
+/**
+ * Para campo que muda o que vai ser enviado sem disparar `change` — um par de
+ * botões que troca o modo, um "Trocar" que limpa a escolha. Chamado no clique,
+ * tira o aviso da tela como uma edição faria.
+ */
+export function useDispensarAviso(): () => void {
+  return useContext(DispensarAviso);
+}
 
 /**
  * Diálogo de criar ou editar: gatilho, cabeçalho, formulário, erro e rodapé.
@@ -156,10 +167,12 @@ function CorpoDoFormulario<E extends ActionState>({
   // todo envio — dois cliques em "Criar mesmo assim" criavam dois contatos
   // (revisão de 18/nov, I1).
   const [confirmado, setConfirmado] = useState<string | undefined>(undefined);
-  // O aviso dispensado por edição: mexeu no formulário, o aviso some, e o
-  // próximo Salvar confere de novo. Senão a confirmação levaria um valor que
-  // ninguém conferiu (I2).
-  const [dispensado, setDispensado] = useState<string | undefined>(undefined);
+  // Mexeu no formulário depois do último envio — inclusive com o envio ainda
+  // em curso? Então o aviso na tela, ou o que ainda vai chegar, fala de um
+  // valor que não é mais o da tela: some, e o próximo Salvar confere de novo.
+  // Senão a confirmação levaria um valor que ninguém conferiu (I2).
+  const [alterado, setAlterado] = useState(false);
+  const dispensar = () => setAlterado(true);
 
   const acoes: AcoesDoAviso = {
     fechar,
@@ -167,20 +180,25 @@ function CorpoDoFormulario<E extends ActionState>({
     reenviarCom: (extra) => {
       if (!formulario || enviando || confirmado === estado.token) return;
       setConfirmado(estado.token);
+      setAlterado(false);
       reenviarCom(formulario, extra);
     },
   };
 
-  const avisoNaTela = aviso && estado.token !== dispensado ? aviso(estado, acoes) : null;
+  // Durante um envio, o aviso na tela é o da resposta anterior — vencido.
+  const avisoNaTela = aviso && !alterado && !enviando ? aviso(estado, acoes) : null;
 
   return (
     <form
       ref={setFormulario}
-      onSubmit={enviar}
-      onChange={() => setDispensado(estado.token)}
+      onSubmit={(evento) => {
+        setAlterado(false);
+        enviar(evento);
+      }}
+      onChange={dispensar}
       className="space-y-4"
     >
-      {children}
+      <DispensarAviso.Provider value={dispensar}>{children}</DispensarAviso.Provider>
 
       {avisoNaTela ? <Fragment key={estado.token}>{avisoNaTela}</Fragment> : null}
 

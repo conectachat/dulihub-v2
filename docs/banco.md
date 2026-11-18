@@ -55,7 +55,7 @@ revogar derruba todo `insert` em `people`. A mesma regra está em
 | `espaco()` | O conjunto ESPACO: espaço, tab, `\n`, `\r`, `\f`, `\v`, NBSP e BOM. Nunca `\s`, que muda com o locale. |
 | `aparar(t)` | Tira ESPACO das pontas; vazio vira nulo. |
 | `normalizar_ddi(ddi)` | "55" e "+55" → "+55"; fora do formato, devolve aparado. |
-| `telefone_nacional(ddi, número)` | Os dígitos do número, sem o DDI da frente quando ele veio junto (mais de 11 dígitos e começando por ele; com DDI 1, também 11 dígitos começando por 1 — 0042). É por ele que dois telefones se comparam. |
+| `telefone_nacional(ddi, número)` | Os dígitos do número, sem o DDI da frente quando ele veio junto (mais de 11 dígitos e começando por ele; com DDI 1, também 11 dígitos começando por 1 — 0042). Ainda não cobre o país cujo DDI mais o número somam 11 dígitos ou menos (+7, +33, +34…) colado com o código. É por ele que dois telefones se comparam. |
 | `contato_valido(e-mail, ddi, telefone)` | A primeira regra que falha (e-mail → DDI → telefone), com a mensagem exata da tela; nulo se está tudo certo. |
 
 Funções de gatilho (ninguém chama direto): `set_updated_at`, `handle_new_user`

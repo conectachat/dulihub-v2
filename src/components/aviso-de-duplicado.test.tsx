@@ -67,6 +67,21 @@ describe("AvisoDeDuplicado", () => {
     expect(aoRestaurar).toHaveBeenCalledWith("p1");
   });
 
+  it("enquanto restaura, nenhum outro botão do aviso grava", () => {
+    // Revisão de 18/nov, rodada 2: "Restaurar" e depois "Sim" em outro
+    // parecido criavam duas oportunidades.
+    const aoRestaurar = vi.fn(() => new Promise<never>(() => {}));
+    montar({
+      parecidos: [{ ...PARECIDO, naLixeira: true }, { ...PARECIDO, id: "p2", nome: "Caio Reis" }],
+      aoRestaurar,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Restaurar" }));
+
+    expect(screen.getByRole("button", { name: "Sim, é a mesma pessoa" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Não, é outra pessoa" })).toBeDisabled();
+  });
+
   it("no criar, Não pergunta 'Criar outro contato com essas informações?' e Criar mesmo assim confirma", () => {
     const { aoGravarMesmoAssim, aoUsarExistente } = montar();
 
