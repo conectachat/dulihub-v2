@@ -28,6 +28,10 @@ import {
 import { motivoDaPerda } from "./regras";
 import { resumoDoGanhoSchema, type ResumoDoGanho } from "./schema";
 
+/** O texto da spec (§6.3), o mesmo da trava da 0054. */
+const GANHO_FICA_COMO_REGISTRO =
+  "Reabra ou encerre os processos; o negócio ganho fica como registro.";
+
 const opportunitySchema = z.object({
   stage_id: z.string().uuid("Escolha uma etapa"),
   title: z.string().trim().min(1, "Informe um título"),
@@ -322,10 +326,29 @@ export async function deleteOpportunity(
   const id = formData.get("id");
   if (typeof id !== "string") return falhou("Oportunidade não informada.");
 
-  const { supabase } = await contextoAtual();
-  const estado = resultado(
-    await supabase.from("opportunities").delete().eq("id", id).select("id"),
-  );
+  const { supabase, error: erroDoContexto } = await contextoAtual();
+  if (erroDoContexto) return falhou(erroDoContexto);
+
+  // Negócio ganho fica como registro (D12). O filtro vai no próprio delete,
+  // sem janela entre ler e apagar; a trava no banco vem com a 0054, que
+  // recusa também pela API.
+  const resposta = await supabase
+    .from("opportunities")
+    .delete()
+    .eq("id", id)
+    .neq("status", "won")
+    .select("id");
+
+  if (!resposta.error && (resposta.data ?? []).length === 0) {
+    const { data: restou } = await supabase
+      .from("opportunities")
+      .select("status")
+      .eq("id", id)
+      .maybeSingle();
+    if (restou?.status === "won") return falhou(GANHO_FICA_COMO_REGISTRO);
+  }
+
+  const estado = resultado(resposta);
   if (estado.error) return estado;
 
   revalidatePath("/crm");

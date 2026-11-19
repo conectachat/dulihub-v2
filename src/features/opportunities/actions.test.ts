@@ -9,6 +9,7 @@ import { CAMPO_CONFIRMAR_OPORTUNIDADE } from "@/lib/parecidos";
 
 import {
   createOpportunity,
+  deleteOpportunity,
   ganharOportunidade,
   reabrirOportunidade,
   resumoDoGanho,
@@ -245,5 +246,42 @@ describe("reabrirOportunidade", () => {
     const estado = await reabrirOportunidade(comId(NEGOCIO));
 
     expect(estado.error).toBe("Só o dono do negócio ou a gestão reabrem o negócio.");
+  });
+});
+
+describe("deleteOpportunity", () => {
+  /** O banco falso: o delete devolve o que a RLS e o filtro deixariam apagar. */
+  function banco(apagadas: { id: string }[], statusQueSobrou: string | null) {
+    const neq = vi.fn(() => ({ select: async () => ({ data: apagadas, error: null }) }));
+    const supabase = {
+      from: vi.fn(() => ({
+        delete: () => ({ eq: () => ({ neq }) }),
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => ({
+              data: statusQueSobrou ? { status: statusQueSobrou } : null,
+              error: null,
+            }),
+          }),
+        }),
+      })),
+    };
+    vi.mocked(contextoAtual).mockResolvedValue({ supabase, error: null } as never);
+    return { neq };
+  }
+
+  it("negócio ganho não se exclui: fica como registro (D12)", async () => {
+    const { neq } = banco([], "won");
+
+    const estado = await deleteOpportunity(comId(NEGOCIO));
+
+    expect(neq).toHaveBeenCalledWith("status", "won");
+    expect(estado.error).toBe("Reabra ou encerre os processos; o negócio ganho fica como registro.");
+  });
+
+  it("negócio aberto se exclui", async () => {
+    banco([{ id: NEGOCIO }], null);
+    const estado = await deleteOpportunity(comId(NEGOCIO));
+    expect(estado.error).toBeNull();
   });
 });
