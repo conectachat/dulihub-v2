@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { listarClientes } from "@/features/clientes/queries";
-import { contagemDaLista, paginaPedida, POR_PAGINA } from "@/features/clientes/regras";
+import { contagemDaLista, paginaPedida, POR_PAGINA } from "@/lib/paginacao";
 import { formatarDia, iniciais, telefoneCompleto } from "@/lib/formatar";
 
 export const metadata = { title: "Clientes — Duli Hub" };
@@ -36,7 +36,12 @@ export default async function ClientesPage({
   const pagina = paginaPedida(paginaNaUrl);
   const { clientes, total, error } = await listarClientes({ busca: q, pagina });
 
-  const contagem = contagemDaLista({ total, pagina, naPagina: clientes.length });
+  const contagem = contagemDaLista({
+    total,
+    pagina,
+    naPagina: clientes.length,
+    substantivo: { singular: "cliente", plural: "clientes" },
+  });
   const temAnterior = pagina > 1;
   const temProxima = pagina * POR_PAGINA < total;
 

@@ -1,5 +1,8 @@
 import type { Tables } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
+import { z } from "zod";
+
+import { POR_PAGINA } from "@/lib/paginacao";
 import { somarItensPorMoeda, type PorMoeda } from "@/lib/totals";
 
 import { filtroDoQuadro } from "./regras";
@@ -207,4 +210,66 @@ export async function obterNegocio(id: string) {
     catalogo: catalogo ?? [],
     error: erroEtapas?.message ?? erroCatalogo?.message ?? null,
   };
+}
+
+export type NegocioEncerrado = {
+  id: string;
+  title: string;
+  status: "won" | "lost";
+  closed_at: string | null;
+  person_id: string;
+  full_name: string;
+  /** A soma dos vistos, por moeda. */
+  totais: PorMoeda;
+};
+
+/** O `totais` de `buscar_encerradas` chega como `Json`: lido por esquema. */
+const totaisSchema = z.array(z.object({ currency: z.string(), amount: z.number() }));
+
+/**
+ * Uma página de CRM › Encerradas (CRM-16), com o total do filtro.
+ *
+ * A busca é `buscar_encerradas` (0053), sob a RLS de quem chama: por título
+ * ou pelo nome do contato, e ganha/perdida. Os tipos gerados perdem a
+ * nulidade em função que devolve tabela; `closed_at` pode vir nulo.
+ */
+export async function listarEncerradas({
+  busca,
+  situacao = null,
+  pagina,
+}: {
+  busca?: string;
+  situacao?: "won" | "lost" | null;
+  pagina: number;
+}): Promise<{ negocios: NegocioEncerrado[]; total: number; error: string | null }> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc("buscar_encerradas", {
+    p_busca: busca?.trim() ?? "",
+    // Sem filtro, o parâmetro não vai: o padrão da função é "todas".
+    ...(situacao ? { p_situacao: situacao } : {}),
+    p_limite: POR_PAGINA,
+    p_deslocamento: (pagina - 1) * POR_PAGINA,
+  });
+  if (error) return { negocios: [], total: 0, error: error.message };
+
+  const linhas = data ?? [];
+  const negocios: NegocioEncerrado[] = [];
+  for (const l of linhas) {
+    const totais = totaisSchema.safeParse(l.totais);
+    if (!totais.success) {
+      return { negocios: [], total: 0, error: "O servidor respondeu num formato inesperado." };
+    }
+    negocios.push({
+      id: l.id,
+      title: l.title,
+      status: l.status === "won" ? "won" : "lost",
+      closed_at: l.closed_at as string | null,
+      person_id: l.person_id,
+      full_name: l.full_name,
+      totais: somarItensPorMoeda(totais.data),
+    });
+  }
+
+  return { negocios, total: Number(linhas[0]?.total ?? 0), error: null };
 }

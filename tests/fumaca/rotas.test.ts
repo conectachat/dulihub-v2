@@ -114,6 +114,8 @@ const TOPO = [
   "/contatos",
   "/contatos?view=excluidos",
   "/crm",
+  "/crm/encerradas",
+  "/crm/encerradas?q=a&situacao=ganha&pagina=2",
   "/clientes",
   "/clientes?q=a&pagina=2",
   "/projetos",

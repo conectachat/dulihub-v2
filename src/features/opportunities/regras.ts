@@ -118,6 +118,13 @@ export function filtroDoQuadro(agora: Date): string {
   return `status.eq.open,closed_at.gte.${desde.toISOString()}`;
 }
 
+/** O `?situacao=` de CRM › Encerradas; qualquer outra coisa é "todas". */
+export function situacaoPedida(valor: string | undefined): "won" | "lost" | null {
+  if (valor === "ganha") return "won";
+  if (valor === "perdida") return "lost";
+  return null;
+}
+
 /** Entrar no ganho é do `ganhar_negocio` (0052), que mostra o resumo antes. */
 export const USE_O_GANHO = "Use o Ganho, que mostra o resumo antes.";
 /** Sair do ganho é do `reabrir_negocio` (0052), que confere quem pode. */

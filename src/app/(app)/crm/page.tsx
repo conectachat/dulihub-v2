@@ -1,4 +1,5 @@
-import { KanbanSquare } from "lucide-react";
+import Link from "next/link";
+import { Archive, KanbanSquare } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
@@ -87,7 +88,19 @@ export default async function CrmPage() {
             ? ` · ${formatarPorMoeda(totalAberto)} em negociação`
             : ""
         }`}
-        actions={<OpportunityDialog people={people} stages={stageOptions} />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Ganhas e perdidas com mais de 30 dias saem do quadro (CRM-16). */}
+            <Link
+              href="/crm/encerradas"
+              className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-medium text-primary hover:bg-accent"
+            >
+              <Archive className="h-4 w-4" />
+              Encerradas
+            </Link>
+            <OpportunityDialog people={people} stages={stageOptions} />
+          </div>
+        }
       />
 
       <Quadro etapas={board.stages} cartoes={cartoes} pessoas={people} />

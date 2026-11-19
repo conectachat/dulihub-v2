@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 
-import { POR_PAGINA } from "./regras";
+import { POR_PAGINA } from "@/lib/paginacao";
 
 export type ClienteDaLista = {
   id: string;

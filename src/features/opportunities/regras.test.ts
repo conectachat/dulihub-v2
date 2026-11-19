@@ -7,6 +7,7 @@ import {
   motivoDaPerda,
   trilhaDoFunil,
   filtroDoQuadro,
+  situacaoPedida,
   valorSugerido,
 } from "./regras";
 
@@ -203,5 +204,18 @@ describe("filtroDoQuadro", () => {
     expect(filtroDoQuadro(new Date("2026-11-19T12:00:00Z"))).toBe(
       "status.eq.open,closed_at.gte.2026-10-20T12:00:00.000Z",
     );
+  });
+});
+
+describe("situacaoPedida", () => {
+  it("lê o ?situacao= de Encerradas", () => {
+    expect(situacaoPedida("ganha")).toBe("won");
+    expect(situacaoPedida("perdida")).toBe("lost");
+  });
+
+  it("qualquer outra coisa é todas", () => {
+    for (const valor of [undefined, "", "open", "won", "GANHA"]) {
+      expect(situacaoPedida(valor)).toBeNull();
+    }
   });
 });
