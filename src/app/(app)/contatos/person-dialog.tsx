@@ -80,6 +80,19 @@ export function PersonDialog({ person }: { person?: PersonFormValues }) {
     >
       {person ? <input type="hidden" name="id" value={person.id} /> : null}
 
+      <CamposDoContato person={person} />
+    </FormDialog>
+  );
+}
+
+/**
+ * Os campos do contato — nome, DDI, telefone, e-mail, empresa e cargo —, os
+ * mesmos no Editar do contato e no do cliente. A lista tem de bater com
+ * `personFromForm`.
+ */
+export function CamposDoContato({ person }: { person?: PersonFormValues }) {
+  return (
+    <>
       <div className="space-y-2">
         <Label htmlFor="full_name">Nome *</Label>
         <Input
@@ -139,6 +152,6 @@ export function PersonDialog({ person }: { person?: PersonFormValues }) {
           />
         </div>
       </div>
-    </FormDialog>
+    </>
   );
 }

@@ -13,17 +13,18 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { TabsContent } from "@/components/ui/tabs";
 import { cadastroDoContato } from "@/features/cadastro/queries";
+import { equipeDaOrganizacao } from "@/features/pages/queries";
 import { listTags } from "@/features/people/queries";
 import { getTimeline } from "@/features/people/timeline-queries";
 import { processosDoContato, vistosParaProcesso } from "@/features/projects/queries";
-import { formatarDia, telefoneCompleto } from "@/lib/formatar";
+import { formatarDia, hojeEmSaoPaulo, telefoneCompleto } from "@/lib/formatar";
 import { origemDoPedido } from "@/lib/origem";
 import { destinoDoPerfil, type AbaDoPerfil } from "@/lib/pessoa";
 import { createClient } from "@/lib/supabase/server";
 
-import { PersonDialog } from "../../contatos/person-dialog";
 import { BarraDeProgresso, SeloDoStatus } from "../../projetos/partes";
 import { AbaNotas } from "./aba-notas";
+import { ClienteDialog } from "./cliente-dialog";
 import { Cobrancas } from "./cobrancas";
 import { DocumentosDoCliente } from "./documentos";
 import { NovoProcessoDialog } from "./novo-processo-dialog";
@@ -87,6 +88,8 @@ export default async function ClientePage({
     { cadastro, error: cadastroError },
     { data: dono, error: donoError },
     { data: documentos, error: documentosError },
+    { equipe, error: equipeError },
+    { data: participantes, error: participantesError },
     cabecalhos,
   ] = await Promise.all([
     supabase
@@ -109,6 +112,9 @@ export default async function ClientePage({
       .select("id, category, filename, mime_type, size_bytes, created_at")
       .eq("person_id", id)
       .order("created_at", { ascending: false }),
+    // Dono e participantes saem da equipe da organização da pessoa.
+    equipeDaOrganizacao(person.organization_id),
+    supabase.from("person_participants").select("user_id").eq("person_id", id),
     headers(),
   ]);
 
@@ -121,7 +127,9 @@ export default async function ClientePage({
     vistosError ??
     cadastroError ??
     donoError?.message ??
-    documentosError?.message;
+    documentosError?.message ??
+    equipeError ??
+    participantesError?.message;
   if (falha) return <QueryError detalhe={falha} />;
 
   const origem = origemDoPedido(cabecalhos);
@@ -185,7 +193,12 @@ export default async function ClientePage({
         <PersonTags personId={person.id} allTags={allTags} selectedIds={tags.map((t) => t.id)} />
 
         <div className="ml-auto">
-          <PersonDialog person={person} />
+          <ClienteDialog
+            cliente={person}
+            equipe={equipe}
+            participantes={(participantes ?? []).map((p) => p.user_id)}
+            hoje={hojeEmSaoPaulo()}
+          />
         </div>
       </header>
 

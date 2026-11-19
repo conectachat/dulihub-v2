@@ -94,3 +94,37 @@ export const LIFECYCLE_LABELS: Record<string, string> = {
   opportunity: "Oportunidade",
   client: "Cliente",
 };
+
+/**
+ * Os campos que só o cliente tem no Editar (CLI-10, CLI-12): dono, cliente
+ * desde e participantes. Vazio vira nulo; a data não pode ser no futuro (a
+ * mesma frase de `marcar_como_cliente`). Quem é membro da organização da
+ * pessoa, o banco confere pela chave composta.
+ */
+export function clienteFromForm(
+  formData: FormData,
+  hoje: string,
+):
+  | { ok: true; owner_id: string | null; client_since: string | null; participantes: string[] }
+  | { ok: false; erro: string } {
+  const texto = (campo: string) => {
+    const v = formData.get(campo);
+    return typeof v === "string" && v.trim() ? v.trim() : null;
+  };
+
+  const desde = texto("client_since");
+  if (desde !== null) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(desde)) return { ok: false, erro: "Data de cliente inválida." };
+    if (desde > hoje) return { ok: false, erro: "A data de cliente não pode ser no futuro." };
+  }
+
+  const participantes = [
+    ...new Set(
+      formData
+        .getAll("participantes")
+        .filter((v): v is string => typeof v === "string" && v !== ""),
+    ),
+  ];
+
+  return { ok: true, owner_id: texto("owner_id"), client_since: desde, participantes };
+}

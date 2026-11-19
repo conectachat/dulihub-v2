@@ -16,10 +16,11 @@ import { getTimeline } from "@/features/people/timeline-queries";
 import { DadosCadastrais } from "@/components/perfil/dados-cadastrais";
 import { PersonTags } from "@/components/perfil/person-tags";
 import { Timeline } from "@/components/perfil/timeline";
-import { formatarData, telefoneCompleto } from "@/lib/formatar";
+import { formatarData, hojeEmSaoPaulo, telefoneCompleto } from "@/lib/formatar";
 import { destinoDoContato } from "@/lib/pessoa";
 
 import { PersonDialog } from "../person-dialog";
+import { MarcarComoCliente } from "./marcar-como-cliente";
 
 /**
  * O perfil enxuto de quem ainda não é cliente: contato, oportunidades, dados
@@ -40,7 +41,7 @@ export default async function PersonPage({
     .from("people")
     .select(
       `id, full_name, email, phone, phone_country_code, company, job_title,
-       lifecycle_stage, created_at, notes,
+       lifecycle_stage, created_at, notes, organization_id, deleted_at,
        person_tags(tag:tags(id, name))`,
     )
     .eq("id", id)
@@ -88,6 +89,18 @@ export default async function PersonPage({
     cadastroError;
   if (falha) return <QueryError detalhe={falha} />;
 
+  // "Marcar como cliente" é da gestão da organização da pessoa: a mesma regra
+  // de `private.current_user_manages`, que o banco aplica de novo.
+  const { data: papel, error: papelError } = user
+    ? await supabase
+        .from("organization_members")
+        .select("role")
+        .eq("organization_id", person.organization_id)
+        .eq("user_id", user.id)
+        .maybeSingle()
+    : { data: null, error: null };
+  if (papelError) return <QueryError detalhe={papelError.message} />;
+
   // O endereço público da ficha de cadastro sai do endereço em que o app foi
   // aberto: o link gerado em produção aponta para produção.
   const origem = origemDoPedido(cabecalhos);
@@ -99,6 +112,7 @@ export default async function PersonPage({
   const tags = person.person_tags.map((t) => t.tag);
 
   const phone = telefoneCompleto(person.phone_country_code, person.phone);
+  const daGestao = papel?.role === "owner" || papel?.role === "admin";
 
   return (
     <main className="space-y-6 p-6">
@@ -127,7 +141,12 @@ export default async function PersonPage({
           ) : null}
         </div>
 
-        <PersonDialog person={person} />
+        <div className="flex items-center gap-2">
+          {daGestao && !person.deleted_at ? (
+            <MarcarComoCliente personId={person.id} nome={person.full_name} hoje={hojeEmSaoPaulo()} />
+          ) : null}
+          <PersonDialog person={person} />
+        </div>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-3">

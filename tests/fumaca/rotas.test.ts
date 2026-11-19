@@ -484,6 +484,8 @@ describe("com um lead de verdade", () => {
     expect(html).not.toContain("Novo processo");
     // Em vez de um vazio, a tela diz quando eles chegam.
     expect(html).toContain("depois do Ganho");
+    // O parceiro é a gestão da organização do lead: vê o atalho (CLI-11).
+    expect(html).toContain("Marcar como cliente");
     expect(html).toContain(`/crm/${negocioId}`);
   }, 60_000);
 
