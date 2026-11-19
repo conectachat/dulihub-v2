@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Copy, Link2, MessageCircle, Pencil, X } from "lucide-react";
-import { toast } from "sonner";
+import { Check, Link2, MessageCircle, Pencil, X } from "lucide-react";
 
 import { AvisoDeDuplicado } from "@/components/aviso-de-duplicado";
+import { CopiarTexto } from "@/components/copiar-texto";
 import { FormularioDoCadastro } from "@/components/formulario-do-cadastro";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
@@ -128,16 +128,6 @@ export function LinkAberto({
   /** Conversa do contato com a mensagem pronta. Nulo quando não há telefone. */
   whatsapp: string | null;
 }) {
-  async function copiar() {
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("Link copiado");
-    } catch {
-      // Sem permissão de área de transferência: o campo está ali para copiar à mão.
-      toast.error("Não foi possível copiar. Selecione o link e copie.");
-    }
-  }
-
   return (
     <div className="space-y-2">
       <Input
@@ -148,10 +138,9 @@ export function LinkAberto({
         onFocus={(e) => e.currentTarget.select()}
       />
       <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" className="rounded-xl" onClick={copiar}>
-          <Copy className="mr-1 h-4 w-4" />
+        <CopiarTexto texto={url} rotulo="link da ficha">
           Copiar
-        </Button>
+        </CopiarTexto>
         {whatsapp ? (
           <Button asChild variant="outline" size="sm" className="rounded-xl">
             {/* Abre a conversa com o texto pronto; quem envia é a equipe. */}

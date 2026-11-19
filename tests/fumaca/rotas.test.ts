@@ -82,7 +82,14 @@ beforeAll(async () => {
   // Uma ficha e um visto reais: as telas de detalhe têm caminho de código
   // próprio, e são as que mais carregam junção.
   const [pessoa, visto] = await Promise.all([
-    supabase.from("people").select("id").is("deleted_at", null).limit(1).maybeSingle(),
+    // Quem não é cliente: o perfil de cliente redireciona, e tem bloco próprio.
+    supabase
+      .from("people")
+      .select("id")
+      .is("deleted_at", null)
+      .neq("lifecycle_stage", "client")
+      .limit(1)
+      .maybeSingle(),
     supabase.from("visa_types").select("id").limit(1).maybeSingle(),
   ]);
   // O erro vem antes do "não existe". Descartá-lo já escondeu a causa de uma
@@ -276,6 +283,30 @@ describe("com um processo de verdade", () => {
     if (pessoaDoParceiro) await sessao.supabase.from("people").delete().eq("id", pessoaDoParceiro);
   });
 
+  it.each(["dados", "financeiro", "projetos", "documentos", "notas", "xyz"])(
+    "perfil do cliente na aba %s",
+    async (aba) => {
+      const resposta = await pedir(`/clientes/${pessoaDoParceiro}?aba=${aba}`, sessao.cookie);
+      expect(resposta.status).toBe(200);
+      expect(await resposta.text()).toContain(`Contato da fumaça ${SUFIXO}`);
+    },
+    60_000,
+  );
+
+  it("o endereço antigo do cliente leva ao perfil de cliente, com a query", async () => {
+    const [comQuery, atalho] = await Promise.all([
+      pedir(`/contatos/${pessoaDoParceiro}?x=1`, sessao.cookie),
+      pedir(`/contatos/${pessoaDoParceiro}?novo-processo=n1`, sessao.cookie),
+    ]);
+
+    expect(comQuery.status).toBe(307);
+    expect(comQuery.headers.get("location")).toBe(`/clientes/${pessoaDoParceiro}?x=1`);
+    expect(atalho.status).toBe(307);
+    expect(atalho.headers.get("location")).toBe(
+      `/clientes/${pessoaDoParceiro}?aba=projetos&novo-processo=n1`,
+    );
+  }, 60_000);
+
   it("a ficha de cadastro abre para o lead, sem login, pelo link", async () => {
     // O caminho inteiro da porta pública: proxy liberando a rota, o cliente
     // anônimo chamando a função do banco, e o formulário desenhado.
@@ -312,17 +343,18 @@ describe("com um processo de verdade", () => {
     ["tela do processo", () => `/projetos/${processoId}`],
     // O atalho do alerta de pasta atrasada, na tela Início.
     ["tela do processo aberta nos documentos", () => `/projetos/${processoId}?aba=documentos`],
-    ["ficha do contato", () => `/contatos/${pessoaDoParceiro}`],
+    // O processo tornou o contato cliente: o perfil mora em /clientes.
+    ["perfil do cliente", () => `/clientes/${pessoaDoParceiro}?aba=projetos`],
     ["CRM", () => "/crm"],
   ])("%s abre e mostra o processo", async (nome, rota) => {
     const resposta = await pedir(rota(), sessao.cookie);
     expect(resposta.status).toBe(200);
     const html = await resposta.text();
     if (nome !== "CRM") expect(html).toContain(TITULO);
-    if (nome === "ficha do contato") {
-      // Cliente tem o perfil completo: processos e financeiro à vista.
-      expect(html).toContain('id="processos"');
-      expect(html).toContain('id="financeiro"');
+    if (nome === "perfil do cliente") {
+      // A aba Projetos aberta pela URL, com o diálogo de novo processo.
+      expect(html).toContain("Novo processo");
+      expect(html).toContain("Cliente desde");
     }
     if (nome === "tela do processo") {
       // Etapas copiadas do molde e o bloco do USCIS desenhados de verdade.
@@ -451,7 +483,7 @@ describe("com um lead de verdade", () => {
     expect(html).not.toContain('id="financeiro"');
     expect(html).not.toContain("Novo processo");
     // Em vez de um vazio, a tela diz quando eles chegam.
-    expect(html).toContain("quando o negócio for ganho");
+    expect(html).toContain("depois do Ganho");
     expect(html).toContain(`/crm/${negocioId}`);
   }, 60_000);
 

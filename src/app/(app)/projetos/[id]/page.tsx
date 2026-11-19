@@ -4,7 +4,8 @@ import { ArrowLeft } from "lucide-react";
 
 import { QueryError } from "@/components/query-error";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AbasNaUrl } from "@/components/abas-na-url";
+import { TabsContent } from "@/components/ui/tabs";
 import { equipeDaOrganizacao, paginaDoProcesso } from "@/features/pages/queries";
 import { obterProcesso, pastasDoProcesso } from "@/features/projects/queries";
 import { createClient } from "@/lib/supabase/server";
@@ -30,19 +31,12 @@ const CAMPOS_DE_DATA = [
   { campo: "expected_on", rotulo: "Previsão de conclusão" },
 ] as const;
 
-/** As abas que um atalho pode abrir. Fora da lista, abre a primeira. */
-const ABAS = ["etapas", "documentos", "observacoes"] as const;
-
 export default async function ProcessoPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ aba?: string }>;
 }) {
-  const [{ id }, { aba }] = await Promise.all([params, searchParams]);
-  // O alerta de pasta atrasada, na tela Início, leva direto aos documentos.
-  const abaInicial = (ABAS as readonly string[]).includes(aba ?? "") ? aba! : "etapas";
+  const { id } = await params;
   const { processo, etapas, status, error } = await obterProcesso(id);
 
   if (error) return <QueryError detalhe={error} />;
@@ -128,19 +122,25 @@ export default async function ProcessoPage({
         </CardContent>
       </Card>
 
-      <Tabs defaultValue={abaInicial}>
-        <TabsList className="rounded-2xl">
-          <TabsTrigger value="etapas" className="rounded-xl">
-            {/* O mesmo número da barra do cabeçalho — uma conta só. */}
-            Etapas ({processo.progresso.concluidas}/{processo.progresso.total})
-          </TabsTrigger>
-          <TabsTrigger value="documentos" className="rounded-xl">
-            Documentos ({processo.pastas.resolvidas}/{processo.pastas.total})
-          </TabsTrigger>
-          <TabsTrigger value="observacoes" className="rounded-xl">
-            Observações
-          </TabsTrigger>
-        </TabsList>
+      {/*
+        A aba aberta fica na URL: o alerta de pasta atrasada, na tela Início,
+        leva direto aos documentos (`?aba=documentos`).
+      */}
+      <AbasNaUrl
+        padrao="etapas"
+        abas={[
+          // O mesmo número da barra do cabeçalho — uma conta só.
+          {
+            valor: "etapas",
+            rotulo: `Etapas (${processo.progresso.concluidas}/${processo.progresso.total})`,
+          },
+          {
+            valor: "documentos",
+            rotulo: `Documentos (${processo.pastas.resolvidas}/${processo.pastas.total})`,
+          },
+          { valor: "observacoes", rotulo: "Observações" },
+        ]}
+      >
 
         <TabsContent value="etapas" className="pt-4">
           <EtapasDoProcesso
@@ -173,7 +173,7 @@ export default async function ProcessoPage({
             />
           ) : null}
         </TabsContent>
-      </Tabs>
+      </AbasNaUrl>
     </main>
   );
 }

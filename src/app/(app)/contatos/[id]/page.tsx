@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { notFound } from "next/navigation";
-import { ArrowLeft, FolderKanban, Mail, Phone } from "lucide-react";
+import { notFound, redirect } from "next/navigation";
+import { ArrowLeft, Mail, Phone } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,34 +10,30 @@ import { QueryError } from "@/components/query-error";
 import { formatarMoeda } from "@/lib/totals";
 import { origemDoPedido } from "@/lib/origem";
 import { cadastroDoContato } from "@/features/cadastro/queries";
-import { perfilCompleto } from "@/features/people/regras";
 import { LIFECYCLE_LABELS } from "@/features/people/schema";
 import { listTags } from "@/features/people/queries";
 import { getTimeline } from "@/features/people/timeline-queries";
-import {
-  processosDoContato,
-  vistosParaProcesso,
-} from "@/features/projects/queries";
+import { DadosCadastrais } from "@/components/perfil/dados-cadastrais";
+import { PersonTags } from "@/components/perfil/person-tags";
+import { Timeline } from "@/components/perfil/timeline";
+import { formatarData, telefoneCompleto } from "@/lib/formatar";
+import { destinoDoContato } from "@/lib/pessoa";
 
 import { PersonDialog } from "../person-dialog";
-import { BarraDeProgresso, SeloDoStatus } from "../../projetos/partes";
-import { NovoProcessoDialog } from "./novo-processo-dialog";
-import { PersonTags } from "./person-tags";
-import { Timeline } from "./timeline";
-import { formatarData, formatarDia, telefoneCompleto } from "@/lib/formatar";
-import { Cobrancas } from "./cobrancas";
-import { DadosCadastrais } from "./dados-cadastrais";
 
+/**
+ * O perfil enxuto de quem ainda não é cliente: contato, oportunidades, dados
+ * cadastrais e histórico. Cliente mora em `/clientes/<id>` (CLI-2): o
+ * endereço antigo redireciona para lá, levando a query junto.
+ */
 export default async function PersonPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  /** `novo-processo=<negócio>`: o atalho do CRM abre o diálogo já preenchido. */
-  searchParams: Promise<{ "novo-processo"?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { id } = await params;
-  const { "novo-processo": negocioDoAtalho } = await searchParams;
+  const [{ id }, query] = await Promise.all([params, searchParams]);
   const supabase = await createClient();
 
   const { data: person, error: personError } = await supabase
@@ -59,15 +55,15 @@ export default async function PersonPage({
   // registro existe em outra organização.
   if (!person) notFound();
 
+  // Decide só pelo estágio, nunca pela lixeira (ver `@/lib/pessoa`).
+  if (person.lifecycle_stage === "client") redirect(destinoDoContato(id, query));
+
   const [
     { data: opportunitiesRaw, error: oportunidadesError },
     { tags: allTags, error: tagsError },
     { items: timeline, error: timelineError },
     { data: { user }, error: userError },
-    { processos, error: processosError },
-    { vistos, error: vistosError },
     { cadastro, error: cadastroError },
-    { count: cobrancas, error: cobrancasError },
     cabecalhos,
   ] = await Promise.all([
     supabase
@@ -78,14 +74,7 @@ export default async function PersonPage({
     listTags(),
     getTimeline(id),
     supabase.auth.getUser(),
-    processosDoContato(id),
-    vistosParaProcesso(),
     cadastroDoContato(id),
-    // Só a contagem: basta saber se existe cobrança para não escondê-la.
-    supabase
-      .from("receivables")
-      .select("id", { count: "exact", head: true })
-      .eq("person_id", id),
     headers(),
   ]);
 
@@ -96,10 +85,7 @@ export default async function PersonPage({
     tagsError ??
     timelineError ??
     userError?.message ??
-    processosError ??
-    vistosError ??
-    cadastroError ??
-    cobrancasError?.message;
+    cadastroError;
   if (falha) return <QueryError detalhe={falha} />;
 
   // O endereço público da ficha de cadastro sai do endereço em que o app foi
@@ -112,23 +98,7 @@ export default async function PersonPage({
   const opportunities = opportunitiesRaw ?? [];
   const tags = person.person_tags.map((t) => t.tag);
 
-  // Negócio ganho que ainda não virou processo: é a oferta do CRM, repetida
-  // aqui onde o processo nasce.
-  const comProcesso = new Set(processos.map((p) => p.opportunity_id));
-  // Só abre sozinho se o negócio do link é mesmo deste contato.
-  const negocioInicial = opportunities.some((o) => o.id === negocioDoAtalho)
-    ? negocioDoAtalho
-    : undefined;
-
   const phone = telefoneCompleto(person.phone_country_code, person.phone);
-
-  // Lead não é cliente: processos e financeiro chegam com o Ganho. Quem já
-  // tem um ou outro aparece inteiro — a regra nunca esconde trabalho feito.
-  const completo = perfilCompleto({
-    estagio: person.lifecycle_stage,
-    processos: processos.length,
-    cobrancas: cobrancas ?? 0,
-  });
 
   return (
     <main className="space-y-6 p-6">
@@ -248,14 +218,6 @@ export default async function PersonPage({
                             ? "Perdido"
                             : "Aberta"}
                       </Badge>
-                      {op.status === "won" && !comProcesso.has(op.id) ? (
-                        <Link
-                          href={`/contatos/${person.id}?novo-processo=${op.id}`}
-                          className="block text-xs text-primary hover:underline"
-                        >
-                          Criar processo
-                        </Link>
-                      ) : null}
                     </div>
                   </li>
                 ))}
@@ -265,80 +227,12 @@ export default async function PersonPage({
         </Card>
       </div>
 
-      {completo ? (
-        <Card id="processos" className="scroll-mt-6">
-          <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
-            <CardTitle className="text-base">Processos ({processos.length})</CardTitle>
-            <NovoProcessoDialog
-              // A chave remonta o diálogo quando o atalho muda de negócio.
-              key={negocioInicial ?? "sem-atalho"}
-              personId={person.id}
-              personName={person.full_name}
-              vistos={vistos}
-              negocios={opportunities.map((o) => ({ id: o.id, title: o.title }))}
-              negocioInicial={negocioInicial}
-            />
-          </CardHeader>
-          <CardContent>
-            {processos.length === 0 ? (
-              <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <FolderKanban className="h-4 w-4 shrink-0" />
-                Nenhum processo ainda. Ao criar, as etapas e as pastas vêm do tipo
-                de visto.
-              </p>
-            ) : (
-              <ul className="divide-y">
-                {processos.map((p) => (
-                  <li
-                    key={p.id}
-                    className="flex flex-wrap items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
-                  >
-                    <div className="min-w-0">
-                      <Link
-                        href={`/projetos/${p.id}`}
-                        className="block truncate font-medium hover:underline"
-                      >
-                        {p.title}
-                      </Link>
-                      <p className="text-xs text-muted-foreground">
-                        {p.visto?.name ?? "Tipo de visto removido"} · desde{" "}
-                        {formatarDia(p.started_on)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <BarraDeProgresso progresso={p.progresso} />
-                      <SeloDoStatus status={p.status} />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <p className="rounded-3xl border border-dashed p-4 text-sm text-muted-foreground">
-          Processos e financeiro aparecem aqui quando o negócio for ganho — é
-          o Ganho que faz deste contato um cliente.
-        </p>
-      )}
+      <p className="rounded-3xl border border-dashed p-4 text-sm text-muted-foreground">
+        Processos e financeiro ficam no perfil de cliente, depois do Ganho.
+      </p>
 
       {cadastro ? (
         <DadosCadastrais personId={person.id} cadastro={cadastro} origem={origem} />
-      ) : null}
-
-      {completo ? (
-        <Card id="financeiro" className="scroll-mt-6">
-          <CardHeader>
-            <CardTitle className="text-base">Financeiro</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/*
-              Lê do aparelho, não daqui: é o caminho que funciona com e sem
-              internet, e o mesmo nos dois casos.
-            */}
-            <Cobrancas personId={person.id} />
-          </CardContent>
-        </Card>
       ) : null}
 
       {person.notes ? (

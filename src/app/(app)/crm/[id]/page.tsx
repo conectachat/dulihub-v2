@@ -18,9 +18,9 @@ import { origemDoPedido } from "@/lib/origem";
 import { createClient } from "@/lib/supabase/server";
 import { formatarMoeda } from "@/lib/totals";
 
-import { DadosCadastrais } from "../../contatos/[id]/dados-cadastrais";
-import { PersonTags } from "../../contatos/[id]/person-tags";
-import { Timeline } from "../../contatos/[id]/timeline";
+import { DadosCadastrais } from "@/components/perfil/dados-cadastrais";
+import { PersonTags } from "@/components/perfil/person-tags";
+import { Timeline } from "@/components/perfil/timeline";
 import { PersonDialog } from "../../contatos/person-dialog";
 import { EditarNegocio, GanhoEPerdido, Reabrir } from "./acoes-do-negocio";
 import { Trilha } from "./trilha";
