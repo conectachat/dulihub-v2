@@ -189,7 +189,7 @@ telas incomoda; em trinta, ninguém consegue mais mudar nada.
 | Busca de lista guardada na URL (`?q=`) | `BuscaNaUrl` — buscar de novo volta para a primeira página |
 | Lista paginada com o total ("Mostrando 51–72 de 72") | `POR_PAGINA`, `paginaPedida`, `contagemDaLista` (`@/lib/paginacao`) — nunca cortar em silêncio |
 | Dono e participantes (cliente, negócio) | `CampoDoDono` / `CampoDosParticipantes` (`@/components/dono-e-participantes`) e `diferencaDeParticipantes` (`@/lib/participantes`) — o dono atual fica na lista mesmo fora da equipe visível |
-| Somar vistos ou parcelas por moeda | `somarItensPorMoeda`, `emCentavos`, `emMoeda` (`@/lib/totals`) — em centavos, e nunca uma moeda na outra |
+| Somar vistos por moeda | `somarItensPorMoeda`, `emCentavos`, `emMoeda` (`@/lib/totals`) — em centavos, e nunca uma moeda na outra. As parcelas do Financeiro somam em `totaisPorMoeda` (`features/financeiro/regras.ts`) |
 | Enviar arquivo do navegador ao depósito e registrar | `enviarERegistrar`, `arquivoAceito`, `limparNome` (`@/lib/arquivos`) — registro recusado remove o objeto |
 | Abrir ou baixar por URL assinada | `abrirEmNovaAba` / `baixar` (`@/lib/abrir`) — a aba abre no clique; `window.open` depois de um `await` o Safari do iPhone bloqueia |
 

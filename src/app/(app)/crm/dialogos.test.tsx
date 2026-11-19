@@ -96,6 +96,41 @@ describe("DialogoDeGanho", () => {
   });
 });
 
+describe("Cancelar limpa o diálogo", () => {
+  it("o Ganho reaberto pede o resumo de novo, sem mostrar o de antes", async () => {
+    const aoMudar = vi.fn();
+    const { rerender } = render(<DialogoDeGanho negocio={negocio} aberto aoMudar={aoMudar} />);
+    expect(await screen.findByText("EB-1A")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(aoMudar).toHaveBeenCalledWith(false);
+    rerender(<DialogoDeGanho negocio={negocio} aberto={false} aoMudar={aoMudar} />);
+
+    // O resumo novo demora: até chegar, nada de resumo velho nem de Confirmar.
+    acoes.resumoDoGanho.mockReturnValue(new Promise(() => {}));
+    rerender(<DialogoDeGanho negocio={negocio} aberto aoMudar={aoMudar} />);
+    expect(screen.getByText("Montando o resumo...")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Confirmar Ganho" })).toBeNull();
+  });
+
+  it("o Reabrir reaberto não mostra a recusa de antes", async () => {
+    acoes.reabrirOportunidade.mockResolvedValueOnce({
+      error: "Só o dono do negócio ou a gestão reabrem o negócio.",
+    });
+    const aoMudar = vi.fn();
+    const { rerender } = render(
+      <DialogoDeReabrir negocio={negocio} destino="Novo Lead" aberto aoMudar={aoMudar} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Reabrir" }));
+    expect(await screen.findByText("Só o dono do negócio ou a gestão reabrem o negócio.")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    rerender(<DialogoDeReabrir negocio={negocio} destino="Novo Lead" aberto={false} aoMudar={aoMudar} />);
+    rerender(<DialogoDeReabrir negocio={negocio} destino="Novo Lead" aberto aoMudar={aoMudar} />);
+    expect(screen.queryByText("Só o dono do negócio ou a gestão reabrem o negócio.")).toBeNull();
+  });
+});
+
 describe("DialogoDeReabrir", () => {
   it("pergunta e diz para onde o negócio volta; Cancelar não grava", () => {
     const aoMudar = vi.fn();

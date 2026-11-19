@@ -43,17 +43,6 @@ export function somarPorMoeda(
   return total;
 }
 
-/** Junta vários agrupamentos num só — usado para o total do funil inteiro. */
-export function juntarMoedas(partes: PorMoeda[]): PorMoeda {
-  const total: PorMoeda = {};
-  for (const parte of partes) {
-    for (const [moeda, valor] of Object.entries(parte)) {
-      total[moeda] = (total[moeda] ?? 0) + valor;
-    }
-  }
-  return total;
-}
-
 /**
  * Formata dinheiro em pt-BR.
  *

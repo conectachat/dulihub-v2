@@ -315,6 +315,28 @@ export async function updateOpportunity(
   const { id, ...campos } = parsed.data;
   const { owner_id, participantes } = donoEParticipantesDoForm(formData);
 
+  // O dono sai da equipe da organização do negócio — a chave de
+  // `opportunities.owner_id` só aponta para `profiles`, e um formulário
+  // forjado poria qualquer perfil ali.
+  if (owner_id) {
+    const { data: doNegocio, error: erroNegocio } = await supabase
+      .from("opportunities")
+      .select("organization_id")
+      .eq("id", id)
+      .maybeSingle();
+    if (erroNegocio) return falhou(traduzirErro(erroNegocio));
+    if (!doNegocio) return falhou("Negócio não encontrado.");
+
+    const { data: membro, error: erroMembro } = await supabase
+      .from("organization_members")
+      .select("user_id")
+      .eq("organization_id", doNegocio.organization_id)
+      .eq("user_id", owner_id)
+      .maybeSingle();
+    if (erroMembro) return falhou(traduzirErro(erroMembro));
+    if (!membro) return falhou("Escolha o dono na equipe desta organização.");
+  }
+
   // Trocar o dono: só o dono atual ou a gestão — o banco confere (0044) e a
   // frase volta como erro, com nada gravado.
   const { data, error } = await supabase

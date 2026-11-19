@@ -20,6 +20,8 @@ export type ItemDoNegocio = {
   visa_name: string;
   amount: number;
   currency: string;
+  /** Já virou processo num Ganho: não sai do negócio (desistir é encerrar). */
+  temProcesso: boolean;
 };
 
 export type VistoDoCatalogo = {
@@ -77,7 +79,7 @@ export function Vistos({
 
       {itens.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Nenhum visto ainda. O Ganho precisa de pelo menos um.
+          {ganho ? "Nenhum visto registrado." : "Nenhum visto ainda. O Ganho precisa de pelo menos um."}
         </p>
       ) : (
         <ul className="space-y-2">
@@ -97,15 +99,17 @@ export function Vistos({
                       item={item}
                       visto={catalogo.find((v) => v.id === item.visa_type_id) ?? null}
                     />
-                    <ConfirmAction
-                      action={removerItem}
-                      hidden={{ id: item.id }}
-                      title={`Remover ${item.visa_name}?`}
-                      consequence="O visto sai do negócio."
-                      confirmLabel="Remover"
-                      triggerLabel={`Remover ${item.visa_name}`}
-                      icon={<Trash2 className="h-4 w-4" />}
-                    />
+                    {item.temProcesso ? null : (
+                      <ConfirmAction
+                        action={removerItem}
+                        hidden={{ id: item.id }}
+                        title={`Remover ${item.visa_name}?`}
+                        consequence="O visto sai do negócio."
+                        confirmLabel="Remover"
+                        triggerLabel={`Remover ${item.visa_name}`}
+                        icon={<Trash2 className="h-4 w-4" />}
+                      />
+                    )}
                   </>
                 )}
               </span>
@@ -128,6 +132,10 @@ export function Vistos({
       {ganho ? (
         <p className="text-xs text-muted-foreground">
           Negócio ganho: para desistir de um visto, encerre o processo dele.
+        </p>
+      ) : itens.some((item) => item.temProcesso) ? (
+        <p className="text-xs text-muted-foreground">
+          Tem processo: para desistir, encerre o processo.
         </p>
       ) : null}
     </section>

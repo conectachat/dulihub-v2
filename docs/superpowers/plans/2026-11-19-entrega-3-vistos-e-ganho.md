@@ -455,7 +455,10 @@ returns table (id uuid, title text, status text, closed_at timestamptz,
 - a gestão consegue, e `marcar_como_cliente` continua registrando no histórico;
 - o `staff` dono do negócio ganha pelo `ganhar_negocio`, e a pessoa vira cliente: prova a marca;
 - `delete` de negócio ganho, inclusive na organização de teste → "Reabra ou encerre os processos; o negócio ganho fica como registro.". Apagar a pessoa leva tudo;
-- `sync_manifesto()` responde sem erro, e `sincronia.test.ts` passa.
+- `sync_manifesto()` responde sem erro, e `sincronia.test.ts` passa;
+- *(revisão final da fase 1)* `delete` de item que já tem processo, num negócio reaberto, é recusado com "Este visto já tem processo: para desistir, encerre o processo." (o app já recusa desde a fase 1); a cascata da pessoa e do negócio passa;
+- *(revisão final da fase 1)* o resumo de um negócio sem dono avisa "O negócio está sem dono: você fica como dono do cliente.", e não "O dono do negócio não está na equipe…";
+- *(revisão final da fase 1)* `update opportunities set owner_id = <perfil de fora da organização>` pela gestão → `23503`.
 
 **Ajustes na suíte, no mesmo commit:**
 - todo teste que põe negócio em ganho por `update` direto passa a usar `ganhar_negocio`. Entre eles o "item de negócio ganho não muda" do T2. Para achar os outros, `grep -rn "\"won\"" tests/`;
@@ -483,6 +486,14 @@ returns table (id uuid, title text, status text, closed_at timestamptz,
 6. `alter table opportunities drop column value, drop column currency`; `drop table opportunity_products, products`.
 7. `public.sync_manifesto()` recriada sem as duas tabelas, **na mesma migration**.
 8. `drop` + `create` de `criar_oportunidade` sem `p_valor` e `p_moeda`, a partir da última definição (`grep`), com `revoke`/`grant`.
+
+*Da revisão final da fase 1 (19/nov):*
+
+9. **Cópia dentro do banco, antes do passo 6:** `create table private.backup_opportunities_value as select id, value, currency from public.opportunities where value is not null`. Uma linha, e o valor não se perde sem volta se a recópia falhar.
+10. **Ligação da D13 de novo, depois da recópia:** negócio com exatamente um processo sem item e exatamente um item sem processo tem os dois ligados. É o negócio ganho pelo código antigo na janela, com "Criar processo →". A `projects_item_imutavel` deixa passar sem usuário.
+11. **A trava do item recusa o `delete` de item com processo** em profundidade 1: remover e acrescentar de novo duplicaria o processo.
+12. **`create or replace` de `ganhar_negocio`** com o aviso próprio para negócio sem dono.
+13. **Dono do negócio preso à equipe:** FK composta `(organization_id, owner_id)` → `organization_members (organization_id, user_id)`, `on delete set null (owner_id)`, como a de `people` (0044). Antes, contar os negócios com dono fora da organização: tem de dar 0.
 
 Depois:
 - [ ] **Antes de aplicar, conferir à mão** (SQL Editor, organização de teste), com uma pessoa de teste e dois negócios:

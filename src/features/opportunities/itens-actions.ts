@@ -54,12 +54,13 @@ export async function adicionarItem(
 
   const { data: visto, error: erroVisto } = await supabase
     .from("visa_types")
-    .select("name, organization_id")
+    .select("name, organization_id, is_active")
     .eq("id", vistoId as string)
     .maybeSingle();
   if (erroVisto) return falhou(traduzirErro(erroVisto));
-  // A chave composta recusaria também; aqui a frase é melhor.
-  if (!visto || visto.organization_id !== negocio.organization_id) {
+  // A chave composta recusaria a outra organização; aqui a frase é melhor. O
+  // visto desativado sai do seletor, e um formulário forjado não o põe de volta.
+  if (!visto || visto.organization_id !== negocio.organization_id || !visto.is_active) {
     return falhou("Visto não encontrado.");
   }
 
@@ -123,6 +124,19 @@ export async function removerItem(formData: FormData): Promise<ActionState> {
 
   const { supabase, error: erroDoContexto } = await contextoAtual();
   if (erroDoContexto) return falhou(erroDoContexto);
+
+  // Visto que já virou processo não sai do negócio: remover e acrescentar de
+  // novo criaria um segundo processo no próximo Ganho — e processo não se
+  // apaga. Desistir é encerrar o processo. (A 0054 recusa também no banco.)
+  const { data: processos, error: erroProcessos } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("opportunity_item_id", id as string)
+    .limit(1);
+  if (erroProcessos) return falhou(traduzirErro(erroProcessos));
+  if ((processos ?? []).length > 0) {
+    return falhou("Este visto já tem processo: para desistir, encerre o processo.");
+  }
 
   const resposta = await supabase
     .from("opportunity_items")

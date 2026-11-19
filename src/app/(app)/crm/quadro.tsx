@@ -228,7 +228,7 @@ export function Quadro({
                               action={deleteOpportunity}
                               hidden={{ id: cartao.id }}
                               title={`Excluir "${cartao.title}"?`}
-                              consequence="Oportunidade não tem lixeira: some de vez, com os vistos, a etapa e o histórico de movimentação. O contato permanece."
+                              consequence="Oportunidade não tem lixeira: some de vez, com os vistos e a etapa. O contato, o histórico dele e os processos ficam."
                               triggerLabel={`Excluir ${cartao.title}`}
                             />
                           )}

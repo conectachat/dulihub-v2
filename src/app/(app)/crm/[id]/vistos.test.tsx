@@ -23,9 +23,9 @@ const CATALOGO = [
 ];
 
 const ITENS = [
-  { id: "i1", visa_type_id: "v-eb1", visa_name: "EB-1A", amount: 8000, currency: "USD" },
-  { id: "i2", visa_type_id: "v-o1", visa_name: "O-1", amount: 6000, currency: "USD" },
-  { id: "i3", visa_type_id: null, visa_name: "Consultoria", amount: 1000, currency: "BRL" },
+  { id: "i1", visa_type_id: "v-eb1", visa_name: "EB-1A", amount: 8000, currency: "USD", temProcesso: false },
+  { id: "i2", visa_type_id: "v-o1", visa_name: "O-1", amount: 6000, currency: "USD", temProcesso: false },
+  { id: "i3", visa_type_id: null, visa_name: "Consultoria", amount: 1000, currency: "BRL", temProcesso: false },
 ];
 
 function abrirAcrescentar() {
@@ -96,12 +96,33 @@ describe("Vistos", () => {
     render(
       <Vistos
         negocioId="n1"
-        itens={[{ id: "i9", visa_type_id: "v-o1", visa_name: "O-1", amount: 0, currency: "USD" }]}
+        itens={[
+          { id: "i9", visa_type_id: "v-o1", visa_name: "O-1", amount: 0, currency: "USD", temProcesso: false },
+        ]}
         catalogo={CATALOGO}
         ganho={false}
       />,
     );
     const totais = within(screen.getByRole("group", { name: "Totais por moeda" }));
     expect(totais.getByText(/US\$\s0/)).toBeTruthy();
+  });
+
+  it("visto que já tem processo não se remove: desistir é encerrar o processo", () => {
+    render(
+      <Vistos
+        negocioId="n1"
+        itens={[{ ...ITENS[0]!, temProcesso: true }, ITENS[1]!]}
+        catalogo={CATALOGO}
+        ganho={false}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "Remover EB-1A" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Remover O-1" })).toBeTruthy();
+    expect(screen.getByText("Tem processo: para desistir, encerre o processo.")).toBeTruthy();
+  });
+
+  it("negócio ganho antigo, sem vistos, não pede visto para o Ganho", () => {
+    render(<Vistos negocioId="n1" itens={[]} catalogo={CATALOGO} ganho />);
+    expect(screen.getByText("Nenhum visto registrado.")).toBeTruthy();
   });
 });

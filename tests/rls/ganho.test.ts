@@ -501,7 +501,7 @@ describe("ganhar e reabrir negócio (0052)", () => {
     });
   });
 
-  it("visto desativado ganha mesmo assim", async () => {
+  it("visto desativado ganha mesmo assim, com o molde dele", async () => {
     const p = await novaPessoa();
     const n = await novoNegocio(p.id, parceiroId);
     await novoItem(n, "EB-1A");
@@ -510,7 +510,12 @@ describe("ganhar e reabrir negócio (0052)", () => {
       await parceiro.from("visa_types").update({ is_active: false }).eq("id", vistoId);
       const { error } = await ganhar(parceiro, n);
       expect(error).toBeNull();
-      expect(await processosDo(n)).toHaveLength(1);
+      const processos = await processosDo(n);
+      expect(processos).toHaveLength(1);
+      const etapas = await parceiro.from("project_stages").select("id").eq("project_id", processos[0]!.id);
+      const pastas = await parceiro.from("project_documents").select("id").eq("project_id", processos[0]!.id);
+      expect(etapas.data!.length).toBeGreaterThan(0);
+      expect(pastas.data!.length).toBeGreaterThan(0);
     } finally {
       await parceiro.from("visa_types").update({ is_active: true }).eq("id", vistoId);
     }

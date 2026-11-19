@@ -21,10 +21,14 @@ const NEGOCIO = "11111111-1111-4111-8111-111111111111";
 const VISTO = "22222222-2222-4222-8222-222222222222";
 const ITEM = "33333333-3333-4333-8333-333333333333";
 
-function bancoFalso(visto: { name: string; organization_id: string } | null = {
-  name: "EB-1A",
-  organization_id: "org-do-negocio",
-}) {
+function bancoFalso(
+  visto: { name: string; organization_id: string; is_active: boolean } | null = {
+    name: "EB-1A",
+    organization_id: "org-do-negocio",
+    is_active: true,
+  },
+  processosDoItem: { id: string }[] = [],
+) {
   const insert = vi.fn(() => ({ select: async () => ({ data: [{ id: ITEM }], error: null }) }));
   const update = vi.fn(() => ({
     eq: () => ({ select: async () => ({ data: [{ opportunity_id: NEGOCIO }], error: null }) }),
@@ -41,6 +45,13 @@ function bancoFalso(visto: { name: string; organization_id: string } | null = {
     from: vi.fn((tabela: string) => {
       if (tabela === "opportunities") return umSo({ organization_id: "org-do-negocio" });
       if (tabela === "visa_types") return umSo(visto);
+      if (tabela === "projects") {
+        return {
+          select: () => ({
+            eq: () => ({ limit: async () => ({ data: processosDoItem, error: null }) }),
+          }),
+        };
+      }
       return {
         select: () => ({
           eq: () => ({
@@ -129,7 +140,7 @@ describe("adicionarItem", () => {
   });
 
   it("visto de outra organização é recusado sem gravar", async () => {
-    usar(bancoFalso({ name: "EB-1A", organization_id: "outra-org" }));
+    usar(bancoFalso({ name: "EB-1A", organization_id: "outra-org", is_active: true }));
     const r = await adicionarItem(
       VAZIO,
       formulario({ opportunity_id: NEGOCIO, visa_type_id: VISTO, amount: "10", currency: "USD" }),
@@ -161,5 +172,24 @@ describe("removerItem", () => {
     const r = await removerItem(formulario({ id: ITEM }));
     expect(r?.error ?? null).toBeNull();
     expect(banco.remove).toHaveBeenCalled();
+  });
+
+  it("visto que já tem processo não se remove", async () => {
+    usar(bancoFalso(undefined, [{ id: "p1" }]));
+    const r = await removerItem(formulario({ id: ITEM }));
+    expect(r?.error).toBe("Este visto já tem processo: para desistir, encerre o processo.");
+    expect(banco.remove).not.toHaveBeenCalled();
+  });
+});
+
+describe("adicionarItem com visto desativado", () => {
+  it("visto desativado (formulário forjado) é recusado sem gravar", async () => {
+    usar(bancoFalso({ name: "Visto aposentado", organization_id: "org-do-negocio", is_active: false }));
+    const r = await adicionarItem(
+      VAZIO,
+      formulario({ opportunity_id: NEGOCIO, visa_type_id: VISTO, amount: "10", currency: "USD" }),
+    );
+    expect(r.error).toBe("Visto não encontrado.");
+    expect(banco.insert).not.toHaveBeenCalled();
   });
 });

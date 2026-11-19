@@ -5,7 +5,6 @@ import {
   emMoeda,
   formatarMoeda,
   formatarPorMoeda,
-  juntarMoedas,
   somarItensPorMoeda,
   somarPorMoeda,
 } from "./totals";
@@ -36,14 +35,6 @@ describe("somarPorMoeda", () => {
 
   it("devolve vazio quando não há nada a somar", () => {
     expect(somarPorMoeda([])).toEqual({});
-  });
-});
-
-describe("juntarMoedas", () => {
-  it("soma agrupamentos de colunas diferentes", () => {
-    expect(
-      juntarMoedas([{ BRL: 100, USD: 50 }, { BRL: 200 }, {}]),
-    ).toEqual({ BRL: 300, USD: 50 });
   });
 });
 

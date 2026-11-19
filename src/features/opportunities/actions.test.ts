@@ -292,6 +292,7 @@ describe("updateOpportunity: dono e participantes do negócio", () => {
   function banco(
     participantesAtuais: string[],
     erroDoUpdate: { code: string; message: string } | null = null,
+    donoEhMembro = true,
   ) {
     const update = vi.fn(() => ({
       eq: () => ({
@@ -306,8 +307,31 @@ describe("updateOpportunity: dono e participantes do negócio", () => {
     const supabase = {
       from: vi.fn((tabela: string) =>
         tabela === "opportunities"
-          ? { update }
-          : {
+          ? {
+              update,
+              select: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({
+                    data: { organization_id: "org-do-negocio" },
+                    error: null,
+                  }),
+                }),
+              }),
+            }
+          : tabela === "organization_members"
+            ? {
+                select: () => ({
+                  eq: () => ({
+                    eq: () => ({
+                      maybeSingle: async () => ({
+                        data: donoEhMembro ? { user_id: "u" } : null,
+                        error: null,
+                      }),
+                    }),
+                  }),
+                }),
+              }
+            : {
               select: () => ({
                 eq: async () => ({
                   data: participantesAtuais.map((user_id) => ({ user_id })),
@@ -365,5 +389,14 @@ describe("updateOpportunity: dono e participantes do negócio", () => {
 
     expect(estado.error).toBe("Só o dono do negócio ou a gestão trocam o dono.");
     expect(b.insert).not.toHaveBeenCalled();
+  });
+
+  it("dono de fora da equipe da organização do negócio é recusado, sem gravar", async () => {
+    const b = banco([], null, false);
+
+    const estado = await updateOpportunity({ error: null }, edicao({ owner_id: U2 }, []));
+
+    expect(estado.error).toBe("Escolha o dono na equipe desta organização.");
+    expect(b.update).not.toHaveBeenCalled();
   });
 });

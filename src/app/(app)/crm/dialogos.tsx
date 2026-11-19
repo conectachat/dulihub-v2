@@ -94,16 +94,19 @@ export function DialogoDeGanho({
     if (resultado?.error) setErro(resultado.error);
   }
 
+  // Todo fechamento passa por aqui — Cancelar inclusive. O Radix só avisa o
+  // fechamento dele (X, Esc, clique fora); sem isto, o diálogo reaberto
+  // mostraria o resumo velho, com Confirmar ativo, até chegar o novo.
+  function fechar() {
+    setErro(null);
+    setCarregado(null);
+    aoMudar(false);
+  }
+
   return (
     <Dialog
       open={aberto}
-      onOpenChange={(proximo) => {
-        aoMudar(proximo);
-        if (!proximo) {
-          setErro(null);
-          setCarregado(null);
-        }
-      }}
+      onOpenChange={(proximo) => (proximo ? aoMudar(true) : fechar())}
     >
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
@@ -122,7 +125,7 @@ export function DialogoDeGanho({
         <FieldError mensagem={erro} />
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => aoMudar(false)}>
+          <Button type="button" variant="outline" onClick={fechar}>
             Cancelar
           </Button>
           {resumo ? (
@@ -218,16 +221,19 @@ export function DialogoDeReabrir({
       setErro(resultado.error);
       return;
     }
+    fechar();
+  }
+
+  // Todo fechamento limpa a recusa: reaberto, o diálogo começa do zero.
+  function fechar() {
+    setErro(null);
     aoMudar(false);
   }
 
   return (
     <Dialog
       open={aberto}
-      onOpenChange={(proximo) => {
-        aoMudar(proximo);
-        if (!proximo) setErro(null);
-      }}
+      onOpenChange={(proximo) => (proximo ? aoMudar(true) : fechar())}
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -241,7 +247,7 @@ export function DialogoDeReabrir({
         <FieldError mensagem={erro} />
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => aoMudar(false)}>
+          <Button type="button" variant="outline" onClick={fechar}>
             Cancelar
           </Button>
           <form action={confirmar}>

@@ -188,8 +188,9 @@ describe("funil: mover, ganhar e perder", () => {
     expect(busca.etapa).toBeNull();
     expect(busca.error).not.toBeNull();
 
-    // …nem grava, sabendo a etapa: a policy filtra, e zero linhas é recusa.
-    // Etapa aberta de propósito — a de ganho o app recusaria antes da RLS.
+    // …nem move, sabendo a etapa: a RLS esconde o negócio, e a leitura do
+    // status em `aplicarEtapa` já volta vazia — o update nem é enviado. Etapa
+    // aberta de propósito: a de ganho o app recusaria antes de ler.
     const r = await aplicarEtapa(duli, usuarioDuli, negocioId, meio, null);
     expect(r.error).not.toBeNull();
 

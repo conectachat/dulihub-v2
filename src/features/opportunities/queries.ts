@@ -176,7 +176,8 @@ export async function obterNegocio(id: string) {
       `id, organization_id, title, status, stage_id, pipeline_id, source,
        lost_reason, created_at, closed_at, owner_id,
        participantes:opportunity_participants(user_id),
-       itens:opportunity_items(id, visa_type_id, visa_name, amount, currency, position),
+       itens:opportunity_items(id, visa_type_id, visa_name, amount, currency, position,
+         processos:projects!projects_item_same_org(id)),
        person:people(id, full_name, email, phone, phone_country_code, company,
          job_title, lifecycle_stage, person_tags(tag:tags(id, name)))`,
     )
@@ -205,7 +206,9 @@ export async function obterNegocio(id: string) {
   return {
     negocio: {
       ...negocio,
-      itens: [...negocio.itens].sort((a, b) => a.position - b.position),
+      itens: [...negocio.itens]
+        .sort((a, b) => a.position - b.position)
+        .map(({ processos, ...item }) => ({ ...item, temProcesso: processos.length > 0 })),
     },
     etapas: (etapas ?? []) as Stage[],
     catalogo: catalogo ?? [],
