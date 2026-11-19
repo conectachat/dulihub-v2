@@ -12,7 +12,7 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.ts"],
     // Testes de RLS batem num Supabase real; ficam à parte para poderem rodar
     // isolados. `bun run test` roda a unidade, `bun run test:rls` roda estes.
-    include: ["src/**/*.test.{ts,tsx}", "tests/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "tests/**/*.test.{ts,tsx}", "migration/**/*.test.ts"],
     // Prefixo vazio: carrega o `.env.local` inteiro, não só o que começa com
     // `VITE_`. É de lá que saem a URL do projeto e as senhas de teste — que
     // nunca entram no repositório.

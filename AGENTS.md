@@ -362,6 +362,15 @@ organização B.
 `bun run verify` faz tipos, lint, testes de unidade e de RLS; o build e a
 fumaça (`bun run test:fumaca`, com o servidor local no ar) rodam à parte.
 
+**A VPS não monta o repositório inteiro.** O `.dockerignore` tira `tests/`,
+`migration/`, `supabase/`, `docs/` e outras, e o `next build` confere os tipos
+de todo `.ts` que recebe — inclusive teste dentro de `src/`. O CI tem tudo, então
+passa onde a VPS quebra: em 19/nov, um teste em `src/` importando `migration/`
+segurou os dois pushes da entrega 2 por horas. Nada que entra na montagem importa
+dessas pastas (`src/lib/contexto-do-docker.test.ts` confere), e o teste de um
+script de `migration/` mora em `migration/`. Depois do push, `/api/versao` diz
+qual commit está no ar.
+
 Lint em **zero**, sem exceção herdada. Era 7, todos de `setState` dentro de
 `useEffect`; foram pagos, não administrados. Se voltar a subir, o commit não
 acontece — a trava local recusa antes.

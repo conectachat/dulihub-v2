@@ -261,6 +261,11 @@ Decisões que valem até a entrega 3 (detalhe no plano):
 - **Clientes lê do servidor** e **anexos vão direto do navegador**: as duas
   exceções estão no `AGENTS.md`.
 
+Os pushes 1 e 2 não chegaram ao ar no mesmo dia: a montagem da VPS quebrava num
+teste de `src/` que importava `migration/`, pasta que o Docker não recebe (o CI,
+com o repositório inteiro, passava). Corrigido em 19/nov, com um teste que barra
+a repetição; a regra está no `AGENTS.md` ("A VPS não monta o repositório inteiro").
+
 ---
 
 ## 3. Pendências do Renato

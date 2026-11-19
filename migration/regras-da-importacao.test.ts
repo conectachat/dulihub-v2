@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ddiGravado, estagioFinal } from "../../migration/regras-da-importacao.mjs";
+import { ddiGravado, estagioFinal } from "./regras-da-importacao.mjs";
 
 /**
  * Regras da importação do app antigo (`migration/import-people.mjs`).
