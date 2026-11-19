@@ -11,7 +11,12 @@ import { Label } from "@/components/ui/label";
 import { moveOpportunity, updateOpportunity } from "@/features/opportunities/actions";
 import { comAviso } from "@/lib/avisar";
 
-import { DialogoDeGanho, DialogoDePerda, type NegocioDoDialogo } from "../dialogos";
+import {
+  DialogoDeGanho,
+  DialogoDePerda,
+  DialogoDeReabrir,
+  type NegocioDoDialogo,
+} from "../dialogos";
 
 /**
  * Os botões da tela do lead que precisam do navegador: Ganho, Perdido,
@@ -52,6 +57,31 @@ export function GanhoEPerdido({ negocio }: { negocio: NegocioDoDialogo }) {
         aberto={aberto === "perda"}
         aoMudar={(a) => setAberto(a ? "perda" : null)}
       />
+    </>
+  );
+}
+
+/**
+ * Negócio ganho reabre pelo diálogo (CRM-15): volta para a primeira etapa
+ * aberta, sem tocar na pessoa nem nos processos, e só o dono do negócio ou a
+ * gestão conseguem — a recusa aparece no diálogo.
+ */
+export function ReabrirGanho({
+  negocio,
+  destino,
+}: {
+  negocio: NegocioDoDialogo;
+  destino: string;
+}) {
+  const [aberto, setAberto] = useState(false);
+
+  return (
+    <>
+      <Button size="sm" className="rounded-xl" onClick={() => setAberto(true)}>
+        <RotateCcw className="mr-1 h-4 w-4" />
+        Reabrir
+      </Button>
+      <DialogoDeReabrir negocio={negocio} destino={destino} aberto={aberto} aoMudar={setAberto} />
     </>
   );
 }

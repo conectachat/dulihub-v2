@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { FieldError } from "@/components/field-error";
 import { NativeSelect } from "@/components/native-select";
@@ -19,9 +19,13 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   ganharOportunidade,
   perderOportunidade,
+  reabrirOportunidade,
+  resumoDoGanho,
 } from "@/features/opportunities/actions";
 import { MOTIVOS_DE_PERDA, motivoDaPerda } from "@/features/opportunities/regras";
+import type { ResumoDoGanho } from "@/features/opportunities/schema";
 import { ESTADO_INICIAL } from "@/lib/action-state";
+import { formatarMoeda, somarItensPorMoeda } from "@/lib/totals";
 
 /**
  * As duas saídas do funil, com a pergunta que cada uma exige.
@@ -36,8 +40,11 @@ export type NegocioDoDialogo = { id: string; cliente: string };
 /**
  * Ganho: o contrato foi assinado.
  *
- * A consequência é dita por extenso porque não tem volta: o contato vira
- * cliente, e reabrir o negócio depois não o faz voltar a ser lead.
+ * Antes de gravar, o resumo (CRM-14): os vistos e o total por moeda, a forma
+ * de pagamento e o que vai acontecer — quem vira cliente, os processos e as
+ * cobranças. Ele vem de `ganhar_negocio` com `p_simular`, a mesma função que
+ * grava: o que a tela promete é o que acontece. Recusa (sem visto, CRM-10…)
+ * aparece no lugar do resumo, sem Confirmar.
  */
 export function DialogoDeGanho({
   negocio,
@@ -48,7 +55,37 @@ export function DialogoDeGanho({
   aberto: boolean;
   aoMudar: (aberto: boolean) => void;
 }) {
+  const [carregado, setCarregado] = useState<{
+    id: string;
+    resumo: ResumoDoGanho | null;
+    erro: string | null;
+  } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+
+  // O resumo é pedido ao abrir; o estado só muda depois da resposta.
+  useEffect(() => {
+    if (!aberto) return;
+    let vivo = true;
+    resumoDoGanho(negocio.id)
+      .then(({ resumo, error }) => {
+        if (vivo) setCarregado({ id: negocio.id, resumo, erro: error });
+      })
+      .catch(() => {
+        if (vivo) {
+          setCarregado({
+            id: negocio.id,
+            resumo: null,
+            erro: "Não foi possível montar o resumo. Tente de novo.",
+          });
+        }
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [aberto, negocio.id]);
+
+  const atual = carregado?.id === negocio.id ? carregado : null;
+  const resumo = atual?.resumo ?? null;
 
   async function confirmar(formData: FormData) {
     setErro(null);
@@ -62,18 +99,144 @@ export function DialogoDeGanho({
       open={aberto}
       onOpenChange={(proximo) => {
         aoMudar(proximo);
+        if (!proximo) {
+          setErro(null);
+          setCarregado(null);
+        }
+      }}
+    >
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Ganhar negócio — {resumo?.pessoa.nome ?? negocio.cliente}</DialogTitle>
+          <DialogDescription>Use quando o contrato estiver assinado.</DialogDescription>
+        </DialogHeader>
+
+        {!atual ? (
+          <p className="text-sm text-muted-foreground">Montando o resumo...</p>
+        ) : resumo ? (
+          <ResumoDoGanhoNaTela resumo={resumo} />
+        ) : (
+          <FieldError mensagem={atual.erro} />
+        )}
+
+        <FieldError mensagem={erro} />
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => aoMudar(false)}>
+            Cancelar
+          </Button>
+          {resumo ? (
+            <form action={confirmar}>
+              <input type="hidden" name="id" value={negocio.id} />
+              <SubmitButton pendente="Gravando...">Confirmar Ganho</SubmitButton>
+            </form>
+          ) : null}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ResumoDoGanhoNaTela({ resumo }: { resumo: ResumoDoGanho }) {
+  const totais = Object.entries(somarItensPorMoeda(resumo.itens)).sort(([a], [b]) =>
+    a.localeCompare(b),
+  );
+  const { processos } = resumo;
+
+  return (
+    <div className="space-y-4 text-sm">
+      <section className="space-y-1">
+        <h3 className="text-xs text-muted-foreground">Vistos</h3>
+        <ul className="space-y-1">
+          {resumo.itens.map((item) => (
+            <li key={item.id} className="flex justify-between gap-2">
+              <span>{item.visa_name}</span>
+              <span className="tabular-nums">{formatarMoeda(item.amount, item.currency)}</span>
+            </li>
+          ))}
+        </ul>
+        <div role="group" aria-label="Totais por moeda" className="border-t pt-1">
+          {totais.map(([moeda, valor]) => (
+            <p key={moeda} className="flex justify-between gap-2 font-semibold">
+              <span>Total</span>
+              <span className="tabular-nums">{formatarMoeda(valor, moeda)}</span>
+            </p>
+          ))}
+        </div>
+      </section>
+
+      {/* Entrega 4: a forma de pagamento da ficha, e as cobranças dela. */}
+      <p>Forma de pagamento: definir na aba Financeiro</p>
+
+      <section className="space-y-1">
+        <h3 className="text-xs text-muted-foreground">Ao confirmar</h3>
+        <ul className="list-disc space-y-1 pl-5">
+          {resumo.pessoa.vira_cliente ? <li>{resumo.pessoa.nome} passa a ser cliente</li> : null}
+          <li>
+            {processos.length === 0
+              ? "Nenhum processo novo."
+              : processos.length === 1
+                ? `Será criado 1 processo: ${processos[0]!.titulo}`
+                : `Serão criados ${processos.length} processos: ${processos
+                    .map((p) => p.titulo)
+                    .join("; ")}`}
+          </li>
+          <li>Nenhuma cobrança será criada.</li>
+          {resumo.avisos.map((aviso) => (
+            <li key={aviso}>{aviso}</li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
+
+/**
+ * Reabrir um negócio ganho (CRM-15): volta para a primeira etapa aberta, sem
+ * tocar na pessoa nem nos processos. Pede confirmação também no quadro —
+ * arrastar o cartão para fora do Ganho não reabre sozinho. Só o dono do
+ * negócio ou a gestão conseguem; a recusa aparece aqui.
+ */
+export function DialogoDeReabrir({
+  negocio,
+  destino,
+  aberto,
+  aoMudar,
+}: {
+  negocio: NegocioDoDialogo;
+  /** A primeira etapa aberta do funil, para onde o negócio volta (D7). */
+  destino: string;
+  aberto: boolean;
+  aoMudar: (aberto: boolean) => void;
+}) {
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function confirmar(formData: FormData) {
+    setErro(null);
+    const resultado = await reabrirOportunidade(formData);
+    if (resultado.error) {
+      setErro(resultado.error);
+      return;
+    }
+    aoMudar(false);
+  }
+
+  return (
+    <Dialog
+      open={aberto}
+      onOpenChange={(proximo) => {
+        aoMudar(proximo);
         if (!proximo) setErro(null);
       }}
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Marcar como ganho?</DialogTitle>
-          <DialogDescription>
-            Use quando o contrato estiver assinado. {negocio.cliente} passa a ser
-            cliente — com processos e financeiro — e não volta a ser lead, mesmo
-            que o negócio seja reaberto depois.
-          </DialogDescription>
+          <DialogTitle>Reabrir este negócio?</DialogTitle>
+          <DialogDescription>Ele volta para {destino}.</DialogDescription>
         </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          {negocio.cliente} continua cliente, e os processos continuam onde estão.
+        </p>
 
         <FieldError mensagem={erro} />
 
@@ -83,7 +246,7 @@ export function DialogoDeGanho({
           </Button>
           <form action={confirmar}>
             <input type="hidden" name="id" value={negocio.id} />
-            <SubmitButton pendente="Gravando...">Marcar como ganho</SubmitButton>
+            <SubmitButton pendente="Reabrindo...">Reabrir</SubmitButton>
           </form>
         </DialogFooter>
       </DialogContent>

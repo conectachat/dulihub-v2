@@ -1,6 +1,8 @@
 import type { Tables } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
-import { somarPorMoeda, type PorMoeda } from "@/lib/totals";
+import { somarItensPorMoeda, type PorMoeda } from "@/lib/totals";
+
+import { filtroDoQuadro } from "./regras";
 
 export type Stage = Pick<
   Tables<"pipeline_stages">,
@@ -9,8 +11,10 @@ export type Stage = Pick<
 
 export type BoardCard = Pick<
   Tables<"opportunities">,
-  "id" | "title" | "value" | "currency" | "status" | "stage_id" | "created_at"
+  "id" | "title" | "status" | "stage_id" | "created_at"
 > & {
+  /** Os vistos do negócio: o cartão e a coluna somam por moeda (CRM-13). */
+  itens: Pick<Tables<"opportunity_items">, "amount" | "currency">[];
   person:
     | (Pick<Tables<"people">, "id" | "full_name"> & {
         /** Os links da ficha de cadastro do contato; a tela escolhe o vigente. */
@@ -83,12 +87,15 @@ export async function getBoard(): Promise<Board> {
       supabase
         .from("opportunities")
         .select(
-          `id, title, value, currency, status, stage_id, created_at,
+          `id, title, status, stage_id, created_at,
+           itens:opportunity_items(amount, currency),
            person:people(id, full_name,
              fichas:registration_forms(created_at, expires_at, cancelled_at, submitted_at, reviewed_at)),
            processos:projects!projects_opportunity_same_org(id)`,
         )
         .eq("pipeline_id", pipeline.id)
+        // Abertos, e encerrados há até 30 dias; o resto, em Encerradas (CRM-16).
+        .or(filtroDoQuadro(new Date()))
         .order("created_at", { ascending: false }),
     ]);
 
@@ -111,7 +118,9 @@ export async function getBoard(): Promise<Board> {
 
   // Por moeda, e nunca somando uma na outra.
   for (const stage of stages) {
-    totalsByStage[stage.id].porMoeda = somarPorMoeda(cardsByStage[stage.id]);
+    totalsByStage[stage.id].porMoeda = somarItensPorMoeda(
+      cardsByStage[stage.id].flatMap((card) => card.itens),
+    );
   }
 
   return {

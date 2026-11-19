@@ -105,6 +105,19 @@ export function valorSugerido(
   return visto.base_price;
 }
 
+/** Ganhos e perdidos ficam no quadro por este tempo; depois, só em Encerradas. */
+export const DIAS_NO_QUADRO = 30;
+
+/**
+ * O que o quadro mostra (CRM-16): os abertos, e os encerrados há até 30 dias.
+ * É o `or` do PostgREST, em função pura para o teste de RLS rodar o mesmo
+ * filtro contra o banco de verdade (D15).
+ */
+export function filtroDoQuadro(agora: Date): string {
+  const desde = new Date(agora.getTime() - DIAS_NO_QUADRO * 86_400_000);
+  return `status.eq.open,closed_at.gte.${desde.toISOString()}`;
+}
+
 /** Entrar no ganho é do `ganhar_negocio` (0052), que mostra o resumo antes. */
 export const USE_O_GANHO = "Use o Ganho, que mostra o resumo antes.";
 /** Sair do ganho é do `reabrir_negocio` (0052), que confere quem pode. */

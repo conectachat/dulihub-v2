@@ -2,6 +2,8 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { filtroDoQuadro } from "@/features/opportunities/regras";
+
 import { entrarComo, fixture, type Cliente } from "./clientes";
 
 /**
@@ -213,5 +215,40 @@ describe("buscar_encerradas (0053)", () => {
       { currency: "BRL", amount: 1000 },
       { currency: "USD", amount: 14000 },
     ]);
+  });
+
+  describe("a janela do quadro (filtroDoQuadro)", () => {
+    const doQuadro = (ids: string[]) =>
+      parceiro
+        .from("opportunities")
+        .select("id")
+        .in("id", ids)
+        .or(filtroDoQuadro(new Date()));
+
+    it("ganho de hoje fica no quadro", async () => {
+      const { data, error } = await doQuadro([negocios.alfa!]);
+      expect(error).toBeNull();
+      expect(data!.map((n) => n.id)).toEqual([negocios.alfa]);
+    });
+
+    it("ganho há 40 dias sai do quadro, e Encerradas o acha pelo contato", async () => {
+      const maria = (await parceiro.from("opportunities").select("person_id").eq("id", negocios.alfa!).single())
+        .data!.person_id;
+      const antigo = await negocio(maria, `Venda ${s} antiga`);
+      await item(antigo, "EB-1A", 1000, "USD");
+      const ganho = await parceiro.rpc("ganhar_negocio", { p_negocio: antigo });
+      expect(ganho.error).toBeNull();
+
+      // Só `closed_at`: nenhuma trava guarda a data de encerramento.
+      const quarentaDias = new Date(Date.now() - 40 * 86_400_000).toISOString();
+      const mudou = await parceiro.from("opportunities").update({ closed_at: quarentaDias }).eq("id", antigo);
+      expect(mudou.error).toBeNull();
+
+      const { data } = await doQuadro([antigo]);
+      expect(data).toEqual([]);
+
+      const { linhas } = await buscar(parceiro, { p_busca: `${s} Maria` });
+      expect(linhas.map((l) => l.id)).toContain(antigo);
+    });
   });
 });

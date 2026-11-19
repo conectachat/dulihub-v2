@@ -1,11 +1,13 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DialogoDeGanho, DialogoDePerda } from "./dialogos";
+import { DialogoDeGanho, DialogoDePerda, DialogoDeReabrir } from "./dialogos";
 
 const acoes = vi.hoisted(() => ({
   ganharOportunidade: vi.fn(),
   perderOportunidade: vi.fn(),
+  resumoDoGanho: vi.fn(),
+  reabrirOportunidade: vi.fn(),
 }));
 vi.mock("@/features/opportunities/actions", () => acoes);
 
@@ -17,28 +19,105 @@ vi.mock("@/features/opportunities/actions", () => acoes);
 
 const negocio = { id: "n1", cliente: "Ana de Teste" };
 
+const RESUMO = {
+  negocio: "n1",
+  pessoa: { id: "c1", nome: "Ana de Teste", vira_cliente: true },
+  itens: [
+    { id: "i1", visa_name: "EB-1A", amount: 8000, currency: "USD" },
+    { id: "i2", visa_name: "O-1", amount: 6000, currency: "USD" },
+  ],
+  processos: [
+    { item: "i1", titulo: "EB-1A — Ana de Teste", id: null },
+    { item: "i2", titulo: "O-1 — Ana de Teste", id: null },
+  ],
+  cobrancas: [],
+  avisos: [],
+};
+
 beforeEach(() => {
-  acoes.ganharOportunidade.mockReset();
-  acoes.perderOportunidade.mockReset();
+  for (const acao of Object.values(acoes)) acao.mockReset();
+  acoes.resumoDoGanho.mockResolvedValue({ resumo: RESUMO, error: null });
 });
 
 describe("DialogoDeGanho", () => {
-  it("diz o que muda antes de gravar: vira cliente, e não volta", () => {
+  it("mostra o resumo antes de gravar: vistos, total, pagamento e o que vai acontecer", async () => {
     render(<DialogoDeGanho negocio={negocio} aberto aoMudar={() => {}} />);
 
-    expect(screen.getByText(/contrato estiver assinado/)).toBeTruthy();
-    expect(screen.getByText(/Ana de Teste passa a ser\s+cliente/)).toBeTruthy();
-    expect(screen.getByText(/não volta a ser lead/)).toBeTruthy();
+    expect(await screen.findByText("EB-1A")).toBeTruthy();
+    expect(acoes.resumoDoGanho).toHaveBeenCalledWith("n1");
+    expect(screen.getByText("O-1")).toBeTruthy();
+    const totais = within(screen.getByRole("group", { name: "Totais por moeda" }));
+    expect(totais.getByText(/US\$\s14\.000/)).toBeTruthy();
+    expect(screen.getByText("Forma de pagamento: definir na aba Financeiro")).toBeTruthy();
+    expect(screen.getByText("Ana de Teste passa a ser cliente")).toBeTruthy();
+    expect(
+      screen.getByText("Serão criados 2 processos: EB-1A — Ana de Teste; O-1 — Ana de Teste"),
+    ).toBeTruthy();
+    expect(screen.getByText("Nenhuma cobrança será criada.")).toBeTruthy();
+  });
+
+  it("quem já é cliente não ganha a linha de 'passa a ser cliente'", async () => {
+    acoes.resumoDoGanho.mockResolvedValue({
+      resumo: { ...RESUMO, pessoa: { ...RESUMO.pessoa, vira_cliente: false } },
+      error: null,
+    });
+    render(<DialogoDeGanho negocio={negocio} aberto aoMudar={() => {}} />);
+
+    expect(await screen.findByText("EB-1A")).toBeTruthy();
+    expect(screen.queryByText("Ana de Teste passa a ser cliente")).toBeNull();
+  });
+
+  it("sem processo novo, diz que nenhum processo novo será criado", async () => {
+    acoes.resumoDoGanho.mockResolvedValue({ resumo: { ...RESUMO, processos: [] }, error: null });
+    render(<DialogoDeGanho negocio={negocio} aberto aoMudar={() => {}} />);
+
+    expect(await screen.findByText("Nenhum processo novo.")).toBeTruthy();
+  });
+
+  it("resumo recusado mostra a frase e não oferece Confirmar", async () => {
+    acoes.resumoDoGanho.mockResolvedValue({
+      resumo: null,
+      error: "Acrescente pelo menos um visto antes do Ganho.",
+    });
+    render(<DialogoDeGanho negocio={negocio} aberto aoMudar={() => {}} />);
+
+    expect(await screen.findByText("Acrescente pelo menos um visto antes do Ganho.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Confirmar Ganho" })).toBeNull();
   });
 
   it("confirmado, grava o negócio certo; recusa aparece no diálogo", async () => {
     acoes.ganharOportunidade.mockResolvedValueOnce({ error: "O funil não tem etapa de ganho." });
     render(<DialogoDeGanho negocio={negocio} aberto aoMudar={() => {}} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Marcar como ganho" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirmar Ganho" }));
 
     expect(await screen.findByText("O funil não tem etapa de ganho.")).toBeTruthy();
     expect(acoes.ganharOportunidade.mock.calls[0][0].get("id")).toBe("n1");
+  });
+});
+
+describe("DialogoDeReabrir", () => {
+  it("pergunta e diz para onde o negócio volta; Cancelar não grava", () => {
+    const aoMudar = vi.fn();
+    render(<DialogoDeReabrir negocio={negocio} destino="Novo Lead" aberto aoMudar={aoMudar} />);
+
+    expect(screen.getByText("Reabrir este negócio?")).toBeTruthy();
+    expect(screen.getByText("Ele volta para Novo Lead.")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(aoMudar).toHaveBeenCalledWith(false);
+    expect(acoes.reabrirOportunidade).not.toHaveBeenCalled();
+  });
+
+  it("confirmado, reabre o negócio certo e fecha", async () => {
+    acoes.reabrirOportunidade.mockResolvedValueOnce({ error: null, ok: true });
+    const aoMudar = vi.fn();
+    render(<DialogoDeReabrir negocio={negocio} destino="Novo Lead" aberto aoMudar={aoMudar} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Reabrir" }));
+
+    await waitFor(() => expect(aoMudar).toHaveBeenCalledWith(false));
+    expect(acoes.reabrirOportunidade.mock.calls[0][0].get("id")).toBe("n1");
   });
 });
 

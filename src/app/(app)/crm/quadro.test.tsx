@@ -9,8 +9,13 @@ const acoes = vi.hoisted(() => ({
   createOpportunity: vi.fn(),
   ganharOportunidade: vi.fn(),
   perderOportunidade: vi.fn(),
+  resumoDoGanho: vi.fn(),
+  reabrirOportunidade: vi.fn(),
 }));
 vi.mock("@/features/opportunities/actions", () => acoes);
+
+const avisos = vi.hoisted(() => ({ toast: { error: vi.fn(), success: vi.fn() } }));
+vi.mock("sonner", () => avisos);
 
 /**
  * O quadro do funil: arrastar um cartão entre colunas, e o seletor que
@@ -31,13 +36,14 @@ const etapas = [
 const cartao: CartaoDoQuadro = {
   id: "n1",
   title: "Processo EB-2 NIW",
-  value: 5000,
-  currency: "USD",
+  itens: [{ amount: 5000, currency: "USD" }],
   stage_id: "novo",
   person: { id: "c1", full_name: "Ana de Teste" },
-  processoId: null,
+  processos: [],
   ficha: "sem-link",
 };
+
+const ganho: CartaoDoQuadro = { ...cartao, stage_id: "ganho" };
 
 /** O `dataTransfer` que o jsdom não traz. */
 function transferencia() {
@@ -63,7 +69,9 @@ function arrastarPara(nomeDaEtapa: string) {
 
 beforeEach(() => {
   for (const acao of Object.values(acoes)) acao.mockReset();
+  avisos.toast.error.mockReset();
   acoes.moveOpportunity.mockResolvedValue({ error: null, ok: true });
+  acoes.resumoDoGanho.mockResolvedValue({ resumo: null, error: "Acrescente pelo menos um visto antes do Ganho." });
 });
 
 describe("Quadro", () => {
@@ -114,13 +122,13 @@ describe("Quadro", () => {
     expect(acoes.moveOpportunity).not.toHaveBeenCalled();
   });
 
-  it("soltar em Ganho pede a confirmação em vez de mover", async () => {
+  it("soltar em Ganho abre o resumo em vez de mover", async () => {
     render(<Quadro etapas={etapas} cartoes={[cartao]} pessoas={[]} />);
 
     arrastarPara("Ganho");
 
-    expect(await screen.findByText("Marcar como ganho?")).toBeTruthy();
-    expect(screen.getByText(/Ana de Teste passa a ser\s+cliente/)).toBeTruthy();
+    expect(await screen.findByText(/Ganhar negócio/)).toBeTruthy();
+    await waitFor(() => expect(acoes.resumoDoGanho).toHaveBeenCalledWith("n1"));
     expect(acoes.moveOpportunity).not.toHaveBeenCalled();
     expect(acoes.ganharOportunidade).not.toHaveBeenCalled();
   });
@@ -166,5 +174,89 @@ describe("Quadro", () => {
     expect(
       within(coluna).getByRole("link", { name: /Ficha conferida/ }).getAttribute("href"),
     ).toBe("/clientes/c1?aba=dados");
+  });
+
+  it("o cartão mostra os totais por moeda dos vistos", () => {
+    render(
+      <Quadro
+        etapas={etapas}
+        cartoes={[{ ...cartao, itens: [{ amount: 5000, currency: "USD" }, { amount: 1000, currency: "BRL" }] }]}
+        pessoas={[]}
+      />,
+    );
+    const artigo = screen.getByRole("article", { name: /Processo EB-2 NIW/ });
+    expect(within(artigo).getByText(/R\$\s1\.000 e US\$\s5\.000/)).toBeTruthy();
+  });
+
+  it("as colunas Ganho e Perdido dizem que mostram só os últimos 30 dias", () => {
+    render(<Quadro etapas={etapas} cartoes={[cartao]} pessoas={[]} />);
+    const coluna = (nome: string) => within(screen.getByRole("region", { name: `Etapa ${nome}` }));
+    expect(coluna("Ganho").getByText("últimos 30 dias")).toBeTruthy();
+    expect(coluna("Perdido").getByText("últimos 30 dias")).toBeTruthy();
+    expect(coluna("Novo Lead").queryByText("últimos 30 dias")).toBeNull();
+  });
+
+  it("cartão ganho não tem Excluir: o negócio ganho fica como registro", () => {
+    render(<Quadro etapas={etapas} cartoes={[cartao, { ...ganho, id: "n2", title: "Negócio ganho" }]} pessoas={[]} />);
+    expect(screen.getByRole("button", { name: "Excluir Processo EB-2 NIW" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Excluir Negócio ganho" })).toBeNull();
+  });
+
+  it("soltar um ganho numa etapa aberta pede para reabrir, e diz para onde volta", async () => {
+    render(<Quadro etapas={etapas} cartoes={[ganho]} pessoas={[]} />);
+
+    arrastarPara("Proposta");
+
+    expect(await screen.findByText("Reabrir este negócio?")).toBeTruthy();
+    expect(screen.getByText("Ele volta para Novo Lead.")).toBeTruthy();
+    expect(acoes.moveOpportunity).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(screen.queryByText("Reabrir este negócio?")).toBeNull());
+    expect(acoes.reabrirOportunidade).not.toHaveBeenCalled();
+  });
+
+  it("soltar um ganho em Perdido não move: reabra antes", () => {
+    render(<Quadro etapas={etapas} cartoes={[ganho]} pessoas={[]} />);
+
+    arrastarPara("Perdido");
+
+    expect(avisos.toast.error).toHaveBeenCalledWith("Reabra o negócio antes.");
+    expect(screen.queryByLabelText("Motivo *")).toBeNull();
+    expect(acoes.moveOpportunity).not.toHaveBeenCalled();
+  });
+
+  it("reabrir recusado pelo banco mostra a frase, e o cartão continua no Ganho", async () => {
+    acoes.reabrirOportunidade.mockResolvedValue({
+      error: "Só o dono do negócio ou a gestão reabrem o negócio.",
+    });
+    render(<Quadro etapas={etapas} cartoes={[ganho]} pessoas={[]} />);
+
+    arrastarPara("Proposta");
+    fireEvent.click(await screen.findByRole("button", { name: "Reabrir" }));
+
+    expect(
+      await screen.findByText("Só o dono do negócio ou a gestão reabrem o negócio."),
+    ).toBeTruthy();
+    expect(acoes.reabrirOportunidade.mock.calls[0][0].get("id")).toBe("n1");
+    // O diálogo segue aberto com a frase, e esconde o quadro dos leitores de
+    // tela: `hidden` procura atrás dele.
+    const colunaGanho = screen.getByRole("region", { name: "Etapa Ganho", hidden: true });
+    expect(
+      within(colunaGanho).getByRole("article", { name: /Processo EB-2 NIW/, hidden: true }),
+    ).toBeTruthy();
+  });
+
+  it("ganho com um processo abre o processo; com mais de um, a aba Projetos do cliente", () => {
+    const { unmount } = render(
+      <Quadro etapas={etapas} cartoes={[{ ...ganho, processos: ["p1"] }]} pessoas={[]} />,
+    );
+    expect(screen.getByRole("link", { name: "Ver processo" }).getAttribute("href")).toBe("/projetos/p1");
+    unmount();
+
+    render(<Quadro etapas={etapas} cartoes={[{ ...ganho, processos: ["p1", "p2"] }]} pessoas={[]} />);
+    expect(screen.getByRole("link", { name: "Ver processos" }).getAttribute("href")).toBe(
+      "/clientes/c1?aba=projetos",
+    );
   });
 });

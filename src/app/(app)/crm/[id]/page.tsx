@@ -22,7 +22,7 @@ import { PersonTags } from "@/components/perfil/person-tags";
 import { Timeline } from "@/components/perfil/timeline";
 import { enderecoDaPessoa } from "@/lib/pessoa";
 import { PersonDialog } from "../../contatos/person-dialog";
-import { EditarNegocio, GanhoEPerdido, Reabrir } from "./acoes-do-negocio";
+import { EditarNegocio, GanhoEPerdido, Reabrir, ReabrirGanho } from "./acoes-do-negocio";
 import { Trilha } from "./trilha";
 import { Vistos } from "./vistos";
 
@@ -123,9 +123,17 @@ export default async function LeadPage({
             {pessoa.full_name} é cliente: processos e financeiro ficam no perfil
             completo.
           </p>
-          <Button asChild size="sm" className="rounded-xl">
-            <Link href={enderecoDaPessoa(pessoa.id, "client")}>Abrir perfil do cliente</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild size="sm" className="rounded-xl">
+              <Link href={enderecoDaPessoa(pessoa.id, "client")}>Abrir perfil do cliente</Link>
+            </Button>
+            {degraus[0] ? (
+              <ReabrirGanho
+                negocio={{ id: negocio.id, cliente: pessoa.full_name }}
+                destino={degraus[0].name}
+              />
+            ) : null}
+          </div>
         </div>
       ) : null}
 

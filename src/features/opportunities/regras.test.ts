@@ -6,6 +6,7 @@ import {
   etapasDeEntrada,
   motivoDaPerda,
   trilhaDoFunil,
+  filtroDoQuadro,
   valorSugerido,
 } from "./regras";
 
@@ -194,5 +195,13 @@ describe("valorSugerido", () => {
 
   it("visto sem preço não sugere nada", () => {
     expect(valorSugerido({ base_price: null, currency: "USD" }, "USD")).toBeNull();
+  });
+});
+
+describe("filtroDoQuadro", () => {
+  it("abertos, ou encerrados há até 30 dias (CRM-16)", () => {
+    expect(filtroDoQuadro(new Date("2026-11-19T12:00:00Z"))).toBe(
+      "status.eq.open,closed_at.gte.2026-10-20T12:00:00.000Z",
+    );
   });
 });

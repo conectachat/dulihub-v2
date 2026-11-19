@@ -3,7 +3,7 @@ import { KanbanSquare } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
-import { formatarPorMoeda, juntarMoedas } from "@/lib/totals";
+import { formatarPorMoeda, somarItensPorMoeda } from "@/lib/totals";
 import { linkVigente, situacaoDaFicha } from "@/features/cadastro/regras";
 import { getBoard, listPeopleForPicker } from "@/features/opportunities/queries";
 import { etapasDeEntrada } from "@/features/opportunities/regras";
@@ -57,13 +57,12 @@ export default async function CrmPage() {
     (board.cardsByStage[etapa.id] ?? []).map((card) => ({
       id: card.id,
       title: card.title,
-      value: card.value,
-      currency: card.currency,
+      itens: card.itens,
       stage_id: card.stage_id,
       person: card.person
         ? { id: card.person.id, full_name: card.person.full_name }
         : null,
-      processoId: card.processos[0]?.id ?? null,
+      processos: card.processos.map((p) => p.id),
       ficha: situacaoDaFicha(linkVigente(card.person?.fichas ?? []), agora),
     })),
   );
@@ -71,11 +70,12 @@ export default async function CrmPage() {
   // Só o que está em negociação. Ganho e perdido já saíram do funil, e somá-los
   // aqui daria um número que não significa nada.
   //
-  // Por moeda, e não somado: dólar com real dá um número que não existe.
-  const totalAberto = juntarMoedas(
+  // Por moeda, e não somado: dólar com real dá um número que não existe. Em
+  // centavos, direto dos vistos (D20).
+  const totalAberto = somarItensPorMoeda(
     board.stages
       .filter((s) => !s.is_won && !s.is_lost)
-      .map((s) => board.totalsByStage[s.id]?.porMoeda ?? {}),
+      .flatMap((s) => (board.cardsByStage[s.id] ?? []).flatMap((card) => card.itens)),
   );
 
   return (

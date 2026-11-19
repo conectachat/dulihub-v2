@@ -15,12 +15,17 @@ import {
   etapasDeEntrada,
   REABRA_ANTES,
 } from "@/features/opportunities/regras";
-import { formatarMoeda, formatarPorMoeda, somarPorMoeda } from "@/lib/totals";
+import { formatarPorMoeda, somarItensPorMoeda } from "@/lib/totals";
 import { cn } from "@/lib/utils";
 import { enderecoDaPessoa } from "@/lib/pessoa";
 
 import { AtalhoDaFicha } from "./atalho-da-ficha";
-import { DialogoDeGanho, DialogoDePerda, type NegocioDoDialogo } from "./dialogos";
+import {
+  DialogoDeGanho,
+  DialogoDePerda,
+  DialogoDeReabrir,
+  type NegocioDoDialogo,
+} from "./dialogos";
 import { MoveCard } from "./move-card";
 import { OpportunityDialog } from "./opportunity-dialog";
 
@@ -36,20 +41,23 @@ import { OpportunityDialog } from "./opportunity-dialog";
  * **O seletor do cartão continua.** Arrastar nativo não funciona no toque nem
  * no teclado; o seletor é o caminho do celular e do leitor de tela.
  *
- * Os dois passam por `levar`, e é ali que mora a regra: Ganho pede a
- * confirmação, Perdido pede o motivo, e nenhum dos dois move direto
- * (`aoSoltar`).
+ * Os dois passam por `levar`, e é ali que mora a regra: Ganho mostra o
+ * resumo, Perdido pede o motivo, sair do Ganho pede para reabrir, e nenhum
+ * dos três move direto (`aoSoltar`).
+ *
+ * Ganho e Perdido mostram só os encerrados dos últimos 30 dias; o resto fica
+ * em CRM › Encerradas (CRM-16).
  */
 
 export type CartaoDoQuadro = {
   id: string;
   title: string;
-  value: number | null;
-  currency: string;
+  /** Os vistos do negócio: o cartão mostra o total por moeda (CRM-13). */
+  itens: { amount: number; currency: string }[];
   stage_id: string;
   person: { id: string; full_name: string } | null;
-  /** Processo nascido deste negócio — decide o atalho na coluna de Ganho. */
-  processoId: string | null;
+  /** Processos nascidos deste negócio — decidem o atalho na coluna de Ganho. */
+  processos: string[];
   /** Em que pé está a ficha de cadastro do contato. */
   ficha: SituacaoDaFicha;
 };
@@ -75,11 +83,13 @@ export function Quadro({
   const [arrastando, setArrastando] = useState<string | null>(null);
   const [sobre, setSobre] = useState<string | null>(null);
   const [dialogo, setDialogo] = useState<
-    { tipo: "ganho" | "perda"; negocio: NegocioDoDialogo } | null
+    { tipo: "ganho" | "perda" | "reabrir"; negocio: NegocioDoDialogo } | null
   >(null);
 
   const opcoes = etapas.map((e) => ({ id: e.id, name: e.name }));
   const entrada = etapasDeEntrada(etapas).map((e) => ({ id: e.id, name: e.name }));
+  // Reabrir volta para a primeira etapa aberta, onde quer que o cartão caia (D7).
+  const primeiraAberta = entrada[0]?.name ?? "a primeira etapa";
 
   /** Leva o cartão para a etapa — por arrastar ou pelo seletor. */
   function levar(cartao: CartaoDoQuadro, etapaId: string) {
@@ -94,15 +104,11 @@ export function Quadro({
       toast.error(REABRA_ANTES);
       return;
     }
-    if (acao === "reabrir") {
-      // T7: o diálogo "Reabrir este negócio?". Até lá, nada se move.
-      toast.error(REABRA_ANTES);
-      return;
-    }
-
-    if (acao === "ganhar" || acao === "perder") {
+    if (acao === "ganhar" || acao === "perder" || acao === "reabrir") {
+      // Nada se move na tela: o diálogo decide, e a página revalidada traz
+      // a verdade. Recusa deixa o cartão onde estava.
       setDialogo({
-        tipo: acao === "ganhar" ? "ganho" : "perda",
+        tipo: acao === "ganhar" ? "ganho" : acao === "perder" ? "perda" : "reabrir",
         negocio: { id: cartao.id, cliente: cartao.person?.full_name ?? cartao.title },
       });
       return;
@@ -125,7 +131,7 @@ export function Quadro({
         {etapas.map((etapa) => {
           const daEtapa = visiveis.filter((c) => c.stage_id === etapa.id);
           // Por moeda, e nunca somando uma na outra.
-          const soma = formatarPorMoeda(somarPorMoeda(daEtapa));
+          const soma = formatarPorMoeda(somarItensPorMoeda(daEtapa.flatMap((c) => c.itens)));
 
           return (
             <section
@@ -165,6 +171,11 @@ export function Quadro({
                     <span className="h-2 w-2 shrink-0 rounded-full bg-destructive" />
                   ) : null}
                   {etapa.name}
+                  {etapa.is_won || etapa.is_lost ? (
+                    <span className="text-xs font-normal text-muted-foreground">
+                      últimos 30 dias
+                    </span>
+                  ) : null}
                 </h2>
                 <p className="text-xs text-muted-foreground">
                   {daEtapa.length}
@@ -211,13 +222,16 @@ export function Quadro({
                           >
                             {cartao.title}
                           </Link>
-                          <ConfirmAction
-                            action={deleteOpportunity}
-                            hidden={{ id: cartao.id }}
-                            title={`Excluir "${cartao.title}"?`}
-                            consequence="Oportunidade não tem lixeira: some de vez, com valor, etapa e histórico de movimentação. O contato permanece."
-                            triggerLabel={`Excluir ${cartao.title}`}
-                          />
+                          {/* Negócio ganho fica como registro (D12). */}
+                          {etapa.is_won ? null : (
+                            <ConfirmAction
+                              action={deleteOpportunity}
+                              hidden={{ id: cartao.id }}
+                              title={`Excluir "${cartao.title}"?`}
+                              consequence="Oportunidade não tem lixeira: some de vez, com os vistos, a etapa e o histórico de movimentação. O contato permanece."
+                              triggerLabel={`Excluir ${cartao.title}`}
+                            />
+                          )}
                         </div>
 
                         {cartao.person ? (
@@ -249,17 +263,26 @@ export function Quadro({
                         ) : null}
 
                         {/*
-                          Ganho oferece o processo, não cria: o Renato escolhe
-                          o visto e o título na ficha, onde o processo nasce.
+                          O Ganho cria um processo por visto. Um só abre
+                          direto; vários, a aba Projetos do cliente. Negócio
+                          ganho antes disso (sem processo) ainda oferece criar.
                         */}
                         {etapa.is_won && cartao.person ? (
-                          cartao.processoId ? (
+                          cartao.processos.length === 1 ? (
                             <Link
-                              href={`/projetos/${cartao.processoId}`}
+                              href={`/projetos/${cartao.processos[0]}`}
                               draggable={false}
                               className="block text-xs text-primary hover:underline"
                             >
                               Ver processo
+                            </Link>
+                          ) : cartao.processos.length > 1 ? (
+                            <Link
+                              href={enderecoDaPessoa(cartao.person.id, "client", "projetos")}
+                              draggable={false}
+                              className="block text-xs text-primary hover:underline"
+                            >
+                              Ver processos
                             </Link>
                           ) : (
                             <Link
@@ -272,9 +295,9 @@ export function Quadro({
                           )
                         ) : null}
 
-                        {cartao.value != null ? (
+                        {cartao.itens.length > 0 ? (
                           <p className="text-sm font-semibold tabular-nums">
-                            {formatarMoeda(cartao.value, cartao.currency)}
+                            {formatarPorMoeda(somarItensPorMoeda(cartao.itens))}
                           </p>
                         ) : null}
 
@@ -319,6 +342,14 @@ export function Quadro({
           <DialogoDePerda
             negocio={dialogo.negocio}
             aberto={dialogo.tipo === "perda"}
+            aoMudar={(aberto) => {
+              if (!aberto) setDialogo(null);
+            }}
+          />
+          <DialogoDeReabrir
+            negocio={dialogo.negocio}
+            destino={primeiraAberta}
+            aberto={dialogo.tipo === "reabrir"}
             aoMudar={(aberto) => {
               if (!aberto) setDialogo(null);
             }}
