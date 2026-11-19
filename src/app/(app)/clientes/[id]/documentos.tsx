@@ -21,6 +21,7 @@ import {
   documentosPorCategoria,
   type Categoria,
 } from "@/features/clientes/regras";
+import { abrirEmNovaAba, baixar } from "@/lib/abrir";
 import { ACEITOS, arquivoAceito, enviarERegistrar } from "@/lib/arquivos";
 import { formatarData } from "@/lib/formatar";
 import type { Tables } from "@/lib/supabase/database.types";
@@ -57,39 +58,45 @@ export function DocumentosDoCliente({
 
   async function subir(lista: FileList) {
     const supabase = createClient();
-    for (const arquivo of Array.from(lista)) {
-      const aceito = arquivoAceito(arquivo);
-      if (!aceito.ok) {
-        toast.error(aceito.erro);
-        continue;
+    try {
+      for (const arquivo of Array.from(lista)) {
+        const aceito = arquivoAceito(arquivo);
+        if (!aceito.ok) {
+          toast.error(aceito.erro);
+          continue;
+        }
+        setEnviando(arquivo.name);
+        const id = crypto.randomUUID();
+        const caminho = caminhoDoDocumento(organizationId, pessoaId, id, arquivo.name);
+        const { error } = await enviarERegistrar(supabase.storage, "pessoas", caminho, arquivo, () =>
+          registrarDocumento({
+            pessoaId,
+            id,
+            caminho,
+            nome: arquivo.name,
+            tipo: arquivo.type || null,
+            tamanho: arquivo.size,
+            categoria,
+          }),
+        );
+        if (error) toast.error(error);
       }
-      setEnviando(arquivo.name);
-      const id = crypto.randomUUID();
-      const caminho = caminhoDoDocumento(organizationId, pessoaId, id, arquivo.name);
-      const { error } = await enviarERegistrar(supabase.storage, "pessoas", caminho, arquivo, () =>
-        registrarDocumento({
-          pessoaId,
-          id,
-          caminho,
-          nome: arquivo.name,
-          tipo: arquivo.type || null,
-          tamanho: arquivo.size,
-          categoria,
-        }),
-      );
-      if (error) toast.error(error);
+    } finally {
+      // O botão nunca fica preso em "Enviando…".
+      setEnviando(null);
+      router.refresh();
     }
-    setEnviando(null);
-    router.refresh();
   }
 
-  async function abrir(id: string, baixar: boolean) {
-    const { url, error } = await enderecoDoDocumento(id, baixar);
-    if (!url) {
-      toast.error(error ?? "Não foi possível abrir o documento.");
-      return;
-    }
-    window.open(url, "_blank", "noopener,noreferrer");
+  async function abrir(id: string, paraBaixar: boolean) {
+    let erro: string | null = null;
+    const obter = async () => {
+      const r = await enderecoDoDocumento(id, paraBaixar);
+      erro = r.error;
+      return r.url;
+    };
+    const ok = paraBaixar ? await baixar(obter) : await abrirEmNovaAba(obter);
+    if (!ok) toast.error(erro ?? "Não foi possível abrir o documento.");
   }
 
   const grupos = documentosPorCategoria(documentos);

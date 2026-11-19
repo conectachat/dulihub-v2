@@ -29,15 +29,26 @@ export function ClienteDialog({
   equipe,
   participantes,
   hoje,
+  nomeDoDono = null,
 }: {
   cliente: PersonFormValues & { owner_id: string | null; client_since: string | null };
   equipe: Membro[];
   /** Os `user_id` que hoje participam. */
   participantes: string[];
   hoje: string;
+  /** Para o dono que não está na equipe visível (organização atribuída). */
+  nomeDoDono?: string | null;
 }) {
   const router = useRouter();
   const participa = new Set(participantes);
+
+  // Quem não enxerga a equipe da dona (consultor de organização atribuída)
+  // receberia a lista sem o dono, o navegador escolheria "Sem dono", e salvar
+  // um telefone apagaria o dono em silêncio. O dono atual está sempre na lista.
+  const donos =
+    cliente.owner_id && !equipe.some((m) => m.id === cliente.owner_id)
+      ? [...equipe, { id: cliente.owner_id, nome: nomeDoDono ?? "Dono atual" }]
+      : equipe;
 
   return (
     <FormDialog<EstadoComConfirmacao>
@@ -77,7 +88,7 @@ export function ClienteDialog({
           <Label htmlFor="owner_id">Dono</Label>
           <NativeSelect id="owner_id" name="owner_id" defaultValue={cliente.owner_id ?? ""}>
             <option value="">Sem dono</option>
-            {equipe.map((m) => (
+            {donos.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.nome}
               </option>

@@ -68,15 +68,16 @@ type Armazenamento = {
       caminho: string,
       arquivo: File,
       opcoes: { contentType?: string },
-    ): Promise<{ error: unknown }>;
+    ): Promise<{ error: { message: string } | null }>;
     remove(caminhos: string[]): Promise<unknown>;
   };
 };
 
 /**
- * Sobe o objeto e registra a linha. Registro recusado → o objeto que subiu é
- * removido, para não ficar arquivo órfão no depósito (o depósito não sabe do
- * banco). O erro volta com o nome do arquivo na frente, pronto para a tela.
+ * Sobe o objeto e registra a linha. Registro recusado — ou que nem responde,
+ * como numa queda de rede no meio — → o objeto que subiu é removido, para não
+ * ficar arquivo órfão no depósito (o depósito não sabe do banco). O erro
+ * volta com o nome do arquivo na frente, pronto para a tela. Nunca lança.
  */
 export async function enviarERegistrar(
   storage: Armazenamento,
@@ -89,13 +90,26 @@ export async function enviarERegistrar(
     .from(deposito)
     .upload(caminho, arquivo, { contentType: arquivo.type || undefined });
   if (envio.error) {
-    return { error: `${arquivo.name}: não foi possível enviar. Tente de novo.` };
+    // A política do depósito recusou (organização atribuída, por exemplo):
+    // "tente de novo" levaria a pessoa a tentar para sempre.
+    const semPermissao = /row-level security|unauthorized|403/i.test(envio.error.message);
+    return {
+      error: semPermissao
+        ? `${arquivo.name}: você não tem permissão para enviar arquivos aqui.`
+        : `${arquivo.name}: não foi possível enviar. Tente de novo.`,
+    };
   }
 
-  const registro = await registrar();
-  if (registro.error) {
+  let falha: string | null;
+  try {
+    falha = (await registrar()).error;
+  } catch {
+    falha = "não foi possível registrar. Tente de novo.";
+  }
+
+  if (falha) {
     await storage.from(deposito).remove([caminho]);
-    return { error: `${arquivo.name}: ${registro.error}` };
+    return { error: `${arquivo.name}: ${falha}` };
   }
 
   return { error: null };

@@ -139,6 +139,9 @@ describe("cada tela abre com sessão", () => {
 
     expect(resposta.status).toBe(200);
     expect(html).not.toContain("Não foi possível conferir prazos e parcelas");
+    // O cartão Clientes leva à lista de Clientes, não a Projetos.
+    expect(html).toContain("Viraram cliente com o Ganho");
+    expect(html).toMatch(/href="\/clientes"[^>]*>(?:(?!<\/a>)[\s\S])*Viraram cliente com o Ganho/);
   }, 60_000);
 
   it("o quadro do CRM carrega de verdade", async () => {
@@ -159,8 +162,8 @@ describe("cada tela abre com sessão", () => {
     // Quem não é cliente tem o perfil enxuto: processos e financeiro moram
     // no perfil de cliente (CLI-3).
     const html = await resposta.text();
-    expect(html).not.toContain('id="processos"');
-    expect(html).not.toContain('id="financeiro"');
+    expect(html).not.toContain("Novo processo");
+    expect(html).toContain("ficam no perfil de cliente");
   }, 60_000);
 
   it("ficha de contato vinda do atalho do CRM", async () => {

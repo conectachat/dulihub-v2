@@ -91,4 +91,25 @@ describe("enviarERegistrar", () => {
     expect(r.error).toBe("passaporte.pdf: O caminho não é o da pessoa.");
     expect(d.remove).toHaveBeenCalledWith(["o/p/a/x.pdf"]);
   });
+
+  it("registro que lança (rede caiu no meio) também remove o objeto e devolve erro", async () => {
+    const d = depositoFalso();
+    const registrar = vi.fn(async (): Promise<{ error: string | null }> => {
+      throw new Error("Failed to fetch");
+    });
+
+    const r = await enviarERegistrar(d.storage, "pessoas", "o/p/a/x.pdf", arquivo, registrar);
+
+    expect(r.error).toBe("passaporte.pdf: não foi possível registrar. Tente de novo.");
+    expect(d.remove).toHaveBeenCalledWith(["o/p/a/x.pdf"]);
+  });
+
+  it("envio recusado pela política do depósito diz que falta permissão, e não 'tente de novo'", async () => {
+    const d = depositoFalso("new row violates row-level security policy");
+    const registrar = vi.fn(async () => ({ error: null }));
+
+    const r = await enviarERegistrar(d.storage, "pessoas", "o/p/a/x.pdf", arquivo, registrar);
+
+    expect(r.error).toBe("passaporte.pdf: você não tem permissão para enviar arquivos aqui.");
+  });
 });

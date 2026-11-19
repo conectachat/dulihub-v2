@@ -65,11 +65,11 @@ export default async function DashboardPage() {
       hint: "Pessoas com ao menos um negócio em andamento",
     },
     {
-      href: "/projetos",
+      href: "/clientes",
       icon: Wallet,
       label: "Clientes",
       value: totals.clientes,
-      hint: "Viraram cliente ao fechar um processo",
+      hint: "Viraram cliente com o Ganho, ou marcados pela gestão",
     },
   ];
 

@@ -39,7 +39,7 @@ export default async function ProjetosPage() {
         <EmptyState
           icon={FolderKanban}
           title="Nenhum processo ainda."
-          hint="O processo nasce no perfil do cliente, na aba Projetos › Novo processo."
+          hint="O processo nasce do Ganho no CRM, ou no perfil do cliente, em Projetos › Novo processo."
         />
       ) : (
         <div className="rounded-3xl border bg-card">

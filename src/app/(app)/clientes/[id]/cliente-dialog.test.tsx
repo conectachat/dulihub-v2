@@ -55,4 +55,22 @@ describe("ClienteDialog", () => {
     // Os campos do contato continuam lá.
     expect((screen.getByLabelText("E-mail *") as HTMLInputElement).value).toBe("carla@example.com");
   });
+
+  it("dono que não está na equipe visível continua escolhido, em vez de virar 'Sem dono'", () => {
+    // Consultor de organização atribuída: não enxerga os membros da dona.
+    render(
+      <ClienteDialog
+        cliente={CLIENTE}
+        equipe={[]}
+        participantes={[]}
+        hoje="2026-11-19"
+        nomeDoDono="Ana"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Editar Carla Souza" }));
+
+    const dono = screen.getByLabelText("Dono") as HTMLSelectElement;
+    expect(dono.value).toBe("u2");
+    expect([...dono.options].map((o) => o.text)).toEqual(["Sem dono", "Ana"]);
+  });
 });

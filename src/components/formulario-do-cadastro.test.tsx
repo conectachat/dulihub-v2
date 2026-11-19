@@ -250,7 +250,10 @@ describe("FormularioDoCadastro", () => {
     await waitFor(() => expect(aoGravar).toHaveBeenCalledTimes(1));
     expect(enviar).toHaveBeenCalledTimes(2);
 
-    enviarFormulario();
+    // Espera o botão voltar de "Enviando…": sob carga (a suíte inteira), a
+    // gravação anterior ainda não tinha terminado de redesenhar, e o teste
+    // falhava sem defeito nenhum.
+    fireEvent.click(await screen.findByRole("button", { name: "Enviar ficha" }));
     await screen.findByRole("button", { name: "Salvar mesmo assim" });
     fireEvent.change(screen.getByLabelText("Telefone *"), { target: { value: "98888880000" } });
     expect(screen.queryByRole("button", { name: "Salvar mesmo assim" })).toBeNull();

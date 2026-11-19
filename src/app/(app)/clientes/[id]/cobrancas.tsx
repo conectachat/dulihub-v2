@@ -35,6 +35,7 @@ import {
 import { METODOS, ROTULO_DO_METODO } from "@/features/financeiro/schema";
 import { situacaoDaParcela, totaisPorMoeda } from "@/features/financeiro/regras";
 import { falhou, type ActionState } from "@/lib/action-state";
+import { abrirEmNovaAba, baixar } from "@/lib/abrir";
 import { ACEITOS } from "@/lib/arquivos";
 import { comPrazo } from "@/lib/com-prazo";
 import { formatarDia, hojeEmSaoPaulo } from "@/lib/formatar";
@@ -372,13 +373,10 @@ function useAnexos(parcelas: string[], ligado: boolean) {
 function LinhaDoAnexo({ anexo, aoMudar }: { anexo: Anexo; aoMudar: () => void }) {
   const tipo = TIPOS_DE_ANEXO.find((t) => t.valor === anexo.kind)?.rotulo ?? "Anexo";
 
-  async function abrir(baixar: boolean) {
-    const url = await enderecoDoAnexo(createClient(), anexo, baixar);
-    if (!url) {
-      toast.error("Não foi possível abrir o anexo.");
-      return;
-    }
-    window.open(url, "_blank", "noopener,noreferrer");
+  async function abrir(paraBaixar: boolean) {
+    const obter = () => enderecoDoAnexo(createClient(), anexo, paraBaixar);
+    const ok = paraBaixar ? await baixar(obter) : await abrirEmNovaAba(obter);
+    if (!ok) toast.error("Não foi possível abrir o anexo.");
   }
 
   async function remover(): Promise<ActionState> {
@@ -593,6 +591,12 @@ export function Cobrancas({ personId }: { personId: string }) {
                   disabled={online && temAnexo(c)}
                   disabledReason="Remova os anexos antes."
                 />
+                {online && temAnexo(c) ? (
+                  // O `title` do botão desabilitado não aparece no toque.
+                  <span className="basis-full text-xs text-muted-foreground">
+                    Remova os anexos antes de excluir.
+                  </span>
+                ) : null}
               </div>
 
               <div className="mt-2">
@@ -638,7 +642,15 @@ export function Cobrancas({ personId }: { personId: string }) {
                         {anexosDa(p.id).map((a) => (
                           <LinhaDoAnexo key={a.id} anexo={a} aoMudar={recarregar} />
                         ))}
-                        <Anexar cobranca={c} parcela={p} aoMudar={recarregar} />
+                        {c.pendente || p.pendente ? (
+                          // Ainda não existe no servidor: o anexo cairia na
+                          // chave estrangeira com uma frase sem sentido.
+                          <span className="text-xs text-muted-foreground">
+                            Anexos depois de sincronizar.
+                          </span>
+                        ) : (
+                          <Anexar cobranca={c} parcela={p} aoMudar={recarregar} />
+                        )}
                       </div>
                     ) : null}
                   </li>

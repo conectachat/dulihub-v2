@@ -10,8 +10,10 @@ const upload = vi.fn(async () => ({ error: null }));
 const remove = vi.fn(async () => ({ error: null }));
 const registrarDocumento = vi.fn(async () => ({ error: null }));
 const refresh = vi.fn();
+const erroNaTela = vi.fn();
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+vi.mock("sonner", () => ({ toast: { error: (m: string) => erroNaTela(m) } }));
 vi.mock("@/lib/supabase/client", () => ({
   createClient: () => ({ storage: { from: () => ({ upload, remove }) } }),
 }));
@@ -76,5 +78,23 @@ describe("aba Documentos", () => {
       expect.objectContaining({ pessoaId: "p1", categoria: "contrato", nome: "Contrato assinado.pdf" }),
     );
     expect(refresh).toHaveBeenCalled();
+  });
+
+  it("registro que lança: o botão volta, o erro aparece e o objeto é removido", async () => {
+    registrarDocumento.mockRejectedValueOnce(new Error("Failed to fetch"));
+    const { container } = render(
+      <DocumentosDoCliente pessoaId="p1" organizationId="o1" documentos={[]} />,
+    );
+    const arquivo = new File(["%PDF"], "rg.pdf", { type: "application/pdf" });
+    const entrada = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    await act(async () => {
+      fireEvent.change(entrada, { target: { files: [arquivo] } });
+    });
+
+    expect(remove).toHaveBeenCalled();
+    expect(erroNaTela).toHaveBeenCalledWith("rg.pdf: não foi possível registrar. Tente de novo.");
+    const botao = screen.getByRole("button", { name: /Enviar documento/ }) as HTMLButtonElement;
+    expect(botao.disabled).toBe(false);
   });
 });

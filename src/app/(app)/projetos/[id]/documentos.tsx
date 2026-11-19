@@ -473,32 +473,36 @@ function ArquivosDaPasta({
 
   async function subir(lista: FileList | File[]) {
     const supabase = createClient();
-    for (const arquivo of Array.from(lista)) {
-      const aceito = arquivoAceito(arquivo);
-      if (!aceito.ok) {
-        toast.error(aceito.erro);
-        continue;
-      }
-      setEnviando(arquivo.name);
-      const caminho = caminhoDoArquivo({
-        organizacao: organizationId,
-        processo: processoId,
-        pasta: pasta.id,
-        arquivo: crypto.randomUUID(),
-        nome: arquivo.name,
-      });
-      const { error } = await enviarERegistrar(supabase.storage, "documentos", caminho, arquivo, () =>
-        registrarArquivo({
-          pastaId: pasta.id,
-          caminho,
+    try {
+      for (const arquivo of Array.from(lista)) {
+        const aceito = arquivoAceito(arquivo);
+        if (!aceito.ok) {
+          toast.error(aceito.erro);
+          continue;
+        }
+        setEnviando(arquivo.name);
+        const caminho = caminhoDoArquivo({
+          organizacao: organizationId,
+          processo: processoId,
+          pasta: pasta.id,
+          arquivo: crypto.randomUUID(),
           nome: arquivo.name,
-          tipo: arquivo.type || null,
-          tamanho: arquivo.size,
-        }),
-      );
-      if (error) toast.error(error);
+        });
+        const { error } = await enviarERegistrar(supabase.storage, "documentos", caminho, arquivo, () =>
+          registrarArquivo({
+            pastaId: pasta.id,
+            caminho,
+            nome: arquivo.name,
+            tipo: arquivo.type || null,
+            tamanho: arquivo.size,
+          }),
+        );
+        if (error) toast.error(error);
+      }
+    } finally {
+      // O botão nunca fica preso em "Enviando…".
+      setEnviando(null);
     }
-    setEnviando(null);
   }
 
   return (

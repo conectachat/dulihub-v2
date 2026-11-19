@@ -52,7 +52,7 @@ export default async function ClientesPage({
     <main className="space-y-6 p-6">
       <PageHeader
         title="Clientes"
-        description="Quem já fechou com a Duli: dados, financeiro, processos e documentos."
+        description="Quem já fechou: dados, financeiro, processos e documentos."
       />
 
       <BuscaNaUrl placeholder="Buscar por nome, e-mail ou telefone..." rotulo="Buscar clientes" />

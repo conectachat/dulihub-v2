@@ -175,6 +175,10 @@ export async function restorePerson(formData: FormData): Promise<ActionState> {
   return estado;
 }
 
+// Os participantes gravam depois de `people`: se falham, o resto já foi
+// salvo, e a mensagem precisa dizer isso — senão a pessoa refaz tudo.
+const PARTICIPANTES_FALHARAM = "Os dados do cliente foram salvos, mas os participantes não: ";
+
 /**
  * O Editar do cliente (CLI-10, CLI-12): os campos do contato, mais dono,
  * cliente desde e participantes. A conferência de parecidos é a mesma do
@@ -217,7 +221,7 @@ export async function atualizarCliente(
     .from("person_participants")
     .select("user_id")
     .eq("person_id", id);
-  if (erroLista) return falhou(traduzirErro(erroLista));
+  if (erroLista) return falhou(`${PARTICIPANTES_FALHARAM}${traduzirErro(erroLista)}`);
 
   const eram = new Set((antes ?? []).map((p) => p.user_id));
   const serao = new Set(cliente.participantes);
@@ -228,7 +232,7 @@ export async function atualizarCliente(
     const { error: erroEntrada } = await supabase.from("person_participants").insert(
       entram.map((user_id) => ({ organization_id: atual.organization_id, person_id: id, user_id })),
     );
-    if (erroEntrada) return falhou(traduzirErro(erroEntrada));
+    if (erroEntrada) return falhou(`${PARTICIPANTES_FALHARAM}${traduzirErro(erroEntrada)}`);
   }
   if (saem.length > 0) {
     const { error: erroSaida } = await supabase
@@ -236,7 +240,7 @@ export async function atualizarCliente(
       .delete()
       .eq("person_id", id)
       .in("user_id", saem);
-    if (erroSaida) return falhou(traduzirErro(erroSaida));
+    if (erroSaida) return falhou(`${PARTICIPANTES_FALHARAM}${traduzirErro(erroSaida)}`);
   }
 
   revalidarPessoa(id);

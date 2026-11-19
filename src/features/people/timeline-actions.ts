@@ -1,13 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-
-import { revalidarPessoa } from "@/lib/revalidar";
 import { z } from "zod";
 
 import { falhou, gravou, type ActionState } from "@/lib/action-state";
 import { traduzirErro } from "@/lib/erros";
 import { contextoAtual } from "@/lib/organizacao";
+import { revalidarPessoa } from "@/lib/revalidar";
+
+import { TIPOS_DO_SISTEMA } from "./montagem";
 
 /** Tipos que o usuário pode lançar. `stage_change` é do sistema e não entra. */
 const USER_TYPES = ["note", "call", "meeting", "email", "other"] as const;
@@ -127,13 +128,15 @@ export async function deleteEntry(formData: FormData): Promise<ActionState> {
           .delete()
           .eq("id", id)
           .eq("created_by", userId)
-          .neq("type", "stage_change")
+          // Movimento de funil, ficha recebida, virou cliente: histórico do
+          // sistema. A tela esconde o botão; isto recusa a requisição à mão.
+          .not("type", "in", `(${TIPOS_DO_SISTEMA.join(",")})`)
           .select("id");
 
   if (resposta.error) return falhou(traduzirErro(resposta.error));
   if (!resposta.data || resposta.data.length === 0) {
     return falhou(
-      "Só quem escreveu pode apagar, e movimento de funil é histórico do sistema.",
+      "Só quem escreveu pode apagar, e registro do sistema não se apaga.",
     );
   }
 

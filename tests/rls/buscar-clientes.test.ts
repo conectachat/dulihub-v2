@@ -21,18 +21,22 @@ const s = aleatorio();
 // O telefone da Alfa tem dígitos próprios: o sufixo `s` está no nome e no
 // e-mail de todas, e a busca por dígitos também olha nome e e-mail.
 const f = aleatorio();
+// Só letras: a busca por dígitos também olha nome e e-mail, e um "55" no
+// sufixo acharia a pessoa pelo nome.
+const letras = s.replace(/\d/g, (d) => "abcdefghij"[Number(d)]);
 
 type Linha = { id: string; total: number };
 
 describe("buscar_clientes (0049)", () => {
   let parceiro: Cliente;
   let duli: Cliente;
-  const ids: Record<"alfa" | "beta" | "zeta" | "lead" | "lixeira", string> = {
+  const ids: Record<"alfa" | "beta" | "zeta" | "lead" | "lixeira" | "semFone", string> = {
     alfa: "",
     beta: "",
     zeta: "",
     lead: "",
     lixeira: "",
+    semFone: "",
   };
 
   async function busca(c: Cliente, termo: string, limite = 50, deslocamento = 0) {
@@ -93,6 +97,14 @@ describe("buscar_clientes (0049)", () => {
         phone: `21${aleatorio()}`,
         lifecycle_stage: "client",
         deleted_at: new Date().toISOString(),
+      },
+      {
+        // Fora do prefixo "Busca": não entra nas contagens dos outros testes.
+        chave: "semFone",
+        full_name: `Sem telefone ${letras}`,
+        email: `semfone.${letras}@teste.dulihub`,
+        phone: null,
+        lifecycle_stage: "client",
       },
     ] as const;
 
@@ -171,5 +183,11 @@ describe("buscar_clientes (0049)", () => {
     if (error) throw new Error(`Nenhum cliente da Duli para o teste: ${error.message}`);
 
     expect(idsDe(await busca(parceiro, "", 1000))).not.toContain(daDuli.id);
+  });
+
+  it("cliente sem telefone não aparece numa busca por dígitos", async () => {
+    // Sem número, sobrava só o DDI ("55"), e "55" achava todo cliente sem telefone.
+    expect(idsDe(await busca(parceiro, "55", 1000))).not.toContain(ids.semFone);
+    expect(idsDe(await busca(parceiro, `Sem telefone ${letras}`))).toEqual([ids.semFone]);
   });
 });

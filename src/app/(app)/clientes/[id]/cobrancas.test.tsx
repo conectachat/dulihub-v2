@@ -203,4 +203,32 @@ describe("aba Financeiro do cliente", () => {
     expect(excluir.disabled).toBe(true);
     expect(excluir.title).toBe("Remova os anexos antes.");
   });
+
+  it("cobrança que ainda não subiu: sem Anexar, aguardando sincronizar", async () => {
+    cobrancas = [{ ...cobranca("a", "BRL", [[1000, "2000-01-10", null]]), pendente: true }];
+
+    render(<Cobrancas personId="p1" />);
+    await act(async () => {});
+
+    expect(screen.queryByRole("button", { name: /^Anexar/ })).toBeNull();
+    expect(screen.getByText("Anexos depois de sincronizar.")).toBeTruthy();
+  });
+
+  it("com anexo, a cobrança diz por que não se exclui, à vista e não só no mouse", async () => {
+    anexosNoBanco = [
+      {
+        id: "x1",
+        installment_id: "a-0",
+        kind: "boleto",
+        filename: "boleto.pdf",
+        storage_path: "o1/p1/a/a-0/x1/boleto.pdf",
+        created_at: "2026-11-10T12:00:00Z",
+      },
+    ];
+
+    render(<Cobrancas personId="p1" />);
+    await act(async () => {});
+
+    expect(screen.getByText("Remova os anexos antes de excluir.")).toBeTruthy();
+  });
 });

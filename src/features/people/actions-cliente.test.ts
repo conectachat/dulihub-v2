@@ -188,4 +188,13 @@ describe("marcarComoCliente", () => {
 
     expect(r.error).toBe("Só a gestão marca alguém como cliente.");
   });
+
+  it("se os participantes falham, a mensagem diz que o resto foi salvo", async () => {
+    banco.insert.mockResolvedValue({ error: { message: "sem permissão" } } as never);
+
+    const r = await atualizarCliente(ESTADO, formulario({}, ["u3", "u4"]));
+
+    expect(banco.update).toHaveBeenCalled();
+    expect(r.error).toMatch(/^Os dados do cliente foram salvos, mas os participantes não: /);
+  });
 });

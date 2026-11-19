@@ -198,6 +198,7 @@ export default async function ClientePage({
             equipe={equipe}
             participantes={(participantes ?? []).map((p) => p.user_id)}
             hoje={hojeEmSaoPaulo()}
+            nomeDoDono={dono ? dono.full_name || dono.email : null}
           />
         </div>
       </header>

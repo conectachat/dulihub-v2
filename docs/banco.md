@@ -9,7 +9,7 @@ precisar ler 38 migrations para responder "onde está X e quem pode tocar".
 resumo delas; se divergir, a migration vence e este arquivo está errado.
 **Toda migration atualiza este arquivo no mesmo commit.**
 
-Situação: 0001 a 0049 aplicadas (a 0039 depois da 0042, quando a conta
+Situação: 0001 a 0050 aplicadas (a 0039 depois da 0042, quando a conta
 `teste-staff` passou a existir). Colunas atuais:
 `src/lib/supabase/database.types.ts` (gerado, não se edita à mão).
 
@@ -173,7 +173,7 @@ rodam numa transação só.
 | `contatos_parecidos(e-mail, ddi, telefone, ignorar?)` | Quem tem o mesmo e-mail (aparado, sem maiúscula) ou o mesmo telefone nacional, com `na_lixeira`, `bate_email` e `bate_telefone`. Entrada vazia nunca bate; `ignorar` tira o próprio contato; no máximo 10, por nome (0040). Sob a RLS de quem chama: só aparece quem ele já enxerga — da organização dele ou atribuído a ela; contato de organização alheia, nunca. | `authenticated` | invoker |
 | `criar_processo(pessoa, visto, título, negócio?)` | Cria o processo e copia do visto as etapas (com o status padrão) e as pastas exigidas, ligando cada pasta ao "pai visível" e calculando o prazo. Para quem não é cliente, só a gestão (0045). | `authenticated` | invoker |
 | `marcar_como_cliente(pessoa, desde?)` | Torna cliente à mão (0045): só a gestão da organização da pessoa; recusa quem não existe ou não se enxerga ("Contato não encontrado."), quem está na lixeira, quem já é cliente e data no futuro (todas P0001). Grava o estágio, `client_since` (`desde`, ou hoje em São Paulo) e a atividade `virou_cliente` "Marcado como cliente". Sem volta pelo app. | `authenticated` | invoker |
-| `buscar_clientes(busca?, limite?, deslocamento?)` | A lista de Clientes (0049): `client` fora da lixeira, por nome e `id`, 50 por padrão, com o **total do filtro** em cada linha (`count(*) over ()`), para a tela não cortar em silêncio. Acha por parte do nome ou do e-mail (`ilike`, com `\`, `%` e `_` escapados: o digitado é texto) ou — só quando a busca não tem letra nem "@" — pelos dígitos do telefone com o DDI na frente (`telefone_nacional`; DDI vazio vale 55): "+55 (31) 99999-0000", "31 99999-0000" e "99999" acham o mesmo. Sem índice (o `%` da frente impede); para o volume de hoje basta, e se crescer o caminho é `pg_trgm`. Os tipos gerados dão `owner_id` e `client_since` como não nulos; podem vir nulos. | `authenticated` | invoker |
+| `buscar_clientes(busca?, limite?, deslocamento?)` | A lista de Clientes (0049): `client` fora da lixeira, por nome e `id`, 50 por padrão, com o **total do filtro** em cada linha (`count(*) over ()`), para a tela não cortar em silêncio. Acha por parte do nome ou do e-mail (`ilike`, com `\`, `%` e `_` escapados: o digitado é texto) ou — só quando a busca não tem letra nem "@" — pelos dígitos do telefone com o DDI na frente (`telefone_nacional`; DDI vazio vale 55): "+55 (31) 99999-0000", "31 99999-0000" e "99999" acham o mesmo. Cliente sem telefone fica fora da busca por dígitos (0050: antes o DDI sozinho, "55", casava). Sem índice (o `%` da frente impede); para o volume de hoje basta, e se crescer o caminho é `pg_trgm`. Os tipos gerados dão `owner_id` e `client_since` como não nulos; podem vir nulos. | `authenticated` | invoker |
 | `reordenar_irmaos(tabela, ids[])` | Grava a ordem final de uma lista; idempotente (serve à fila offline). Recusa se alguma linha não for alcançável. Tabelas: `pipeline_stages`, `stage_statuses`, `document_types`, `visa_stages`, `visa_type_documents`, `project_stages`, `project_documents`. | `authenticated` | invoker |
 | `swap_positions(tabela, a, b)` | Troca duas linhas de posição. Mesmas sete tabelas (0026). Não é idempotente — para a fila, usar `reordenar_irmaos`. | `authenticated` | invoker |
 | `compactar_pagina(página, snapshot, até, conteúdo)` | Grava o snapshot novo da página e apaga os pedaços já incluídos, ligando a marca `app.compactando` só nesta transação. | `authenticated` | invoker (era definer na 0024; virou invoker na 0025) |
@@ -256,7 +256,7 @@ Só um uso: a edição simultânea das Observações (0024).
 | `deleted_rows` | 0029, 0031 (limpeza), 0032 e 0033 (manifesto) |
 | Auxiliares de RLS | 0001 → 0003 (para `private`) → 0013 (versão atual); `current_user_is_root_owner` na 0036 |
 | Auxiliares de formato do contato | 0040; `telefone_nacional` 0042 (número americano com o 1 na frente) e 0043 (sem DDI, o 55 colado sai); `service_role` executa desde a 0043 |
-| RPCs | `swap_positions` 0014/0023/0026; `criar_processo` 0020; `compactar_pagina` 0024/0025; `sync_manifesto` 0030/0032/0033; `reordenar_irmaos` 0030; ficha 0035 (`salvar_cadastro` refeita na 0040); `contatos_parecidos` 0040; `criar_oportunidade` 0041; `marcar_como_cliente` 0045; `buscar_clientes` 0049; `set_default_stage_status` 0010 |
+| RPCs | `swap_positions` 0014/0023/0026; `criar_processo` 0020; `compactar_pagina` 0024/0025; `sync_manifesto` 0030/0032/0033; `reordenar_irmaos` 0030; ficha 0035 (`salvar_cadastro` refeita na 0040); `contatos_parecidos` 0040; `criar_oportunidade` 0041; `marcar_como_cliente` 0045; `buscar_clientes` 0049/0050; `set_default_stage_status` 0010 |
 | Storage | `documentos` 0020; `observacoes` 0024; `pessoas` 0047; `financeiro` 0048 |
 | Tempo real | 0024 |
 | Dados de teste | 0015, 0021 (organização `parceiro-teste`, `is_test` desde 0036), 0039 (`teste-staff`, staff da `parceiro-teste`) |
