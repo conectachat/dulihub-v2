@@ -13,6 +13,7 @@ import {
   ganharOportunidade,
   reabrirOportunidade,
   resumoDoGanho,
+  updateOpportunity,
 } from "./actions";
 
 /**
@@ -283,5 +284,86 @@ describe("deleteOpportunity", () => {
     banco([{ id: NEGOCIO }], null);
     const estado = await deleteOpportunity(comId(NEGOCIO));
     expect(estado.error).toBeNull();
+  });
+});
+
+describe("updateOpportunity: dono e participantes do negócio", () => {
+  /** `opportunities` e `opportunity_participants` falsos, guardando o pedido. */
+  function banco(
+    participantesAtuais: string[],
+    erroDoUpdate: { code: string; message: string } | null = null,
+  ) {
+    const update = vi.fn(() => ({
+      eq: () => ({
+        select: async () => ({
+          data: erroDoUpdate ? null : [{ person_id: PESSOA, organization_id: "org-do-negocio" }],
+          error: erroDoUpdate,
+        }),
+      }),
+    }));
+    const insert = vi.fn(async () => ({ error: null }));
+    const apagadoIn = vi.fn(async () => ({ error: null }));
+    const supabase = {
+      from: vi.fn((tabela: string) =>
+        tabela === "opportunities"
+          ? { update }
+          : {
+              select: () => ({
+                eq: async () => ({
+                  data: participantesAtuais.map((user_id) => ({ user_id })),
+                  error: null,
+                }),
+              }),
+              insert,
+              delete: () => ({ eq: () => ({ in: apagadoIn }) }),
+            },
+      ),
+    };
+    vi.mocked(contextoAtual).mockResolvedValue({ supabase, error: null } as never);
+    return { update, insert, apagadoIn };
+  }
+
+  function edicao(campos: Record<string, string>, participantes: string[]) {
+    const fd = new FormData();
+    for (const [k, v] of Object.entries({ id: NEGOCIO, title: " EB-1A ", source: "", ...campos })) {
+      fd.set(k, v);
+    }
+    for (const u of participantes) fd.append("participantes", u);
+    return fd;
+  }
+
+  const U1 = "a1111111-1111-4111-8111-111111111111";
+  const U2 = "a2222222-2222-4222-8222-222222222222";
+  const U3 = "a3333333-3333-4333-8333-333333333333";
+
+  it("grava o dono e só a diferença dos participantes, na organização do negócio", async () => {
+    const b = banco([U1, U2]);
+
+    const estado = await updateOpportunity({ error: null }, edicao({ owner_id: U2 }, [U2, U3]));
+
+    expect(estado.error).toBeNull();
+    expect(b.update).toHaveBeenCalledWith({ title: "EB-1A", source: null, owner_id: U2 });
+    expect(b.insert).toHaveBeenCalledWith([
+      { organization_id: "org-do-negocio", opportunity_id: NEGOCIO, user_id: U3 },
+    ]);
+    expect(b.apagadoIn).toHaveBeenCalledWith("user_id", [U1]);
+  });
+
+  it("sem dono escolhido, grava sem dono", async () => {
+    const b = banco([]);
+    await updateOpportunity({ error: null }, edicao({ owner_id: "" }, []));
+    expect(b.update).toHaveBeenCalledWith({ title: "EB-1A", source: null, owner_id: null });
+  });
+
+  it("troca de dono recusada pelo banco volta como frase, e os participantes ficam", async () => {
+    const b = banco([U1], {
+      code: "P0001",
+      message: "Só o dono do negócio ou a gestão trocam o dono.",
+    });
+
+    const estado = await updateOpportunity({ error: null }, edicao({ owner_id: U2 }, [U2]));
+
+    expect(estado.error).toBe("Só o dono do negócio ou a gestão trocam o dono.");
+    expect(b.insert).not.toHaveBeenCalled();
   });
 });

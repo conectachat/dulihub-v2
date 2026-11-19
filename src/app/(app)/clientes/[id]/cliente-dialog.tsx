@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { Pencil } from "lucide-react";
 
 import { AvisoDeDuplicado } from "@/components/aviso-de-duplicado";
+import { CampoDoDono, CampoDosParticipantes } from "@/components/dono-e-participantes";
 import { FormDialog } from "@/components/form-dialog";
-import { NativeSelect } from "@/components/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,15 +40,6 @@ export function ClienteDialog({
   nomeDoDono?: string | null;
 }) {
   const router = useRouter();
-  const participa = new Set(participantes);
-
-  // Quem não enxerga a equipe da dona (consultor de organização atribuída)
-  // receberia a lista sem o dono, o navegador escolheria "Sem dono", e salvar
-  // um telefone apagaria o dono em silêncio. O dono atual está sempre na lista.
-  const donos =
-    cliente.owner_id && !equipe.some((m) => m.id === cliente.owner_id)
-      ? [...equipe, { id: cliente.owner_id, nome: nomeDoDono ?? "Dono atual" }]
-      : equipe;
 
   return (
     <FormDialog<EstadoComConfirmacao>
@@ -84,17 +75,7 @@ export function ClienteDialog({
       <CamposDoContato person={cliente} />
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="owner_id">Dono</Label>
-          <NativeSelect id="owner_id" name="owner_id" defaultValue={cliente.owner_id ?? ""}>
-            <option value="">Sem dono</option>
-            {donos.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.nome}
-              </option>
-            ))}
-          </NativeSelect>
-        </div>
+        <CampoDoDono equipe={equipe} ownerId={cliente.owner_id} nomeDoDono={nomeDoDono} />
         <div className="space-y-2">
           <Label htmlFor="client_since">Cliente desde</Label>
           <Input
@@ -107,27 +88,7 @@ export function ClienteDialog({
         </div>
       </div>
 
-      <fieldset className="space-y-2">
-        <legend className="text-sm font-medium">Participantes</legend>
-        {equipe.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Ninguém na equipe desta organização.</p>
-        ) : (
-          <div className="grid gap-2 sm:grid-cols-2">
-            {equipe.map((m) => (
-              <label key={m.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  name="participantes"
-                  value={m.id}
-                  defaultChecked={participa.has(m.id)}
-                  className="h-4 w-4 accent-primary"
-                />
-                {m.nome}
-              </label>
-            ))}
-          </div>
-        )}
-      </fieldset>
+      <CampoDosParticipantes equipe={equipe} participantes={participantes} />
     </FormDialog>
   );
 }

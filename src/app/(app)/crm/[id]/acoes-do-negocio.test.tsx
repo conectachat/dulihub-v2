@@ -15,7 +15,7 @@ vi.mock("@/features/opportunities/actions", () => ({
   updateOpportunity: vi.fn(),
 }));
 
-const { ReabrirGanho } = await import("./acoes-do-negocio");
+const { EditarNegocio, ReabrirGanho } = await import("./acoes-do-negocio");
 
 describe("ReabrirGanho", () => {
   it("abre o diálogo de reabrir, com a etapa para onde o negócio volta", () => {
@@ -25,5 +25,41 @@ describe("ReabrirGanho", () => {
 
     expect(screen.getByText("Reabrir este negócio?")).toBeTruthy();
     expect(screen.getByText("Ele volta para Novo Lead.")).toBeTruthy();
+  });
+});
+
+describe("EditarNegocio: dono e participantes do negócio", () => {
+  const EQUIPE = [
+    { id: "u1", nome: "Renato" },
+    { id: "u2", nome: "Ana" },
+    { id: "u3", nome: "Bruno" },
+  ];
+  const NEGOCIO = { id: "n1", title: "EB-1A", source: null, owner_id: "u2" };
+
+  it("abre com o dono e os participantes atuais, escolhidos na equipe", () => {
+    render(<EditarNegocio negocio={NEGOCIO} equipe={EQUIPE} participantes={["u3"]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+
+    const dono = screen.getByLabelText("Dono") as HTMLSelectElement;
+    expect(dono.value).toBe("u2");
+    expect([...dono.options].map((o) => o.text)).toEqual(["Sem dono", "Renato", "Ana", "Bruno"]);
+    expect((screen.getByRole("checkbox", { name: "Bruno" }) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByRole("checkbox", { name: "Renato" }) as HTMLInputElement).checked).toBe(false);
+  });
+
+  it("dono fora da equipe visível continua escolhido, em vez de virar 'Sem dono'", () => {
+    render(
+      <EditarNegocio
+        negocio={{ ...NEGOCIO, owner_id: "u9" }}
+        equipe={EQUIPE}
+        participantes={[]}
+        nomeDoDono="Fulana"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+
+    const dono = screen.getByLabelText("Dono") as HTMLSelectElement;
+    expect(dono.value).toBe("u9");
+    expect([...dono.options].map((o) => o.text)).toContain("Fulana");
   });
 });

@@ -3,6 +3,11 @@
 import { useState } from "react";
 import { Pencil, RotateCcw, Trophy, XCircle } from "lucide-react";
 
+import {
+  CampoDoDono,
+  CampoDosParticipantes,
+  type MembroDaEquipe,
+} from "@/components/dono-e-participantes";
 import { FormDialog } from "@/components/form-dialog";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
@@ -104,15 +109,27 @@ export function Reabrir({ negocioId, etapaId }: { negocioId: string; etapaId: st
   );
 }
 
-/** Título e origem. O valor mora nos vistos do negócio (CRM-13). */
+/**
+ * Título, origem, dono e participantes. O valor mora nos vistos do negócio
+ * (CRM-13). Trocar o dono: só o dono atual ou a gestão — o banco confere
+ * (0044) e a frase aparece aqui. No Ganho, dono e participantes passam ao
+ * cliente.
+ */
 export function EditarNegocio({
   negocio,
+  equipe,
+  participantes,
+  nomeDoDono = null,
 }: {
   negocio: {
     id: string;
     title: string;
     source: string | null;
+    owner_id: string | null;
   };
+  equipe: MembroDaEquipe[];
+  participantes: string[];
+  nomeDoDono?: string | null;
 }) {
   return (
     <FormDialog
@@ -141,6 +158,9 @@ export function EditarNegocio({
           defaultValue={negocio.source ?? ""}
         />
       </div>
+
+      <CampoDoDono equipe={equipe} ownerId={negocio.owner_id} nomeDoDono={nomeDoDono} />
+      <CampoDosParticipantes equipe={equipe} participantes={participantes} />
     </FormDialog>
   );
 }

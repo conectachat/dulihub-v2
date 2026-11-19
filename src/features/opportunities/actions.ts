@@ -17,6 +17,7 @@ import {
   type EstadoComConfirmacao,
 } from "@/lib/parecidos";
 import { enderecoDaPessoa } from "@/lib/pessoa";
+import { diferencaDeParticipantes } from "@/lib/participantes";
 import { revalidarPessoa } from "@/lib/revalidar";
 
 import {
@@ -26,7 +27,7 @@ import {
   type EtapaDeDestino,
 } from "./mover";
 import { motivoDaPerda } from "./regras";
-import { resumoDoGanhoSchema, type ResumoDoGanho } from "./schema";
+import { donoEParticipantesDoForm, resumoDoGanhoSchema, type ResumoDoGanho } from "./schema";
 
 /** O texto da spec (§6.3), o mesmo da trava da 0054. */
 const GANHO_FICA_COMO_REGISTRO =
@@ -292,7 +293,11 @@ const edicaoSchema = z.object({
   source: z.string().trim().optional(),
 });
 
-/** Título e origem. O valor mora nos vistos do negócio (CRM-13). */
+/**
+ * Título, origem, dono e participantes. O valor mora nos vistos do negócio
+ * (CRM-13). Dono e participantes só marcam quem cuida (decisão de 17/nov) e
+ * passam ao cliente no Ganho.
+ */
 export async function updateOpportunity(
   _prev: ActionState,
   formData: FormData,
@@ -308,15 +313,56 @@ export async function updateOpportunity(
   if (erroDoContexto) return falhou(erroDoContexto);
 
   const { id, ...campos } = parsed.data;
+  const { owner_id, participantes } = donoEParticipantesDoForm(formData);
+
+  // Trocar o dono: só o dono atual ou a gestão — o banco confere (0044) e a
+  // frase volta como erro, com nada gravado.
   const { data, error } = await supabase
     .from("opportunities")
-    .update({ ...campos, source: campos.source || null })
+    .update({ ...campos, source: campos.source || null, owner_id })
     .eq("id", id)
-    .select("person_id");
+    .select("person_id, organization_id");
   const estado = resultado({ data, error });
   if (estado.error) return estado;
+  const negocio = data![0]!;
 
-  revalidar(id, data![0].person_id);
+  // Os participantes gravam depois, só a diferença, na organização do
+  // negócio. Se falham, o resto já foi salvo — e a frase diz isso.
+  const falhouParticipantes = (erro: Parameters<typeof traduzirErro>[0]) => {
+    revalidar(id, negocio.person_id);
+    return falhou(`O negócio foi salvo, mas os participantes não: ${traduzirErro(erro)}`);
+  };
+
+  const { data: antes, error: erroLista } = await supabase
+    .from("opportunity_participants")
+    .select("user_id")
+    .eq("opportunity_id", id);
+  if (erroLista) return falhouParticipantes(erroLista);
+
+  const { entram, saem } = diferencaDeParticipantes(
+    (antes ?? []).map((p) => p.user_id),
+    participantes,
+  );
+  if (entram.length > 0) {
+    const { error: erroEntrada } = await supabase.from("opportunity_participants").insert(
+      entram.map((user_id) => ({
+        organization_id: negocio.organization_id,
+        opportunity_id: id,
+        user_id,
+      })),
+    );
+    if (erroEntrada) return falhouParticipantes(erroEntrada);
+  }
+  if (saem.length > 0) {
+    const { error: erroSaida } = await supabase
+      .from("opportunity_participants")
+      .delete()
+      .eq("opportunity_id", id)
+      .in("user_id", saem);
+    if (erroSaida) return falhouParticipantes(erroSaida);
+  }
+
+  revalidar(id, negocio.person_id);
   return estado;
 }
 

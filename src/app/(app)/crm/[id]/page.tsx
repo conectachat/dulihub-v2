@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cadastroDoContato } from "@/features/cadastro/queries";
 import { linkDoWhatsApp } from "@/features/cadastro/regras";
 import { obterNegocio } from "@/features/opportunities/queries";
+import { equipeDaOrganizacao } from "@/features/pages/queries";
 import { trilhaDoFunil } from "@/features/opportunities/regras";
 import { listTags } from "@/features/people/queries";
 import { getTimeline } from "@/features/people/timeline-queries";
@@ -65,6 +66,11 @@ export default async function LeadPage({
     supabase.auth.getUser(),
     headers(),
   ]);
+
+  // Dono e participantes saem da equipe da organização do negócio.
+  const { equipe, error: equipeError } = await equipeDaOrganizacao(negocio.organization_id);
+  if (equipeError) return <QueryError detalhe={equipeError} />;
+  const nomeDoDono = equipe.find((m) => m.id === negocio.owner_id)?.nome ?? null;
 
   const falha = tagsError ?? timelineError ?? cadastroError ?? userError?.message;
   if (falha) return <QueryError detalhe={falha} />;
@@ -200,7 +206,12 @@ export default async function LeadPage({
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-base">Negócio</CardTitle>
-              <EditarNegocio negocio={negocio} />
+              <EditarNegocio
+                negocio={negocio}
+                equipe={equipe}
+                participantes={negocio.participantes.map((p) => p.user_id)}
+                nomeDoDono={nomeDoDono}
+              />
             </CardHeader>
             <CardContent>
               <Vistos
@@ -210,6 +221,10 @@ export default async function LeadPage({
                 ganho={ganho}
               />
               <dl className="mt-4 space-y-3 text-sm">
+                <div>
+                  <dt className="text-xs text-muted-foreground">Dono</dt>
+                  <dd>{nomeDoDono ?? "—"}</dd>
+                </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">Origem</dt>
                   <dd>{negocio.source || "—"}</dd>

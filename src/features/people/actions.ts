@@ -15,6 +15,7 @@ import {
   type EstadoComConfirmacao,
 } from "@/lib/parecidos";
 import { hojeEmSaoPaulo } from "@/lib/formatar";
+import { diferencaDeParticipantes } from "@/lib/participantes";
 import { revalidarPessoa } from "@/lib/revalidar";
 import { createClient } from "@/lib/supabase/server";
 import { clienteFromForm, personFromForm, type PersonInput } from "./schema";
@@ -226,10 +227,10 @@ export async function atualizarCliente(
     return falhou(`${PARTICIPANTES_FALHARAM}${traduzirErro(erroLista)}`);
   }
 
-  const eram = new Set((antes ?? []).map((p) => p.user_id));
-  const serao = new Set(cliente.participantes);
-  const entram = [...serao].filter((u) => !eram.has(u));
-  const saem = [...eram].filter((u) => !serao.has(u));
+  const { entram, saem } = diferencaDeParticipantes(
+    (antes ?? []).map((p) => p.user_id),
+    cliente.participantes,
+  );
 
   if (entram.length > 0) {
     const { error: erroEntrada } = await supabase.from("person_participants").insert(

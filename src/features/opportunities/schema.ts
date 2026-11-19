@@ -60,3 +60,22 @@ export const resumoDoGanhoSchema = z.object({
 });
 
 export type ResumoDoGanho = z.infer<typeof resumoDoGanhoSchema>;
+
+const uuid = z.string().uuid();
+
+/**
+ * Dono e participantes do negócio, do "Editar negócio" (0044). Vazio é sem
+ * dono; o que não é id de usuário fica de fora.
+ */
+export function donoEParticipantesDoForm(formData: FormData): {
+  owner_id: string | null;
+  participantes: string[];
+} {
+  const dono = formData.get("owner_id");
+  return {
+    owner_id: uuid.safeParse(dono).success ? (dono as string) : null,
+    participantes: formData
+      .getAll("participantes")
+      .filter((v): v is string => uuid.safeParse(v).success),
+  };
+}
