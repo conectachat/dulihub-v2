@@ -257,7 +257,7 @@ Decisões que valem até a entrega 3 (detalhe no plano):
   (D1): o Ganho de hoje promove assim, e travar agora impediria colaborador de
   ganhar negócio. A trava vem com o Ganho no banco (`ganhar_negocio`).
 - **Dono e participantes da oportunidade**: as tabelas existem (0044); a tela
-  e a herança no Ganho vêm na entrega 3.
+  e a herança no Ganho vieram na entrega 3.
 - **Clientes lê do servidor** e **anexos vão direto do navegador**: as duas
   exceções estão no `AGENTS.md`.
 
@@ -265,6 +265,27 @@ Os pushes 1 e 2 não chegaram ao ar no mesmo dia: a montagem da VPS quebrava num
 teste de `src/` que importava `migration/`, pasta que o Docker não recebe (o CI,
 com o repositório inteiro, passava). Corrigido em 19/nov, com um teste que barra
 a repetição; a regra está no `AGENTS.md` ("A VPS não monta o repositório inteiro").
+
+### Entrega 3 — vistos na oportunidade e Ganho com resumo (19/nov, fase 1)
+
+Plano: `docs/superpowers/plans/2026-11-19-entrega-3-vistos-e-ganho.md` (CRM-10,
+CRM-13 a CRM-16, PRO-12). Duas fases: a 1 (0051–0053 e as telas) vai no push 1;
+a 2 (0054) só depois que `/api/versao` mostrar o push 1 no ar. A cópia do banco
+por migration foi dispensada pelo Renato em 19/nov.
+
+| Parte | O que ficou pronto |
+|---|---|
+| Banco | Vistos do negócio (`opportunity_items`), processo ligado ao visto de onde nasceu e que não se apaga (0051); `ganhar_negocio` e `reabrir_negocio`, numa transação, com o CRM-10 conferido (0052); `buscar_encerradas` (0053) |
+| Dados | O valor do negócio ganho de hoje virou um item sem visto, ligado ao processo dele |
+| Telas | Cartão Vistos na tela do lead (o valor sai da criação e da edição); Ganho com resumo; Reabrir com confirmação no quadro e na tela do lead; quadro com os encerrados só dos últimos 30 dias; CRM › Encerradas; Dono e Participantes no Editar negócio |
+
+Decisões que valem até a fase 2 (detalhe no plano):
+
+- **Entrar e sair do ganho por `update` direto pela API ainda passa**, e
+  promover a cliente também (D4): travar antes do deploy recusaria o código
+  antigo. A 0054 traz as duas travas, e a de excluir negócio ganho.
+- **Cobranças no Ganho, forma de pagamento e o aviso de parcela vencida** são
+  da entrega 4; o resumo diz "Forma de pagamento: definir na aba Financeiro".
 
 ---
 

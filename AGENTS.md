@@ -187,6 +187,9 @@ telas incomoda; em trinta, ninguém consegue mais mudar nada.
 | Copiar telefone, e-mail ou link, com "Copiado" | `CopiarTexto` |
 | Abas com a aberta na URL (`?aba=`) | `AbasNaUrl` — troca por `history.replaceState`, sem refazer a página |
 | Busca de lista guardada na URL (`?q=`) | `BuscaNaUrl` — buscar de novo volta para a primeira página |
+| Lista paginada com o total ("Mostrando 51–72 de 72") | `POR_PAGINA`, `paginaPedida`, `contagemDaLista` (`@/lib/paginacao`) — nunca cortar em silêncio |
+| Dono e participantes (cliente, negócio) | `CampoDoDono` / `CampoDosParticipantes` (`@/components/dono-e-participantes`) e `diferencaDeParticipantes` (`@/lib/participantes`) — o dono atual fica na lista mesmo fora da equipe visível |
+| Somar vistos ou parcelas por moeda | `somarItensPorMoeda`, `emCentavos`, `emMoeda` (`@/lib/totals`) — em centavos, e nunca uma moeda na outra |
 | Enviar arquivo do navegador ao depósito e registrar | `enviarERegistrar`, `arquivoAceito`, `limparNome` (`@/lib/arquivos`) — registro recusado remove o objeto |
 | Abrir ou baixar por URL assinada | `abrirEmNovaAba` / `baixar` (`@/lib/abrir`) — a aba abre no clique; `window.open` depois de um `await` o Safari do iPhone bloqueia |
 

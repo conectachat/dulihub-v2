@@ -204,13 +204,13 @@ Dizer o que precisa de atenção hoje.
 | CRM-7 | Mais de um funil | P2 | ⬜ (o banco já suporta) |
 | CRM-8 | Dias na etapa e previsão de fechamento | P2 | ⬜ (oferecido em 3/out, não escolhido) |
 | CRM-9 | Entrada automática de lead (agendamento, Calendly, formulário do site) | P1 | ⬜ — ver 7.12 |
-| CRM-10 | **Ganho e reabrir um ganho** (critério de aceite deste e de CRM-11 a CRM-15, CON-4, CON-8, PRO-12: `docs/superpowers/specs/2026-11-17-contato-oportunidade-cliente-design.md`): só o dono do negócio e a linha ascendente dele (decisão de 6/nov). Hoje qualquer pessoa da equipe consegue. Até a Q10, a gestão (`owner`/`admin`) faz o papel da linha ascendente. Vale também para trocar o dono do negócio, e é garantido no banco, por qualquer caminho | P0 | ⬜ |
+| CRM-10 | **Ganho e reabrir um ganho** (critério de aceite deste e de CRM-11 a CRM-15, CON-4, CON-8, PRO-12: `docs/superpowers/specs/2026-11-17-contato-oportunidade-cliente-design.md`): só o dono do negócio e a linha ascendente dele (decisão de 6/nov). Até a Q10, a gestão (`owner`/`admin`) faz o papel da linha ascendente. Vale também para trocar o dono do negócio, e é garantido no banco, por qualquer caminho. *Entrega 3, fase 1 (19/nov): ganhar e reabrir pelas funções `ganhar_negocio`/`reabrir_negocio` (0052), que conferem; trocar o dono, pela 0044. Falta a fase 2 (0054): o `update` direto de `status`/`stage_id` pela API ainda passa* | P0 | 🟡 |
 | CRM-11 | Nova oportunidade com "contato existente" ou "novo contato" no mesmo formulário, numa gravação só | P0 | ✅ |
 | CRM-12 | Aviso de oportunidade já existente para o contato (título, situação, data de criação), com confirmação para criar outra | P0 | ✅ |
-| CRM-13 | Um ou mais **vistos** do catálogo na oportunidade, cada um com valor e moeda sugeridos do visto e gravados no item; total por moeda | P0 | ⬜ |
-| CRM-14 | **Ganho com resumo** (vistos, valores, forma de pagamento, o que vai acontecer) e, só após confirmar, numa gravação só: ganho, histórico, cliente, dono, **um processo por visto** e as cobranças | P0 | ⬜ |
-| CRM-15 | Reabrir um ganho pede confirmação também no quadro (I3); ganhar de novo não duplica processo nem cobrança | P0 | ⬜ |
-| CRM-16 | Oportunidades encerradas: ganhas e perdidas saem do quadro (as colunas Ganho e Perdido mostram só os últimos 30 dias) e são achadas em CRM › Encerradas, com busca e filtro | P0 | ⬜ |
+| CRM-13 | Um ou mais **vistos** do catálogo na oportunidade, cada um com valor e moeda sugeridos do visto e gravados no item; total por moeda. *Entrega 3 (19/nov): `opportunity_items` (0051), cartão Vistos na tela do lead; o valor único sai da criação e da edição* | P0 | ✅ |
+| CRM-14 | **Ganho com resumo** (vistos, valores, forma de pagamento, o que vai acontecer) e, só após confirmar, numa gravação só: ganho, histórico, cliente, dono, **um processo por visto** e as cobranças. *Entrega 3 (19/nov): `ganhar_negocio` (0052) e o resumo pela mesma função com `p_simular`; as cobranças e a forma de pagamento vêm na entrega 4* | P0 | 🟡 |
+| CRM-15 | Reabrir um ganho pede confirmação também no quadro (I3); ganhar de novo não duplica processo nem cobrança. *Entrega 3 (19/nov): `reabrir_negocio` (0052), diálogo no quadro e na tela do lead; a ligação processo → visto (0051) impede o repetido* | P0 | ✅ |
+| CRM-16 | Oportunidades encerradas: ganhas e perdidas saem do quadro (as colunas Ganho e Perdido mostram só os últimos 30 dias) e são achadas em CRM › Encerradas, com busca e filtro. *Entrega 3 (19/nov): `buscar_encerradas` (0053) e `/crm/encerradas`* | P0 | ✅ |
 
 ### 7.4 Ficha de cadastro (lead, sem login)
 
@@ -279,7 +279,7 @@ Dúvidas que bloqueiam este módulo estão em §10 (Q1, Q2, Q4 e Q14; a Q3 foi d
 | PRO-9 | Fila única de documentos esperando revisão, de todos os processos | P1 | ⬜ (vira P0 com o portal) |
 | PRO-10 | Etapa-mãe concluída sozinha quando todas as filhas concluem | P2 | ⬜ |
 | PRO-11 | Link do Google Drive do caso | P2 | ⬜ |
-| PRO-12 | **Processo nunca é apagado**, por ninguém (o banco recusa; exceção só na organização de teste). Desistência = encerrado (17/nov) | P0 | ⬜ |
+| PRO-12 | **Processo nunca é apagado**, por ninguém (o banco recusa; exceção só na organização de teste). Desistência = encerrado (17/nov). *Entrega 3 (19/nov): a policy de `projects` perde o delete e um gatilho recusa o delete direto; só a cascata da pessoa passa (0051)* | P0 | ✅ |
 
 ### 7.7 Financeiro — a receber
 

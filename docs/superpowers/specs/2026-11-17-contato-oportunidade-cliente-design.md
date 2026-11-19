@@ -589,13 +589,19 @@ quando os vistos entram.
 - **Ganho recusado quando:**
   - não há item;
   - um item está sem visto (porque o visto foi apagado das Configurações). A frase
-    diz qual e pede para trocar;
+    diz qual e pede para trocar; *(plano da entrega 3, D17: só o item que ainda não
+    tem processo — o que já tem não vai ao `criar_processo`, e recusá-lo travaria
+    para sempre o negócio reaberto. A frase: "Remova o item e acrescente um visto do
+    catálogo", porque a tela edita só valor e moeda)*;
   - a pessoa está na lixeira;
   - quem confirma não pode.
 - **Processo do Ganho.** Um por item, pelo `criar_processo`. O título é "‹visto› —
   ‹nome do cliente›". A ligação com o item fica gravada, e é ela que impede o
   processo repetido.
-- **Dono do cliente no Ganho:**
+- **Dono do cliente no Ganho:** *(plano da entrega 3, D9: se o dono do negócio não
+  é membro, quem confirma; se nem ele, o cliente fica sem dono — a chave composta
+  de `people.owner_id` derrubaria o Ganho. Cliente que já existe não tem o dono
+  mexido, nem quando está sem dono)*
   - se a pessoa ainda não tem dono, recebe o dono do negócio, **desde que ele seja
     membro atual** da organização da pessoa. Se não for, o dono vira quem confirmou;
   - os participantes do negócio que são membros atuais entram como participantes da
@@ -614,7 +620,8 @@ quando os vistos entram.
 
   Uma forma que **já gerou cobrança** nunca gera de novo (§6.4).
 - **Vencimento já passado.** Parcela com vencimento antes do dia do Ganho: o resumo
-  avisa ("2 parcelas já vencidas") antes de confirmar.
+  avisa ("2 parcelas já vencidas") antes de confirmar. *(Vai com a entrega 4: sem
+  forma de pagamento não há parcela; ver a nota no início da §6.4.)*
 - **Reabrir.** Volta para a **primeira etapa aberta** do funil e não toca em pessoa,
   processo nem cobrança.
 - **Ganho → Perdido** direto não pode: é preciso reabrir antes.
@@ -625,7 +632,8 @@ quando os vistos entram.
   - Vale também na organização de teste. Só a cascata da pessoa passa (§3).
   - Negócio **aberto** com link de pagamento aberto também não se exclui ("Cancele o
     link de pagamento antes"), para nenhum link ficar apontando para nada. A tela
-    oferece o cancelamento, que passa por `voltar_forma_para_rascunho`.
+    oferece o cancelamento, que passa por `voltar_forma_para_rascunho`. *(Vai com a
+    entrega 4, junto com a forma respondida; ver a nota no início da §6.4.)*
 - **Encerradas (CRM-16).**
   - O quadro mostra as etapas abertas. As colunas Ganho e Perdido mostram só os
     encerrados **nos últimos 30 dias**.
@@ -644,18 +652,18 @@ quando os vistos entram.
 | Peça | Descrição |
 |---|---|
 | `opportunity_items` | `id`, `organization_id`, `opportunity_id`, `visa_type_id` (nulo), `visa_name text not null`, `amount numeric(12,2) not null check (amount >= 0)`, `currency char(3) check in ('BRL','USD')`, `position int`, `created_by`, `created_at`, `updated_at`, `unique (id, organization_id)`. FK `(opportunity_id, organization_id)` → `opportunities`, com cascade. FK `(visa_type_id, organization_id)` → `visa_types`, `on delete set null (visa_type_id)`. RLS com leitura e escrita separadas, como `opportunities` (0017), mais o `guard_child_row`. Lápide e `updated_at`. Gatilho de trava: item de negócio ganho não é inserido, alterado nem apagado (só a cascata passa, §3). O gatilho lê o negócio com `select … for share`, para não correr junto com o Ganho. Fica fora do espelho |
-| `projects.opportunity_item_id uuid` | Índice único parcial (quando não nulo). FK `(opportunity_item_id, organization_id)` → `opportunity_items`, `on delete set null (opportunity_item_id)` |
+| `projects.opportunity_item_id uuid` | Índice único parcial (quando não nulo). FK `(opportunity_item_id, organization_id)` → `opportunity_items`, `on delete set null (opportunity_item_id)` *(Plano da entrega 3, D18: duas FKs — esta, `(item, organização)`, e `(item, negócio)` → `opportunity_items (id, opportunity_id)`, ambas `set null (opportunity_item_id)`; processo com item exige negócio; a ligação não muda depois de gravada, e sem usuário passa, como a 0044. Aplicado na 0051.)* |
 | `projects`, exclusão | A policy `for all` se divide em select, insert e update, **sem** delete: pela API, o delete direto apaga 0 linhas. Um gatilho é a segunda camada (recusa o delete direto e deixa passar só a cascata, §3). Os testes que apagam processo direto (fumaça `rotas.test.ts:258` e os de processo) passam a limpar apagando a pessoa descartável. O plano confere, no primeiro teste, que a cascata de `people` atravessa a RLS de `projects` |
 | `criar_processo` | Ganha `p_item uuid default null` (gravado em `opportunity_item_id`), com `drop` + `create` na migration A. O padrão nulo mantém funcionando o "Novo processo" do código antigo entre a migration e o deploy. Todos os chamadores são atualizados para a assinatura nova: `projects/actions.ts:35`, quatro testes de RLS e `rotas.test.ts:248` |
 | Marca de transação | `ganhar_negocio`, `reabrir_negocio` e `marcar_como_cliente` ligam `dulihub.via_ganho` e a desligam no fim (§3) |
 | Gatilho `ganho_so_pela_funcao` em `opportunities` | `before update`: mudar `status` para ou de `won`, ou o `stage_id` para ou de uma etapa de ganho, sem a marca `via_ganho`, é recusado, também na organização de teste: os testes usam as funções. Entra só na **migration B** (abaixo), depois que o código que usa as funções estiver no ar |
 | Gatilho do dono do negócio | `before update of owner_id`: só passa se quem chama é o dono atual ou a gestão |
-| `public.ganhar_negocio(p_negocio uuid, p_cobrancas_sem_confirmacao boolean default false, p_simular boolean default false) returns jsonb` | `security invoker`, numa transação, com estes passos: (1) trava o negócio (`for update`); (2) confere o CRM-10 e as regras acima; (3) põe a marca e move para a etapa de ganho do funil, com `closed_at`; (4) registra no histórico "Oportunidade ganha — virou cliente" ou "Oportunidade ganha", conforme a pessoa já fosse cliente; (5) pessoa: estágio, `client_since`, dono e participantes (regras acima); (6) para cada item sem processo, `criar_processo`; (7) as cobranças (§6.4); (8) devolve `{ processos: [...], cobrancas: [...], avisos: [...] }`. Com `p_simular`, faz as conferências e devolve o mesmo formato **sem gravar** — é o que o resumo mostra |
-| `public.reabrir_negocio(p_negocio uuid)` | Confere o CRM-10, põe a marca, volta para a primeira etapa aberta, limpa `closed_at` e registra no histórico. Não toca em pessoa, processo nem cobrança |
+| `public.ganhar_negocio(p_negocio uuid, p_cobrancas_sem_confirmacao boolean default false, p_simular boolean default false) returns jsonb` | `security invoker`, numa transação, com estes passos: (1) trava o negócio (`for update`); (2) confere o CRM-10 e as regras acima; (3) põe a marca e move para a etapa de ganho do funil, com `closed_at`; (4) registra no histórico "Oportunidade ganha — virou cliente" ou "Oportunidade ganha", conforme a pessoa já fosse cliente; (5) pessoa: estágio, `client_since`, dono e participantes (regras acima); (6) para cada item sem processo, `criar_processo`; (7) as cobranças (§6.4); (8) devolve `{ processos: [...], cobrancas: [...], avisos: [...] }`. Com `p_simular`, faz as conferências e devolve o mesmo formato **sem gravar** — é o que o resumo mostra *(Entrega 3, D1: o passo (7) e `p_cobrancas_sem_confirmacao` ficam para a entrega 4; até lá `cobrancas` sai vazia. Aplicado na 0052.)* |
+| `public.reabrir_negocio(p_negocio uuid)` | Confere o CRM-10, põe a marca, volta para a primeira etapa aberta, limpa `closed_at` e registra no histórico. Não toca em pessoa, processo nem cobrança *(Entrega 3, D5: só reabre negócio **ganho**; perdido volta ao funil pela tela, como sempre. Aplicado na 0052.)* |
 | `aplicarEtapa` (`mover.ts`) | Passa a recusar a etapa de ganho e sair do ganho. `ganharOportunidade` e a reabertura chamam as funções do banco |
 | **Fase 1, migration A** (antes do deploy) | Cria `opportunity_items`, `ganhar_negocio`, `reabrir_negocio` e as colunas e gatilhos que **não** recusam nada do código antigo. Copia o valor de cada negócio existente para um item **sem visto** (`visa_name` = título do negócio). O código antigo continua funcionando |
 | **Deploy da fase 1** | O código novo usa itens e as funções do Ganho, e deixa de ler e gravar `value`, `currency`, `products` e `opportunity_products` |
-| **Fase 2, migration B** (só depois que o código da fase 1 estiver no ar) | (1) **Recopia**, antes de apagar, todo negócio com `value` e sem item, porque o código antigo pode ter gravado valor na janela entre a migration A e o deploy; (2) cria o gatilho `ganho_so_pela_funcao` e a trava do dono do negócio; (3) apaga `opportunities.value` e `currency`, `products` e `opportunity_products`; (4) **na mesma migration**, recria `public.sync_manifesto()` sem as duas tabelas. A lista de tabelas mora dentro da função, que monta o SQL na hora: o Postgres não sabe que ela depende delas, e sem isso a sincronia de todos os aparelhos quebra (C1); (5) recria `criar_oportunidade` sem `p_valor` e `p_moeda`. Também atualiza os tipos e o esquema do Dexie, se algo deles citar as colunas |
+| **Fase 2, migration B** (só depois que o código da fase 1 estiver no ar) | (1) **Recopia**, antes de apagar, todo negócio com `value` e sem item, porque o código antigo pode ter gravado valor na janela entre a migration A e o deploy; (2) cria o gatilho `ganho_so_pela_funcao` e a trava do dono do negócio; (3) apaga `opportunities.value` e `currency`, `products` e `opportunity_products`; (4) **na mesma migration**, recria `public.sync_manifesto()` sem as duas tabelas. A lista de tabelas mora dentro da função, que monta o SQL na hora: o Postgres não sabe que ela depende delas, e sem isso a sincronia de todos os aparelhos quebra (C1); (5) recria `criar_oportunidade` sem `p_valor` e `p_moeda`. Também atualiza os tipos e o esquema do Dexie, se algo deles citar as colunas *(Plano da entrega 3, D4: a 0054 leva também a regra (2) de estágio — no update e no insert —, a marca em `marcar_como_cliente`, o ramo `via_ganho` de `quem_tem_processo_e_cliente` e a trava de excluir negócio ganho: as quatro recusariam o código antigo ainda no ar. A trava do dono já veio na 0044.)* |
 
 **Telas**
 
@@ -735,6 +743,17 @@ quando os vistos entram.
   teste.
 
 ### 6.4 Entrega 4 — forma de pagamento na ficha
+
+*Herdado da §6.3 (a entrega 3 foi ao ar sem a forma de pagamento, 19/nov), para o
+plano da entrega 4 cobrir junto:*
+
+- *o passo (7) de `ganhar_negocio` — que já recebe `p_cobrancas_sem_confirmacao` e
+  devolve `cobrancas: []` — e o trecho "Forma de pagamento" do resumo, hoje fixo em
+  "definir na aba Financeiro";*
+- *o aviso de parcela com vencimento antes do dia do Ganho;*
+- *excluir negócio com forma de pagamento respondida, ou aberto com link de
+  pagamento aberto ("Cancele o link de pagamento antes"), também no gatilho
+  `opportunities_ganho_nao_se_apaga` da 0054 e no `deleteOpportunity`.*
 
 | ID | Requisito | Pri. |
 |---|---|---|
