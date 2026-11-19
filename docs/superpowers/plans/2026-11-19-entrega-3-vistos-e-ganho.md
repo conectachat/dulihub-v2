@@ -493,7 +493,7 @@ returns table (id uuid, title text, status text, closed_at timestamptz,
 10. **Ligação da D13 de novo, depois da recópia:** negócio com exatamente um processo sem item e exatamente um item sem processo tem os dois ligados. É o negócio ganho pelo código antigo na janela, com "Criar processo →". A `projects_item_imutavel` deixa passar sem usuário.
 11. **A trava do item recusa o `delete` de item com processo** em profundidade 1: remover e acrescentar de novo duplicaria o processo.
 12. **`create or replace` de `ganhar_negocio`** com o aviso próprio para negócio sem dono.
-13. **Dono do negócio preso à equipe:** FK composta `(organization_id, owner_id)` → `organization_members (organization_id, user_id)`, `on delete set null (owner_id)`, como a de `people` (0044). Antes, contar os negócios com dono fora da organização: tem de dar 0.
+13. **Dono do negócio preso à equipe:** FK composta `(organization_id, owner_id)` → `organization_members (organization_id, user_id)`, `on delete set null (owner_id)`, como a de `people` (0044). Antes da chave, zerar o dono de quem saiu da organização (`update … set owner_id = null where` o dono não é membro): a chave antiga só ia a `profiles`, e quem sai continua dono. Contar quantos foram zerados e dizer ao Renato.
 
 Depois:
 - [ ] **Antes de aplicar, conferir à mão** (SQL Editor, organização de teste), com uma pessoa de teste e dois negócios:

@@ -315,18 +315,22 @@ export async function updateOpportunity(
   const { id, ...campos } = parsed.data;
   const { owner_id, participantes } = donoEParticipantesDoForm(formData);
 
-  // O dono sai da equipe da organização do negócio — a chave de
+  // O dono novo sai da equipe da organização do negócio — a chave de
   // `opportunities.owner_id` só aponta para `profiles`, e um formulário
-  // forjado poria qualquer perfil ali.
-  if (owner_id) {
-    const { data: doNegocio, error: erroNegocio } = await supabase
-      .from("opportunities")
-      .select("organization_id")
-      .eq("id", id)
-      .maybeSingle();
-    if (erroNegocio) return falhou(traduzirErro(erroNegocio));
-    if (!doNegocio) return falhou("Negócio não encontrado.");
+  // forjado poria qualquer perfil ali. Só a **troca** é conferida: quem saiu
+  // da organização continua dono, o diálogo o mantém como "Dono atual", e
+  // editar o título não pode depender disso.
+  const { data: doNegocio, error: erroNegocio } = owner_id
+    ? await supabase
+        .from("opportunities")
+        .select("organization_id, owner_id")
+        .eq("id", id)
+        .maybeSingle()
+    : { data: null, error: null };
+  if (erroNegocio) return falhou(traduzirErro(erroNegocio));
+  if (owner_id && !doNegocio) return falhou("Negócio não encontrado.");
 
+  if (owner_id && doNegocio && owner_id !== doNegocio.owner_id) {
     const { data: membro, error: erroMembro } = await supabase
       .from("organization_members")
       .select("user_id")

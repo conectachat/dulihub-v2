@@ -293,6 +293,7 @@ describe("updateOpportunity: dono e participantes do negócio", () => {
     participantesAtuais: string[],
     erroDoUpdate: { code: string; message: string } | null = null,
     donoEhMembro = true,
+    donoAtual: string | null = null,
   ) {
     const update = vi.fn(() => ({
       eq: () => ({
@@ -312,7 +313,7 @@ describe("updateOpportunity: dono e participantes do negócio", () => {
               select: () => ({
                 eq: () => ({
                   maybeSingle: async () => ({
-                    data: { organization_id: "org-do-negocio" },
+                    data: { organization_id: "org-do-negocio", owner_id: donoAtual },
                     error: null,
                   }),
                 }),
@@ -392,11 +393,22 @@ describe("updateOpportunity: dono e participantes do negócio", () => {
   });
 
   it("dono de fora da equipe da organização do negócio é recusado, sem gravar", async () => {
-    const b = banco([], null, false);
+    const b = banco([], null, false, U1);
 
     const estado = await updateOpportunity({ error: null }, edicao({ owner_id: U2 }, []));
 
     expect(estado.error).toBe("Escolha o dono na equipe desta organização.");
     expect(b.update).not.toHaveBeenCalled();
+  });
+
+  it("dono que saiu da equipe, mantido no formulário, não impede salvar o título", async () => {
+    // Quem sai da organização continua dono do negócio; o diálogo o mantém na
+    // lista como "Dono atual". Só a troca de dono passa pela conferência.
+    const b = banco([], null, false, U2);
+
+    const estado = await updateOpportunity({ error: null }, edicao({ owner_id: U2 }, []));
+
+    expect(estado.error).toBeNull();
+    expect(b.update).toHaveBeenCalled();
   });
 });
