@@ -10,6 +10,11 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
+    // Folga para a máquina carregada. Com dezenas de arquivos de jsdom em
+    // paralelo, testes que levam 1 s sozinhos passavam dos 5 s padrão e
+    // falhavam por tempo, um arquivo diferente a cada rodada (19/nov). O
+    // prazo do `findBy` sobe junto, em `vitest.setup.ts`.
+    testTimeout: 15_000,
     // Testes de RLS batem num Supabase real; ficam à parte para poderem rodar
     // isolados. `bun run test` roda a unidade, `bun run test:rls` roda estes.
     include: ["src/**/*.test.{ts,tsx}", "tests/**/*.test.{ts,tsx}", "migration/**/*.test.ts"],
