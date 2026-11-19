@@ -2174,10 +2174,19 @@ export type Database = {
         Args: { p_consentimento: string; p_dados: Json; p_token: string }
         Returns: undefined
       }
+      ganhar_negocio: {
+        Args: {
+          p_cobrancas_sem_confirmacao?: boolean
+          p_negocio: string
+          p_simular?: boolean
+        }
+        Returns: Json
+      }
       marcar_como_cliente: {
         Args: { p_desde?: string; p_pessoa: string }
         Returns: undefined
       }
+      reabrir_negocio: { Args: { p_negocio: string }; Returns: undefined }
       reordenar_irmaos: {
         Args: { p_ids: string[]; p_tabela: string }
         Returns: undefined
