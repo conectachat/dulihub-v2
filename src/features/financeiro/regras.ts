@@ -1,3 +1,4 @@
+import { limparNome } from "@/lib/arquivos";
 import { venceu } from "@/lib/prazos";
 
 /**
@@ -257,4 +258,28 @@ export function recebidoNoMes(
   }
 
   return { total: emMoeda(centavos), semCotacao };
+}
+
+/**
+ * Onde o anexo da parcela mora no depósito `financeiro` (CLI-6): organização
+ * (é por ela que o depósito decide quem lê), pessoa (a anonimização apaga a
+ * pasta dela de uma vez), cobrança, parcela, o id da linha e o nome limpo.
+ * O banco confere as seis partes contra a parcela de verdade (0048).
+ */
+export function caminhoDoAnexo({
+  organizacao,
+  pessoa,
+  cobranca,
+  parcela,
+  id,
+  nome,
+}: {
+  organizacao: string;
+  pessoa: string;
+  cobranca: string;
+  parcela: string;
+  id: string;
+  nome: string;
+}): string {
+  return `${organizacao}/${pessoa}/${cobranca}/${parcela}/${id}/${limparNome(nome)}`;
 }

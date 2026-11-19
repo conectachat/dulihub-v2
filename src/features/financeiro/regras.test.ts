@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  caminhoDoAnexo,
   emReais,
   recebidoNoMes,
   gerarParcelas,
@@ -314,5 +315,20 @@ describe("totaisPorMoeda", () => {
 
   it("sem cobrança nenhuma, nenhum total", () => {
     expect(totaisPorMoeda([], HOJE)).toEqual({});
+  });
+});
+
+describe("caminhoDoAnexo", () => {
+  it("organização, pessoa, cobrança, parcela, id e o nome limpo: as 6 partes que o banco confere", () => {
+    expect(
+      caminhoDoAnexo({
+        organizacao: "o1",
+        pessoa: "p1",
+        cobranca: "c1",
+        parcela: "i1",
+        id: "a1",
+        nome: "Nota Fiscal/Março.pdf",
+      }),
+    ).toBe("o1/p1/c1/i1/a1/nota-fiscal-marco.pdf");
   });
 });

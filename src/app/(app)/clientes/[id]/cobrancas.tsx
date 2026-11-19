@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Plus, Wallet } from "lucide-react";
+import { Download, Paperclip, Plus, Wallet } from "lucide-react";
+import { toast } from "sonner";
 
 import { ConfirmAction } from "@/components/confirm-action";
 import { FormDialog } from "@/components/form-dialog";
@@ -12,6 +13,14 @@ import { SeloPendente } from "@/components/selo-pendente";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  anexar,
+  anexosDasParcelas,
+  enderecoDoAnexo,
+  removerAnexo,
+  TIPOS_DE_ANEXO,
+  type Anexo,
+} from "@/features/financeiro/anexos";
 import {
   cobrancasDoContato,
   type Cobranca,
@@ -25,9 +34,13 @@ import {
 } from "@/features/financeiro/escritas-locais";
 import { METODOS, ROTULO_DO_METODO } from "@/features/financeiro/schema";
 import { situacaoDaParcela, totaisPorMoeda } from "@/features/financeiro/regras";
+import { falhou, type ActionState } from "@/lib/action-state";
+import { ACEITOS } from "@/lib/arquivos";
 import { comPrazo } from "@/lib/com-prazo";
 import { formatarDia, hojeEmSaoPaulo } from "@/lib/formatar";
+import { useSincronia } from "@/lib/local/estado";
 import { bancoDoUsuario, filaDoUsuario, sincronizarAgora } from "@/lib/local/sincronizador";
+import { createClient } from "@/lib/supabase/client";
 import { useUsuarioLocal } from "@/lib/local/usuario";
 import { formatarMoeda } from "@/lib/totals";
 import { cn } from "@/lib/utils";
@@ -323,10 +336,166 @@ function NovaCobranca({ personId }: { personId: string }) {
   );
 }
 
+// ------------------------------------------------------------------ anexos
+//
+// Boleto, nota fiscal e comprovante da parcela (CLI-6). Fora do espelho: vão
+// direto do navegador ao servidor, só com internet (exceção registrada no
+// AGENTS.md). A lista vem numa consulta só, para todas as parcelas da aba.
+
+/** Os anexos das parcelas, lidos do servidor quando há rede. */
+function useAnexos(parcelas: string[], ligado: boolean) {
+  const chave = parcelas.join(",");
+  const [lido, setLido] = useState<{ chave: string; anexos: Anexo[] } | null>(null);
+  const [versao, setVersao] = useState(0);
+
+  useEffect(() => {
+    if (!ligado) return;
+    let vivo = true;
+    void anexosDasParcelas(createClient(), chave ? chave.split(",") : []).then(
+      ({ anexos, error }) => {
+        if (!vivo) return;
+        if (error) toast.error(error);
+        setLido({ chave, anexos });
+      },
+    );
+    return () => {
+      vivo = false;
+    };
+  }, [chave, ligado, versao]);
+
+  return {
+    anexos: lido && lido.chave === chave ? lido.anexos : null,
+    recarregar: () => setVersao((v) => v + 1),
+  };
+}
+
+function LinhaDoAnexo({ anexo, aoMudar }: { anexo: Anexo; aoMudar: () => void }) {
+  const tipo = TIPOS_DE_ANEXO.find((t) => t.valor === anexo.kind)?.rotulo ?? "Anexo";
+
+  async function abrir(baixar: boolean) {
+    const url = await enderecoDoAnexo(createClient(), anexo, baixar);
+    if (!url) {
+      toast.error("Não foi possível abrir o anexo.");
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  async function remover(): Promise<ActionState> {
+    const r = await removerAnexo(createClient(), anexo.id);
+    if (!r.error) aoMudar();
+    return r;
+  }
+
+  return (
+    <span className="inline-flex max-w-full items-center gap-1 rounded-full border py-0.5 pl-2 pr-1 text-xs">
+      <Paperclip className="h-3 w-3 shrink-0 text-primary" />
+      <span className="text-muted-foreground">{tipo}:</span>
+      <button type="button" onClick={() => void abrir(false)} className="truncate hover:underline">
+        {anexo.filename}
+      </button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6 rounded-full text-primary"
+        aria-label={`Baixar ${anexo.filename}`}
+        onClick={() => void abrir(true)}
+      >
+        <Download className="h-3 w-3" />
+      </Button>
+      <ConfirmAction
+        action={remover}
+        hidden={{ id: anexo.id }}
+        title={`Remover “${anexo.filename}”?`}
+        consequence="O arquivo sai do depósito. Não dá para desfazer."
+        confirmLabel="Remover o anexo"
+        triggerLabel={`Remover ${anexo.filename}`}
+      />
+    </span>
+  );
+}
+
+function Anexar({
+  cobranca,
+  parcela,
+  aoMudar,
+}: {
+  cobranca: Cobranca;
+  parcela: Cobranca["parcelas"][number];
+  aoMudar: () => void;
+}) {
+  async function enviar(_prev: ActionState, formData: FormData): Promise<ActionState> {
+    const arquivo = formData.get("arquivo");
+    if (!(arquivo instanceof File) || arquivo.size === 0) return falhou("Escolha o arquivo.");
+
+    const r = await anexar(createClient(), {
+      // A organização da cobrança é a da parcela (chave composta).
+      organizacao: cobranca.organization_id,
+      pessoa: cobranca.person_id,
+      cobranca: cobranca.id,
+      parcela: parcela.id,
+      tipo: String(formData.get("kind") ?? "outro"),
+      arquivo,
+    });
+    if (!r.error) aoMudar();
+    return r;
+  }
+
+  return (
+    <FormDialog
+      acao={enviar}
+      titulo={`Anexar à parcela ${parcela.number}`}
+      descricao="Boleto, nota fiscal ou comprovante. PDF, imagem, Word ou Excel, até 20 MB."
+      gatilho={
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 rounded-xl px-2 text-xs text-primary"
+          aria-label={`Anexar à parcela ${parcela.number}`}
+        >
+          <Paperclip className="mr-1 h-3 w-3" />
+          Anexar
+        </Button>
+      }
+      salvar="Anexar"
+      pendente="Enviando..."
+    >
+      <div className="space-y-1">
+        <Label htmlFor={`anexo-tipo-${parcela.id}`}>Tipo</Label>
+        <NativeSelect
+          id={`anexo-tipo-${parcela.id}`}
+          name="kind"
+          defaultValue={parcela.paid_on ? "comprovante" : "boleto"}
+        >
+          {TIPOS_DE_ANEXO.map((t) => (
+            <option key={t.valor} value={t.valor}>
+              {t.rotulo}
+            </option>
+          ))}
+        </NativeSelect>
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor={`anexo-arquivo-${parcela.id}`}>Arquivo</Label>
+        <Input
+          id={`anexo-arquivo-${parcela.id}`}
+          name="arquivo"
+          type="file"
+          accept={ACEITOS}
+          required
+          className="rounded-xl"
+        />
+      </div>
+    </FormDialog>
+  );
+}
+
 export function Cobrancas({ personId }: { personId: string }) {
   const { userId, carregado } = useUsuarioLocal();
   const hoje = hojeEmSaoPaulo();
   const [pronto, setPronto] = useState(false);
+  const { online } = useSincronia();
 
   // Com rede, sincroniza antes de mostrar (D5): logo depois do Ganho as
   // cobranças ainda não desceram, e "Nenhuma cobrança" levaria alguém a
@@ -355,8 +524,16 @@ export function Cobrancas({ personId }: { personId: string }) {
     [userId, personId, hoje],
   );
 
+  const { anexos, recarregar } = useAnexos(
+    (cobrancas ?? []).flatMap((c) => c.parcelas.map((p) => p.id)),
+    pronto && online,
+  );
+
   if (!pronto) return <p className="text-sm text-muted-foreground">Sincronizando…</p>;
   if (!cobrancas) return null;
+
+  const anexosDa = (parcela: string) => (anexos ?? []).filter((a) => a.installment_id === parcela);
+  const temAnexo = (c: Cobranca) => c.parcelas.some((p) => anexosDa(p.id).length > 0);
 
   // A cotação mais recente já usada neste aparelho, só para sugerir. O valor
   // que vale é o que a pessoa confirmar na hora da baixa.
@@ -379,6 +556,10 @@ export function Cobrancas({ personId }: { personId: string }) {
       </div>
 
       <Totais cobrancas={cobrancas} hoje={hoje} />
+
+      {!online && cobrancas.length > 0 ? (
+        <p className="text-xs text-muted-foreground">Anexos precisam de internet.</p>
+      ) : null}
 
       {cobrancas.length === 0 ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -407,6 +588,10 @@ export function Cobrancas({ personId }: { personId: string }) {
                   consequence={`As ${c.resumo.parcelas} parcelas vão junto, inclusive as ${c.resumo.pagas} já pagas. Não dá para desfazer.`}
                   confirmLabel="Excluir a cobrança"
                   triggerLabel={`Excluir ${c.title}`}
+                  // O banco recusaria (0048), e a recusa viraria um conflito
+                  // escondendo a cobrança até alguém descartá-lo.
+                  disabled={online && temAnexo(c)}
+                  disabledReason="Remova os anexos antes."
                 />
               </div>
 
@@ -448,6 +633,14 @@ export function Cobrancas({ personId }: { personId: string }) {
                         />
                       )}
                     </span>
+                    {online ? (
+                      <div className="flex basis-full flex-wrap items-center gap-2">
+                        {anexosDa(p.id).map((a) => (
+                          <LinhaDoAnexo key={a.id} anexo={a} aoMudar={recarregar} />
+                        ))}
+                        <Anexar cobranca={c} parcela={p} aoMudar={recarregar} />
+                      </div>
+                    ) : null}
                   </li>
                 ))}
               </ul>

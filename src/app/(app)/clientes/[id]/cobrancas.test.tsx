@@ -15,6 +15,8 @@ import { formatarMoeda } from "@/lib/totals";
 
 const sincronizarAgora = vi.fn<(userId: string) => Promise<void>>();
 let cobrancas: Cobranca[] = [];
+let naRede = true;
+let anexosNoBanco: { id: string; installment_id: string; kind: string; filename: string; storage_path: string; created_at: string }[] = [];
 
 vi.mock("@/lib/local/usuario", () => ({
   useUsuarioLocal: () => ({ userId: "u1", email: null, carregado: true }),
@@ -25,6 +27,12 @@ vi.mock("@/lib/local/sincronizador", () => ({
   filaDoUsuario: () => ({}),
 }));
 vi.mock("dexie-react-hooks", () => ({ useLiveQuery: () => cobrancas }));
+vi.mock("@/lib/local/estado", () => ({ useSincronia: () => ({ online: naRede }) }));
+vi.mock("@/lib/supabase/client", () => ({ createClient: () => ({}) }));
+vi.mock("@/features/financeiro/anexos", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/financeiro/anexos")>()),
+  anexosDasParcelas: async () => ({ anexos: anexosNoBanco, error: null }),
+}));
 vi.mock("@/features/financeiro/consultas-locais", () => ({ cobrancasDoContato: vi.fn() }));
 vi.mock("@/features/financeiro/escritas-locais", () => ({
   criarCobranca: vi.fn(),
@@ -55,6 +63,7 @@ function cobranca(
   const total = parcelas.reduce((s, [a]) => s + a, 0);
   return {
     id,
+    organization_id: "o1",
     person_id: "p1",
     project_id: null,
     title: `Cobrança ${id}`,
@@ -68,12 +77,15 @@ function cobranca(
 }
 
 function online(valor: boolean) {
+  naRede = valor;
   Object.defineProperty(navigator, "onLine", { value: valor, configurable: true });
 }
 
 beforeEach(() => {
   vi.useFakeTimers();
   sincronizarAgora.mockReset();
+  sincronizarAgora.mockResolvedValue();
+  anexosNoBanco = [];
   cobrancas = [cobranca("a", "BRL", [[1000, "2000-01-10", null]])];
   online(true);
 });
@@ -150,5 +162,45 @@ describe("aba Financeiro do cliente", () => {
     const usd = screen.getByRole("group", { name: "Totais em USD" });
     expect(usd.textContent).toContain(`Contratado${formatarMoeda(12000, "USD")}`);
     expect(usd.textContent).toContain(`Vencido${formatarMoeda(0, "USD")}`);
+  });
+
+  it("sem rede, os anexos avisam que precisam de internet, e não há como anexar", async () => {
+    online(false);
+
+    render(<Cobrancas personId="p1" />);
+    await act(async () => {});
+
+    expect(screen.getByText("Anexos precisam de internet.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Anexar/ })).toBeNull();
+  });
+
+  it("com rede, cada parcela pode receber anexo; sem anexo, a cobrança se exclui", async () => {
+    render(<Cobrancas personId="p1" />);
+    await act(async () => {});
+
+    expect(screen.getByRole("button", { name: "Anexar à parcela 1" })).toBeTruthy();
+    const excluir = screen.getByRole("button", { name: "Excluir Cobrança a" }) as HTMLButtonElement;
+    expect(excluir.disabled).toBe(false);
+  });
+
+  it("parcela com anexo mostra o arquivo, e a cobrança não se exclui antes de removê-lo", async () => {
+    anexosNoBanco = [
+      {
+        id: "x1",
+        installment_id: "a-0",
+        kind: "boleto",
+        filename: "boleto.pdf",
+        storage_path: "o1/p1/a/a-0/x1/boleto.pdf",
+        created_at: "2026-11-10T12:00:00Z",
+      },
+    ];
+
+    render(<Cobrancas personId="p1" />);
+    await act(async () => {});
+
+    expect(screen.getByText("boleto.pdf")).toBeTruthy();
+    const excluir = screen.getByRole("button", { name: "Excluir Cobrança a" }) as HTMLButtonElement;
+    expect(excluir.disabled).toBe(true);
+    expect(excluir.title).toBe("Remova os anexos antes.");
   });
 });

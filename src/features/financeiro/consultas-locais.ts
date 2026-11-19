@@ -28,7 +28,15 @@ export type Parcela = Pick<
 
 export type Cobranca = Pick<
   Tables<"receivables">,
-  "id" | "person_id" | "project_id" | "title" | "amount" | "list_amount" | "currency" | "notes"
+  | "id"
+  | "organization_id"
+  | "person_id"
+  | "project_id"
+  | "title"
+  | "amount"
+  | "list_amount"
+  | "currency"
+  | "notes"
 > &
   Pendencia & {
     parcelas: Parcela[];
@@ -73,6 +81,7 @@ function montarCobrancas(
     const suas = (porCobranca.get(c.id) ?? []).sort(porNumero);
     return {
       id: c.id,
+      organization_id: c.organization_id,
       person_id: c.person_id,
       project_id: c.project_id,
       title: c.title,
