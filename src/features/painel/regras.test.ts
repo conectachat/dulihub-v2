@@ -242,6 +242,7 @@ describe("alertasDoDia — fichas de cadastro", () => {
   const ficha = {
     person_id: "c1",
     cliente: "Ana",
+    estagio: "opportunity",
     submitted_at: "2026-10-14T15:00:00Z" as string | null,
     reviewed_at: null as string | null,
   };
@@ -250,7 +251,7 @@ describe("alertasDoDia — fichas de cadastro", () => {
     const a = alertasDoDia({ ...vazio, fichas: [ficha] }, HOJE);
 
     expect(a.fichas).toEqual([
-      { person_id: "c1", nome: "Ana", recebidaEm: "2026-10-14T15:00:00Z" },
+      { person_id: "c1", nome: "Ana", estagio: "opportunity", recebidaEm: "2026-10-14T15:00:00Z" },
     ]);
     expect(a.vazio).toBe(false);
   });

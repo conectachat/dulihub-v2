@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { listarProcessos } from "@/features/projects/queries";
 import { formatarDia, hojeEmSaoPaulo } from "@/lib/formatar";
+import { enderecoDaPessoa } from "@/lib/pessoa";
 
 import { BarraDeProgresso, SeloDoStatus } from "./partes";
 
@@ -38,7 +39,7 @@ export default async function ProjetosPage() {
         <EmptyState
           icon={FolderKanban}
           title="Nenhum processo ainda."
-          hint="O processo nasce na ficha do contato, em Processos › Novo processo."
+          hint="O processo nasce no perfil do cliente, na aba Projetos › Novo processo."
         />
       ) : (
         <div className="rounded-3xl border bg-card">
@@ -60,7 +61,7 @@ export default async function ProjetosPage() {
                     <TableCell>
                       {p.person ? (
                         <Link
-                          href={`/contatos/${p.person.id}`}
+                          href={enderecoDaPessoa(p.person.id, "client", "projetos")}
                           className="hover:underline"
                         >
                           {p.person.full_name}

@@ -29,6 +29,7 @@ describe("funil: mover, ganhar e perder", () => {
   let meio: EtapaDeDestino;
   let funilId: string;
   let ganhoId: string;
+  let notaDoLead: string;
 
   const negocio = () =>
     parceiro
@@ -102,7 +103,26 @@ describe("funil: mover, ganhar e perder", () => {
       .single();
     if (erroNegocio) throw new Error(`Negócio não criado: ${erroNegocio.message}`);
     negocioId = criado.id;
+
+    // Uma nota de quando ainda era lead: depois do Ganho, ela fica abaixo
+    // de "virou cliente" no histórico (§6.2).
+    const { data: nota, error: erroNota } = await parceiro
+      .from("notes")
+      .insert({ organization_id: orgParceiro, person_id: pessoaId, body: "Nota do lead" })
+      .select("created_at")
+      .single();
+    if (erroNota) throw new Error(`Nota não criada: ${erroNota.message}`);
+    notaDoLead = nota.created_at;
   }, 60_000);
+
+  const viradas = async () =>
+    (
+      await parceiro
+        .from("activities")
+        .select("description, occurred_at")
+        .eq("person_id", pessoaId)
+        .eq("type", "virou_cliente")
+    ).data ?? [];
 
   afterAll(async () => {
     // A chave em cascata leva o negócio e o histórico junto.
@@ -178,11 +198,26 @@ describe("funil: mover, ganhar e perder", () => {
     expect(await estagio()).toBe("client");
   });
 
+  it("o Ganho registra uma vez que virou cliente, depois da nota do lead (D10)", async () => {
+    const lista = await viradas();
+
+    expect(lista.map((a) => a.description)).toEqual(["Oportunidade ganha — virou cliente"]);
+    expect(new Date(lista[0].occurred_at) > new Date(notaDoLead)).toBe(true);
+  });
+
   it("cliente não volta a ser lead, mesmo com o negócio reaberto", async () => {
     await aplicarEtapa(parceiro, usuario, negocioId, meio, null);
 
     expect((await negocio()).data?.status).toBe("open");
     expect(await estagio()).toBe("client");
+  });
+
+  it("ganhar de novo quem já é cliente não registra outra virada", async () => {
+    const { etapa } = await etapaTerminal(parceiro, negocioId, "is_won");
+    const r = await aplicarEtapa(parceiro, usuario, negocioId, etapa!, null);
+    expect(r.error).toBeNull();
+
+    expect(await viradas()).toHaveLength(1);
   });
 
   it("negócio novo não nasce ganho — nem pela API (G5)", async () => {

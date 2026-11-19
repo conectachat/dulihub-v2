@@ -132,7 +132,7 @@ describe("enderecoDoCartao", () => {
   });
 
   it("negócio ganho abre o perfil do cliente", () => {
-    expect(enderecoDoCartao(cartao, etapa("Ganho", 98, "ganho"))).toBe("/contatos/c1");
+    expect(enderecoDoCartao(cartao, etapa("Ganho", 98, "ganho"))).toBe("/clientes/c1");
   });
 
   it("ganho sem contato visível continua abrindo o negócio", () => {

@@ -84,4 +84,16 @@ describe("montarLinhaDoTempo", () => {
       [null, ""],
     ]);
   });
+
+  it("depois do Ganho, a nota do lead fica abaixo de virou cliente (§6.2)", () => {
+    const itens = montarLinhaDoTempo(
+      [nota("n1", "2026-11-10T12:00:00Z")],
+      [
+        atividade("a1", "stage_change", "2026-11-18T12:00:00.100Z"),
+        atividade("a2", "virou_cliente", "2026-11-18T12:00:00.200Z"),
+      ],
+    );
+
+    expect(itens.map((i) => i.id)).toEqual(["a2", "a1", "n1"]);
+  });
 });

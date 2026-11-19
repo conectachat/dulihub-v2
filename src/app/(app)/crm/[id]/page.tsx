@@ -21,6 +21,7 @@ import { formatarMoeda } from "@/lib/totals";
 import { DadosCadastrais } from "@/components/perfil/dados-cadastrais";
 import { PersonTags } from "@/components/perfil/person-tags";
 import { Timeline } from "@/components/perfil/timeline";
+import { enderecoDaPessoa } from "@/lib/pessoa";
 import { PersonDialog } from "../../contatos/person-dialog";
 import { EditarNegocio, GanhoEPerdido, Reabrir } from "./acoes-do-negocio";
 import { Trilha } from "./trilha";
@@ -123,7 +124,7 @@ export default async function LeadPage({
             completo.
           </p>
           <Button asChild size="sm" className="rounded-xl">
-            <Link href={`/contatos/${pessoa.id}`}>Abrir perfil do cliente</Link>
+            <Link href={enderecoDaPessoa(pessoa.id, "client")}>Abrir perfil do cliente</Link>
           </Button>
         </div>
       ) : null}

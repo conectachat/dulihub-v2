@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+
+import { revalidarPessoa } from "@/lib/revalidar";
 import { redirect } from "next/navigation";
 
 import { falhou, gravou, type ActionState } from "@/lib/action-state";
@@ -43,7 +45,7 @@ export async function criarProcesso(
   if (!id) return falhou("O processo não foi criado. Tente de novo.");
 
   revalidatePath("/projetos");
-  revalidatePath(`/contatos/${person_id}`);
+  revalidarPessoa(person_id);
   revalidatePath("/crm");
 
   // Fora de try/catch: `redirect` funciona lançando, e capturá-lo engoliria

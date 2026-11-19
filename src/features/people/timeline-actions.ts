@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+
+import { revalidarPessoa } from "@/lib/revalidar";
 import { z } from "zod";
 
 import { falhou, gravou, type ActionState } from "@/lib/action-state";
@@ -81,7 +83,7 @@ export async function createEntry(
     if (error) return falhou(traduzirErro(error));
   }
 
-  revalidatePath(`/contatos/${person_id}`);
+  revalidarPessoa(person_id);
   // A tela do lead (`/crm/[id]`) mostra o mesmo dado.
   revalidatePath("/crm/[id]", "page");
   return gravou();
@@ -135,7 +137,7 @@ export async function deleteEntry(formData: FormData): Promise<ActionState> {
     );
   }
 
-  revalidatePath(`/contatos/${personId}`);
+  revalidarPessoa(personId);
   // A tela do lead (`/crm/[id]`) mostra o mesmo dado.
   revalidatePath("/crm/[id]", "page");
   return gravou();

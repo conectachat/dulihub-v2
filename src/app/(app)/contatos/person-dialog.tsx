@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { createPerson, restorePerson, updatePerson } from "@/features/people/actions";
 import { DDI_PADRAO } from "@/lib/contato";
 import { CAMPO_CONFIRMAR_PARECIDO, type EstadoComConfirmacao } from "@/lib/parecidos";
+import { enderecoDaPessoa } from "@/lib/pessoa";
 
 export type PersonFormValues = {
   id: string;
@@ -67,9 +68,9 @@ export function PersonDialog({ person }: { person?: PersonFormValues }) {
           <AvisoDeDuplicado
             parecidos={estado.parecidos}
             modo={person ? "editar" : "criar"}
-            aoUsarExistente={(id) => {
+            aoUsarExistente={(id, estagio) => {
               fechar();
-              router.push(`/contatos/${id}`);
+              router.push(enderecoDaPessoa(id, estagio));
             }}
             // Na edição, restaurar o outro deixaria dois contatos ativos.
             aoRestaurar={person ? undefined : restaurar}

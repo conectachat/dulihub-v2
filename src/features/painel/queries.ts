@@ -41,6 +41,7 @@ export type DadosDoPainel = {
   fichas: {
     person_id: string;
     cliente: string;
+    estagio: string;
     submitted_at: string | null;
     reviewed_at: string | null;
   }[];
@@ -72,7 +73,7 @@ export async function lerPainel(
     // Ficha de cadastro que o cliente enviou e ninguém conferiu.
     supabase
       .from("registration_forms")
-      .select("person_id, submitted_at, reviewed_at, person:people(full_name)")
+      .select("person_id, submitted_at, reviewed_at, person:people(full_name, lifecycle_stage)")
       .not("submitted_at", "is", null)
       .is("reviewed_at", null),
   ]);
@@ -121,6 +122,7 @@ export async function lerPainel(
       fichas: (fichas.data ?? []).map((f) => ({
         person_id: f.person_id,
         cliente: f.person?.full_name ?? "Cliente removido",
+        estagio: f.person?.lifecycle_stage ?? "contact",
         submitted_at: f.submitted_at,
         reviewed_at: f.reviewed_at,
       })),

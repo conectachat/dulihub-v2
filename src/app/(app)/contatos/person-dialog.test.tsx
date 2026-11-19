@@ -104,7 +104,8 @@ describe("PersonDialog", () => {
     expect(await screen.findByText(/na lixeira/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Restaurar / })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /^Sim, é a mesma pessoa/ }));
-    expect(push).toHaveBeenCalledWith("/contatos/p1");
+    // O parecido é cliente: abre o perfil de cliente, sem passar pelo redirect.
+    expect(push).toHaveBeenCalledWith("/clientes/p1");
     expect(restorePerson).not.toHaveBeenCalled();
   });
 
@@ -143,7 +144,8 @@ describe("PersonDialog", () => {
     await preencherEEnviar();
     fireEvent.click(await screen.findByRole("button", { name: /^Sim, é a mesma pessoa/ }));
 
-    expect(push).toHaveBeenCalledWith("/contatos/p1");
+    // O parecido é cliente: abre o perfil de cliente, sem passar pelo redirect.
+    expect(push).toHaveBeenCalledWith("/clientes/p1");
     expect(createPerson).toHaveBeenCalledTimes(1);
     await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });

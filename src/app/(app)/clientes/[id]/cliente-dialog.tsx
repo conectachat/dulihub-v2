@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { atualizarCliente } from "@/features/people/actions";
 import { CAMPO_CONFIRMAR_PARECIDO, type EstadoComConfirmacao } from "@/lib/parecidos";
+import { enderecoDaPessoa } from "@/lib/pessoa";
 
 import { CamposDoContato, type PersonFormValues } from "../../contatos/person-dialog";
 
@@ -58,9 +59,9 @@ export function ClienteDialog({
           <AvisoDeDuplicado
             parecidos={estado.parecidos}
             modo="editar"
-            aoUsarExistente={(id) => {
+            aoUsarExistente={(id, estagio) => {
               fechar();
-              router.push(`/contatos/${id}`);
+              router.push(enderecoDaPessoa(id, estagio));
             }}
             aoGravarMesmoAssim={() => reenviarCom({ [CAMPO_CONFIRMAR_PARECIDO]: "1" })}
           />

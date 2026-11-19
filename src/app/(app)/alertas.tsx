@@ -13,6 +13,7 @@ import type { Alertas } from "@/features/painel/regras";
 import { formatarData, formatarDia } from "@/lib/formatar";
 import { formatarPorMoeda } from "@/lib/totals";
 import { cn } from "@/lib/utils";
+import { enderecoDaPessoa } from "@/lib/pessoa";
 
 /**
  * "Precisa de atenção" — o topo da tela Início.
@@ -114,7 +115,7 @@ export function AlertasDoDia({ alertas }: { alertas: Alertas }) {
               {fichas.map((f) => (
                 <li key={f.person_id} className="flex items-center justify-between gap-3 py-2">
                   <Link
-                    href={`/contatos/${f.person_id}#dados-cadastrais`}
+                    href={enderecoDaPessoa(f.person_id, f.estagio, "dados")}
                     className="min-w-0 hover:underline"
                   >
                     <span className="block truncate text-sm font-medium">{f.nome}</span>
@@ -145,7 +146,11 @@ export function AlertasDoDia({ alertas }: { alertas: Alertas }) {
             <ul className="mt-2 space-y-1 text-sm">
               {parcelas.clientes.slice(0, 5).map((c) => (
                 <li key={c.person_id} className="flex justify-between gap-3">
-                  <Link href={`/contatos/${c.person_id}`} className="truncate hover:underline">
+                  {/* Quem tem cobrança é cliente (0045). */}
+                  <Link
+                    href={enderecoDaPessoa(c.person_id, "client", "financeiro")}
+                    className="truncate hover:underline"
+                  >
                     {c.nome}
                   </Link>
                   <span className="shrink-0 text-xs text-muted-foreground">

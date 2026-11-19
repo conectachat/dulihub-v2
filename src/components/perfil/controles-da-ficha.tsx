@@ -27,6 +27,7 @@ import {
 import type { CadastroDoContato } from "@/features/cadastro/queries";
 import { comAviso } from "@/lib/avisar";
 import { CAMPO_CONFIRMAR_PARECIDO } from "@/lib/parecidos";
+import { enderecoDaPessoa } from "@/lib/pessoa";
 
 /**
  * Os botões do cartão "Dados cadastrais" — a parte que precisa do navegador:
@@ -79,9 +80,9 @@ export function EditarCadastro({
               <AvisoDeDuplicado
                 parecidos={estado.parecidos}
                 modo="editar"
-                aoUsarExistente={(id) => {
+                aoUsarExistente={(id, estagio) => {
                   setAberto(false);
-                  router.push(`/contatos/${id}`);
+                  router.push(enderecoDaPessoa(id, estagio));
                 }}
                 aoGravarMesmoAssim={() => reenviarCom({ [CAMPO_CONFIRMAR_PARECIDO]: "1" })}
               />

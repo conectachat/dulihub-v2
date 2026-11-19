@@ -43,7 +43,8 @@ describe("AvisoDeDuplicado", () => {
     expect(screen.getByText(/Telefone já cadastrado em/)).toBeInTheDocument();
     expect(screen.getByText(/\(cliente\)/)).toBeInTheDocument();
     const link = screen.getByRole("link", { name: "Carlos Souza" });
-    expect(link).toHaveAttribute("href", "/contatos/p1");
+    // Cliente: o link vai ao perfil de cliente, não ao de contato (CLI-2).
+    expect(link).toHaveAttribute("href", "/clientes/p1");
     expect(link).toHaveAttribute("target", "_blank");
   });
 
@@ -77,7 +78,7 @@ describe("AvisoDeDuplicado", () => {
     expect(screen.getByText(/na lixeira/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^Restaurar / }));
 
-    await waitFor(() => expect(aoUsarExistente).toHaveBeenCalledWith("p1"));
+    await waitFor(() => expect(aoUsarExistente).toHaveBeenCalledWith("p1", "client"));
     expect(aoRestaurar).toHaveBeenCalledWith("p1");
   });
 
@@ -112,7 +113,7 @@ describe("AvisoDeDuplicado", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /^Sim, é a mesma pessoa/ }));
 
-    expect(aoUsarExistente).toHaveBeenCalledWith("p1");
+    expect(aoUsarExistente).toHaveBeenCalledWith("p1", "client");
     expect(aoGravarMesmoAssim).not.toHaveBeenCalled();
   });
 

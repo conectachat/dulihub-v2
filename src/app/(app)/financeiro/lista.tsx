@@ -19,6 +19,7 @@ import { bancoDoUsuario, filaDoUsuario } from "@/lib/local/sincronizador";
 import { useUsuarioLocal } from "@/lib/local/usuario";
 import { formatarMoeda, formatarPorMoeda, somarPorMoeda } from "@/lib/totals";
 import { cn } from "@/lib/utils";
+import { enderecoDaPessoa } from "@/lib/pessoa";
 
 /**
  * O a receber de todo mundo, lido do aparelho.
@@ -209,7 +210,7 @@ export function ListaDoFinanceiro() {
               >
                 <div className="min-w-0">
                   <Link
-                    href={`/contatos/${p.person_id}`}
+                    href={enderecoDaPessoa(p.person_id, "client", "financeiro")}
                     className="block truncate font-medium hover:underline"
                   >
                     {p.cliente}

@@ -84,17 +84,42 @@ export async function aplicarEtapa(
     return { error: traduzirErro(registro.error), personId: updated.person_id };
   }
 
+  // Ganho de quem ainda não é cliente: promove e registra a virada, uma vez
+  // só (D10). Quem já é cliente — negócio reaberto e ganho de novo, ou um
+  // segundo negócio — não ganha outra linha no histórico.
   if (etapa.is_won) {
-    const promocao = await supabase
+    const { data: pessoa, error: erroPessoa } = await supabase
       .from("people")
-      .update({ lifecycle_stage: "client" })
+      .select("lifecycle_stage")
       .eq("id", updated.person_id)
-      .select("id");
-    if (promocao.error) {
-      return { error: traduzirErro(promocao.error), personId: updated.person_id };
-    }
-    if (!promocao.data || promocao.data.length === 0) {
-      return { error: NADA_GRAVADO, personId: updated.person_id };
+      .maybeSingle();
+    if (erroPessoa) return { error: traduzirErro(erroPessoa), personId: updated.person_id };
+    if (!pessoa) return { error: NADA_GRAVADO, personId: updated.person_id };
+
+    if (pessoa.lifecycle_stage !== "client") {
+      const promocao = await supabase
+        .from("people")
+        .update({ lifecycle_stage: "client" })
+        .eq("id", updated.person_id)
+        .select("id");
+      if (promocao.error) {
+        return { error: traduzirErro(promocao.error), personId: updated.person_id };
+      }
+      if (!promocao.data || promocao.data.length === 0) {
+        return { error: NADA_GRAVADO, personId: updated.person_id };
+      }
+
+      const virada = await supabase.from("activities").insert({
+        organization_id: updated.organization_id,
+        person_id: updated.person_id,
+        opportunity_id: id,
+        type: "virou_cliente",
+        description: "Oportunidade ganha — virou cliente",
+        created_by: userId,
+      });
+      if (virada.error) {
+        return { error: traduzirErro(virada.error), personId: updated.person_id };
+      }
     }
   }
 

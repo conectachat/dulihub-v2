@@ -79,9 +79,16 @@ describe("AlertasDoDia", () => {
     expect(
       screen.getByRole("link", { name: /Ver todas no Financeiro/ }).getAttribute("href"),
     ).toBe("/financeiro?filtro=vencidas");
+    // Quem tem cobrança é cliente (0045): o nome leva à aba Financeiro dele.
+    expect(screen.getByRole("link", { name: "Ana" }).getAttribute("href")).toBe(
+      "/clientes/a1?aba=financeiro",
+    );
   });
 
-  it("ficha de cadastro recebida leva aos dados cadastrais do contato", () => {
+  it.each([
+    ["lead", "opportunity", "/contatos/c1#dados-cadastrais"],
+    ["cliente", "client", "/clientes/c1?aba=dados"],
+  ])("ficha recebida de %s leva aos dados cadastrais dele", (_, estagio, destino) => {
     render(
       <AlertasDoDia
         alertas={alertasDoDia(
@@ -91,6 +98,7 @@ describe("AlertasDoDia", () => {
               {
                 person_id: "c1",
                 cliente: "Ana de Teste",
+                estagio,
                 submitted_at: "2026-10-14T15:00:00Z",
                 reviewed_at: null,
               },
@@ -102,9 +110,7 @@ describe("AlertasDoDia", () => {
     );
 
     expect(screen.getByText("Fichas de cadastro recebidas")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Ana de Teste/ }).getAttribute("href")).toBe(
-      "/contatos/c1#dados-cadastrais",
-    );
+    expect(screen.getByRole("link", { name: /Ana de Teste/ }).getAttribute("href")).toBe(destino);
   });
 
   it("pasta atrasada leva direto à aba de documentos do processo", () => {

@@ -7,6 +7,7 @@ import { FieldError } from "@/components/field-error";
 import { Button } from "@/components/ui/button";
 import type { ActionState } from "@/lib/action-state";
 import type { ContatoParecido } from "@/lib/parecidos";
+import { enderecoDaPessoa } from "@/lib/pessoa";
 
 /**
  * "Já existe um contato com esse e-mail ou telefone" (CON-4).
@@ -44,7 +45,8 @@ export function AvisoDeDuplicado({
   parecidos: ContatoParecido[];
   modo: "criar" | "editar";
   /** "Sim, é a mesma pessoa". */
-  aoUsarExistente: (id: string) => void;
+  /** Recebe o estágio para o link ir ao perfil certo (contato ou cliente). */
+  aoUsarExistente: (id: string, estagio: string) => void;
   /**
    * Só ao criar, para quem está na lixeira. Na edição não se passa: restaurar
    * o outro deixaria dois contatos ativos para a mesma pessoa — "Sim" só abre
@@ -69,13 +71,13 @@ export function AvisoDeDuplicado({
     };
   }, []);
 
-  function restaurar(id: string) {
+  function restaurar(id: string, estagio: string) {
     if (!aoRestaurar) return;
     setErro(null);
     iniciar(async () => {
       const resposta = await aoRestaurar(id);
       if (resposta.error) setErro(resposta.error);
-      else if (naTela.current) aoUsarExistente(id);
+      else if (naTela.current) aoUsarExistente(id, estagio);
     });
   }
 
@@ -92,7 +94,7 @@ export function AvisoDeDuplicado({
             <span>
               {oQueBateu(p)}{" "}
               <a
-                href={`/contatos/${p.id}`}
+                href={enderecoDaPessoa(p.id, p.estagio)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-medium text-primary underline underline-offset-4"
@@ -108,7 +110,7 @@ export function AvisoDeDuplicado({
                 variant="outline"
                 className="rounded-xl"
                 disabled={restaurando}
-                onClick={() => restaurar(p.id)}
+                onClick={() => restaurar(p.id, p.estagio)}
                 // Com mais de um parecido, o leitor de tela precisa saber de
                 // quem é cada botão; o nome começa pelo texto visível.
                 aria-label={`${restaurando ? "Restaurando" : "Restaurar"} ${p.nome}`}
@@ -122,7 +124,7 @@ export function AvisoDeDuplicado({
                 variant="outline"
                 className="rounded-xl"
                 disabled={restaurando}
-                onClick={() => aoUsarExistente(p.id)}
+                onClick={() => aoUsarExistente(p.id, p.estagio)}
                 aria-label={`Sim, é a mesma pessoa: ${p.nome}`}
               >
                 Sim, é a mesma pessoa

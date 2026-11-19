@@ -10,6 +10,7 @@ import { equipeDaOrganizacao, paginaDoProcesso } from "@/features/pages/queries"
 import { obterProcesso, pastasDoProcesso } from "@/features/projects/queries";
 import { createClient } from "@/lib/supabase/server";
 import { formatarDia, hojeEmSaoPaulo } from "@/lib/formatar";
+import { enderecoDaPessoa } from "@/lib/pessoa";
 
 import { ProgressoDoProjeto } from "../partes";
 import { CampoDoProcesso, StatusDoProcesso } from "./campos-editaveis";
@@ -85,7 +86,10 @@ export default async function ProcessoPage({
         </div>
         <p className="text-sm text-muted-foreground">
           {processo.person ? (
-            <Link href={`/contatos/${processo.person.id}`} className="hover:underline">
+            <Link
+              href={enderecoDaPessoa(processo.person.id, "client", "projetos")}
+              className="hover:underline"
+            >
               {processo.person.full_name}
             </Link>
           ) : null}

@@ -12,6 +12,7 @@ import type { Stage } from "@/features/opportunities/queries";
 import { aoSoltar, enderecoDoCartao, etapasDeEntrada } from "@/features/opportunities/regras";
 import { formatarMoeda, formatarPorMoeda, somarPorMoeda } from "@/lib/totals";
 import { cn } from "@/lib/utils";
+import { enderecoDaPessoa } from "@/lib/pessoa";
 
 import { AtalhoDaFicha } from "./atalho-da-ficha";
 import { DialogoDeGanho, DialogoDePerda, type NegocioDoDialogo } from "./dialogos";
@@ -220,7 +221,13 @@ export function Quadro({
                         */}
                         {cartao.person && !etapa.is_lost ? (
                           <AtalhoDaFicha
-                            href={`${endereco}#dados-cadastrais`}
+                            href={
+                              // Ganho abre o perfil de cliente, que tem abas:
+                              // a âncora vira a aba Dados (D6).
+                              etapa.is_won
+                                ? enderecoDaPessoa(cartao.person.id, "client", "dados")
+                                : `${endereco}#dados-cadastrais`
+                            }
                             situacao={cartao.ficha}
                           />
                         ) : null}
@@ -240,7 +247,7 @@ export function Quadro({
                             </Link>
                           ) : (
                             <Link
-                              href={`/contatos/${cartao.person.id}?novo-processo=${cartao.id}`}
+                              href={`${enderecoDaPessoa(cartao.person.id, "client", "projetos")}&novo-processo=${cartao.id}`}
                               draggable={false}
                               className="block text-xs font-medium text-primary hover:underline"
                             >

@@ -49,6 +49,8 @@ type Parcela = {
 type Ficha = {
   person_id: string;
   cliente: string;
+  /** O estágio da pessoa: decide se o link vai ao perfil de cliente. */
+  estagio: string;
   submitted_at: string | null;
   reviewed_at: string | null;
 };
@@ -67,7 +69,7 @@ export type Alertas = {
   pastas: { processo: Referencia; quantidade: number }[];
   etapas: { processo: Referencia; quantidade: number }[];
   /** Ficha de cadastro que o cliente preencheu e ninguém conferiu ainda. */
-  fichas: { person_id: string; nome: string; recebidaEm: string }[];
+  fichas: { person_id: string; nome: string; estagio: string; recebidaEm: string }[];
   vazio: boolean;
 };
 
@@ -158,7 +160,12 @@ export function alertasDoDia(
   // antiga primeiro: é a que espera há mais tempo.
   const fichas = dados.fichas
     .filter((f) => f.submitted_at && !f.reviewed_at)
-    .map((f) => ({ person_id: f.person_id, nome: f.cliente, recebidaEm: f.submitted_at! }))
+    .map((f) => ({
+      person_id: f.person_id,
+      nome: f.cliente,
+      estagio: f.estagio,
+      recebidaEm: f.submitted_at!,
+    }))
     .sort((a, b) => a.recebidaEm.localeCompare(b.recebidaEm));
 
   return {

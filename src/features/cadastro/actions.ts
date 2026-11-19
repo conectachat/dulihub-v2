@@ -4,6 +4,8 @@ import { randomBytes } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
 
+import { revalidarPessoa } from "@/lib/revalidar";
+
 import { falhou, type ActionState } from "@/lib/action-state";
 import { traduzirErro } from "@/lib/erros";
 import { resultado } from "@/lib/gravar";
@@ -66,9 +68,8 @@ export async function salvarCadastro(
   });
   if (error) return { error: traduzirErro(error) };
 
-  revalidatePath(`/contatos/${personId}`);
-  // Nome, e-mail e telefone aparecem na lista.
-  revalidatePath("/contatos");
+  // Nome, e-mail e telefone aparecem nas listas e nos perfis.
+  revalidarPessoa(personId);
   // A tela do lead (`/crm/[id]`) mostra o mesmo dado.
   revalidatePath("/crm/[id]", "page");
   return { error: null };
@@ -76,7 +77,7 @@ export async function salvarCadastro(
 
 /** Onde a ficha e o estado dela aparecem: o contato, o CRM e a Início. */
 function revalidar(personId: string) {
-  revalidatePath(`/contatos/${personId}`);
+  revalidarPessoa(personId);
   revalidatePath("/crm");
   // A tela do lead mostra a ficha e o link.
   revalidatePath("/crm/[id]", "page");

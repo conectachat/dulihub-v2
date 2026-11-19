@@ -158,9 +158,13 @@ describe("Quadro", () => {
     const coluna = screen.getByRole("region", { name: "Etapa Ganho" });
     expect(
       within(coluna).getByRole("link", { name: "Processo EB-2 NIW" }).getAttribute("href"),
-    ).toBe("/contatos/c1");
+    ).toBe("/clientes/c1");
     expect(
       within(coluna).getByRole("link", { name: /Criar processo/ }).getAttribute("href"),
-    ).toBe("/contatos/c1?novo-processo=n1");
+    ).toBe("/clientes/c1?aba=projetos&novo-processo=n1");
+    // A âncora vira a aba Dados: o perfil de cliente tem abas (D6).
+    expect(
+      within(coluna).getByRole("link", { name: /Ficha conferida/ }).getAttribute("href"),
+    ).toBe("/clientes/c1?aba=dados");
   });
 });

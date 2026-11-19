@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
+import { revalidarPessoa } from "@/lib/revalidar";
+
 import { falhou, gravou, type ActionState } from "@/lib/action-state";
 import { traduzirErro } from "@/lib/erros";
 import { resultadoSemContagem } from "@/lib/gravar";
@@ -80,8 +82,7 @@ export async function setPersonTags(formData: FormData): Promise<ActionState> {
     if (estado.error) return estado;
   }
 
-  revalidatePath(`/contatos/${personId}`);
-  revalidatePath("/contatos");
+  revalidarPessoa(personId);
   // A tela do lead (`/crm/[id]`) mostra o mesmo dado.
   revalidatePath("/crm/[id]", "page");
   return gravou();

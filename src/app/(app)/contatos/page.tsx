@@ -17,6 +17,7 @@ import {
 import { restorePerson, softDeletePerson } from "@/features/people/actions";
 import { listPeople, listTags } from "@/features/people/queries";
 import { formatarData, iniciais, telefoneCompleto } from "@/lib/formatar";
+import { enderecoDaPessoa } from "@/lib/pessoa";
 
 import { ContactFilters } from "./filters";
 import { PersonDialog } from "./person-dialog";
@@ -103,7 +104,7 @@ export default async function ContatosPage({
                           {iniciais(person.full_name)}
                         </span>
                         <Link
-                          href={`/contatos/${person.id}`}
+                          href={enderecoDaPessoa(person.id, person.lifecycle_stage)}
                           className="font-medium hover:underline"
                         >
                           {person.full_name}
@@ -140,7 +141,7 @@ export default async function ContatosPage({
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
                         <Link
-                          href={`/contatos/${person.id}`}
+                          href={enderecoDaPessoa(person.id, person.lifecycle_stage)}
                           className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl text-primary hover:bg-accent"
                           aria-label={`${person.opportunity_count} oportunidade(s) de ${person.full_name}`}
                         >

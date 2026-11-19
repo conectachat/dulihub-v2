@@ -17,6 +17,8 @@ import {
   respostaDaCriacao,
   type EstadoComConfirmacao,
 } from "@/lib/parecidos";
+import { enderecoDaPessoa } from "@/lib/pessoa";
+import { revalidarPessoa } from "@/lib/revalidar";
 
 import {
   aplicarEtapa,
@@ -117,7 +119,7 @@ export async function createOpportunity(
   }
 
   revalidatePath("/crm");
-  revalidatePath("/contatos");
+  revalidarPessoa();
   // A tela Início conta quem tem oportunidade.
   revalidatePath("/");
   return gravou();
@@ -127,8 +129,7 @@ export async function createOpportunity(
 function revalidar(id: string, personId: string | null) {
   revalidatePath("/crm");
   revalidatePath(`/crm/${id}`);
-  revalidatePath("/contatos");
-  if (personId) revalidatePath(`/contatos/${personId}`);
+  revalidarPessoa(personId);
   // A tela Início conta quem tem oportunidade e quem é cliente.
   revalidatePath("/");
 }
@@ -209,8 +210,9 @@ export async function ganharOportunidade(formData: FormData): Promise<ActionStat
   const { estado, personId } = await mover(contexto, id, etapa, null);
   if (estado.error || !personId) return estado;
 
-  // Fora de try/catch: `redirect` funciona lançando.
-  redirect(`/contatos/${personId}`);
+  // Fora de try/catch: `redirect` funciona lançando. Ganho faz cliente, e
+  // o processo nasce na aba Projetos do perfil de cliente.
+  redirect(enderecoDaPessoa(personId, "client", "projetos"));
 }
 
 /** Perdido, com o motivo. O negócio continua no quadro, na coluna de perda. */
@@ -284,6 +286,6 @@ export async function deleteOpportunity(
   if (estado.error) return estado;
 
   revalidatePath("/crm");
-  revalidatePath("/contatos");
+  revalidarPessoa();
   return estado;
 }

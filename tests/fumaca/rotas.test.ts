@@ -156,6 +156,11 @@ describe("cada tela abre com sessão", () => {
     expect(pessoaId, "nenhum contato visível para a conta de teste").not.toBeNull();
     const resposta = await pedir(`/contatos/${pessoaId}`);
     expect(resposta.status).toBe(200);
+    // Quem não é cliente tem o perfil enxuto: processos e financeiro moram
+    // no perfil de cliente (CLI-3).
+    const html = await resposta.text();
+    expect(html).not.toContain('id="processos"');
+    expect(html).not.toContain('id="financeiro"');
   }, 60_000);
 
   it("ficha de contato vinda do atalho do CRM", async () => {

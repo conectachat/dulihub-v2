@@ -15,6 +15,7 @@ import {
   type EstadoComConfirmacao,
 } from "@/lib/parecidos";
 import { hojeEmSaoPaulo } from "@/lib/formatar";
+import { revalidarPessoa } from "@/lib/revalidar";
 import { createClient } from "@/lib/supabase/server";
 import { clienteFromForm, personFromForm, type PersonInput } from "./schema";
 
@@ -84,7 +85,7 @@ export async function createPerson(
 
   if (error) return falhou(traduzirErro(error));
 
-  revalidatePath("/contatos");
+  revalidarPessoa();
   return gravou();
 }
 
@@ -124,7 +125,7 @@ export async function updatePerson(
 
   if (error) return falhou(traduzirErro(error));
 
-  revalidatePath("/contatos");
+  revalidarPessoa(id);
   // A tela do lead (`/crm/[id]`) mostra o mesmo dado.
   revalidatePath("/crm/[id]", "page");
   return gravou();
@@ -152,7 +153,7 @@ export async function softDeletePerson(
   );
   if (estado.error) return estado;
 
-  revalidatePath("/contatos");
+  revalidarPessoa(id);
   return estado;
 }
 
@@ -170,7 +171,7 @@ export async function restorePerson(formData: FormData): Promise<ActionState> {
   );
   if (estado.error) return estado;
 
-  revalidatePath("/contatos");
+  revalidarPessoa(id);
   return estado;
 }
 
@@ -238,8 +239,7 @@ export async function atualizarCliente(
     if (erroSaida) return falhou(traduzirErro(erroSaida));
   }
 
-  revalidatePath("/clientes");
-  revalidatePath(`/clientes/${id}`);
+  revalidarPessoa(id);
   return gravou();
 }
 
@@ -262,7 +262,6 @@ export async function marcarComoCliente(
   });
   if (error) return falhou(traduzirErro(error));
 
-  revalidatePath("/clientes");
-  revalidatePath("/contatos");
+  revalidarPessoa(id);
   redirect(`/clientes/${id}`);
 }

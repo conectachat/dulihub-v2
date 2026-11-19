@@ -2,6 +2,8 @@
  * Regras do funil que não dependem do banco — testadas em `regras.test.ts`.
  */
 
+import { enderecoDaPessoa } from "@/lib/pessoa";
+
 export type EtapaDoFunil = {
   id: string;
   name: string;
@@ -130,6 +132,6 @@ export function enderecoDoCartao(
   cartao: { id: string; person: { id: string } | null },
   etapa: Pick<EtapaDoFunil, "is_won">,
 ): string {
-  if (etapa.is_won && cartao.person) return `/contatos/${cartao.person.id}`;
+  if (etapa.is_won && cartao.person) return enderecoDaPessoa(cartao.person.id, "client");
   return `/crm/${cartao.id}`;
 }
