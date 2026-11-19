@@ -1,5 +1,6 @@
 import { limparNome } from "@/lib/arquivos";
 import { venceu } from "@/lib/prazos";
+import { emCentavos, emMoeda } from "@/lib/totals";
 
 /**
  * As contas do a receber — puras, testadas em `regras.test.ts`.
@@ -18,9 +19,6 @@ export type ParcelaNova = { number: number; amount: number; due_on: string };
 
 type ParaSituacao = { due_on: string; paid_on: string | null };
 
-/** Valores em centavos: dinheiro em ponto flutuante perde o troco. */
-const emCentavos = (valor: number) => Math.round(valor * 100);
-const emMoeda = (centavos: number) => centavos / 100;
 
 /**
  * Soma meses a uma data `AAAA-MM-DD`, **grudando no último dia do mês**.

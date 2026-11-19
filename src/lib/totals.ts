@@ -13,6 +13,25 @@
  */
 export type PorMoeda = Record<string, number>;
 
+/** Valores em centavos: dinheiro em ponto flutuante perde o troco. */
+export const emCentavos = (valor: number) => Math.round(valor * 100);
+export const emMoeda = (centavos: number) => centavos / 100;
+
+/**
+ * Os vistos de um negócio, somados por moeda — em centavos, e com a moeda que
+ * soma zero aparecendo (um visto de cortesia em dólar ainda é um item em
+ * dólar). `somarPorMoeda` soma em ponto flutuante e pula o zero; esta não.
+ */
+export function somarItensPorMoeda(itens: { amount: number; currency: string }[]): PorMoeda {
+  const centavos: PorMoeda = {};
+  for (const item of itens) {
+    centavos[item.currency] = (centavos[item.currency] ?? 0) + emCentavos(item.amount);
+  }
+  return Object.fromEntries(
+    Object.entries(centavos).map(([moeda, cent]) => [moeda, emMoeda(cent)]),
+  );
+}
+
 export function somarPorMoeda(
   itens: { value: number | null; currency: string }[],
 ): PorMoeda {

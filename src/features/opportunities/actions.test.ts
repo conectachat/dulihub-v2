@@ -65,7 +65,7 @@ describe("createOpportunity", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it("contato existente com confirmação: manda o contato, o valor e a confirmação", async () => {
+  it("contato existente com confirmação: manda o contato e a confirmação — e nunca o valor (D11)", async () => {
     rpc.mockResolvedValue({ data: { situacao: "criada", negocio: "n1", pessoa: PESSOA }, error: null });
 
     const r = await createOpportunity(
@@ -86,8 +86,6 @@ describe("createOpportunity", () => {
       p_confirmar_contato_parecido: false,
       p_confirmar_outra_oportunidade: true,
       p_contato: PESSOA,
-      p_valor: 1500,
-      p_moeda: "USD",
     });
   });
 

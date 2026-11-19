@@ -161,26 +161,41 @@ export async function obterNegocio(id: string) {
   const { data: negocio, error } = await supabase
     .from("opportunities")
     .select(
-      `id, title, value, currency, status, stage_id, pipeline_id, source,
+      `id, organization_id, title, status, stage_id, pipeline_id, source,
        lost_reason, created_at, closed_at,
+       itens:opportunity_items(id, visa_type_id, visa_name, amount, currency, position),
        person:people(id, full_name, email, phone, phone_country_code, company,
          job_title, lifecycle_stage, person_tags(tag:tags(id, name)))`,
     )
     .eq("id", id)
     .maybeSingle();
 
-  if (error) return { negocio: null, etapas: [], error: error.message };
-  if (!negocio) return { negocio: null, etapas: [], error: null };
+  if (error) return { negocio: null, etapas: [], catalogo: [], error: error.message };
+  if (!negocio) return { negocio: null, etapas: [], catalogo: [], error: null };
 
-  const { data: etapas, error: erroEtapas } = await supabase
-    .from("pipeline_stages")
-    .select("id, name, position, probability, is_won, is_lost")
-    .eq("pipeline_id", negocio.pipeline_id)
-    .order("position");
+  // O catálogo da organização do negócio — inclusive os inativos, para a
+  // edição de um item antigo; o seletor de visto novo mostra só os ativos.
+  const [{ data: etapas, error: erroEtapas }, { data: catalogo, error: erroCatalogo }] =
+    await Promise.all([
+      supabase
+        .from("pipeline_stages")
+        .select("id, name, position, probability, is_won, is_lost")
+        .eq("pipeline_id", negocio.pipeline_id)
+        .order("position"),
+      supabase
+        .from("visa_types")
+        .select("id, name, base_price, currency, is_active")
+        .eq("organization_id", negocio.organization_id)
+        .order("name"),
+    ]);
 
   return {
-    negocio,
+    negocio: {
+      ...negocio,
+      itens: [...negocio.itens].sort((a, b) => a.position - b.position),
+    },
     etapas: (etapas ?? []) as Stage[],
-    error: erroEtapas?.message ?? null,
+    catalogo: catalogo ?? [],
+    error: erroEtapas?.message ?? erroCatalogo?.message ?? null,
   };
 }

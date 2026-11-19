@@ -1,5 +1,29 @@
 import { z } from "zod";
 
+import { parseMoney } from "@/lib/numbers";
+
+/**
+ * Valor e moeda de um visto do negócio (CRM-13). O valor é obrigatório: em
+ * outra moeda que não a do preço o campo vem vazio, e precisa ser preenchido
+ * — nunca convertido. Só BRL e USD, como o banco (0051).
+ */
+export const itemSchema = z.object({
+  amount: z
+    .string()
+    .nullish()
+    .transform(parseMoney)
+    .refine((v) => v !== null, "Informe o valor.")
+    .refine((v) => v === null || v >= 0, "O valor não pode ser negativo."),
+  currency: z.enum(["BRL", "USD"], "Escolha a moeda."),
+});
+
+export function itemFromForm(formData: FormData) {
+  return itemSchema.safeParse({
+    amount: formData.get("amount"),
+    currency: formData.get("currency"),
+  });
+}
+
 /**
  * O que `ganhar_negocio` (0052) devolve, com e sem `p_simular`.
  *

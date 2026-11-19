@@ -92,6 +92,19 @@ export function motivoDaPerda(
 
 // --------------------------------------------------------------------- quadro
 
+/**
+ * O valor que o item novo já traz: o preço do visto, **só** na moeda dele.
+ * Em outra moeda o campo vem vazio — nunca convertido (CRM-13): converter
+ * exige cotação e data, e o valor da proposta é o que a Duli combinar.
+ */
+export function valorSugerido(
+  visto: { base_price: number | null; currency: string },
+  moeda: string,
+): number | null {
+  if (visto.base_price === null || visto.currency !== moeda) return null;
+  return visto.base_price;
+}
+
 /** Entrar no ganho é do `ganhar_negocio` (0052), que mostra o resumo antes. */
 export const USE_O_GANHO = "Use o Ganho, que mostra o resumo antes.";
 /** Sair do ganho é do `reabrir_negocio` (0052), que confere quem pode. */

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Pencil, RotateCcw, Trophy, XCircle } from "lucide-react";
 
 import { FormDialog } from "@/components/form-dialog";
-import { NativeSelect } from "@/components/native-select";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,15 +74,13 @@ export function Reabrir({ negocioId, etapaId }: { negocioId: string; etapaId: st
   );
 }
 
-/** Título, valor, moeda e origem — o que se ajusta ao longo da negociação. */
+/** Título e origem. O valor mora nos vistos do negócio (CRM-13). */
 export function EditarNegocio({
   negocio,
 }: {
   negocio: {
     id: string;
     title: string;
-    value: number | null;
-    currency: string;
     source: string | null;
   };
 }) {
@@ -103,29 +100,6 @@ export function EditarNegocio({
       <div className="space-y-2">
         <Label htmlFor="title">Título *</Label>
         <Input id="title" name="title" defaultValue={negocio.title} required />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-[1fr_7rem]">
-        <div className="space-y-2">
-          <Label htmlFor="value">Valor</Label>
-          <Input
-            id="value"
-            name="value"
-            inputMode="decimal"
-            placeholder="0,00"
-            // Como a pessoa digita: vírgula decimal. `parseMoney` lê de volta.
-            defaultValue={
-              negocio.value === null ? "" : String(negocio.value).replace(".", ",")
-            }
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="currency">Moeda</Label>
-          <NativeSelect id="currency" name="currency" defaultValue={negocio.currency}>
-            <option value="BRL">BRL</option>
-            <option value="USD">USD</option>
-          </NativeSelect>
-        </div>
       </div>
 
       <div className="space-y-2">

@@ -16,7 +16,6 @@ import { getTimeline } from "@/features/people/timeline-queries";
 import { formatarData, telefoneCompleto } from "@/lib/formatar";
 import { origemDoPedido } from "@/lib/origem";
 import { createClient } from "@/lib/supabase/server";
-import { formatarMoeda } from "@/lib/totals";
 
 import { DadosCadastrais } from "@/components/perfil/dados-cadastrais";
 import { PersonTags } from "@/components/perfil/person-tags";
@@ -25,6 +24,7 @@ import { enderecoDaPessoa } from "@/lib/pessoa";
 import { PersonDialog } from "../../contatos/person-dialog";
 import { EditarNegocio, GanhoEPerdido, Reabrir } from "./acoes-do-negocio";
 import { Trilha } from "./trilha";
+import { Vistos } from "./vistos";
 
 export const metadata = { title: "Lead — Duli Hub" };
 
@@ -43,7 +43,7 @@ export default async function LeadPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { negocio, etapas, error } = await obterNegocio(id);
+  const { negocio, etapas, catalogo, error } = await obterNegocio(id);
 
   // Erro antes de 404: consulta que falha não é "não existe".
   if (error) return <QueryError detalhe={error} />;
@@ -195,15 +195,13 @@ export default async function LeadPage({
               <EditarNegocio negocio={negocio} />
             </CardHeader>
             <CardContent>
-              <dl className="space-y-3 text-sm">
-                <div>
-                  <dt className="text-xs text-muted-foreground">Valor</dt>
-                  <dd className="font-semibold tabular-nums">
-                    {negocio.value != null
-                      ? formatarMoeda(negocio.value, negocio.currency)
-                      : "—"}
-                  </dd>
-                </div>
+              <Vistos
+                negocioId={negocio.id}
+                itens={negocio.itens}
+                catalogo={catalogo}
+                ganho={ganho}
+              />
+              <dl className="mt-4 space-y-3 text-sm">
                 <div>
                   <dt className="text-xs text-muted-foreground">Origem</dt>
                   <dd>{negocio.source || "—"}</dd>

@@ -9,7 +9,6 @@ import { aparar, erroDeContato, normalizarDdi } from "@/lib/contato";
 import { traduzirErro } from "@/lib/erros";
 import { resultado } from "@/lib/gravar";
 import { novoId } from "@/lib/id";
-import { parseMoney } from "@/lib/numbers";
 import { contextoAtual } from "@/lib/organizacao";
 import {
   CAMPO_CONFIRMAR_OPORTUNIDADE,
@@ -32,8 +31,6 @@ import { resumoDoGanhoSchema, type ResumoDoGanho } from "./schema";
 const opportunitySchema = z.object({
   stage_id: z.string().uuid("Escolha uma etapa"),
   title: z.string().trim().min(1, "Informe um título"),
-  value: z.string().nullish().transform(parseMoney),
-  currency: z.enum(["BRL", "USD"]).default("BRL"),
   source: z.string().trim().nullish(),
 });
 
@@ -59,8 +56,6 @@ export async function createOpportunity(
   const parsed = opportunitySchema.safeParse({
     stage_id: formData.get("stage_id"),
     title: formData.get("title"),
-    value: formData.get("value"),
-    currency: formData.get("currency") ?? "BRL",
     source: formData.get("source"),
   });
   if (!parsed.success) return falhou(parsed.error.issues[0].message);
@@ -102,8 +97,8 @@ export async function createOpportunity(
     p_confirmar_outra_oportunidade: formData.get(CAMPO_CONFIRMAR_OPORTUNIDADE) === "1",
     ...contato,
     ...(parsed.data.source ? { p_origem: parsed.data.source } : {}),
-    ...(parsed.data.value !== null ? { p_valor: parsed.data.value } : {}),
-    p_moeda: parsed.data.currency,
+    // Sem `p_valor` e `p_moeda`: o valor mora nos vistos do negócio (CRM-13),
+    // e a 0054 tira os dois parâmetros da função.
   });
   if (error) return falhou(traduzirErro(error));
 
@@ -290,12 +285,10 @@ export async function perderOportunidade(
 const edicaoSchema = z.object({
   id: z.string().uuid("Negócio não informado."),
   title: z.string().trim().min(1, "Informe um título"),
-  value: z.string().nullish().transform(parseMoney),
-  currency: z.enum(["BRL", "USD"]).default("BRL"),
   source: z.string().trim().optional(),
 });
 
-/** Título, valor, moeda e origem — o que se ajusta ao longo da negociação. */
+/** Título e origem. O valor mora nos vistos do negócio (CRM-13). */
 export async function updateOpportunity(
   _prev: ActionState,
   formData: FormData,
@@ -303,8 +296,6 @@ export async function updateOpportunity(
   const parsed = edicaoSchema.safeParse({
     id: formData.get("id"),
     title: formData.get("title"),
-    value: formData.get("value"),
-    currency: formData.get("currency") ?? "BRL",
     source: formData.get("source"),
   });
   if (!parsed.success) return falhou(parsed.error.issues[0].message);

@@ -6,6 +6,7 @@ import {
   etapasDeEntrada,
   motivoDaPerda,
   trilhaDoFunil,
+  valorSugerido,
 } from "./regras";
 
 /**
@@ -178,4 +179,20 @@ describe("etapa de entrada", () => {
 
   // A recusa de quem pedir mesmo assim é do banco: `criar_oportunidade`
   // (0041) e o gatilho da 0038, provados em tests/rls/oportunidade-nova.test.ts.
+});
+
+describe("valorSugerido", () => {
+  const eb1 = { base_price: 8000, currency: "USD" };
+
+  it("na moeda do preço, sugere o preço do visto", () => {
+    expect(valorSugerido(eb1, "USD")).toBe(8000);
+  });
+
+  it("em outra moeda, não sugere nada: nunca converte", () => {
+    expect(valorSugerido(eb1, "BRL")).toBeNull();
+  });
+
+  it("visto sem preço não sugere nada", () => {
+    expect(valorSugerido({ base_price: null, currency: "USD" }, "USD")).toBeNull();
+  });
 });

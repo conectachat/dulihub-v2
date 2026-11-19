@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { QueryError } from "@/components/query-error";
-import { formatarMoeda } from "@/lib/totals";
+import { formatarPorMoeda, somarItensPorMoeda } from "@/lib/totals";
 import { origemDoPedido } from "@/lib/origem";
 import { cadastroDoContato } from "@/features/cadastro/queries";
 import { LIFECYCLE_LABELS } from "@/features/people/schema";
@@ -69,7 +69,9 @@ export default async function PersonPage({
   ] = await Promise.all([
     supabase
       .from("opportunities")
-      .select("id, title, status, value, currency, created_at, stage:pipeline_stages(name)")
+      .select(
+        "id, title, status, created_at, stage:pipeline_stages(name), itens:opportunity_items(amount, currency)",
+      )
       .eq("person_id", id)
       .order("created_at", { ascending: false }),
     listTags(),
@@ -217,9 +219,10 @@ export default async function PersonPage({
                       </p>
                     </div>
                     <div className="shrink-0 space-y-1 text-right">
-                      {op.value != null ? (
+                      {op.itens.length > 0 ? (
+                        // Os vistos do negócio, por moeda (CRM-13).
                         <p className="font-medium">
-                          {formatarMoeda(op.value, op.currency)}
+                          {formatarPorMoeda(somarItensPorMoeda(op.itens))}
                         </p>
                       ) : null}
                       <Badge

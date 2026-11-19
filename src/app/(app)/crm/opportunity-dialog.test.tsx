@@ -65,6 +65,12 @@ beforeEach(() => {
 });
 
 describe("OpportunityDialog", () => {
+  it("não pede valor: os vistos, com o valor de cada um, entram na tela do lead (D11)", () => {
+    abrir();
+    expect(screen.queryByLabelText("Valor")).toBeNull();
+    expect(screen.queryByLabelText("Moeda")).toBeNull();
+  });
+
   it("Novo contato mostra nome, DDI, telefone e e-mail obrigatórios", async () => {
     abrir();
 
@@ -193,20 +199,5 @@ describe("OpportunityDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Contato existente" }));
 
     expect(screen.getByRole("button", { name: "Criar outra" })).toBeInTheDocument();
-  });
-
-  it("o valor digitado vai junto", async () => {
-    vi.mocked(createOpportunity).mockResolvedValueOnce(gravou());
-    abrir();
-    fireEvent.change(await screen.findByLabelText("Contato *"), { target: { value: "p3" } });
-    fireEvent.change(screen.getByLabelText("Título *"), { target: { value: "O-1" } });
-    fireEvent.change(screen.getByLabelText("Valor"), { target: { value: "1.500,00" } });
-    fireEvent.change(screen.getByLabelText("Moeda"), { target: { value: "USD" } });
-    fireEvent.click(screen.getByRole("button", { name: "Criar oportunidade" }));
-
-    await vi.waitFor(() => expect(createOpportunity).toHaveBeenCalledTimes(1));
-    expect(chamada(0).get("value")).toBe("1.500,00");
-    expect(chamada(0).get("currency")).toBe("USD");
-    expect(chamada(0).get("person_id")).toBe("p3");
   });
 });

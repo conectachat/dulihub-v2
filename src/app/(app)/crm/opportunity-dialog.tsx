@@ -227,20 +227,6 @@ export function OpportunityDialog({
         <Input id="title" name="title" placeholder="Ex.: Processo EB-2 NIW" required />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-[1fr_7rem]">
-        <div className="space-y-2">
-          <Label htmlFor="value">Valor</Label>
-          <Input id="value" name="value" inputMode="decimal" placeholder="0,00" />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="currency">Moeda</Label>
-          <NativeSelect id="currency" name="currency" defaultValue="BRL">
-            <option value="BRL">BRL</option>
-            <option value="USD">USD</option>
-          </NativeSelect>
-        </div>
-      </div>
-
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="stage_id">Etapa *</Label>
