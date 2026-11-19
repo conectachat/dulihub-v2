@@ -9,6 +9,7 @@ import {
   resumoDoRecebivel,
   situacaoDaParcela,
   somarMeses,
+  totaisPorMoeda,
 } from "./regras";
 
 /**
@@ -223,5 +224,95 @@ describe("recebidoNoMes", () => {
     );
 
     expect(r).toEqual({ total: 0, semCotacao: 1 });
+  });
+});
+
+describe("totaisPorMoeda", () => {
+  const HOJE = "2026-10-15";
+  const parcela = (amount: number, due_on: string, paid_on: string | null = null) => ({
+    amount,
+    due_on,
+    paid_on,
+  });
+
+  it("soma em centavos: 0,10 + 0,20 é 0,30, e não 0,30000000000000004", () => {
+    const t = totaisPorMoeda(
+      [
+        { currency: "BRL", parcelas: [parcela(0.1, "2026-11-01")] },
+        { currency: "BRL", parcelas: [parcela(0.2, "2026-11-01")] },
+      ],
+      HOJE,
+    );
+
+    expect(t.BRL?.contratado).toBe(0.3);
+    expect(t.BRL?.saldo).toBe(0.3);
+  });
+
+  it("contratado, pago, saldo e vencido de várias cobranças da mesma moeda", () => {
+    const t = totaisPorMoeda(
+      [
+        {
+          currency: "BRL",
+          parcelas: [
+            parcela(1000, "2026-09-10", "2026-09-10"),
+            parcela(1000, "2026-10-10"),
+            parcela(1000, "2026-11-10"),
+          ],
+        },
+        { currency: "BRL", parcelas: [parcela(500, "2026-10-01")] },
+      ],
+      HOJE,
+    );
+
+    expect(t).toEqual({
+      BRL: { contratado: 3500, pago: 1000, saldo: 2500, vencido: 1500 },
+    });
+  });
+
+  it("real e dólar nunca se somam", () => {
+    const t = totaisPorMoeda(
+      [
+        { currency: "BRL", parcelas: [parcela(8000, "2026-11-01")] },
+        { currency: "USD", parcelas: [parcela(12000, "2026-11-01", "2026-10-01")] },
+      ],
+      HOJE,
+    );
+
+    expect(t).toEqual({
+      BRL: { contratado: 8000, pago: 0, saldo: 8000, vencido: 0 },
+      USD: { contratado: 12000, pago: 12000, saldo: 0, vencido: 0 },
+    });
+  });
+
+  it("moeda com cobrança aparece mesmo zerada; moeda sem cobrança não aparece", () => {
+    const t = totaisPorMoeda([{ currency: "USD", parcelas: [] }], HOJE);
+
+    expect(t).toEqual({ USD: { contratado: 0, pago: 0, saldo: 0, vencido: 0 } });
+    expect(t.BRL).toBeUndefined();
+  });
+
+  it("vencido é só parcela em aberto com vencimento antes de hoje", () => {
+    const t = totaisPorMoeda(
+      [
+        {
+          currency: "BRL",
+          parcelas: [
+            // Paga, mesmo vencida: não conta.
+            parcela(100, "2026-09-01", "2026-10-01"),
+            // Vence hoje: ainda é do cliente.
+            parcela(200, HOJE),
+            // Venceu ontem e não foi paga: conta.
+            parcela(300, "2026-10-14"),
+          ],
+        },
+      ],
+      HOJE,
+    );
+
+    expect(t.BRL?.vencido).toBe(300);
+  });
+
+  it("sem cobrança nenhuma, nenhum total", () => {
+    expect(totaisPorMoeda([], HOJE)).toEqual({});
   });
 });

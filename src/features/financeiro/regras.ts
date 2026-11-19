@@ -182,6 +182,53 @@ export function resumoDoRecebivel(
   };
 }
 
+export type TotaisDaMoeda = {
+  contratado: number;
+  pago: number;
+  saldo: number;
+  vencido: number;
+};
+
+/**
+ * Os totais de um cliente, **por moeda**: contratado, pago, saldo devedor e
+ * vencido (CLI-5).
+ *
+ * Cada cobrança passa por `resumoDoRecebivel` e as moedas somam em centavos,
+ * cada uma na sua. `somarPorMoeda` (`lib/totals.ts`) não serve aqui: soma em
+ * ponto flutuante e pula o zero, e a moeda de uma cobrança toda paga sumiria
+ * do quadro.
+ *
+ * A chave é a moeda como o banco a guarda (`BRL`, `USD`): uma moeda nova no
+ * banco aparece sozinha, em vez de ser descartada por um tipo fechado.
+ */
+export function totaisPorMoeda(
+  cobrancas: { currency: string; parcelas: (ParaSituacao & { amount: number })[] }[],
+  hoje: string,
+): Record<string, TotaisDaMoeda> {
+  const centavos: Record<string, TotaisDaMoeda> = {};
+
+  for (const c of cobrancas) {
+    const r = resumoDoRecebivel(c.parcelas, hoje);
+    const soma = (centavos[c.currency] ??= { contratado: 0, pago: 0, saldo: 0, vencido: 0 });
+    soma.contratado += emCentavos(r.total);
+    soma.pago += emCentavos(r.pago);
+    soma.saldo += emCentavos(r.aberto);
+    soma.vencido += emCentavos(r.vencido);
+  }
+
+  return Object.fromEntries(
+    Object.entries(centavos).map(([moeda, t]) => [
+      moeda,
+      {
+        contratado: emMoeda(t.contratado),
+        pago: emMoeda(t.pago),
+        saldo: emMoeda(t.saldo),
+        vencido: emMoeda(t.vencido),
+      },
+    ]),
+  );
+}
+
 /**
  * O que entrou num mês, em reais.
  *
