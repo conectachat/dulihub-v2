@@ -2,7 +2,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { entrarComo, fixture, type Cliente } from "./clientes";
+import { entrarComo, fixture, pessoaDescartavel, type Cliente } from "./clientes";
 
 /**
  * Observações do processo: a página, os pedaços de edição, o canal em tempo
@@ -51,14 +51,16 @@ describe("observações do processo", () => {
   let duli: Cliente;
   let orgParceiro: string;
   let processoId: string;
+  let pessoaId: string;
   let paginaId: string;
   const arquivos: string[] = [];
 
   beforeAll(async () => {
     parceiro = await entrarComo("parceiro");
     duli = await entrarComo("colaborador");
-    const pessoa = await fixture(parceiro);
-    orgParceiro = pessoa.organization_id;
+    orgParceiro = (await fixture(parceiro)).organization_id;
+    // Processo não se apaga (0051): pessoa descartável, apagada no fim.
+    pessoaId = await pessoaDescartavel(parceiro, orgParceiro, "Observações da suíte");
 
     const { data: visto } = await parceiro
       .from("visa_types")
@@ -66,7 +68,7 @@ describe("observações do processo", () => {
       .eq("name", "Visto do Parceiro")
       .single();
     const { data, error } = await parceiro.rpc("criar_processo", {
-      p_person: pessoa.id,
+      p_person: pessoaId,
       p_visa_type: visto!.id,
       p_title: "Processo das observações",
     });
@@ -84,8 +86,8 @@ describe("observações do processo", () => {
 
   afterAll(async () => {
     if (arquivos.length) await parceiro.storage.from("observacoes").remove(arquivos);
-    // Cascade leva página e pedaços junto.
-    if (processoId) await parceiro.from("projects").delete().eq("id", processoId);
+    // A cascata da pessoa leva processo, página e pedaços junto.
+    if (pessoaId) await parceiro.from("people").delete().eq("id", pessoaId);
     await parceiro.removeAllChannels();
     await duli.removeAllChannels();
   });

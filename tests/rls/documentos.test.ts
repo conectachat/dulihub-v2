@@ -2,7 +2,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { entrarComo, fixture, type Cliente } from "./clientes";
+import { entrarComo, fixture, pessoaDescartavel, type Cliente } from "./clientes";
 
 /**
  * Pasta resolvida — a regra do Renato (19/set): só resolve com todos os
@@ -18,6 +18,7 @@ describe("pasta resolvida", () => {
   let duli: Cliente;
   let org: string;
   let processoId: string;
+  let pessoaId: string;
   let pastaId: string;
   let outraPastaId: string;
   const objetos: string[] = [];
@@ -66,8 +67,9 @@ describe("pasta resolvida", () => {
   beforeAll(async () => {
     parceiro = await entrarComo("parceiro");
     duli = await entrarComo("colaborador");
-    const pessoa = await fixture(parceiro);
-    org = pessoa.organization_id;
+    org = (await fixture(parceiro)).organization_id;
+    // Processo não se apaga (0051): pessoa descartável, apagada no fim.
+    pessoaId = await pessoaDescartavel(parceiro, org, "Documentos da suíte");
 
     const { data: visto } = await parceiro
       .from("visa_types")
@@ -75,7 +77,7 @@ describe("pasta resolvida", () => {
       .eq("name", "Visto do Parceiro")
       .single();
     const { data, error } = await parceiro.rpc("criar_processo", {
-      p_person: pessoa.id,
+      p_person: pessoaId,
       p_visa_type: visto!.id,
       p_title: "Processo dos documentos",
     });
@@ -92,7 +94,7 @@ describe("pasta resolvida", () => {
 
   afterAll(async () => {
     if (objetos.length) await parceiro.storage.from("documentos").remove(objetos);
-    if (processoId) await parceiro.from("projects").delete().eq("id", processoId);
+    if (pessoaId) await parceiro.from("people").delete().eq("id", pessoaId);
   });
 
   it("pasta sem arquivo resolve", async () => {

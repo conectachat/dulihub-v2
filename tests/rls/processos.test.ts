@@ -2,7 +2,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { entrarComo, fixture, type Cliente } from "./clientes";
+import { entrarComo, fixture, pessoaDescartavel, type Cliente } from "./clientes";
 
 /**
  * Processo: a cópia do molde e quem enxerga o quê.
@@ -29,9 +29,10 @@ describe("processo criado a partir do molde", () => {
     parceiro = await entrarComo("parceiro");
     duli = await entrarComo("colaborador");
 
-    const pessoa = await fixture(parceiro);
-    pessoaId = pessoa.id;
-    orgParceiro = pessoa.organization_id;
+    // Processo não se apaga (0051): o da suíte nasce numa pessoa descartável,
+    // promovida pela gestão ao criar o processo, e sai com ela no fim.
+    orgParceiro = (await fixture(parceiro)).organization_id;
+    pessoaId = await pessoaDescartavel(parceiro, orgParceiro, "Processos da suíte");
 
     const { data: visto, error: erroVisto } = await parceiro
       .from("visa_types")
@@ -55,9 +56,8 @@ describe("processo criado a partir do molde", () => {
     if (arquivosCriados.length) {
       await parceiro.storage.from("documentos").remove(arquivosCriados);
     }
-    if (processoId) {
-      await parceiro.from("projects").delete().eq("id", processoId);
-    }
+    // A cascata leva o processo, as etapas, as pastas e os negócios.
+    if (pessoaId) await parceiro.from("people").delete().eq("id", pessoaId);
   });
 
   it("copia a árvore de etapas, com a sub-etapa debaixo da mãe", async () => {
@@ -407,7 +407,6 @@ describe("processo criado a partir do molde", () => {
         .single();
       expect(processo!.opportunity_id).toBe(negocio!.id);
     } finally {
-      if (criado) await parceiro.from("projects").delete().eq("id", criado);
       await parceiro.from("opportunities").delete().eq("id", negocio!.id);
     }
   });

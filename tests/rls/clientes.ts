@@ -64,3 +64,28 @@ export async function fixture(supabase: Cliente) {
 
   return pessoa;
 }
+
+/**
+ * Uma pessoa da organização de teste, criada pelo teste e apagada por ele.
+ *
+ * Processo não se apaga (0051, PRO-12): quem precisa de processo o cria
+ * nesta pessoa e limpa apagando-a — a cascata leva processo, negócio,
+ * itens e histórico. Nunca no "Cliente de Teste", que não se apaga.
+ */
+export async function pessoaDescartavel(
+  supabase: Cliente,
+  organizationId: string,
+  rotulo: string,
+): Promise<string> {
+  const { data, error } = await supabase
+    .from("people")
+    .insert({
+      organization_id: organizationId,
+      full_name: `${rotulo} ${crypto.randomUUID().slice(0, 8)}`,
+      lifecycle_stage: "opportunity",
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(`Pessoa descartável não criada: ${error.message}`);
+  return data.id;
+}

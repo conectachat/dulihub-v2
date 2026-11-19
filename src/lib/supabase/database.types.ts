@@ -589,6 +589,70 @@ export type Database = {
           },
         ]
       }
+      opportunity_items: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          id: string
+          opportunity_id: string
+          organization_id: string
+          position: number
+          updated_at: string
+          visa_name: string
+          visa_type_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          currency: string
+          id?: string
+          opportunity_id: string
+          organization_id: string
+          position?: number
+          updated_at?: string
+          visa_name: string
+          visa_type_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          opportunity_id?: string
+          organization_id?: string
+          position?: number
+          updated_at?: string
+          visa_name?: string
+          visa_type_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunity_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_items_opportunity_same_org"
+            columns: ["opportunity_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "opportunity_items_visa_type_same_org"
+            columns: ["visa_type_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "visa_types"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
       opportunity_participants: {
         Row: {
           created_at: string
@@ -1511,6 +1575,7 @@ export type Database = {
           filed_on: string | null
           id: string
           opportunity_id: string | null
+          opportunity_item_id: string | null
           organization_id: string
           person_id: string
           priority_date: string | null
@@ -1532,6 +1597,7 @@ export type Database = {
           filed_on?: string | null
           id?: string
           opportunity_id?: string | null
+          opportunity_item_id?: string | null
           organization_id: string
           person_id: string
           priority_date?: string | null
@@ -1553,6 +1619,7 @@ export type Database = {
           filed_on?: string | null
           id?: string
           opportunity_id?: string | null
+          opportunity_item_id?: string | null
           organization_id?: string
           person_id?: string
           priority_date?: string | null
@@ -1573,6 +1640,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_item_do_mesmo_negocio"
+            columns: ["opportunity_item_id", "opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunity_items"
+            referencedColumns: ["id", "opportunity_id"]
+          },
+          {
+            foreignKeyName: "projects_item_same_org"
+            columns: ["opportunity_item_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "opportunity_items"
+            referencedColumns: ["id", "organization_id"]
           },
           {
             foreignKeyName: "projects_opportunity_same_org"
@@ -2081,6 +2162,7 @@ export type Database = {
       }
       criar_processo: {
         Args: {
+          p_item?: string
           p_opportunity?: string
           p_person: string
           p_title: string
