@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Plus, Wallet } from "lucide-react";
 
@@ -23,9 +24,10 @@ import {
   renomearCobranca,
 } from "@/features/financeiro/escritas-locais";
 import { METODOS, ROTULO_DO_METODO } from "@/features/financeiro/schema";
-import { situacaoDaParcela } from "@/features/financeiro/regras";
+import { situacaoDaParcela, totaisPorMoeda } from "@/features/financeiro/regras";
+import { comPrazo } from "@/lib/com-prazo";
 import { formatarDia, hojeEmSaoPaulo } from "@/lib/formatar";
-import { bancoDoUsuario, filaDoUsuario } from "@/lib/local/sincronizador";
+import { bancoDoUsuario, filaDoUsuario, sincronizarAgora } from "@/lib/local/sincronizador";
 import { useUsuarioLocal } from "@/lib/local/usuario";
 import { formatarMoeda } from "@/lib/totals";
 import { cn } from "@/lib/utils";
@@ -43,6 +45,54 @@ import { cn } from "@/lib/utils";
  */
 
 const PARCELAS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 18, 24];
+
+/** Quanto a aba espera a sincronia antes de mostrar o que está no aparelho. */
+const PRAZO_DA_SINCRONIA = 5000;
+
+/**
+ * Contratado, pago, saldo devedor e vencido, um bloco por moeda (CLI-5).
+ * Real e dólar nunca se somam: não há cotação que valha para o contrato
+ * inteiro.
+ */
+function Totais({ cobrancas, hoje }: { cobrancas: Cobranca[]; hoje: string }) {
+  const totais = Object.entries(totaisPorMoeda(cobrancas, hoje));
+  if (totais.length === 0) return null;
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {totais.map(([moeda, t]) => (
+        <div
+          key={moeda}
+          role="group"
+          aria-label={`Totais em ${moeda}`}
+          className="rounded-2xl border p-3"
+        >
+          <p className="text-xs font-medium text-muted-foreground">{moeda}</p>
+          <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <div>
+              <dt className="text-muted-foreground">Contratado</dt>
+              <dd className="font-medium">{formatarMoeda(t.contratado, moeda)}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Pago</dt>
+              <dd className="font-medium text-success">{formatarMoeda(t.pago, moeda)}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Saldo devedor</dt>
+              <dd className="font-medium">{formatarMoeda(t.saldo, moeda)}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Vencido</dt>
+              <dd className={cn("font-medium", t.vencido > 0 && "text-destructive")}>
+                {formatarMoeda(t.vencido, moeda)}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 /**
  * Dar baixa numa parcela.
@@ -274,8 +324,28 @@ function NovaCobranca({ personId }: { personId: string }) {
 }
 
 export function Cobrancas({ personId }: { personId: string }) {
-  const { userId } = useUsuarioLocal();
+  const { userId, carregado } = useUsuarioLocal();
   const hoje = hojeEmSaoPaulo();
+  const [pronto, setPronto] = useState(false);
+
+  // Com rede, sincroniza antes de mostrar (D5): logo depois do Ganho as
+  // cobranças ainda não desceram, e "Nenhuma cobrança" levaria alguém a
+  // criar de novo (I26). Com prazo: Wi-Fi sem saída não pode esconder o que
+  // já está no aparelho. Sem rede, mostra direto.
+  useEffect(() => {
+    if (!carregado) return;
+    let vivo = true;
+    const espera =
+      userId && navigator.onLine
+        ? comPrazo(sincronizarAgora(userId), PRAZO_DA_SINCRONIA)
+        : Promise.resolve();
+    void espera.then(() => {
+      if (vivo) setPronto(true);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [carregado, userId]);
 
   const cobrancas = useLiveQuery(
     () =>
@@ -285,6 +355,7 @@ export function Cobrancas({ personId }: { personId: string }) {
     [userId, personId, hoje],
   );
 
+  if (!pronto) return <p className="text-sm text-muted-foreground">Sincronizando…</p>;
   if (!cobrancas) return null;
 
   // A cotação mais recente já usada neste aparelho, só para sugerir. O valor
@@ -306,6 +377,8 @@ export function Cobrancas({ personId }: { personId: string }) {
         </p>
         <NovaCobranca personId={personId} />
       </div>
+
+      <Totais cobrancas={cobrancas} hoje={hoje} />
 
       {cobrancas.length === 0 ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">

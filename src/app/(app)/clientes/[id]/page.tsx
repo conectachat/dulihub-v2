@@ -8,10 +8,9 @@ import { CopiarTexto } from "@/components/copiar-texto";
 import { EmptyState } from "@/components/empty-state";
 import { DadosCadastrais } from "@/components/perfil/dados-cadastrais";
 import { PersonTags } from "@/components/perfil/person-tags";
-import { Timeline } from "@/components/perfil/timeline";
 import { QueryError } from "@/components/query-error";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { TabsContent } from "@/components/ui/tabs";
 import { cadastroDoContato } from "@/features/cadastro/queries";
 import { listTags } from "@/features/people/queries";
@@ -24,6 +23,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import { PersonDialog } from "../../contatos/person-dialog";
 import { BarraDeProgresso, SeloDoStatus } from "../../projetos/partes";
+import { AbaNotas } from "./aba-notas";
 import { Cobrancas } from "./cobrancas";
 import { NovoProcessoDialog } from "./novo-processo-dialog";
 
@@ -271,19 +271,13 @@ export default async function ClientePage({
           />
         </TabsContent>
 
-        <TabsContent value="notas" className="space-y-6 pt-4">
-          <Timeline personId={person.id} items={timeline} currentUserId={user?.id ?? null} />
-
-          {person.notes ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Observações do cadastro antigo</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="whitespace-pre-wrap text-sm">{person.notes}</p>
-              </CardContent>
-            </Card>
-          ) : null}
+        <TabsContent value="notas" className="pt-4">
+          <AbaNotas
+            personId={person.id}
+            items={timeline}
+            currentUserId={user?.id ?? null}
+            observacoesAntigas={person.notes}
+          />
         </TabsContent>
       </AbasNaUrl>
     </main>
