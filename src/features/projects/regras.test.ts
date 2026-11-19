@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   caminhoDoArquivo,
   caminhoPertence,
-  arquivoAceito,
   motivoDeRecusa,
   podeResolver,
   prazoDaPasta,
@@ -198,28 +197,5 @@ describe("tipoDeVisualizacao", () => {
   it("sem tipo, decide pela extensão", () => {
     expect(tipoDeVisualizacao(null, "Passaporte.PDF")).toBe("pdf");
     expect(tipoDeVisualizacao("", "rg.jpeg")).toBe("imagem");
-  });
-});
-
-describe("arquivoAceito", () => {
-  const mb = 1024 * 1024;
-
-  it("aceita PDF, imagem e Office até 20 MB", () => {
-    expect(arquivoAceito({ name: "a.pdf", type: "application/pdf", size: 5 * mb })).toEqual({ ok: true });
-    expect(arquivoAceito({ name: "a.xlsx", type: "", size: mb })).toEqual({ ok: true });
-  });
-
-  it("recusa acima de 20 MB, dizendo o tamanho", () => {
-    expect(arquivoAceito({ name: "scan.pdf", type: "application/pdf", size: 25 * mb })).toEqual({
-      ok: false,
-      erro: "scan.pdf tem 25 MB — o limite é 20 MB.",
-    });
-  });
-
-  it("recusa tipo fora da lista", () => {
-    expect(arquivoAceito({ name: "video.mp4", type: "video/mp4", size: mb })).toEqual({
-      ok: false,
-      erro: "video.mp4: tipo não aceito. Use PDF, imagem, Word ou Excel.",
-    });
   });
 });

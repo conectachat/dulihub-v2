@@ -2,6 +2,8 @@
  * Regras do processo que não dependem do banco — testadas em `regras.test.ts`.
  */
 
+import { extensao, limparNome } from "@/lib/arquivos";
+
 // ------------------------------------------------------------------ progresso
 
 /**
@@ -56,25 +58,6 @@ export function prazoDaPasta(
 }
 
 // ------------------------------------------------------------------- arquivo
-
-/** Nome de arquivo seguro para caminho: sem acento, espaço, barra ou ponto extra. */
-function limparNome(nome: string): string {
-  const ponto = nome.lastIndexOf(".");
-  const base = ponto > 0 ? nome.slice(0, ponto) : nome;
-  const extensao = ponto > 0 ? nome.slice(ponto + 1) : "";
-
-  const limpo = (texto: string) =>
-    texto
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-
-  const b = limpo(base) || "arquivo";
-  const e = limpo(extensao);
-  return e ? `${b}.${e}` : b;
-}
 
 /**
  * Onde o arquivo mora no Storage.
@@ -186,7 +169,6 @@ export function podeResolver(
   return { ok: false, motivo: `Falta revisar: ${partes.join(" e ")}.` };
 }
 
-const extensao = (nome: string) => nome.slice(nome.lastIndexOf(".") + 1).toLowerCase();
 
 /**
  * Como o arquivo abre. PDF e imagem, dentro do app; o resto baixa. HEIC (foto
@@ -203,29 +185,4 @@ export function tipoDeVisualizacao(
     return "imagem";
   }
   return "baixar";
-}
-
-/** Os mesmos limites do bucket `documentos` (0020), conferidos antes de enviar. */
-const LIMITE_MB = 20;
-const EXTENSOES = ["pdf", "jpg", "jpeg", "png", "webp", "heic", "doc", "docx", "xls", "xlsx"];
-
-export function arquivoAceito(arquivo: {
-  name: string;
-  type: string;
-  size: number;
-}): { ok: true } | { ok: false; erro: string } {
-  if (!EXTENSOES.includes(extensao(arquivo.name))) {
-    return {
-      ok: false,
-      erro: `${arquivo.name}: tipo não aceito. Use PDF, imagem, Word ou Excel.`,
-    };
-  }
-  const mb = arquivo.size / (1024 * 1024);
-  if (mb > LIMITE_MB) {
-    return {
-      ok: false,
-      erro: `${arquivo.name} tem ${Math.round(mb)} MB — o limite é ${LIMITE_MB} MB.`,
-    };
-  }
-  return { ok: true };
 }

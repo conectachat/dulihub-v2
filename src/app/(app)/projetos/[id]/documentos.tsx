@@ -51,13 +51,13 @@ import {
 } from "@/features/projects/documentos-actions";
 import type { PastaDoProcesso } from "@/features/projects/queries";
 import {
-  arquivoAceito,
   caminhoDoArquivo,
   podeResolver,
   resumoDosArquivos,
   tipoDeVisualizacao,
 } from "@/features/projects/regras";
 import { type ActionState } from "@/lib/action-state";
+import { ACEITOS, arquivoAceito, enviarERegistrar } from "@/lib/arquivos";
 import { useFormulario } from "@/lib/use-formulario";
 import { comAviso } from "@/lib/avisar";
 import { listarNomes } from "@/lib/avisos";
@@ -487,24 +487,16 @@ function ArquivosDaPasta({
         arquivo: crypto.randomUUID(),
         nome: arquivo.name,
       });
-      const { error } = await supabase.storage
-        .from("documentos")
-        .upload(caminho, arquivo, { contentType: arquivo.type || undefined });
-      if (error) {
-        toast.error(`${arquivo.name}: não foi possível enviar. Tente de novo.`);
-        continue;
-      }
-      const registro = await registrarArquivo({
-        pastaId: pasta.id,
-        caminho,
-        nome: arquivo.name,
-        tipo: arquivo.type || null,
-        tamanho: arquivo.size,
-      });
-      if (registro.error) {
-        await supabase.storage.from("documentos").remove([caminho]);
-        toast.error(`${arquivo.name}: ${registro.error}`);
-      }
+      const { error } = await enviarERegistrar(supabase.storage, "documentos", caminho, arquivo, () =>
+        registrarArquivo({
+          pastaId: pasta.id,
+          caminho,
+          nome: arquivo.name,
+          tipo: arquivo.type || null,
+          tamanho: arquivo.size,
+        }),
+      );
+      if (error) toast.error(error);
     }
     setEnviando(null);
   }
@@ -544,7 +536,7 @@ function ArquivosDaPasta({
           type="file"
           multiple
           hidden
-          accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx,.xls,.xlsx"
+          accept={ACEITOS}
           onChange={(e) => {
             if (e.target.files?.length) void subir(e.target.files);
             e.target.value = "";

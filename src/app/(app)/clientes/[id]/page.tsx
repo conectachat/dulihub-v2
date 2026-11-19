@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, FileText, FolderKanban, Mail, Phone } from "lucide-react";
+import { ArrowLeft, FolderKanban, Mail, Phone } from "lucide-react";
 
 import { AbasNaUrl } from "@/components/abas-na-url";
 import { CopiarTexto } from "@/components/copiar-texto";
@@ -25,6 +25,7 @@ import { PersonDialog } from "../../contatos/person-dialog";
 import { BarraDeProgresso, SeloDoStatus } from "../../projetos/partes";
 import { AbaNotas } from "./aba-notas";
 import { Cobrancas } from "./cobrancas";
+import { DocumentosDoCliente } from "./documentos";
 import { NovoProcessoDialog } from "./novo-processo-dialog";
 
 export const metadata = { title: "Cliente — Duli Hub" };
@@ -62,6 +63,7 @@ export default async function ClientePage({
     .select(
       `id, full_name, email, phone, phone_country_code, company, job_title,
        lifecycle_stage, created_at, deleted_at, notes, owner_id, client_since,
+       organization_id,
        person_tags(tag:tags(id, name))`,
     )
     .eq("id", id)
@@ -84,6 +86,7 @@ export default async function ClientePage({
     { vistos, error: vistosError },
     { cadastro, error: cadastroError },
     { data: dono, error: donoError },
+    { data: documentos, error: documentosError },
     cabecalhos,
   ] = await Promise.all([
     supabase
@@ -101,6 +104,11 @@ export default async function ClientePage({
     person.owner_id
       ? supabase.from("profiles").select("full_name, email").eq("id", person.owner_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
+    supabase
+      .from("files")
+      .select("id, category, filename, mime_type, size_bytes, created_at")
+      .eq("person_id", id)
+      .order("created_at", { ascending: false }),
     headers(),
   ]);
 
@@ -112,7 +120,8 @@ export default async function ClientePage({
     processosError ??
     vistosError ??
     cadastroError ??
-    donoError?.message;
+    donoError?.message ??
+    documentosError?.message;
   if (falha) return <QueryError detalhe={falha} />;
 
   const origem = origemDoPedido(cabecalhos);
@@ -263,11 +272,10 @@ export default async function ClientePage({
         </TabsContent>
 
         <TabsContent value="documentos" className="pt-4">
-          <EmptyState
-            icon={FileText}
-            size="compact"
-            title="Nenhum documento ainda."
-            hint="Passaporte, identidade, comprovante de residência e contrato ficam aqui."
+          <DocumentosDoCliente
+            pessoaId={person.id}
+            organizationId={person.organization_id}
+            documentos={documentos ?? []}
           />
         </TabsContent>
 

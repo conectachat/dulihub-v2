@@ -20,6 +20,7 @@ import * as React from 'react';
 
 import { toast } from 'sonner';
 
+import { limparNome } from '@/lib/arquivos';
 import { createClient } from '@/lib/supabase/client';
 
 export type UploadedFile = {
@@ -35,22 +36,6 @@ export const DestinoDoUpload = React.createContext<{
   organizationId: string;
   projectId: string;
 } | null>(null);
-
-/** Mesmas regras de nome de `caminhoDoArquivo`: sem acento, espaço ou barra. */
-function nomeSeguro(nome: string) {
-  const ponto = nome.lastIndexOf('.');
-  const base = ponto > 0 ? nome.slice(0, ponto) : nome;
-  const ext = ponto > 0 ? nome.slice(ponto + 1) : '';
-  const limpo = (t: string) =>
-    t
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-  const b = limpo(base) || 'arquivo';
-  return ext ? `${b}.${limpo(ext)}` : b;
-}
 
 /** Endereço estável do arquivo, servido pela rota que assina na hora. */
 export function enderecoDoArquivo(caminho: string) {
@@ -82,7 +67,7 @@ export function useUploadFile({
     // e completa quando o banco confirma.
     setProgress(10);
 
-    const caminho = `${destino.organizationId}/${destino.projectId}/${crypto.randomUUID()}-${nomeSeguro(file.name)}`;
+    const caminho = `${destino.organizationId}/${destino.projectId}/${crypto.randomUUID()}-${limparNome(file.name)}`;
 
     try {
       const { error } = await createClient()
