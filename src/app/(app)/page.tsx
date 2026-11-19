@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Contact, Target, Users, Wallet } from "lucide-react";
+import { Contact, Target, UserCheck, Users } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { QueryError } from "@/components/query-error";
@@ -66,7 +66,8 @@ export default async function DashboardPage() {
     },
     {
       href: "/clientes",
-      icon: Wallet,
+      // O mesmo ícone do menu.
+      icon: UserCheck,
       label: "Clientes",
       value: totals.clientes,
       hint: "Viraram cliente com o Ganho, ou marcados pela gestão",

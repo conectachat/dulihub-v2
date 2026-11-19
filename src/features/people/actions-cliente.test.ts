@@ -2,6 +2,8 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { revalidatePath } from "next/cache";
+
 import { buscarParecidos, type ContatoParecido } from "@/lib/parecidos";
 import { createClient } from "@/lib/supabase/server";
 
@@ -196,5 +198,7 @@ describe("marcarComoCliente", () => {
 
     expect(banco.update).toHaveBeenCalled();
     expect(r.error).toMatch(/^Os dados do cliente foram salvos, mas os participantes não: /);
+    // Salvos de verdade: o perfil atrás do diálogo precisa mostrá-los.
+    expect(revalidatePath).toHaveBeenCalledWith("/clientes/p1");
   });
 });

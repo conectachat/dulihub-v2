@@ -8,7 +8,7 @@
  */
 export async function abrirEmNovaAba(obterUrl: () => Promise<string | null>): Promise<boolean> {
   const janela = window.open("", "_blank");
-  const url = await obterUrl();
+  const url = await urlOuNada(obterUrl);
 
   if (!url) {
     janela?.close();
@@ -31,8 +31,20 @@ export async function abrirEmNovaAba(obterUrl: () => Promise<string | null>): Pr
  * como anexo, e o navegador baixa sem sair da página.
  */
 export async function baixar(obterUrl: () => Promise<string | null>): Promise<boolean> {
-  const url = await obterUrl();
+  const url = await urlOuNada(obterUrl);
   if (!url) return false;
   window.location.assign(url);
   return true;
+}
+
+/**
+ * O pedido do endereço nunca lança aqui: numa queda de rede a Server Action
+ * rejeita, e a aba já aberta ficaria em branco, sem aviso nenhum.
+ */
+async function urlOuNada(obterUrl: () => Promise<string | null>): Promise<string | null> {
+  try {
+    return await obterUrl();
+  } catch {
+    return null;
+  }
 }

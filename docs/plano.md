@@ -246,7 +246,7 @@ junto com a 0049.
 
 | Parte | O que ficou pronto |
 |---|---|
-| Banco | Dono e participantes (0044); cliente não volta a lead, "cliente desde", quem tem processo ou cobrança é cliente — fora do Ganho só a gestão — e `marcar_como_cliente` (0045); notas e histórico só para a equipe (0046); documentos do cliente no depósito `pessoas` (0047); anexos da parcela no depósito `financeiro`, sem arquivo órfão (0048); `buscar_clientes` (0049) |
+| Banco | Dono e participantes (0044); cliente não volta a lead, "cliente desde", quem tem processo ou cobrança é cliente — fora do Ganho só a gestão — e `marcar_como_cliente` (0045); notas e histórico só para a equipe (0046); documentos do cliente no depósito `pessoas` (0047); anexos da parcela no depósito `financeiro`, sem arquivo órfão (0048); `buscar_clientes` (0049; 0050 tira da busca por dígitos quem não tem telefone) |
 | Dados | 2 contatos com processo viraram clientes (30 no total, 29 na Duli); todo cliente com dono (o `owner` mais antigo da organização); 6 com "cliente desde" (os outros 24 não têm processo nem cobrança) |
 | Telas | Item Clientes no menu; lista com busca e total; perfil em abas; Editar com dono, cliente desde e participantes; "Marcar como cliente" no perfil enxuto, só para a gestão; links do app inteiro levam ao perfil certo (`enderecoDaPessoa`) |
 | Importação | Não rebaixa cliente e grava o DDI como "+NN" |

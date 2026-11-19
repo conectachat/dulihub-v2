@@ -42,7 +42,29 @@ describe("abrirEmNovaAba", () => {
   });
 });
 
+describe("abrirEmNovaAba quando o pedido falha", () => {
+  it("endereço que lança (rede caiu) fecha a aba vazia e devolve falso, sem lançar", async () => {
+    const janela = { opener: null, location: { href: "" }, close: vi.fn() };
+    vi.spyOn(window, "open").mockImplementation(() => janela as unknown as Window);
+
+    const ok = await abrirEmNovaAba(async () => {
+      throw new Error("Failed to fetch");
+    });
+
+    expect(ok).toBe(false);
+    expect(janela.close).toHaveBeenCalled();
+  });
+});
+
 describe("baixar", () => {
+  it("endereço que lança devolve falso, sem lançar", async () => {
+    const ok = await baixar(async () => {
+      throw new Error("Failed to fetch");
+    });
+
+    expect(ok).toBe(false);
+  });
+
   it("baixa na própria aba: a URL de download não troca de página", async () => {
     const assign = vi.fn();
     vi.spyOn(window, "location", "get").mockReturnValue({ assign } as unknown as Location);

@@ -188,6 +188,7 @@ telas incomoda; em trinta, ninguém consegue mais mudar nada.
 | Abas com a aberta na URL (`?aba=`) | `AbasNaUrl` — troca por `history.replaceState`, sem refazer a página |
 | Busca de lista guardada na URL (`?q=`) | `BuscaNaUrl` — buscar de novo volta para a primeira página |
 | Enviar arquivo do navegador ao depósito e registrar | `enviarERegistrar`, `arquivoAceito`, `limparNome` (`@/lib/arquivos`) — registro recusado remove o objeto |
+| Abrir ou baixar por URL assinada | `abrirEmNovaAba` / `baixar` (`@/lib/abrir`) — a aba abre no clique; `window.open` depois de um `await` o Safari do iPhone bloqueia |
 
 Falta um? Extraia para `src/components/` na segunda cópia, não na terceira.
 

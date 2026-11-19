@@ -221,7 +221,10 @@ export async function atualizarCliente(
     .from("person_participants")
     .select("user_id")
     .eq("person_id", id);
-  if (erroLista) return falhou(`${PARTICIPANTES_FALHARAM}${traduzirErro(erroLista)}`);
+  if (erroLista) {
+    revalidarPessoa(id);
+    return falhou(`${PARTICIPANTES_FALHARAM}${traduzirErro(erroLista)}`);
+  }
 
   const eram = new Set((antes ?? []).map((p) => p.user_id));
   const serao = new Set(cliente.participantes);
@@ -232,7 +235,11 @@ export async function atualizarCliente(
     const { error: erroEntrada } = await supabase.from("person_participants").insert(
       entram.map((user_id) => ({ organization_id: atual.organization_id, person_id: id, user_id })),
     );
-    if (erroEntrada) return falhou(`${PARTICIPANTES_FALHARAM}${traduzirErro(erroEntrada)}`);
+    if (erroEntrada) {
+      // O resto foi salvo: o perfil atrás do diálogo precisa mostrá-lo.
+      revalidarPessoa(id);
+      return falhou(`${PARTICIPANTES_FALHARAM}${traduzirErro(erroEntrada)}`);
+    }
   }
   if (saem.length > 0) {
     const { error: erroSaida } = await supabase
@@ -240,7 +247,10 @@ export async function atualizarCliente(
       .delete()
       .eq("person_id", id)
       .in("user_id", saem);
-    if (erroSaida) return falhou(`${PARTICIPANTES_FALHARAM}${traduzirErro(erroSaida)}`);
+    if (erroSaida) {
+      revalidarPessoa(id);
+      return falhou(`${PARTICIPANTES_FALHARAM}${traduzirErro(erroSaida)}`);
+    }
   }
 
   revalidarPessoa(id);
