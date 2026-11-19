@@ -2027,6 +2027,19 @@ export type Database = {
           telefone: string
         }[]
       }
+      buscar_clientes: {
+        Args: { p_busca?: string; p_deslocamento?: number; p_limite?: number }
+        Returns: {
+          client_since: string
+          email: string
+          full_name: string
+          id: string
+          owner_id: string
+          phone: string
+          phone_country_code: string
+          total: number
+        }[]
+      }
       compactar_pagina: {
         Args: {
           p_ate: number

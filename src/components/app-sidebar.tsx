@@ -11,6 +11,7 @@ import {
   Search,
   Settings,
   Target,
+  UserCheck,
   Wallet,
 } from "lucide-react";
 
@@ -32,6 +33,7 @@ type NavItem = {
 const NAV: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/crm", label: "CRM", icon: Target },
+  { href: "/clientes", label: "Clientes", icon: UserCheck },
   { href: "/projetos", label: "Projetos", icon: FolderKanban },
   { href: "/financeiro", label: "Financeiro", icon: Wallet },
   { href: "/contatos", label: "Contatos", icon: Contact },

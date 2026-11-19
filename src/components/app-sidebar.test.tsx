@@ -68,3 +68,17 @@ describe("identidade do menu lateral", () => {
     expect(screen.queryByText("Duli Consulting")).toBeNull();
   });
 });
+
+describe("itens do menu", () => {
+  it("Clientes vem logo depois do CRM (CLI-1)", () => {
+    sessao = { user: { id: ANA, email: "ana@duli.com" } };
+
+    render(<AppSidebar {...daAna} />);
+
+    const rotulos = screen
+      .getAllByRole("link")
+      .map((a) => a.getAttribute("href"))
+      .filter((href) => href !== null);
+    expect(rotulos.indexOf("/clientes")).toBe(rotulos.indexOf("/crm") + 1);
+  });
+});

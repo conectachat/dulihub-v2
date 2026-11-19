@@ -1,11 +1,10 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
-import { Search } from "lucide-react";
+import { useTransition } from "react";
 
+import { BuscaNaUrl } from "@/components/busca-na-url";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 /**
  * Busca e alternância ativos/excluídos, guardadas na URL.
@@ -19,20 +18,9 @@ export function ContactFilters({ children }: { children?: React.ReactNode }) {
   const params = useSearchParams();
   const [, startTransition] = useTransition();
 
-  const currentSearch = params.get("q") ?? "";
   const view = params.get("view") === "excluidos" ? "excluidos" : "ativos";
-  const [term, setTerm] = useState(currentSearch);
-  const [ultimaUrl, setUltimaUrl] = useState(currentSearch);
 
-  // A URL manda: voltar no navegador, ou trocar de aba entre ativos e
-  // excluídos, tem que se refletir no campo. Ajuste durante a renderização e
-  // não em efeito — React refaz a renderização na hora, antes de pintar.
-  if (currentSearch !== ultimaUrl) {
-    setUltimaUrl(currentSearch);
-    setTerm(currentSearch);
-  }
-
-  function apply(next: { q?: string; view?: string }) {
+  function apply(next: { view?: string }) {
     const sp = new URLSearchParams(params.toString());
     for (const [key, value] of Object.entries(next)) {
       if (value) sp.set(key, value);
@@ -41,26 +29,9 @@ export function ContactFilters({ children }: { children?: React.ReactNode }) {
     startTransition(() => router.push(`/contatos?${sp.toString()}`));
   }
 
-  // Espera a digitação parar antes de consultar o banco.
-  useEffect(() => {
-    if (term === currentSearch) return;
-    const timer = setTimeout(() => apply({ q: term }), 350);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [term]);
-
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="relative w-full max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={term}
-          onChange={(e) => setTerm(e.target.value)}
-          placeholder="Buscar por nome, email, telefone..."
-          className="pl-9"
-          aria-label="Buscar contatos"
-        />
-      </div>
+      <BuscaNaUrl placeholder="Buscar por nome, email, telefone..." rotulo="Buscar contatos" />
 
       {/* Slot para filtros que o servidor precisa alimentar, como o de tags. */}
       {children}

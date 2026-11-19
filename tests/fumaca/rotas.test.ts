@@ -107,6 +107,8 @@ const TOPO = [
   "/contatos",
   "/contatos?view=excluidos",
   "/crm",
+  "/clientes",
+  "/clientes?q=a&pagina=2",
   "/projetos",
   "/financeiro",
 ];
