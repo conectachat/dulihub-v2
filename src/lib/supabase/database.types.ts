@@ -2121,6 +2121,24 @@ export type Database = {
           total: number
         }[]
       }
+      buscar_encerradas: {
+        Args: {
+          p_busca?: string
+          p_deslocamento?: number
+          p_limite?: number
+          p_situacao?: string
+        }
+        Returns: {
+          closed_at: string
+          full_name: string
+          id: string
+          person_id: string
+          status: string
+          title: string
+          totais: Json
+          total: number
+        }[]
+      }
       compactar_pagina: {
         Args: {
           p_ate: number
