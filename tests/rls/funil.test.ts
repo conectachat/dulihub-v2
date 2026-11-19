@@ -17,6 +17,10 @@ import { entrarComo, type Cliente } from "./clientes";
  * As Server Actions (`actions.ts`) só acrescentam sessão e revalidação por
  * cima destas funções, que recebem o cliente pronto: é o que as deixa
  * testáveis fora do Next.
+ *
+ * Desde a entrega 3, entrar e sair do ganho é das funções do banco
+ * (`ganhar_negocio`, `reabrir_negocio`, 0052): `aplicarEtapa` recusa as duas
+ * coisas, e o Perdido não sai direto do ganho.
  */
 
 describe("funil: mover, ganhar e perder", () => {
@@ -30,6 +34,7 @@ describe("funil: mover, ganhar e perder", () => {
   let funilId: string;
   let ganhoId: string;
   let notaDoLead: string;
+  let vistoId: string;
 
   const negocio = () =>
     parceiro
@@ -104,6 +109,14 @@ describe("funil: mover, ganhar e perder", () => {
     if (erroNegocio) throw new Error(`Negócio não criado: ${erroNegocio.message}`);
     negocioId = criado.id;
 
+    const { data: visto, error: erroVisto } = await parceiro
+      .from("visa_types")
+      .select("id")
+      .eq("name", "Visto do Parceiro")
+      .single();
+    if (erroVisto) throw new Error(`Visto da fixture ilegível: ${erroVisto.message}`);
+    vistoId = visto.id;
+
     // Uma nota de quando ainda era lead: depois do Ganho, ela fica abaixo
     // de "virou cliente" no histórico (§6.2).
     const { data: nota, error: erroNota } = await parceiro
@@ -176,20 +189,36 @@ describe("funil: mover, ganhar e perder", () => {
     expect(busca.error).not.toBeNull();
 
     // …nem grava, sabendo a etapa: a policy filtra, e zero linhas é recusa.
-    const { etapa } = await etapaTerminal(parceiro, negocioId, "is_won");
-    const r = await aplicarEtapa(duli, usuarioDuli, negocioId, etapa!, null);
+    // Etapa aberta de propósito — a de ganho o app recusaria antes da RLS.
+    const r = await aplicarEtapa(duli, usuarioDuli, negocioId, meio, null);
     expect(r.error).not.toBeNull();
 
     expect((await negocio()).data?.status).toBe("open");
     expect(await estagio()).toBe("opportunity");
   });
 
-  it("ganhar fecha o negócio e faz do lead um cliente", async () => {
+  it("aplicarEtapa não ganha: o Ganho é da função, que mostra o resumo antes", async () => {
     const { etapa } = await etapaTerminal(parceiro, negocioId, "is_won");
     expect(etapa?.is_won).toBe(true);
 
     const r = await aplicarEtapa(parceiro, usuario, negocioId, etapa!, null);
-    expect(r).toEqual({ error: null, personId: pessoaId });
+    expect(r.error).toBe("Use o Ganho, que mostra o resumo antes.");
+    expect((await negocio()).data?.status).toBe("open");
+  });
+
+  it("ganhar fecha o negócio e faz do lead um cliente", async () => {
+    const item = await parceiro.from("opportunity_items").insert({
+      organization_id: orgParceiro,
+      opportunity_id: negocioId,
+      visa_type_id: vistoId,
+      visa_name: "EB-1A",
+      amount: 8000,
+      currency: "USD",
+    });
+    expect(item.error).toBeNull();
+
+    const r = await parceiro.rpc("ganhar_negocio", { p_negocio: negocioId });
+    expect(r.error).toBeNull();
 
     const { data } = await negocio();
     expect(data?.status).toBe("won");
@@ -205,16 +234,27 @@ describe("funil: mover, ganhar e perder", () => {
     expect(new Date(lista[0].occurred_at) > new Date(notaDoLead)).toBe(true);
   });
 
+  it("aplicarEtapa não tira do ganho, nem para Perdido: reabra antes", async () => {
+    const aberta = await aplicarEtapa(parceiro, usuario, negocioId, meio, null);
+    expect(aberta.error).toBe("Reabra o negócio antes.");
+
+    const { etapa: perdido } = await etapaTerminal(parceiro, negocioId, "is_lost");
+    const perda = await aplicarEtapa(parceiro, usuario, negocioId, perdido!, "Preço — achou caro");
+    expect(perda.error).toBe("Reabra o negócio antes.");
+
+    expect((await negocio()).data?.status).toBe("won");
+  });
+
   it("cliente não volta a ser lead, mesmo com o negócio reaberto", async () => {
-    await aplicarEtapa(parceiro, usuario, negocioId, meio, null);
+    const r = await parceiro.rpc("reabrir_negocio", { p_negocio: negocioId });
+    expect(r.error).toBeNull();
 
     expect((await negocio()).data?.status).toBe("open");
     expect(await estagio()).toBe("client");
   });
 
   it("ganhar de novo quem já é cliente não registra outra virada", async () => {
-    const { etapa } = await etapaTerminal(parceiro, negocioId, "is_won");
-    const r = await aplicarEtapa(parceiro, usuario, negocioId, etapa!, null);
+    const r = await parceiro.rpc("ganhar_negocio", { p_negocio: negocioId });
     expect(r.error).toBeNull();
 
     expect(await viradas()).toHaveLength(1);

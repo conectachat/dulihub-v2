@@ -27,6 +27,7 @@ import {
   type EtapaDeDestino,
 } from "./mover";
 import { motivoDaPerda } from "./regras";
+import { resumoDoGanhoSchema, type ResumoDoGanho } from "./schema";
 
 const opportunitySchema = z.object({
   stage_id: z.string().uuid("Escolha uma etapa"),
@@ -191,11 +192,41 @@ export async function moveOpportunity(formData: FormData): Promise<ActionState> 
 }
 
 /**
+ * O resumo do Ganho: `ganhar_negocio` com `p_simular`, que confere tudo e
+ * devolve o que faria, sem gravar. É o mesmo formato da gravação — o resumo
+ * e o resultado nunca divergem (spec §4.5). Recusa (sem visto, CRM-10…)
+ * volta como a frase do banco, e a tela não oferece Confirmar.
+ */
+export async function resumoDoGanho(
+  id: string,
+): Promise<{ resumo: ResumoDoGanho | null; error: string | null }> {
+  if (!z.string().uuid().safeParse(id).success) {
+    return { resumo: null, error: "Negócio não informado." };
+  }
+
+  const { supabase, error: erroDoContexto } = await contextoAtual();
+  if (erroDoContexto) return { resumo: null, error: erroDoContexto };
+
+  const { data, error } = await supabase.rpc("ganhar_negocio", {
+    p_negocio: id,
+    p_simular: true,
+  });
+  if (error) return { resumo: null, error: traduzirErro(error) };
+
+  const lido = resumoDoGanhoSchema.safeParse(data);
+  if (!lido.success) {
+    return { resumo: null, error: "O servidor respondeu num formato inesperado." };
+  }
+  return { resumo: lido.data, error: null };
+}
+
+/**
  * Ganho: o contrato foi assinado.
  *
- * O contato vira cliente — e cliente não volta a ser lead — e a tela segue
- * para o perfil completo dele, onde o processo nasce (decisão do Renato,
- * 3/out). Em caso de recusa não redireciona: devolve a frase.
+ * Numa transação, no banco (`ganhar_negocio`, 0052): negócio ganho,
+ * histórico, cliente, dono, participantes e um processo por visto. A tela
+ * segue para a aba Projetos do cliente, onde os processos acabaram de
+ * nascer. Em caso de recusa não redireciona: devolve a frase.
  */
 export async function ganharOportunidade(formData: FormData): Promise<ActionState> {
   const id = formData.get("id");
@@ -204,15 +235,36 @@ export async function ganharOportunidade(formData: FormData): Promise<ActionStat
   const contexto = await contextoAtual();
   if (contexto.error) return falhou(contexto.error);
 
-  const { etapa, error } = await etapaTerminal(contexto.supabase, id, "is_won");
-  if (!etapa) return falhou(error!);
+  const { data, error } = await contexto.supabase.rpc("ganhar_negocio", { p_negocio: id });
+  if (error) return falhou(traduzirErro(error));
 
-  const { estado, personId } = await mover(contexto, id, etapa, null);
-  if (estado.error || !personId) return estado;
+  const lido = resumoDoGanhoSchema.safeParse(data);
+  if (!lido.success) return falhou("O servidor respondeu num formato inesperado.");
 
-  // Fora de try/catch: `redirect` funciona lançando. Ganho faz cliente, e
-  // o processo nasce na aba Projetos do perfil de cliente.
-  redirect(enderecoDaPessoa(personId, "client", "projetos"));
+  revalidar(id, lido.data.pessoa.id);
+  revalidatePath("/projetos");
+
+  // Fora de try/catch: `redirect` funciona lançando.
+  redirect(enderecoDaPessoa(lido.data.pessoa.id, "client", "projetos"));
+}
+
+/**
+ * Reabre um negócio ganho na primeira etapa aberta (`reabrir_negocio`,
+ * 0052). Só o dono do negócio ou a gestão; a pessoa continua cliente e os
+ * processos continuam onde estão.
+ */
+export async function reabrirOportunidade(formData: FormData): Promise<ActionState> {
+  const id = formData.get("id");
+  if (typeof id !== "string" || !id) return falhou("Negócio não informado.");
+
+  const contexto = await contextoAtual();
+  if (contexto.error) return falhou(contexto.error);
+
+  const { error } = await contexto.supabase.rpc("reabrir_negocio", { p_negocio: id });
+  if (error) return falhou(traduzirErro(error));
+
+  revalidar(id, null);
+  return gravou();
 }
 
 /** Perdido, com o motivo. O negócio continua no quadro, na coluna de perda. */

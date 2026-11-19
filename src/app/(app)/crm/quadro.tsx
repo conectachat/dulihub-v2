@@ -9,7 +9,12 @@ import { EmptyState } from "@/components/empty-state";
 import type { SituacaoDaFicha } from "@/features/cadastro/regras";
 import { deleteOpportunity, moveOpportunity } from "@/features/opportunities/actions";
 import type { Stage } from "@/features/opportunities/queries";
-import { aoSoltar, enderecoDoCartao, etapasDeEntrada } from "@/features/opportunities/regras";
+import {
+  aoSoltar,
+  enderecoDoCartao,
+  etapasDeEntrada,
+  REABRA_ANTES,
+} from "@/features/opportunities/regras";
 import { formatarMoeda, formatarPorMoeda, somarPorMoeda } from "@/lib/totals";
 import { cn } from "@/lib/utils";
 import { enderecoDaPessoa } from "@/lib/pessoa";
@@ -79,10 +84,21 @@ export function Quadro({
   /** Leva o cartão para a etapa — por arrastar ou pelo seletor. */
   function levar(cartao: CartaoDoQuadro, etapaId: string) {
     const etapa = etapas.find((e) => e.id === etapaId);
-    if (!etapa) return;
+    const origem = etapas.find((e) => e.id === cartao.stage_id);
+    if (!etapa || !origem) return;
 
-    const acao = aoSoltar(cartao, etapa);
+    const acao = aoSoltar(origem, etapa);
     if (acao === "nada") return;
+
+    if (acao === "reabra-antes") {
+      toast.error(REABRA_ANTES);
+      return;
+    }
+    if (acao === "reabrir") {
+      // T7: o diálogo "Reabrir este negócio?". Até lá, nada se move.
+      toast.error(REABRA_ANTES);
+      return;
+    }
 
     if (acao === "ganhar" || acao === "perder") {
       setDialogo({

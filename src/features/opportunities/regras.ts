@@ -92,20 +92,33 @@ export function motivoDaPerda(
 
 // --------------------------------------------------------------------- quadro
 
+/** Entrar no ganho é do `ganhar_negocio` (0052), que mostra o resumo antes. */
+export const USE_O_GANHO = "Use o Ganho, que mostra o resumo antes.";
+/** Sair do ganho é do `reabrir_negocio` (0052), que confere quem pode. */
+export const REABRA_ANTES = "Reabra o negócio antes.";
+
+type EtapaDoSoltar = Pick<EtapaDoFunil, "id" | "is_won" | "is_lost">;
+
 /**
- * O que acontece ao soltar um cartão numa coluna.
+ * O que acontece ao soltar um cartão numa coluna — ou trocar o seletor.
  *
  * Ganho e Perdido não movem direto: um vira o contato em cliente, que não
  * volta a ser lead, e o outro pede o motivo. Arrastar não pode pular nenhum
  * dos dois.
+ *
+ * Sair do Ganho é reabrir, com confirmação, e só o dono do negócio ou a
+ * gestão conseguem (CRM-15, CRM-10). Do Ganho direto para o Perdido não
+ * pode: reabra antes. Perdido volta para o funil movendo, como sempre (D5),
+ * e pode ser ganho direto, pelo resumo (D6).
  */
 export function aoSoltar(
-  cartao: { stage_id: string },
-  etapa: Pick<EtapaDoFunil, "id" | "is_won" | "is_lost">,
-): "nada" | "mover" | "ganhar" | "perder" {
-  if (cartao.stage_id === etapa.id) return "nada";
-  if (etapa.is_won) return "ganhar";
-  if (etapa.is_lost) return "perder";
+  origem: EtapaDoSoltar,
+  destino: EtapaDoSoltar,
+): "nada" | "mover" | "ganhar" | "perder" | "reabrir" | "reabra-antes" {
+  if (origem.id === destino.id) return "nada";
+  if (origem.is_won) return destino.is_lost ? "reabra-antes" : "reabrir";
+  if (destino.is_won) return "ganhar";
+  if (destino.is_lost) return "perder";
   return "mover";
 }
 

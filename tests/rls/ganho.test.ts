@@ -2,6 +2,8 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { resumoDoGanhoSchema } from "@/features/opportunities/schema";
+
 import { entrarComo, fixture, type Cliente } from "./clientes";
 
 /**
@@ -38,14 +40,8 @@ function hojeEmSaoPaulo(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 }
 
-type Resumo = {
-  negocio: string;
-  pessoa: { id: string; nome: string; vira_cliente: boolean };
-  itens: { id: string; visa_name: string; amount: number; currency: string }[];
-  processos: { item: string; titulo: string; id: string | null }[];
-  cobrancas: unknown[];
-  avisos: string[];
-};
+/** O jsonb de `ganhar_negocio`, lido pelo mesmo esquema que a tela usa. */
+const lerResumo = (data: unknown) => resumoDoGanhoSchema.parse(data);
 
 describe("ganhar e reabrir negócio (0052)", () => {
   let parceiro: Cliente;
@@ -222,7 +218,7 @@ describe("ganhar e reabrir negócio (0052)", () => {
 
     const { data, error } = await ganhar(parceiro, n);
     expect(error).toBeNull();
-    const resumo = data as unknown as Resumo;
+    const resumo = lerResumo(data);
     expect(resumo.processos.map((x) => x.titulo)).toEqual([
       `EB-1A — ${p.nome}`,
       `O-1 — ${p.nome}`,
@@ -263,7 +259,7 @@ describe("ganhar e reabrir negócio (0052)", () => {
 
     const simulado = await ganhar(parceiro, n, true);
     expect(simulado.error).toBeNull();
-    const resumo = simulado.data as unknown as Resumo;
+    const resumo = lerResumo(simulado.data);
     expect(resumo.pessoa).toMatchObject({ id: p.id, nome: p.nome, vira_cliente: true });
     expect(resumo.itens.map((i) => i.visa_name)).toEqual(["EB-1A", "O-1"]);
     expect(resumo.processos.every((x) => x.id === null)).toBe(true);
@@ -274,7 +270,7 @@ describe("ganhar e reabrir negócio (0052)", () => {
 
     const real = await ganhar(parceiro, n);
     expect(real.error).toBeNull();
-    expect((real.data as unknown as Resumo).processos.map((x) => x.titulo)).toEqual(
+    expect(lerResumo(real.data).processos.map((x) => x.titulo)).toEqual(
       resumo.processos.map((x) => x.titulo),
     );
   });
@@ -385,7 +381,7 @@ describe("ganhar e reabrir negócio (0052)", () => {
     await novoItem(n, "EB-2 NIW", { position: 2 });
     const { data, error } = await ganhar(parceiro, n);
     expect(error).toBeNull();
-    expect((data as unknown as Resumo).processos.map((x) => x.titulo)).toEqual([
+    expect(lerResumo(data).processos.map((x) => x.titulo)).toEqual([
       `EB-2 NIW — ${p.nome}`,
     ]);
     expect(await processosDo(n)).toHaveLength(3);
@@ -553,7 +549,7 @@ describe("ganhar e reabrir negócio (0052)", () => {
 
       const { data, error } = await ganhar(parceiro, n);
       expect(error).toBeNull();
-      expect((data as unknown as Resumo).processos).toEqual([]);
+      expect(lerResumo(data).processos).toEqual([]);
       expect(await processosDo(n)).toHaveLength(1);
     });
   });

@@ -3,6 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { NADA_GRAVADO, traduzirErro } from "@/lib/erros";
 import type { Database } from "@/lib/supabase/database.types";
 
+import { REABRA_ANTES, USE_O_GANHO } from "./regras";
+
 /**
  * Pôr um negócio numa etapa — o miolo de mover, ganhar e perder.
  *
@@ -32,8 +34,9 @@ export const COLUNAS_DA_ETAPA = "id, name, probability, is_won, is_lost";
  * etapa o apaga, senão um negócio reaberto e ganho carregaria para sempre o
  * motivo de uma perda que não aconteceu.
  *
- * Ganho faz do contato um cliente. O caminho de volta não existe: reabrir o
- * negócio não rebaixa ninguém.
+ * Ganho não passa por aqui (entrega 3): entrar e sair do ganho são as funções
+ * do banco, numa transação, com o CRM-10 conferido lá. Este caminho recusa
+ * as duas coisas — inclusive o Perdido de um negócio ganho.
  */
 export async function aplicarEtapa(
   supabase: Cliente,
@@ -42,14 +45,26 @@ export async function aplicarEtapa(
   etapa: EtapaDeDestino,
   motivo: string | null,
 ): Promise<{ error: string | null; personId: string | null }> {
-  const terminal = etapa.is_won || etapa.is_lost;
+  if (etapa.is_won) return { error: USE_O_GANHO, personId: null };
+
+  const { data: atual, error: erroAtual } = await supabase
+    .from("opportunities")
+    .select("status")
+    .eq("id", id)
+    .maybeSingle();
+  if (erroAtual) return { error: traduzirErro(erroAtual), personId: null };
+  // A policy filtra em vez de recusar: não enxergar é recusa.
+  if (!atual) return { error: NADA_GRAVADO, personId: null };
+  if (atual.status === "won") return { error: REABRA_ANTES, personId: null };
+
+  const terminal = etapa.is_lost;
 
   const { data: updated, error: updateError } = await supabase
     .from("opportunities")
     .update({
       stage_id: etapa.id,
       probability: etapa.probability,
-      status: etapa.is_won ? "won" : etapa.is_lost ? "lost" : "open",
+      status: etapa.is_lost ? "lost" : "open",
       closed_at: terminal ? new Date().toISOString() : null,
       lost_reason: etapa.is_lost ? motivo : null,
     })
@@ -82,45 +97,6 @@ export async function aplicarEtapa(
   });
   if (registro.error) {
     return { error: traduzirErro(registro.error), personId: updated.person_id };
-  }
-
-  // Ganho de quem ainda não é cliente: promove e registra a virada, uma vez
-  // só (D10). Quem já é cliente — negócio reaberto e ganho de novo, ou um
-  // segundo negócio — não ganha outra linha no histórico.
-  if (etapa.is_won) {
-    const { data: pessoa, error: erroPessoa } = await supabase
-      .from("people")
-      .select("lifecycle_stage")
-      .eq("id", updated.person_id)
-      .maybeSingle();
-    if (erroPessoa) return { error: traduzirErro(erroPessoa), personId: updated.person_id };
-    if (!pessoa) return { error: NADA_GRAVADO, personId: updated.person_id };
-
-    if (pessoa.lifecycle_stage !== "client") {
-      const promocao = await supabase
-        .from("people")
-        .update({ lifecycle_stage: "client" })
-        .eq("id", updated.person_id)
-        .select("id");
-      if (promocao.error) {
-        return { error: traduzirErro(promocao.error), personId: updated.person_id };
-      }
-      if (!promocao.data || promocao.data.length === 0) {
-        return { error: NADA_GRAVADO, personId: updated.person_id };
-      }
-
-      const virada = await supabase.from("activities").insert({
-        organization_id: updated.organization_id,
-        person_id: updated.person_id,
-        opportunity_id: id,
-        type: "virou_cliente",
-        description: "Oportunidade ganha — virou cliente",
-        created_by: userId,
-      });
-      if (virada.error) {
-        return { error: traduzirErro(virada.error), personId: updated.person_id };
-      }
-    }
   }
 
   return { error: null, personId: updated.person_id };

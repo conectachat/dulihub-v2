@@ -107,19 +107,35 @@ describe("aoSoltar", () => {
   const [perdido, proposta, novo, ganho] = FUNIL;
 
   it("na mesma coluna, nada acontece", () => {
-    expect(aoSoltar({ stage_id: "Novo Lead" }, novo)).toBe("nada");
+    expect(aoSoltar(novo, novo)).toBe("nada");
   });
 
   it("em outra etapa do meio, move", () => {
-    expect(aoSoltar({ stage_id: "Novo Lead" }, proposta)).toBe("mover");
+    expect(aoSoltar(novo, proposta)).toBe("mover");
   });
 
   it("em Ganho, pede a confirmação — o contato vira cliente e não volta", () => {
-    expect(aoSoltar({ stage_id: "Novo Lead" }, ganho)).toBe("ganhar");
+    expect(aoSoltar(novo, ganho)).toBe("ganhar");
+  });
+
+  it("de Perdido para Ganho, também pede a confirmação (D6)", () => {
+    expect(aoSoltar(perdido, ganho)).toBe("ganhar");
   });
 
   it("em Perdido, pede o motivo", () => {
-    expect(aoSoltar({ stage_id: "Novo Lead" }, perdido)).toBe("perder");
+    expect(aoSoltar(novo, perdido)).toBe("perder");
+  });
+
+  it("de Perdido para uma etapa aberta, move — perdido reabre pela tela (D5)", () => {
+    expect(aoSoltar(perdido, proposta)).toBe("mover");
+  });
+
+  it("de Ganho para uma etapa aberta, pede para reabrir", () => {
+    expect(aoSoltar(ganho, proposta)).toBe("reabrir");
+  });
+
+  it("de Ganho direto para Perdido não pode: reabra antes", () => {
+    expect(aoSoltar(ganho, perdido)).toBe("reabra-antes");
   });
 });
 

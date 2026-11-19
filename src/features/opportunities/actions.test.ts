@@ -2,10 +2,17 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { redirect } from "next/navigation";
+
 import { contextoAtual } from "@/lib/organizacao";
 import { CAMPO_CONFIRMAR_OPORTUNIDADE } from "@/lib/parecidos";
 
-import { createOpportunity } from "./actions";
+import {
+  createOpportunity,
+  ganharOportunidade,
+  reabrirOportunidade,
+  resumoDoGanho,
+} from "./actions";
 
 /**
  * `createOpportunity` monta a chamada de `criar_oportunidade` (0041) e traduz a
@@ -143,5 +150,102 @@ describe("createOpportunity", () => {
     );
 
     expect(r.error).toBe("Este contato está na lixeira. Restaure antes.");
+  });
+});
+
+const NEGOCIO = "33333333-3333-4333-8333-333333333333";
+
+const RESUMO = {
+  negocio: NEGOCIO,
+  pessoa: { id: PESSOA, nome: "Maria Souza", vira_cliente: true },
+  itens: [{ id: "i1", visa_name: "EB-1A", amount: 8000, currency: "USD" }],
+  processos: [{ item: "i1", titulo: "EB-1A — Maria Souza", id: null }],
+  cobrancas: [],
+  avisos: [],
+};
+
+const comId = (id: string) => {
+  const fd = new FormData();
+  fd.set("id", id);
+  return fd;
+};
+
+describe("resumoDoGanho", () => {
+  it("simula o Ganho e devolve o resumo lido", async () => {
+    rpc.mockResolvedValue({ data: RESUMO, error: null });
+
+    const { resumo, error } = await resumoDoGanho(NEGOCIO);
+
+    expect(rpc).toHaveBeenCalledWith("ganhar_negocio", { p_negocio: NEGOCIO, p_simular: true });
+    expect(error).toBeNull();
+    expect(resumo?.processos[0]?.titulo).toBe("EB-1A — Maria Souza");
+  });
+
+  it("devolve a frase do banco quando o Ganho seria recusado", async () => {
+    rpc.mockResolvedValue({
+      data: null,
+      error: { code: "P0001", message: "Acrescente pelo menos um visto antes do Ganho." },
+    });
+
+    const { resumo, error } = await resumoDoGanho(NEGOCIO);
+
+    expect(resumo).toBeNull();
+    expect(error).toBe("Acrescente pelo menos um visto antes do Ganho.");
+  });
+
+  it("formato inesperado não vira resumo", async () => {
+    rpc.mockResolvedValue({ data: { negocio: NEGOCIO }, error: null });
+    const { resumo, error } = await resumoDoGanho(NEGOCIO);
+    expect(resumo).toBeNull();
+    expect(error).not.toBeNull();
+  });
+});
+
+describe("ganharOportunidade", () => {
+  it("ganha pela função e segue para a aba Projetos do cliente", async () => {
+    rpc.mockResolvedValue({
+      data: { ...RESUMO, processos: [{ ...RESUMO.processos[0], id: "p1" }] },
+      error: null,
+    });
+
+    await ganharOportunidade(comId(NEGOCIO));
+
+    expect(rpc).toHaveBeenCalledWith("ganhar_negocio", { p_negocio: NEGOCIO });
+    expect(redirect).toHaveBeenCalledWith(`/clientes/${PESSOA}?aba=projetos`);
+  });
+
+  it("recusa do banco volta como frase, sem redirecionar", async () => {
+    rpc.mockResolvedValue({
+      data: null,
+      error: { code: "P0001", message: "Só o dono do negócio ou a gestão ganham o negócio." },
+    });
+
+    const estado = await ganharOportunidade(comId(NEGOCIO));
+
+    expect(estado.error).toBe("Só o dono do negócio ou a gestão ganham o negócio.");
+    expect(redirect).not.toHaveBeenCalled();
+  });
+});
+
+describe("reabrirOportunidade", () => {
+  it("reabre pela função", async () => {
+    rpc.mockResolvedValue({ data: null, error: null });
+
+    const estado = await reabrirOportunidade(comId(NEGOCIO));
+
+    expect(rpc).toHaveBeenCalledWith("reabrir_negocio", { p_negocio: NEGOCIO });
+    expect(estado.error).toBeNull();
+    expect(estado.ok).toBe(true);
+  });
+
+  it("recusa do banco volta como frase", async () => {
+    rpc.mockResolvedValue({
+      data: null,
+      error: { code: "P0001", message: "Só o dono do negócio ou a gestão reabrem o negócio." },
+    });
+
+    const estado = await reabrirOportunidade(comId(NEGOCIO));
+
+    expect(estado.error).toBe("Só o dono do negócio ou a gestão reabrem o negócio.");
   });
 });
