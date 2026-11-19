@@ -43,6 +43,23 @@ espelho, e isso está dito em `docs/plano.md`.
 
 Tela nova nasce migrada, e o Financeiro é a primeira.
 
+**Exceção registrada: Clientes lê do servidor** (`/clientes` e
+`/clientes/[id]`, entrega 2). O perfil do cliente é a tela de contato que já
+existia, reorganizada em abas; o dono vem de `profiles`, que nunca vai ao
+aparelho; notas, ficha, processos e documentos não estão no espelho. Sem
+internet o perfil não abre — cobrança sem internet continua sendo pela tela
+Financeiro. A aba Financeiro do perfil é a exceção da exceção: lê do aparelho,
+como a tela Financeiro. Quando Contatos e CRM migrarem (OFF-3), Clientes vai
+junto.
+
+**Exceção registrada: anexos da parcela vão direto do navegador**
+(`features/financeiro/anexos.ts`, CLI-6). A tela Financeiro é migrada e não
+tem Server Action; o anexo é arquivo de cliente, que não vai ao aparelho. Então
+o objeto sobe ao depósito `financeiro` e a linha vai a `installment_files` pelo
+cliente de navegador, com a sessão de quem clica e a RLS decidindo, só com
+internet ("Anexos precisam de internet."). O banco confere o caminho contra a
+parcela real e recusa apagar parcela ou cobrança que ainda tem anexo (0048).
+
 **`getUser()`, nunca `getSession()`** para decidir permissão. `getSession()`
 apenas lê o cookie, que o cliente pode forjar. `getUser()` revalida no servidor.
 A exceção é `src/lib/local/usuario.ts`, que usa `getSession` para saber **qual
@@ -165,6 +182,12 @@ telas incomoda; em trinta, ninguém consegue mais mudar nada.
 | "Já existe contato com esse e-mail ou telefone" | `AvisoDeDuplicado` + `buscarParecidos` (`@/lib/parecidos`) |
 | "Este contato já tem oportunidade" | `AvisoDeOportunidade` |
 | Regra de e-mail, DDI e telefone | `erroDeContato` / `errosDeContato` (`@/lib/contato`) — a mesma de `private.contato_valido` |
+| Link para uma pessoa (contato ou cliente) | `enderecoDaPessoa` (`@/lib/pessoa`) — nunca `/contatos/${id}` escrito à mão; cliente mora em `/clientes/<id>` |
+| Revalidar depois de gravar algo da pessoa | `revalidarPessoa` (`@/lib/revalidar`) — as duas listas e os dois perfis |
+| Copiar telefone, e-mail ou link, com "Copiado" | `CopiarTexto` |
+| Abas com a aberta na URL (`?aba=`) | `AbasNaUrl` — troca por `history.replaceState`, sem refazer a página |
+| Busca de lista guardada na URL (`?q=`) | `BuscaNaUrl` — buscar de novo volta para a primeira página |
+| Enviar arquivo do navegador ao depósito e registrar | `enviarERegistrar`, `arquivoAceito`, `limparNome` (`@/lib/arquivos`) — registro recusado remove o objeto |
 
 Falta um? Extraia para `src/components/` na segunda cópia, não na terceira.
 

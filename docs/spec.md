@@ -128,8 +128,8 @@ Lead entra → conversa → proposta → ficha → contrato → assinatura → G
 2. **Lead não é cliente.** Enquanto o negócio está no funil, a pessoa não tem
    processo nem financeiro à vista. O **Ganho** — contrato assinado — é o que a
    faz cliente; fora dele, só a gestão, marcando à mão ou criando processo ou
-   cobrança (CLI-12, CLI-14). Cliente não volta a ser lead (hoje só a tela
-   garante — M17; passa ao banco com o CLI-13).
+   cobrança (CLI-12, CLI-14). Cliente não volta a ser lead, garantido no
+   banco desde a 0045 (CLI-13, fecha o M17).
 3. **Negócio não é pessoa.** A mesma pessoa pode ter vários negócios ao longo do
    tempo.
 4. **Molde e cópia.** O tipo de visto é o molde de etapas e pastas; o processo
@@ -184,7 +184,7 @@ Dizer o que precisa de atenção hoje.
 |---|---|---|---|
 | CON-1 | Lista, busca, filtro por tag, criar, editar | P0 | 🟡 — editar diz que salvou sem gravar (I7) |
 | CON-2 | Excluir com lixeira e restaurar; nunca apagar de vez (§6.8) | P0 | 🟡 — lixeira sem confirmação, e o caso do contato continua aparecendo (I8) |
-| CON-3 | Ficha enxuta para quem não é cliente; completa para cliente (ou para quem já tem processo/cobrança). Será substituído pelo CLI-14 (17/nov): quem tem processo ou cobrança passa a ser cliente | P0 | ✅ |
+| CON-3 | Ficha enxuta para quem não é cliente; completa para cliente (ou para quem já tem processo/cobrança). **Substituído pelo CLI-14** (entrega 2, 19/nov): quem tem processo ou cobrança é cliente, e o cliente tem perfil próprio (CLI-2); `/contatos/<id>` é só o perfil enxuto | P0 | ✅ |
 | CON-4 | Aviso de contato já cadastrado (mesmo e-mail ou telefone, inclusive na lixeira) ao criar e ao editar: mostra quem, qual dado e o link do contato; pergunta "É a mesma pessoa?" (ao editar, "sim" não salva e abre o existente) e, no "não", "Criar/salvar mesmo assim?" (17/nov: sobe para P0) | P0 | ✅ |
 | CON-8 | Nome, telefone (com DDI) e e-mail obrigatórios ao criar e editar contato; o contato pode existir sem oportunidade (17/nov) | P0 | ✅ |
 | CON-5 | Histórico: notas, ligações, reuniões, movimentos do funil, ficha recebida | P0 | 🟡 — hora da atividade grava 3 h antes (I6) |
@@ -289,7 +289,7 @@ Dúvidas que bloqueiam este módulo estão em §10 (Q1, Q2, Q4 e Q14; a Q3 foi d
 | REC-2 | Parcelas geradas sem perder centavo; baixa com data e cotação | P0 | 🟡 — entrada negativa gera parcela negativa (I20) |
 | REC-3 | Lista com filtros (vencidas, a vencer, pagas) e números do mês | P0 | ✅ |
 | REC-4 | Funciona sem internet | P0 | 🟡 — sem o prazo de 14 dias (I19), "Nenhuma cobrança" antes de baixar (I26), e os defeitos da fila (I17, I21, I23) |
-| REC-5 | Anexar boleto e nota fiscal à parcela — vira o CLI-6 (17/nov) | P1 | ⬜ |
+| REC-5 | Anexar boleto e nota fiscal à parcela — virou o CLI-6 (entregue em 19/nov) | P1 | ✅ |
 | REC-6 | Cobranças criadas no Ganho a partir da forma de pagamento confirmada, uma por parte, sem duplicar (17/nov; antes dependia do contrato, CTR-2) | P0 | ⬜ |
 | REC-7 | Boleto do Itaú e link do C6 emitidos pelo app | P2 | ⬜ — depende das credenciais |
 | REC-8 | Nota fiscal emitida pelo app | P2 | ⬜ — depende do provedor |
@@ -368,7 +368,7 @@ quando houver um problema da Duli que ela resolva (§10, Q5).
 | ID | Requisito | Pri. | Estado |
 |---|---|---|---|
 | POR-1 | O cliente recebe acesso no Ganho (convite, troca de senha no primeiro acesso) | P0 da fase | ⬜ |
-| POR-2 | Vê seus processos: etapas e progresso, **sem as notas internas** nem as observações (decisão de 6/nov; hoje o banco deixaria — fecha com o CLI-9, que tira a leitura de notas e histórico do cliente) | P0 da fase | ⬜ |
+| POR-2 | Vê seus processos: etapas e progresso, **sem as notas internas** nem as observações (decisão de 6/nov). A parte do banco está pronta: desde a 0046 o cliente do portal não lê notas nem histórico (CLI-9); falta a tela do portal | P0 da fase | ⬜ |
 | POR-3 | Envia documentos para as pastas; vê aprovado/recusado com o motivo | P0 da fase | ⬜ |
 | POR-4 | Vê suas parcelas | P1 da fase | ⬜ |
 | POR-5 | A equipe pode "ver como o cliente" | P1 da fase | ⬜ |
@@ -394,20 +394,20 @@ que é própria. Desenho técnico e critério de aceite de cada requisito:
 
 | ID | Requisito | Pri. | Estado |
 |---|---|---|---|
-| CLI-1 | Item **Clientes** no menu, abaixo do CRM: lista com nome, e-mail, telefone, dono, cliente desde e **Abrir**; busca por nome, e-mail ou telefone; sem corte silencioso | P0 | ⬜ |
-| CLI-2 | Perfil do cliente: cabeçalho numa linha (com as Tags) e abas Dados cadastrais, Financeiro, Projetos, Documentos, Notas. Não lista oportunidades (CRM-16) | P0 | ⬜ |
-| CLI-3 | Copiar telefone e e-mail com um clique | P0 | ⬜ |
-| CLI-4 | Dados cadastrais: a ficha inteira (contratante, endereço, dependentes) e a situação do link | P0 | ⬜ |
-| CLI-5 | Financeiro: cobranças, totais por moeda (contratado, pago, saldo devedor, vencido), parcelas, baixa, cobrança manual | P0 | ⬜ |
-| CLI-6 | Anexar boleto, nota fiscal e comprovante à parcela (era o REC-5) | P1 | ⬜ |
-| CLI-7 | Projetos: os processos do cliente, com andamento; clicar abre o processo; **+ Novo processo** à mão | P0 | ⬜ |
-| CLI-8 | Documentos do cliente por categoria (identidade, passaporte, comprovante de residência, contrato, outro); os do processo ficam no processo | P0 | ⬜ |
-| CLI-9 | Notas e histórico desde a fase de lead, do mais recente para o mais antigo, com a nota nova no topo e "Oportunidade ganha — virou cliente"; quem tem acesso ao cliente lê e escreve, **o cliente nunca lê** | P0 | ⬜ |
-| CLI-10 | Dono e participantes do cliente e da oportunidade; o cliente herda no Ganho. Por ora só marcam quem cuida — não restringem quem vê | P1 | ⬜ |
-| CLI-11 | Cliente desde: gravado quando a pessoa passa a ser cliente, editável à mão; os atuais recebem a data do primeiro processo ou cobrança | P0 | ⬜ |
-| CLI-12 | Marcar como cliente à mão, só a gestão (conferido no banco) | P0 | ⬜ |
-| CLI-13 | Cliente não volta a ser lead, garantido no banco (fecha o M17) | P0 | ⬜ |
-| CLI-14 | Quem tem processo ou cobrança é cliente: criar um ou outro promove a pessoa, com registro no histórico — fora do Ganho, só a gestão; os contatos assim hoje viram clientes na migration. Substitui o CON-3 | P0 | ⬜ |
+| CLI-1 | Item **Clientes** no menu, abaixo do CRM: lista com nome, e-mail, telefone, dono, cliente desde e **Abrir**; busca por nome, e-mail ou telefone; sem corte silencioso | P0 | ✅ |
+| CLI-2 | Perfil do cliente: cabeçalho numa linha (com as Tags) e abas Dados cadastrais, Financeiro, Projetos, Documentos, Notas. Não lista oportunidades (CRM-16) | P0 | ✅ |
+| CLI-3 | Copiar telefone e e-mail com um clique | P0 | ✅ |
+| CLI-4 | Dados cadastrais: a ficha inteira (contratante, endereço, dependentes) e a situação do link | P0 | ✅ |
+| CLI-5 | Financeiro: cobranças, totais por moeda (contratado, pago, saldo devedor, vencido), parcelas, baixa, cobrança manual | P0 | ✅ |
+| CLI-6 | Anexar boleto, nota fiscal e comprovante à parcela (era o REC-5) | P1 | ✅ |
+| CLI-7 | Projetos: os processos do cliente, com andamento; clicar abre o processo; **+ Novo processo** à mão | P0 | ✅ |
+| CLI-8 | Documentos do cliente por categoria (identidade, passaporte, comprovante de residência, contrato, outro); os do processo ficam no processo | P0 | ✅ |
+| CLI-9 | Notas e histórico desde a fase de lead, do mais recente para o mais antigo, com a nota nova no topo e "Oportunidade ganha — virou cliente"; quem tem acesso ao cliente lê e escreve, **o cliente nunca lê** | P0 | ✅ |
+| CLI-10 | Dono e participantes do cliente e da oportunidade; o cliente herda no Ganho. Por ora só marcam quem cuida — não restringem quem vê. **Entrega 2:** dono e participantes do cliente no Editar; as tabelas da oportunidade existem (0044), a tela e a herança no Ganho vêm na entrega 3 | P1 | 🟡 |
+| CLI-11 | Cliente desde: gravado quando a pessoa passa a ser cliente, editável à mão; os atuais recebem a data do primeiro processo ou cobrança | P0 | ✅ |
+| CLI-12 | Marcar como cliente à mão, só a gestão (conferido no banco). **Entrega 2:** o botão e a função `marcar_como_cliente`, só da gestão; promover por `update` direto pela API ainda é de qualquer membro até a marca `via_ganho` da entrega 3 (D1 do plano) | P0 | 🟡 |
+| CLI-13 | Cliente não volta a ser lead, garantido no banco (fecha o M17) | P0 | ✅ |
+| CLI-14 | Quem tem processo ou cobrança é cliente: criar um ou outro promove a pessoa, com registro no histórico — fora do Ganho, só a gestão; os contatos assim hoje viram clientes na migration. Substitui o CON-3. **Entrega 2:** no banco (0045), também pela fila do Financeiro; o ramo do Ganho (marca `via_ganho`) vem na entrega 3 | P0 | 🟡 |
 
 ---
 
@@ -485,6 +485,9 @@ e cada pessoa da equipe define a sua senha.
 | 17/nov | Forma de pagamento definida ao enviar a ficha, confirmada pelo cliente no formulário; cada parte na sua moeda, sem conversão pelo app (FIC-7 a FIC-11) |
 | 17/nov | Dono e participantes só marcam quem cuida; não restringem quem vê (CLI-10) |
 | 17/nov | Notas: o cliente nunca lê; quem tem acesso ao cliente lê e escreve (CLI-9) |
+| 18/nov | Clientes lê do servidor, como Contatos e CRM — exceção à "tela nova nasce migrada", registrada no `AGENTS.md`; a aba Financeiro continua lendo do aparelho |
+| 18/nov | Anexos da parcela vão direto do navegador ao servidor, só com internet: a tela Financeiro é migrada e não tem Server Action (CLI-6) |
+| 18/nov | "Só a gestão ou o Ganho tornam cliente" pela API fica para a entrega 3, junto com o Ganho no banco; na entrega 2, a gestão e o Ganho de hoje (D1 do plano) |
 
 ## 11. Ordem proposta
 
@@ -557,8 +560,9 @@ GitHub ──envio no main──▶ Easypanel monta o Dockerfile ──▶ app n
 | **Regras puras** (`src/features/<domínio>/regras.ts`) | As contas e decisões do negócio, testadas sem banco | Parcelas que fecham no centavo; para onde o cartão vai ao ser solto |
 | **Telas** | Só desenham e pedem | — |
 
-Regra que só está na tela é conveniência, não regra (`AGENTS.md`). Regras da
-§6 que hoje ainda só estão na tela: §6.2, cliente não volta a lead (M17).
+Regra que só está na tela é conveniência, não regra (`AGENTS.md`). "Cliente
+não volta a lead" (§6.2, M17) saiu da tela e foi ao banco na 0045. Ainda só na
+tela, até a entrega 3: quem pode promover a cliente por `update` direto.
 
 ### 12.4 Uma empresa ou várias
 

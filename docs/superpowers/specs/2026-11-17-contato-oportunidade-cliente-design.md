@@ -144,7 +144,11 @@ nenhum dado é digitado duas vezes.
     promovida pela conta de gestão de teste.
 - **Marcas de transação.** Uma função que precisa abrir uma trava liga uma marca
   própria do recurso, com `set_config('dulihub.via_ganho', 'on', true)`, e a
-  **desliga no fim**, inclusive no caminho de erro, como a 0025:51-56 faz.
+  **desliga no fim**. O terceiro argumento (`is_local = true`) faz a marca valer só
+  até o fim da transação: no caminho de erro, a transação desfeita leva a marca
+  junto. *(Correção de 19/nov: a 0025:51-56 desliga só no caminho feliz e conta com
+  o `is_local` no de erro — não desliga explicitamente no erro, como esta linha
+  dizia.)*
   - As marcas são `dulihub.via_ganho` (negócio e pessoa no Ganho, reabrir, marcar
     cliente), `dulihub.via_forma` (forma de pagamento e respostas) e
     `dulihub.via_ficha` (colunas novas de `registration_forms`). Uma não abre a trava
@@ -427,8 +431,8 @@ quando os vistos entram.
 | `person_participants` | `id` (chave, para a lápide funcionar), `unique (person_id, user_id)`, mais `organization_id`, `created_at`, `created_by`, `updated_at`. FK `(person_id, organization_id)` → `people`, com cascade. FK `(organization_id, user_id)` → `organization_members`, com cascade. RLS: membros da organização leem e gravam. Lápide e `updated_at`. Fica fora do espelho |
 | `opportunity_participants` | O mesmo desenho (com `id`), ligado a `opportunities` |
 | `opportunities.owner_id` | Um gatilho só deixa trocar o dono do negócio quem é o dono atual ou a gestão (C2) |
-| Gatilho `estagio_do_cliente` em `people` | Duas regras. (1) **Não volta:** recusa sempre, inclusive sem usuário, o update com `old.lifecycle_stage = 'client'` e `new.lifecycle_stage <> 'client'`. A importação deixa de mandar rebaixamento. (2) **Quem torna cliente:** passar a `client` (no update, ou no insert já como `client`) só com a marca `via_ganho` ou por alguém da **gestão**. Sem usuário passa, para a importação e as migrations. Fecha o caminho do `update people set lifecycle_stage = 'client'` direto pela API, que a policy `people_update_staff` (0001) deixaria a qualquer membro |
-| Gatilho `quem_tem_processo_e_cliente` | `before insert` em `projects` e em `receivables`, quando a pessoa ainda não é cliente: com a marca `via_ganho` (o Ganho já promoveu antes), passa; sem a marca, só passa se quem cria é da **gestão**, e então promove a pessoa a `client` (o `client_since` segue as regras acima) e registra no histórico "Virou cliente (processo ‹título›)" ou "(cobrança ‹título›)". Quem não é da gestão recebe "Só a gestão torna alguém cliente; use o Ganho". Na tela isso não aparece, porque "+ Novo processo" e "Criar cobrança" só existem no perfil de quem já é cliente; a trava cobre a API e a fila |
+| Gatilho `estagio_do_cliente` em `people` | *Entrega 2 (D1 do plano, 18/nov): entrou só a regra (1), no gatilho `people_trava_do_estagio` — `before update`, depois de `people_guard_self_update` pela ordem alfabética —, com o `client_since`. A regra (2) vem na entrega 3 com `ganhar_negocio`: com ela agora, o Ganho de hoje (`update people` em `mover.ts`) deixaria de funcionar para quem não é da gestão.* Duas regras. (1) **Não volta:** recusa sempre, inclusive sem usuário, o update com `old.lifecycle_stage = 'client'` e `new.lifecycle_stage <> 'client'`. A importação deixa de mandar rebaixamento. (2) **Quem torna cliente:** passar a `client` (no update, ou no insert já como `client`) só com a marca `via_ganho` ou por alguém da **gestão**. Sem usuário passa, para a importação e as migrations. Fecha o caminho do `update people set lifecycle_stage = 'client'` direto pela API, que a policy `people_update_staff` (0001) deixaria a qualquer membro |
+| Gatilho `quem_tem_processo_e_cliente` | *Entrega 2 (D2): nasceu sem o ramo da marca — quem não é cliente só recebe processo ou cobrança da gestão; a entrega 3 acrescenta o ramo `via_ganho`.* `before insert` em `projects` e em `receivables`, quando a pessoa ainda não é cliente: com a marca `via_ganho` (o Ganho já promoveu antes), passa; sem a marca, só passa se quem cria é da **gestão**, e então promove a pessoa a `client` (o `client_since` segue as regras acima) e registra no histórico "Virou cliente (processo ‹título›)" ou "(cobrança ‹título›)". Quem não é da gestão recebe "Só a gestão torna alguém cliente; use o Ganho". Na tela isso não aparece, porque "+ Novo processo" e "Criar cobrança" só existem no perfil de quem já é cliente; a trava cobre a API e a fila |
 | `public.marcar_como_cliente(p_pessoa uuid, p_desde date)` | `security invoker`. Confere a gestão **no banco**, grava o estágio, o `client_since` e o histórico numa transação. **Não tem volta** pelo app: a tela avisa antes, e corrigir um engano só se faz pelo dono do banco, no SQL Editor |
 | `people_guard_self_update` | No portal, o cliente também não muda `owner_id` nem `client_since` |
 | Leitura de `notes` e `activities` | A policy passa de `can_access_person` (que inclui o cliente logado) para **membros da organização e da organização atribuída**. O cliente do portal deixa de ler (POR-2). A escrita não muda. `can_access_person` continua valendo para as outras tabelas |
@@ -452,8 +456,11 @@ quando os vistos entram.
     do dono aponta para `organization_members`.
 - **`/clientes/[id]`** (servidor):
   - é o perfil;
-  - `/contatos/[id]` de quem é cliente **redireciona** para cá, preservando a query e
-    trocando a âncora `#dados-cadastrais` por `?aba=dados`;
+  - `/contatos/[id]` de quem é cliente **redireciona** para cá, preservando a query;
+    *(D6, 18/nov: a âncora `#dados-cadastrais` não se converte no `redirect`, porque o
+    navegador nunca a manda ao servidor. Os links passam a apontar direto para o
+    endereço certo, por `enderecoDaPessoa`; uma âncora que chegue mesmo assim cai na
+    aba padrão, que é Dados)*;
   - `/contatos/[id]` passa a ser só o perfil enxuto de quem não é cliente;
   - o componente é **movido**: o que as duas rotas usam sobe para `src/components/`
     ou `lib/`.

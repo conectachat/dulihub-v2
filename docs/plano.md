@@ -11,7 +11,7 @@ no `docs/spec.md`, que vem antes de qualquer funcionalidade nova.
 
 ---
 
-## 1. Estado atual (3/out/2026; hospedagem em 16/nov)
+## 1. Estado atual (3/out/2026; hospedagem em 16/nov; Clientes em 19/nov)
 
 ### No ar
 
@@ -23,7 +23,8 @@ se encaixam: `docs/spec.md` §12.
 |---|---|
 | Início | **O que precisa de atenção hoje**: prazo de RFE (30 dias antes, vermelho nos últimos 7), fichas de cadastro recebidas e ainda não conferidas, parcelas vencidas, pastas e etapas atrasadas — cada um leva ao lugar certo. Depois, as contagens |
 | Contatos | Lista, busca, filtro por tag, criar, editar, excluir e restaurar (lixeira) |
-| Ficha do contato | Dados, tags, oportunidades, linha do tempo; **Dados cadastrais** (o que vai para o contrato: CPF, RG, estado civil, endereço, dependentes) e o **link da ficha** para o cliente preencher. **Processos e Financeiro só para quem é cliente** — ou para quem já tem processo ou cobrança |
+| Ficha do contato | Perfil enxuto de quem ainda não é cliente: dados, tags, oportunidades, linha do tempo; **Dados cadastrais** (o que vai para o contrato: CPF, RG, estado civil, endereço, dependentes) e o **link da ficha** para o cliente preencher. "Marcar como cliente" para a gestão. Cliente abre em `/clientes/<id>` (o endereço antigo redireciona) |
+| Clientes | **Lista** com busca por nome, e-mail ou telefone, 50 por página com o total. **Perfil em abas**: Dados cadastrais, Financeiro (totais por moeda, cobranças, baixa, anexos da parcela), Projetos, Documentos (passaporte, identidade, comprovante, contrato) e Notas; cabeçalho com copiar telefone e e-mail, dono, cliente desde, tags e Editar (dono e participantes) |
 | Ficha de cadastro (pública) | `/cadastro/<token>`: o cliente preenche no celular, **sem login**; ao enviar, a ficha do contato se atualiza e o link morre |
 | CRM | Quadro do funil, com **cartões que se arrastam** entre as colunas (o seletor de etapa continua, para o celular); negócio em Ganho oferece "Criar processo"; cada cartão mostra em que pé está a ficha de cadastro |
 | Lead (`/crm/[id]`) | O negócio enquanto está no funil: trilha das etapas, **Ganho** e **Perdido** (com motivo), contato, valor e origem, dados cadastrais com o link da ficha, histórico. Sem processos e sem financeiro |
@@ -194,9 +195,9 @@ com o Ganho.
 | Pergunta | Resposta |
 |---|---|
 | O que é o Ganho | O contrato assinado. O contato vira cliente, e **cliente não volta a ser lead** — reabrir o negócio não rebaixa ninguém |
-| Depois de clicar Ganho | Vai para o perfil completo do cliente, sem abrir nada |
+| Depois de clicar Ganho | Vai para a aba Projetos do perfil de cliente, sem abrir nada; o histórico ganha "Oportunidade ganha — virou cliente" |
 | Perdido | Pede o motivo (lista curta + detalhe); fica no negócio e no histórico. Reabrir apaga |
-| Quem vê Processos e Financeiro | Cliente, ou quem já tem processo ou cobrança. A regra nunca esconde trabalho feito: em 3/out havia dois contatos com processo sem serem clientes |
+| Quem vê Processos e Financeiro | Só o perfil de cliente (`/clientes/<id>`, entrega 2). Quem tinha processo ou cobrança sem ser cliente virou cliente na 0045 (2 contatos), e daí em diante criar um ou outro promove a pessoa |
 | Arrastar | Só no quadro do CRM, com o HTML nativo. O seletor de etapa fica, porque arrastar não funciona no toque nem no teclado. Soltar em Ganho ou Perdido abre a mesma pergunta do botão |
 
 Fica com o Renato, e não é código:
@@ -234,9 +235,31 @@ crítico. Corrigidos o diálogo sem rolagem no celular, a edição pela lista de
 `/contatos` que apagava Empresa e Cargo (defeito de setembro), a chave de
 serviço sem permissão nas auxiliares do contato e o telefone antigo sem DDI
 com o 55 colado (0043), mais testes que faltavam e dois detalhes do aviso.
-**Fica para a entrega que mexer na importação:** `migration/import-people.mjs`
-grava o DDI como veio ("55"); rodado de novo, desfaz a correção da 0040 — a
-busca não é afetada, mas o `banco.md` promete "+NN".
+A importação (`migration/import-people.mjs`) grava o DDI como "+NN" desde a
+entrega 2.
+
+### Entrega 2 — Clientes (19/nov)
+
+Plano: `docs/superpowers/plans/2026-11-18-entrega-2-clientes.md` (CLI-1 a
+CLI-14). Banco no push 1 (0044–0048, CI verde em 19/nov); telas no push 2,
+junto com a 0049.
+
+| Parte | O que ficou pronto |
+|---|---|
+| Banco | Dono e participantes (0044); cliente não volta a lead, "cliente desde", quem tem processo ou cobrança é cliente — fora do Ganho só a gestão — e `marcar_como_cliente` (0045); notas e histórico só para a equipe (0046); documentos do cliente no depósito `pessoas` (0047); anexos da parcela no depósito `financeiro`, sem arquivo órfão (0048); `buscar_clientes` (0049) |
+| Dados | 2 contatos com processo viraram clientes (30 no total, 29 na Duli); todo cliente com dono (o `owner` mais antigo da organização); 6 com "cliente desde" (os outros 24 não têm processo nem cobrança) |
+| Telas | Item Clientes no menu; lista com busca e total; perfil em abas; Editar com dono, cliente desde e participantes; "Marcar como cliente" no perfil enxuto, só para a gestão; links do app inteiro levam ao perfil certo (`enderecoDaPessoa`) |
+| Importação | Não rebaixa cliente e grava o DDI como "+NN" |
+
+Decisões que valem até a entrega 3 (detalhe no plano):
+
+- **Promover por `update` direto pela API continua aberto a qualquer membro**
+  (D1): o Ganho de hoje promove assim, e travar agora impediria colaborador de
+  ganhar negócio. A trava vem com o Ganho no banco (`ganhar_negocio`).
+- **Dono e participantes da oportunidade**: as tabelas existem (0044); a tela
+  e a herança no Ganho vêm na entrega 3.
+- **Clientes lê do servidor** e **anexos vão direto do navegador**: as duas
+  exceções estão no `AGENTS.md`.
 
 ---
 
