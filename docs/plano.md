@@ -24,10 +24,10 @@ se encaixam: `docs/spec.md` §12.
 | Início | **O que precisa de atenção hoje**: prazo de RFE (30 dias antes, vermelho nos últimos 7), fichas de cadastro recebidas e ainda não conferidas, parcelas vencidas, pastas e etapas atrasadas — cada um leva ao lugar certo. Depois, as contagens |
 | Contatos | Lista, busca, filtro por tag, criar, editar, excluir e restaurar (lixeira) |
 | Ficha do contato | Perfil enxuto de quem ainda não é cliente: dados, tags, oportunidades, linha do tempo; **Dados cadastrais** (o que vai para o contrato: CPF, RG, estado civil, endereço, dependentes) e o **link da ficha** para o cliente preencher. "Marcar como cliente" para a gestão. Cliente abre em `/clientes/<id>` (o endereço antigo redireciona) |
-| Clientes | **Lista** com busca por nome, e-mail ou telefone, 50 por página com o total. **Perfil em abas**: Dados cadastrais, Financeiro (totais por moeda, cobranças, baixa, anexos da parcela), Projetos, Documentos (passaporte, identidade, comprovante, contrato) e Notas; cabeçalho com copiar telefone e e-mail, dono, cliente desde, tags e Editar (dono e participantes) |
+| Clientes | **Lista** com busca por nome, e-mail ou telefone, 50 por página com o total. **Perfil em abas**: Dados cadastrais, Financeiro (totais por moeda, cobranças, baixa, anexos da parcela), Projetos, Documentos (passaporte, identidade, comprovante, contrato) e Notas; cabeçalho com copiar telefone e e-mail, dono, cliente desde, tags e Editar (dono e participantes). **Novo cliente**, para a gestão: o cliente antigo que não passou pelo funil, escolhido entre os contatos ou criado ali mesmo, abre já em Projetos para criar o processo |
 | Ficha de cadastro (pública) | `/cadastro/<token>`: o cliente preenche no celular, **sem login**; ao enviar, a ficha do contato se atualiza e o link morre |
 | CRM | Quadro do funil, com **cartões que se arrastam** entre as colunas (o seletor de etapa continua, para o celular) e o total de cada coluna por moeda; soltar em Ganho abre o **resumo**, e o cartão ganho leva aos processos; ganhos e perdidos ficam no quadro 30 dias e depois em **CRM › Encerradas** (busca por título ou contato); cada cartão mostra em que pé está a ficha de cadastro |
-| Lead (`/crm/[id]`) | O negócio enquanto está no funil: trilha das etapas, **Ganho com resumo** (numa gravação só: cliente, dono, participantes e um processo por visto), **Reabrir** um ganho e **Perdido** (com motivo); contato, **Vistos** (valor e moeda de cada um, total por moeda), origem, dono e participantes, dados cadastrais com o link da ficha, histórico. Sem processos e sem financeiro |
+| Lead (`/crm/[id]`) | O negócio enquanto está no funil: trilha das etapas, **Ganho com resumo** (numa gravação só: cliente, dono, participantes e um processo por visto), **Reabrir** um ganho e **Perdido** (com motivo); contato, **Vistos** (valor e moeda de cada um, total por moeda), origem, dono e participantes, dados cadastrais com o link da ficha, histórico. Sem processos e sem financeiro. No negócio ganho, a gestão **ajusta a data do ganho** (o cliente antigo ganho agora conta no mês certo) |
 | Projetos | Lista de processos: cliente, visto, status, progresso (etapas concluídas, em %), próximo prazo |
 | Processo | Status e campos do USCIS, inclusive quando a resposta da RFE foi enviada; abas **Etapas** (tabela com status, data prevista e de conclusão, sub-etapas em grupo), **Documentos** (pastas, envio, visualizar, aprovar, recusar com motivo, resolver) e **Observações** (editor estilo Notion, várias pessoas ao mesmo tempo) |
 | Configurações | Etapas do funil, tags, catálogo de pastas, tipos de visto, status de etapa — **abre e grava sem internet**, e sincroniza sozinha |
@@ -284,6 +284,20 @@ conferidas à mão: dois negócios plantados numa pessoa da organização de tes
 saíram certos, e a pessoa foi apagada depois, junto com as duas linhas dela
 em `private.backup_opportunities_value` (que guarda só o valor real). Nos dados
 de verdade não havia nada para recopiar nem dono a zerar.
+
+### Novo cliente e data do Ganho (20/nov, antes da entrega 4)
+
+Plano: `docs/superpowers/plans/2026-11-20-novo-cliente-e-data-do-ganho.md`
+(CLI-15, CRM-17 e a mudança no CLI-12). Pedido do Renato: cadastrar os
+clientes antigos sem criar oportunidade.
+
+| Parte | O que ficou pronto |
+|---|---|
+| Banco | `criar_cliente` e `buscar_contatos_para_cliente` (0055): só a gestão, só a organização atual, quem está no funil fica de fora; `marcar_como_cliente` põe quem marca como dono. `ajustar_data_do_ganho` (0056): de 01/01/2000 até hoje, com histórico, e o `update` direto da data do negócio ganho recusado |
+| Telas | "Novo cliente" em Clientes (busca de contato ou contato novo, aviso de parecido, abre em Projetos com o "+ Novo processo"); "Ajustar data" no lead ganho |
+
+Quem está no funil vira cliente pelo Ganho; a data se ajusta depois. O
+"cliente desde" continua se corrigindo em Editar, no perfil do cliente.
 
 Fica para a entrega 4: **cobranças no Ganho, forma de pagamento e o aviso de
 parcela vencida**. Até lá, o resumo diz "Forma de pagamento: definir na aba

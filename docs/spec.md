@@ -211,7 +211,7 @@ Dizer o que precisa de atenção hoje.
 | CRM-14 | **Ganho com resumo** (vistos, valores, forma de pagamento, o que vai acontecer) e, só após confirmar, numa gravação só: ganho, histórico, cliente, dono, **um processo por visto** e as cobranças. *Entrega 3 (19/nov): `ganhar_negocio` (0052) e o resumo pela mesma função com `p_simular`; as cobranças e a forma de pagamento vêm na entrega 4* | P0 | 🟡 |
 | CRM-15 | Reabrir um ganho pede confirmação também no quadro (I3); ganhar de novo não duplica processo nem cobrança. *Entrega 3 (19/nov): `reabrir_negocio` (0052), diálogo no quadro e na tela do lead; a ligação processo → visto (0051) impede o repetido* | P0 | ✅ |
 | CRM-16 | Oportunidades encerradas: ganhas e perdidas saem do quadro (as colunas Ganho e Perdido mostram só os últimos 30 dias) e são achadas em CRM › Encerradas, com busca e filtro. *Entrega 3 (19/nov): `buscar_encerradas` (0053) e `/crm/encerradas`* | P0 | ✅ |
-| CRM-17 | **Ajustar a data do Ganho**, só a gestão: para o cliente antigo que estava no funil e foi ganho agora, a data passa a ser a real, e o ganho não conta no mês errado. Critério de aceite abaixo | P0 | ⬜ |
+| CRM-17 | **Ajustar a data do Ganho**, só a gestão: para o cliente antigo que estava no funil e foi ganho agora, a data passa a ser a real, e o ganho não conta no mês errado. Critério de aceite abaixo. *20/nov: `ajustar_data_do_ganho` e a trava de `closed_at` (0056); "Ajustar data" no lead ganho* | P0 | ✅ |
 
 **Critério de aceite do CRM-17** (desenhado com o Renato em 20/nov):
 
@@ -443,7 +443,7 @@ aqui mesmo, abaixo da tabela.
 | CLI-12 | Marcar como cliente à mão, só a gestão (conferido no banco). **Entrega 2:** o botão e a função `marcar_como_cliente`, só da gestão; promover por `update` direto pela API, ou inserir já como cliente, também é só da gestão desde a 0054 (entrega 3). **CLI-15 (20/nov):** quem marca fica como dono, se a pessoa não tiver | P0 | ✅ |
 | CLI-13 | Cliente não volta a ser lead, garantido no banco (fecha o M17) | P0 | ✅ |
 | CLI-14 | Quem tem processo ou cobrança é cliente: criar um ou outro promove a pessoa, com registro no histórico — fora do Ganho, só a gestão; os contatos assim hoje viram clientes na migration. Substitui o CON-3. **Entrega 2:** no banco (0045), também pela fila do Financeiro; **Entrega 3:** o ramo do Ganho (marca `via_ganho`, 0054) | P0 | ✅ |
-| CLI-15 | **Novo cliente** à mão, para o cliente que não passou pelo funil (o cliente antigo): botão na tela Clientes, só para a gestão; escolhe um contato que ainda não é cliente nem está no funil, ou cria o contato ali mesmo, e abre o perfil na aba Projetos com o "+ Novo processo" aberto. Critério de aceite abaixo | P0 | ⬜ |
+| CLI-15 | **Novo cliente** à mão, para o cliente que não passou pelo funil (o cliente antigo): botão na tela Clientes, só para a gestão; escolhe um contato que ainda não é cliente nem está no funil, ou cria o contato ali mesmo, e abre o perfil na aba Projetos com o "+ Novo processo" aberto. Critério de aceite abaixo. *20/nov: `criar_cliente` e `buscar_contatos_para_cliente` (0055); botão na tela Clientes* | P0 | ✅ |
 
 **Critério de aceite do CLI-15** (desenhado com o Renato em 20/nov):
 

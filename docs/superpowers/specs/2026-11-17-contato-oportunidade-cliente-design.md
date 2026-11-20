@@ -507,7 +507,9 @@ quando os vistos entram.
 - **Marcar como cliente** (CLI-12):
   - fica em `/contatos/[id]`, visível só para a gestão (a trava real é a função);
   - pede confirmação, com o aviso "não tem volta", e a data;
-  - depois de marcar, vai para `/clientes/[id]`.
+  - depois de marcar, vai para `/clientes/[id]`;
+  - *(20/nov, CLI-15: quem marca fica como dono, se a pessoa não tiver — 0055. O
+    Novo cliente, na tela Clientes, grava pelo mesmo caminho.)*
 - **Lugares que mudam de endereço:**
   - `enderecoDoCartao` (`opportunities/regras.ts`);
   - o `redirect` do Ganho;

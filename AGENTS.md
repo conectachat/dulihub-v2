@@ -189,6 +189,9 @@ telas incomoda; em trinta, ninguém consegue mais mudar nada.
 | Busca de lista guardada na URL (`?q=`) | `BuscaNaUrl` — buscar de novo volta para a primeira página |
 | Lista paginada com o total ("Mostrando 51–72 de 72") | `POR_PAGINA`, `paginaPedida`, `contagemDaLista` (`@/lib/paginacao`) — nunca cortar em silêncio |
 | Dono e participantes (cliente, negócio) | `CampoDoDono` / `CampoDosParticipantes` (`@/components/dono-e-participantes`) e `diferencaDeParticipantes` (`@/lib/participantes`) — o dono atual fica na lista mesmo fora da equipe visível |
+| Contato existente ou novo num diálogo (Nova oportunidade, Novo cliente) | `ModosDoContato` / `BotaoQueDispensa` (`@/components/modos-do-contato`) e `CamposDoContatoNovo`; no servidor, `contatoNovoDoFormulario` (`@/lib/contato`) |
+| "É da gestão?" (owner ou admin) | `ehDaGestao(papel)` e, para a organização de um registro, `daGestaoDe(supabase, organizationId, userId)` (`@/lib/organizacao`) — na tela decide só o que aparece; quem decide é o banco |
+| Abrir o perfil do cliente com o processo a criar | `enderecoDoNovoCliente` (`@/lib/pessoa`) — `?aba=projetos&novo-processo=novo` |
 | Somar vistos por moeda | `somarItensPorMoeda`, `emCentavos`, `emMoeda` (`@/lib/totals`) — em centavos, e nunca uma moeda na outra. As parcelas do Financeiro somam em `totaisPorMoeda` (`features/financeiro/regras.ts`) |
 | Enviar arquivo do navegador ao depósito e registrar | `enviarERegistrar`, `arquivoAceito`, `limparNome` (`@/lib/arquivos`) — registro recusado remove o objeto |
 | Abrir ou baixar por URL assinada | `abrirEmNovaAba` / `baixar` (`@/lib/abrir`) — a aba abre no clique; `window.open` depois de um `await` o Safari do iPhone bloqueia |
