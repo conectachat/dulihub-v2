@@ -46,7 +46,7 @@ describe("estágio do cliente (0045)", () => {
 
   async function novaPessoa(
     estagio: Estagio,
-    extra: { client_since?: string; deleted_at?: string } = {},
+    extra: { client_since?: string; deleted_at?: string; owner_id?: string } = {},
   ): Promise<string> {
     contador += 1;
     const { data, error } = await parceiro
@@ -350,6 +350,19 @@ describe("estágio do cliente (0045)", () => {
       expect(error).toBeNull();
       expect(await pessoa(id)).toEqual({ lifecycle_stage: "client", client_since: "2025-03-10" });
       expect((await viraramCliente(id)).map((h) => h.description)).toEqual(["Marcado como cliente"]);
+      // CLI-15 (20/nov): quem marca fica como dono, se a pessoa não tiver.
+      const parceiroId = (await parceiro.auth.getUser()).data.user!.id;
+      const { data: dono } = await parceiro.from("people").select("owner_id").eq("id", id).single();
+      expect(dono!.owner_id).toBe(parceiroId);
+    });
+
+    it("quem já tem dono continua com o dono dele", async () => {
+      const staffId = (await staff.auth.getUser()).data.user!.id;
+      const id = await novaPessoa("opportunity", { owner_id: staffId });
+
+      expect((await marcar(parceiro, id)).error).toBeNull();
+      const { data: dono } = await parceiro.from("people").select("owner_id").eq("id", id).single();
+      expect(dono!.owner_id).toBe(staffId);
     });
 
     it("sem data, fica hoje", async () => {

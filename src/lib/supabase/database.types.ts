@@ -2013,6 +2013,17 @@ export type Database = {
           total: number
         }[]
       }
+      buscar_contatos_para_cliente: {
+        Args: { p_busca?: string; p_limite?: number; p_organizacao: string }
+        Returns: {
+          email: string
+          full_name: string
+          id: string
+          phone: string
+          phone_country_code: string
+          total: number
+        }[]
+      }
       buscar_encerradas: {
         Args: {
           p_busca?: string
@@ -2055,6 +2066,15 @@ export type Database = {
           lifecycle_stage: Database["public"]["Enums"]["person_lifecycle_stage"]
           na_lixeira: boolean
         }[]
+      }
+      criar_cliente: {
+        Args: {
+          p_confirmar_contato_parecido?: boolean
+          p_contato?: string
+          p_novo_contato?: Json
+          p_organizacao: string
+        }
+        Returns: Json
       }
       criar_oportunidade: {
         Args: {
