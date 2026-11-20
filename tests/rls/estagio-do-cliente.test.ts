@@ -185,6 +185,45 @@ describe("estágio do cliente (0045)", () => {
     });
   });
 
+  // Regra (2) da spec, que a 0054 liga: o caminho é o Ganho, a marcação da
+  // gestão ou a gestão criando processo ou cobrança.
+  describe("quem torna cliente (0054)", () => {
+    it("fora da gestão, passar um lead a cliente por update é recusado", async () => {
+      const id = await novaPessoa("opportunity");
+
+      const { error } = await staff.from("people").update({ lifecycle_stage: "client" }).eq("id", id);
+
+      expect(error?.code).toBe("P0001");
+      expect(error?.message).toBe(SO_A_GESTAO_PROMOVE);
+      expect(await pessoa(id)).toEqual({ lifecycle_stage: "opportunity", client_since: null });
+    });
+
+    it("fora da gestão, inserir já como cliente é recusado; a gestão insere", async () => {
+      const { data, error } = await staff
+        .from("people")
+        .insert({ organization_id: org, full_name: `Estágio ${s} do staff`, lifecycle_stage: "client" })
+        .select("id");
+      for (const linha of data ?? []) criadas.push(linha.id);
+
+      expect(error?.code).toBe("P0001");
+      expect(error?.message).toBe(SO_A_GESTAO_PROMOVE);
+
+      const daGestao = await novaPessoa("client");
+      expect((await pessoa(daGestao)).lifecycle_stage).toBe("client");
+    });
+
+    it("fora da gestão, editar quem já é cliente continua passando", async () => {
+      const id = await novaPessoa("client");
+
+      const { error } = await staff
+        .from("people")
+        .update({ lifecycle_stage: "client", full_name: `Estágio ${s} editado pelo staff` })
+        .eq("id", id);
+
+      expect(error).toBeNull();
+    });
+  });
+
   describe("quem tem processo ou cobrança é cliente", () => {
     it("fora da gestão, processo para um lead é recusado e nada muda", async () => {
       const id = await novaPessoa("opportunity");

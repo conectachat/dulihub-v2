@@ -33,6 +33,9 @@ const MSG = {
   lixeira: "Este contato está na lixeira. Restaure antes.",
   semVisto: (nome: string) =>
     `O item ${nome} está sem visto. Remova o item e acrescente um visto do catálogo.`,
+  foraDasFuncoes: "Use o Ganho ou o Reabrir do negócio.",
+  ganhoFica: "Reabra ou encerre os processos; o negócio ganho fica como registro.",
+  semDono: "O negócio está sem dono: você fica como dono do cliente.",
 };
 
 /** Hoje no fuso de São Paulo, como o banco calcula. */
@@ -410,7 +413,9 @@ describe("ganhar e reabrir negócio (0052)", () => {
       expect((await negocio(n)).status).toBe("won");
     });
 
-    it("o staff dono ganha o próprio negócio", async () => {
+    // Depois da 0054, é a marca `via_ganho` que deixa o staff passar pelas
+    // travas do negócio e do estágio: sem ela, os dois seriam recusados.
+    it("o staff dono ganha e reabre o próprio negócio", async () => {
       const p = await novaPessoa();
       const n = await novoNegocio(p.id, staffId, staff);
       await novoItem(n, "EB-1A");
@@ -418,6 +423,97 @@ describe("ganhar e reabrir negócio (0052)", () => {
       const { error } = await ganhar(staff, n);
       expect(error).toBeNull();
       expect((await pessoa(p.id)).lifecycle_stage).toBe("client");
+
+      expect((await reabrir(staff, n)).error).toBeNull();
+      expect((await negocio(n)).status).toBe("open");
+    });
+  });
+
+  describe("só pelas funções (0054)", () => {
+    it("entrar no ganho por update direto é recusado, para a equipe e para a gestão", async () => {
+      const p = await novaPessoa();
+      const n = await novoNegocio(p.id, staffId, staff);
+      await novoItem(n, "EB-1A");
+
+      for (const quem of [staff, parceiro]) {
+        const { error } = await quem
+          .from("opportunities")
+          .update({ status: "won", stage_id: ganhoId, closed_at: new Date().toISOString() })
+          .eq("id", n);
+        expect(error?.message).toBe(MSG.foraDasFuncoes);
+      }
+      const soAEtapa = await parceiro.from("opportunities").update({ stage_id: ganhoId }).eq("id", n);
+      expect(soAEtapa.error?.message).toBe(MSG.foraDasFuncoes);
+
+      expect(await negocio(n)).toEqual({ status: "open", stage_id: primeiraAberta, closed_at: null });
+      expect((await pessoa(p.id)).lifecycle_stage).toBe("opportunity");
+    });
+
+    it("sair do ganho por update direto é recusado; o título continua editável", async () => {
+      const p = await novaPessoa();
+      const n = await novoNegocio(p.id, parceiroId);
+      await novoItem(n, "EB-1A");
+      expect((await ganhar(parceiro, n)).error).toBeNull();
+
+      const reaberto = await parceiro
+        .from("opportunities")
+        .update({ status: "open", stage_id: primeiraAberta, closed_at: null })
+        .eq("id", n);
+      expect(reaberto.error?.message).toBe(MSG.foraDasFuncoes);
+      const perdido = await parceiro.from("opportunities").update({ status: "lost" }).eq("id", n);
+      expect(perdido.error?.message).toBe(MSG.foraDasFuncoes);
+      const soAEtapa = await parceiro
+        .from("opportunities")
+        .update({ stage_id: primeiraAberta })
+        .eq("id", n);
+      expect(soAEtapa.error?.message).toBe(MSG.foraDasFuncoes);
+      expect((await negocio(n)).status).toBe("won");
+
+      const renomeado = await parceiro
+        .from("opportunities")
+        .update({ title: `Negócio ${s} renomeado` })
+        .eq("id", n)
+        .select("id");
+      expect(renomeado.error).toBeNull();
+      expect(renomeado.data).toHaveLength(1);
+    });
+
+    it("negócio ganho não se apaga, nem na organização de teste; apagar a pessoa leva tudo", async () => {
+      const p = await novaPessoa();
+      const n = await novoNegocio(p.id, parceiroId);
+      await novoItem(n, "EB-1A");
+      expect((await ganhar(parceiro, n)).error).toBeNull();
+
+      const apagado = await parceiro.from("opportunities").delete().eq("id", n);
+      expect(apagado.error?.message).toBe(MSG.ganhoFica);
+      expect((await negocio(n)).status).toBe("won");
+
+      const pessoaApagada = await parceiro.from("people").delete().eq("id", p.id).select("id");
+      expect(pessoaApagada.error).toBeNull();
+      expect(pessoaApagada.data).toHaveLength(1);
+      const sobrou = await parceiro.from("opportunities").select("id").eq("id", n);
+      expect(sobrou.data).toEqual([]);
+    });
+
+    it("o resumo de negócio sem dono diz que quem confirma fica como dono", async () => {
+      const p = await novaPessoa();
+      const n = await novoNegocio(p.id, parceiroId);
+      await novoItem(n, "EB-1A");
+      const semDono = await parceiro.from("opportunities").update({ owner_id: null }).eq("id", n);
+      expect(semDono.error).toBeNull();
+
+      const { data, error } = await ganhar(parceiro, n, true);
+      expect(error).toBeNull();
+      expect(lerResumo(data).avisos).toEqual([MSG.semDono]);
+    });
+
+    it("dono do negócio de fora da organização é recusado pela chave", async () => {
+      const p = await novaPessoa();
+      const n = await novoNegocio(p.id, parceiroId);
+      const deFora = (await duli.auth.getUser()).data.user!.id;
+
+      const { error } = await parceiro.from("opportunities").update({ owner_id: deFora }).eq("id", n);
+      expect(error?.code).toBe("23503");
     });
   });
 

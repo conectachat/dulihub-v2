@@ -448,7 +448,6 @@ describe("com um lead de verdade", () => {
         pipeline_id: funil!.id,
         stage_id: meio.id,
         title: "Negócio da fumaça",
-        value: 5000,
       })
       .select("id")
       .single();

@@ -315,11 +315,10 @@ export async function updateOpportunity(
   const { id, ...campos } = parsed.data;
   const { owner_id, participantes } = donoEParticipantesDoForm(formData);
 
-  // O dono novo sai da equipe da organização do negócio — a chave de
-  // `opportunities.owner_id` só aponta para `profiles`, e um formulário
-  // forjado poria qualquer perfil ali. Só a **troca** é conferida: quem saiu
-  // da organização continua dono, o diálogo o mantém como "Dono atual", e
-  // editar o título não pode depender disso.
+  // O dono novo sai da equipe da organização do negócio. Desde a 0054 a
+  // chave composta também recusa (23503), mas a frase aqui é a que a tela
+  // mostra. Só a **troca** é conferida: editar o título não depende do dono
+  // (quem sai da organização deixa o negócio sem dono, pela própria chave).
   const { data: doNegocio, error: erroNegocio } = owner_id
     ? await supabase
         .from("opportunities")

@@ -54,8 +54,6 @@ describe("criar oportunidade com contato novo ou existente (0041)", () => {
     confirmarParecido?: boolean;
     confirmarOutra?: boolean;
     quem?: Cliente;
-    valor?: number;
-    moeda?: string;
   }) {
     const { data, error } = await (args.quem ?? parceiro).rpc("criar_oportunidade", {
       p_etapa: args.etapa ?? aberta,
@@ -64,8 +62,6 @@ describe("criar oportunidade com contato novo ou existente (0041)", () => {
       p_confirmar_outra_oportunidade: args.confirmarOutra ?? false,
       ...(args.contato ? { p_contato: args.contato } : {}),
       ...(args.novo ? { p_novo_contato: args.novo } : {}),
-      ...(args.valor !== undefined ? { p_valor: args.valor } : {}),
-      ...(args.moeda ? { p_moeda: args.moeda } : {}),
     });
     const resposta = (data ?? null) as Resposta | null;
     if (resposta?.situacao === "criada" && resposta.pessoa) criadas.add(resposta.pessoa);
@@ -158,8 +154,6 @@ describe("criar oportunidade com contato novo ou existente (0041)", () => {
         phone_country_code: "55",
         phone: `34${s}`,
       },
-      valor: 1500,
-      moeda: "USD",
     });
 
     expect(error).toBeNull();
@@ -179,15 +173,13 @@ describe("criar oportunidade com contato novo ou existente (0041)", () => {
 
     const { data: negocio } = await parceiro
       .from("opportunities")
-      .select("person_id, owner_id, status, value, currency, stage_id")
+      .select("person_id, owner_id, status, stage_id")
       .eq("id", resposta!.negocio!)
       .single();
     expect(negocio).toEqual({
       person_id: resposta!.pessoa,
       owner_id: usuario,
       status: "open",
-      value: 1500,
-      currency: "USD",
       stage_id: aberta,
     });
   });

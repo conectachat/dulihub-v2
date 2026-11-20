@@ -488,7 +488,6 @@ export type Database = {
           closed_at: string | null
           created_at: string
           created_by: string | null
-          currency: string
           expected_close_date: string | null
           id: string
           lost_reason: string | null
@@ -502,13 +501,11 @@ export type Database = {
           status: Database["public"]["Enums"]["opportunity_status"]
           title: string
           updated_at: string
-          value: number | null
         }
         Insert: {
           closed_at?: string | null
           created_at?: string
           created_by?: string | null
-          currency?: string
           expected_close_date?: string | null
           id?: string
           lost_reason?: string | null
@@ -522,13 +519,11 @@ export type Database = {
           status?: Database["public"]["Enums"]["opportunity_status"]
           title: string
           updated_at?: string
-          value?: number | null
         }
         Update: {
           closed_at?: string | null
           created_at?: string
           created_by?: string | null
-          currency?: string
           expected_close_date?: string | null
           id?: string
           lost_reason?: string | null
@@ -542,7 +537,6 @@ export type Database = {
           status?: Database["public"]["Enums"]["opportunity_status"]
           title?: string
           updated_at?: string
-          value?: number | null
         }
         Relationships: [
           {
@@ -560,11 +554,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "opportunities_owner_id_fkey"
-            columns: ["owner_id"]
+            foreignKeyName: "opportunities_owner_membro"
+            columns: ["organization_id", "owner_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            referencedRelation: "organization_members"
+            referencedColumns: ["organization_id", "user_id"]
           },
           {
             foreignKeyName: "opportunities_person_same_org"
@@ -702,64 +696,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "opportunities"
             referencedColumns: ["id", "organization_id"]
-          },
-        ]
-      }
-      opportunity_products: {
-        Row: {
-          created_at: string
-          currency: string
-          id: string
-          opportunity_id: string
-          organization_id: string
-          product_id: string
-          quantity: number
-          unit_price: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          currency?: string
-          id?: string
-          opportunity_id: string
-          organization_id: string
-          product_id: string
-          quantity?: number
-          unit_price: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          currency?: string
-          id?: string
-          opportunity_id?: string
-          organization_id?: string
-          product_id?: string
-          quantity?: number
-          unit_price?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "opportunity_products_opportunity_id_fkey"
-            columns: ["opportunity_id"]
-            isOneToOne: false
-            referencedRelation: "opportunities"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "opportunity_products_opportunity_same_org"
-            columns: ["opportunity_id", "organization_id"]
-            isOneToOne: false
-            referencedRelation: "opportunities"
-            referencedColumns: ["id", "organization_id"]
-          },
-          {
-            foreignKeyName: "opportunity_products_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -1232,50 +1168,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "pipelines_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      products: {
-        Row: {
-          created_at: string
-          currency: string
-          default_price: number | null
-          description: string | null
-          id: string
-          is_active: boolean
-          name: string
-          organization_id: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          currency?: string
-          default_price?: number | null
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          name: string
-          organization_id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          currency?: string
-          default_price?: number | null
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          name?: string
-          organization_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "products_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -2170,11 +2062,9 @@ export type Database = {
           p_confirmar_outra_oportunidade: boolean
           p_contato?: string
           p_etapa: string
-          p_moeda?: string
           p_novo_contato?: Json
           p_origem?: string
           p_titulo: string
-          p_valor?: number
         }
         Returns: Json
       }

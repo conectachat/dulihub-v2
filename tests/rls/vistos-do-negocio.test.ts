@@ -23,6 +23,7 @@ const TRAVA_DO_GANHO =
 const ITEM_IMUTAVEL = "O processo não muda de visto do negócio.";
 const ITEM_NAO_MUDA_DE_NEGOCIO = "O visto não muda de negócio.";
 const ITEM_SEM_NEGOCIO = "Processo ligado a visto do negócio precisa estar ligado ao negócio.";
+const TEM_PROCESSO = "Este visto já tem processo: para desistir, encerre o processo.";
 
 describe("vistos do negócio e processo que não se apaga (0051)", () => {
   let parceiro: Cliente;
@@ -30,7 +31,6 @@ describe("vistos do negócio e processo que não se apaga (0051)", () => {
   let org: string;
   let funilId: string;
   let abertaId: string;
-  let ganhoId: string;
   let vistoId: string;
   const criadas: string[] = [];
 
@@ -84,13 +84,15 @@ describe("vistos do negócio e processo que não se apaga (0051)", () => {
     });
   }
 
-  /** Como o código antigo ganha: `update` direto (nenhuma trava antes da 0054). */
-  async function ganharDireto(negocioId: string) {
-    const { error } = await parceiro
-      .from("opportunities")
-      .update({ status: "won", stage_id: ganhoId, closed_at: new Date().toISOString() })
-      .eq("id", negocioId);
-    if (error) throw new Error(`Ganho direto falhou: ${error.message}`);
+  /** Ganho e reabertura só pelas funções (0054). */
+  async function ganhar(negocioId: string) {
+    const { error } = await parceiro.rpc("ganhar_negocio", { p_negocio: negocioId });
+    if (error) throw new Error(`Ganho falhou: ${error.message}`);
+  }
+
+  async function reabrir(negocioId: string) {
+    const { error } = await parceiro.rpc("reabrir_negocio", { p_negocio: negocioId });
+    if (error) throw new Error(`Reabrir falhou: ${error.message}`);
   }
 
   beforeAll(async () => {
@@ -114,7 +116,6 @@ describe("vistos do negócio e processo que não se apaga (0051)", () => {
     abertaId = etapas
       .filter((e) => !e.is_won && !e.is_lost)
       .sort((a, b) => a.position - b.position)[0]!.id;
-    ganhoId = etapas.find((e) => e.is_won)!.id;
 
     const { data: visto, error: erroVisto } = await parceiro
       .from("visa_types")
@@ -215,7 +216,7 @@ describe("vistos do negócio e processo que não se apaga (0051)", () => {
     const p = await pessoa();
     const n = await negocio(p);
     const { data: existente } = await item(n);
-    await ganharDireto(n);
+    await ganhar(n);
 
     const novo = await item(n, { visa_name: "O-1" });
     expect(novo.error?.message).toBe(TRAVA_DO_GANHO);
@@ -231,6 +232,33 @@ describe("vistos do negócio e processo que não se apaga (0051)", () => {
 
     await parceiro.from("people").delete().eq("id", p);
     const sobrou = await parceiro.from("opportunity_items").select("id").eq("id", existente!.id);
+    expect(sobrou.data).toEqual([]);
+  });
+
+  // Remover e acrescentar de novo criaria um segundo processo no próximo
+  // Ganho, e processo não se apaga. O app recusa desde a fase 1; a 0054
+  // recusa no banco.
+  it("item que já tem processo não se remove, nem com o negócio reaberto; a cascata passa", async () => {
+    const p = await pessoa();
+    const n = await negocio(p);
+    const { data: comProcesso } = await item(n);
+    await ganhar(n);
+    await reabrir(n);
+
+    const removido = await parceiro.from("opportunity_items").delete().eq("id", comProcesso!.id);
+    expect(removido.error?.message).toBe(TEM_PROCESSO);
+
+    const { data: semProcesso } = await item(n, { visa_name: "O-1" });
+    const outro = await parceiro
+      .from("opportunity_items")
+      .delete()
+      .eq("id", semProcesso!.id)
+      .select("id");
+    expect(outro.error).toBeNull();
+    expect(outro.data).toHaveLength(1);
+
+    await parceiro.from("people").delete().eq("id", p);
+    const sobrou = await parceiro.from("opportunity_items").select("id").eq("id", comProcesso!.id);
     expect(sobrou.data).toEqual([]);
   });
 

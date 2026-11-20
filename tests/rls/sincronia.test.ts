@@ -231,6 +231,19 @@ describe("sincronia offline", () => {
       expect(pessoas(daDuli.data).linhas).toBeGreaterThan(50);
     });
 
+    // A lista mora dentro da função, que monta o SQL na hora: o Postgres não
+    // sabe que ela depende das tabelas. Sem recriá-la junto (0054), apagar
+    // `products` quebraria a sincronia de todos os aparelhos.
+    it("não conta mais as tabelas que a 0054 apagou", async () => {
+      const { data, error } = await parceiro.rpc("sync_manifesto");
+      expect(error).toBeNull();
+
+      const tabelas = data!.map((t) => t.tabela);
+      expect(tabelas).toContain("opportunities");
+      expect(tabelas).not.toContain("products");
+      expect(tabelas).not.toContain("opportunity_products");
+    });
+
     it("traz o horizonte das lápides — antes dele, o aparelho recarrega tudo", async () => {
       const { data } = await parceiro.rpc("sync_manifesto");
       const horizonte = data!.find((t) => t.tabela === "deleted_rows");
