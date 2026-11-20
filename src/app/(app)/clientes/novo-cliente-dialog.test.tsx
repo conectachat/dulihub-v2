@@ -60,7 +60,9 @@ describe("NovoClienteDialog", () => {
     expect(screen.getByRole("button", { name: "Contato existente" })).toHaveAttribute("aria-pressed", "true");
     expect(buscarContatosParaCliente).toHaveBeenCalledWith("");
 
-    const ana = await screen.findByRole("button", { name: /Escolher Ana Souza/ });
+    const ana = await screen.findByRole("button", {
+      name: "Escolher Ana Souza, ana@x.co, +55 31 99999-0000",
+    });
     expect(within(ana).getByText("ana@x.co")).toBeInTheDocument();
     expect(within(ana).getByText(/99999-0000/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Escolher Bia Lima/ })).toBeInTheDocument();
@@ -185,5 +187,43 @@ describe("NovoClienteDialog", () => {
     expect(vi.mocked(restorePerson).mock.calls[0]![0].get("id")).toBe("p9");
     expect(chamada(1).get("person_id")).toBe("p9");
     expect(chamada(1).get("modo_contato")).toBe("existente");
+  });
+});
+
+describe("NovoClienteDialog: a busca enquanto espera e quando falha", () => {
+  it("mostra Buscando... até a primeira resposta", async () => {
+    let soltar: (v: Awaited<ReturnType<typeof buscarContatosParaCliente>>) => void = () => {};
+    vi.mocked(buscarContatosParaCliente).mockImplementation(
+      () => new Promise((resolver) => (soltar = resolver)),
+    );
+    abrir();
+
+    expect(screen.getByText("Buscando...")).toBeInTheDocument();
+    soltar({ linhas: [ANA], total: 1, error: null });
+    await screen.findByRole("button", { name: /Escolher Ana Souza/ });
+    expect(screen.queryByText("Buscando...")).toBeNull();
+  });
+
+  it("a falha da busca vira frase, não erro solto", async () => {
+    vi.mocked(buscarContatosParaCliente).mockRejectedValue(new Error("rede caiu"));
+    abrir();
+
+    expect(await screen.findByText("Não foi possível buscar. Tente de novo.")).toBeInTheDocument();
+  });
+
+  it("a resposta que chega depois de digitar, antes da espera acabar, não vale", async () => {
+    let soltarVazio: (v: Awaited<ReturnType<typeof buscarContatosParaCliente>>) => void = () => {};
+    vi.mocked(buscarContatosParaCliente).mockImplementation(async (termo: string) => {
+      if (termo === "") return new Promise((resolver) => (soltarVazio = resolver));
+      return { linhas: [BIA], total: 1, error: null };
+    });
+    abrir();
+
+    fireEvent.change(screen.getByLabelText("Buscar contato"), { target: { value: "b" } });
+    soltarVazio({ linhas: [ANA], total: 1, error: null });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByRole("button", { name: /Escolher Ana Souza/ })).toBeNull();
+
+    expect(await screen.findByRole("button", { name: /Escolher Bia Lima/ })).toBeInTheDocument();
   });
 });

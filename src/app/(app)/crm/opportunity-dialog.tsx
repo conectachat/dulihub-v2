@@ -7,7 +7,7 @@ import { AvisoDeDuplicado } from "@/components/aviso-de-duplicado";
 import { AvisoDeOportunidade } from "@/components/aviso-de-oportunidade";
 import { CamposDoContatoNovo } from "@/components/campos-do-contato-novo";
 import { FormDialog } from "@/components/form-dialog";
-import { BotaoQueDispensa, ModosDoContato, type ModoDoContato } from "@/components/modos-do-contato";
+import { ContatoEscolhido, ModosDoContato, type ModoDoContato } from "@/components/modos-do-contato";
 import { NativeSelect } from "@/components/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -114,22 +114,7 @@ export function OpportunityDialog({
 
       {modo === "existente" ? (
         escolhido ? (
-          <div className="space-y-2">
-            <Label>Contato *</Label>
-            <div className="flex items-center justify-between gap-2 rounded-xl border px-3 py-1.5 text-sm">
-              <span className="font-medium">{escolhido.nome}</span>
-              <BotaoQueDispensa
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="text-primary"
-                onClick={() => setEscolhido(null)}
-              >
-                Trocar
-              </BotaoQueDispensa>
-            </div>
-            <input type="hidden" name="person_id" value={escolhido.id} />
-          </div>
+          <ContatoEscolhido id={escolhido.id} nome={escolhido.nome} aoTrocar={() => setEscolhido(null)} />
         ) : (
           <div className="space-y-2">
             <Label htmlFor="person_id">Contato *</Label>

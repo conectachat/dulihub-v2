@@ -144,7 +144,10 @@ describe("AvisoDeDuplicado com parecido de outra organização (CLI-15)", () => 
     expect(
       screen.getByText("Este contato é de outra organização; quem o torna cliente é a gestão de lá."),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Abrir perfil" })).toHaveAttribute("href", "/contatos/p9");
+    expect(screen.getByRole("link", { name: "Abrir perfil de Paula Fora" })).toHaveAttribute(
+      "href",
+      "/contatos/p9",
+    );
     expect(screen.queryByRole("button", { name: /Sim, é a mesma pessoa/ })).toBeNull();
   });
 
@@ -152,7 +155,7 @@ describe("AvisoDeDuplicado com parecido de outra organização (CLI-15)", () => 
     montar({ parecidos: [{ ...DE_FORA, naLixeira: true }], aoRestaurar: vi.fn() });
 
     expect(screen.queryByRole("button", { name: /Restaurar/ })).toBeNull();
-    expect(screen.getByRole("link", { name: "Abrir perfil" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Abrir perfil de Paula Fora" })).toBeInTheDocument();
   });
 
   it("os parecidos da organização continuam com o Sim", () => {

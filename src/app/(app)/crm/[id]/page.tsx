@@ -83,12 +83,11 @@ export default async function LeadPage({
   if (falha) return <QueryError detalhe={falha} />;
 
   // "Ajustar data" é da gestão da organização do negócio (CRM-17); o banco
-  // confere de novo.
-  const { daGestao, error: papelError } = await daGestaoDe(
-    supabase,
-    negocio.organization_id,
-    user?.id ?? null,
-  );
+  // confere de novo. Só o negócio ganho precisa saber.
+  const { daGestao, error: papelError } =
+    negocio.status === "won"
+      ? await daGestaoDe(supabase, negocio.organization_id, user?.id ?? null)
+      : { daGestao: false, error: null };
   if (papelError) return <QueryError detalhe={papelError} />;
 
   const degraus = trilhaDoFunil(etapas, negocio.stage_id);

@@ -436,10 +436,18 @@ describe("ajustarDataDoGanho (CRM-17)", () => {
   });
 
   it("dia fora do formato não vai ao banco", async () => {
-    for (const dia of ["", "10/03/2025", "2025-3-1"]) {
+    for (const dia of ["", "10/03/2025", "2025-3-1", "2025-02-31"]) {
       const estado = await ajustarDataDoGanho({ error: null }, ajuste(dia));
       expect(estado.error).toBe("Informe a data.");
     }
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("negócio que não é um id não vai ao banco", async () => {
+    const fd = comId("nao-e-uuid");
+    fd.set("data", "2025-03-10");
+    const estado = await ajustarDataDoGanho({ error: null }, fd);
+    expect(estado.error).toBe("Negócio não informado.");
     expect(rpc).not.toHaveBeenCalled();
   });
 

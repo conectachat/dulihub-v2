@@ -251,7 +251,8 @@ export async function reabrirOportunidade(formData: FormData): Promise<ActionSta
   return gravou();
 }
 
-const diaDoFormulario = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+// Dia que existe no calendário (2025-02-31 não passa) — o banco confere de novo.
+const diaDoFormulario = z.iso.date();
 
 /**
  * Ajustar a data do Ganho (CRM-17): o cliente antigo ganho agora passa a ter a
@@ -263,8 +264,8 @@ export async function ajustarDataDoGanho(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const id = formData.get("id");
-  if (typeof id !== "string" || !id) return falhou("Negócio não informado.");
+  const id = z.string().uuid().safeParse(formData.get("id"));
+  if (!id.success) return falhou("Negócio não informado.");
   const dia = diaDoFormulario.safeParse(formData.get("data"));
   if (!dia.success) return falhou("Informe a data.");
 
@@ -272,12 +273,12 @@ export async function ajustarDataDoGanho(
   if (contexto.error) return falhou(contexto.error);
 
   const { data: pessoa, error } = await contexto.supabase.rpc("ajustar_data_do_ganho", {
-    p_negocio: id,
+    p_negocio: id.data,
     p_data: dia.data,
   });
   if (error) return falhou(traduzirErro(error));
 
-  revalidar(id, pessoa);
+  revalidar(id.data, pessoa);
   revalidatePath("/crm/encerradas");
   return gravou();
 }

@@ -8,7 +8,7 @@ import { AvisoDeDuplicado } from "@/components/aviso-de-duplicado";
 import { CamposDoContatoNovo } from "@/components/campos-do-contato-novo";
 import { FieldError } from "@/components/field-error";
 import { FormDialog } from "@/components/form-dialog";
-import { BotaoQueDispensa, ModosDoContato, type ModoDoContato } from "@/components/modos-do-contato";
+import { ContatoEscolhido, ModosDoContato, type ModoDoContato } from "@/components/modos-do-contato";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,8 +54,13 @@ export function NovoClienteDialog() {
 
   async function buscar(texto: string) {
     const minha = ++ultimaBusca.current;
-    const resposta = await buscarContatosParaCliente(texto);
-    // Chegou depois de uma busca mais nova: não vale.
+    let resposta: Resultado;
+    try {
+      resposta = await buscarContatosParaCliente(texto);
+    } catch {
+      resposta = { linhas: [], total: 0, error: "Não foi possível buscar. Tente de novo." };
+    }
+    // Chegou depois de uma busca mais nova (ou de uma tecla nova): não vale.
     if (minha === ultimaBusca.current) setResultado(resposta);
   }
 
@@ -70,6 +75,8 @@ export function NovoClienteDialog() {
 
   function aoDigitar(texto: string) {
     setTermo(texto);
+    // A tecla já invalida a resposta que ainda está a caminho.
+    ultimaBusca.current += 1;
     if (espera.current) clearTimeout(espera.current);
     espera.current = setTimeout(() => void buscar(texto), ESPERA_DA_BUSCA);
   }
@@ -129,22 +136,7 @@ export function NovoClienteDialog() {
       {modo === "novo" ? (
         <CamposDoContatoNovo />
       ) : escolhido ? (
-        <div className="space-y-2">
-          <Label>Contato *</Label>
-          <div className="flex items-center justify-between gap-2 rounded-xl border px-3 py-1.5 text-sm">
-            <span className="font-medium">{escolhido.nome}</span>
-            <BotaoQueDispensa
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="text-primary"
-              onClick={() => setEscolhido(null)}
-            >
-              Trocar
-            </BotaoQueDispensa>
-          </div>
-          <input type="hidden" name="person_id" value={escolhido.id} />
-        </div>
+        <ContatoEscolhido id={escolhido.id} nome={escolhido.nome} aoTrocar={() => setEscolhido(null)} />
       ) : (
         <div className="space-y-2">
           <Label htmlFor="busca-contato">Buscar contato</Label>
@@ -160,6 +152,7 @@ export function NovoClienteDialog() {
             }}
           />
           <FieldError mensagem={resultado?.error ?? null} pequeno />
+          {resultado === null ? <p className="text-sm text-muted-foreground">Buscando...</p> : null}
           {resultado && !resultado.error ? (
             resultado.linhas.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhum contato encontrado.</p>
@@ -167,16 +160,21 @@ export function NovoClienteDialog() {
               <ul className="max-h-64 space-y-1 overflow-y-auto">
                 {resultado.linhas.map((c) => {
                   const telefone = telefoneCompleto(c.phone_country_code, c.phone);
+                  // O nome acessível leva o e-mail e o telefone: é o que separa
+                  // duas pessoas com o mesmo nome.
+                  const nomeAcessivel = [c.full_name, c.email, telefone].filter(Boolean).join(", ");
                   return (
                     <li key={c.id}>
                       <button
                         type="button"
-                        aria-label={`Escolher ${c.full_name}`}
+                        aria-label={`Escolher ${nomeAcessivel}`}
                         className="flex w-full flex-col items-start rounded-2xl border px-3 py-2 text-left text-sm hover:bg-accent"
                         onClick={() => setEscolhido({ id: c.id, nome: c.full_name })}
                       >
                         <span className="font-medium">{c.full_name}</span>
-                        {c.email ? <span className="text-xs text-muted-foreground">{c.email}</span> : null}
+                        {c.email ? (
+                          <span className="text-xs break-all text-muted-foreground">{c.email}</span>
+                        ) : null}
                         {telefone ? <span className="text-xs text-muted-foreground">{telefone}</span> : null}
                       </button>
                     </li>

@@ -1,5 +1,7 @@
 "use client";
 
+import { useId } from "react";
+
 import { useDispensarAviso } from "@/components/form-dialog";
 import { Button } from "@/components/ui/button";
 
@@ -28,6 +30,37 @@ export function BotaoQueDispensa({
         onClick?.(evento);
       }}
     />
+  );
+}
+
+/**
+ * O contato já escolhido (Nova oportunidade, Novo cliente): o nome, o
+ * "Trocar" e o `person_id` oculto que a ação do servidor lê. Enquanto ele
+ * está na tela, o seletor sai do formulário — senão haveria dois `person_id`.
+ */
+export function ContatoEscolhido({
+  id,
+  nome,
+  aoTrocar,
+}: {
+  id: string;
+  nome: string;
+  aoTrocar: () => void;
+}) {
+  const rotulo = useId();
+  return (
+    <div className="space-y-2" role="group" aria-labelledby={rotulo}>
+      <p id={rotulo} className="text-sm leading-none font-medium">
+        Contato *
+      </p>
+      <div className="flex items-center justify-between gap-2 rounded-xl border px-3 py-1.5 text-sm">
+        <span className="font-medium">{nome}</span>
+        <BotaoQueDispensa type="button" variant="ghost" size="sm" className="text-primary" onClick={aoTrocar}>
+          Trocar
+        </BotaoQueDispensa>
+      </div>
+      <input type="hidden" name="person_id" value={id} />
+    </div>
   );
 }
 

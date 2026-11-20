@@ -114,6 +114,7 @@ export function AvisoDeDuplicado({
                   href={enderecoDaPessoa(p.id, p.estagio)}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label={`Abrir perfil de ${p.nome}`}
                   className="font-medium text-primary underline underline-offset-4"
                 >
                   Abrir perfil
