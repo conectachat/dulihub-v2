@@ -14,8 +14,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { listarClientes } from "@/features/clientes/queries";
+import { dicaDaListaVazia } from "@/features/clientes/regras";
+import { contextoAtual, ehDaGestao } from "@/lib/organizacao";
 import { contagemDaLista, paginaPedida, POR_PAGINA } from "@/lib/paginacao";
 import { formatarDia, iniciais, telefoneCompleto } from "@/lib/formatar";
+
+import { NovoClienteDialog } from "./novo-cliente-dialog";
 
 export const metadata = { title: "Clientes — Duli Hub" };
 
@@ -34,7 +38,12 @@ export default async function ClientesPage({
 }) {
   const { q, pagina: paginaNaUrl } = await searchParams;
   const pagina = paginaPedida(paginaNaUrl);
-  const { clientes, total, error } = await listarClientes({ busca: q, pagina });
+  const [{ clientes, total, error }, { papel }] = await Promise.all([
+    listarClientes({ busca: q, pagina }),
+    contextoAtual(),
+  ]);
+  // O botão só aparece para a gestão; quem decide é o banco (`criar_cliente`).
+  const daGestao = ehDaGestao(papel);
 
   const contagem = contagemDaLista({
     total,
@@ -58,6 +67,7 @@ export default async function ClientesPage({
       <PageHeader
         title="Clientes"
         description="Quem já fechou: dados, financeiro, processos e documentos."
+        actions={daGestao ? <NovoClienteDialog /> : undefined}
       />
 
       <BuscaNaUrl placeholder="Buscar por nome, e-mail ou telefone..." rotulo="Buscar clientes" />
@@ -74,14 +84,14 @@ export default async function ClientesPage({
                 ? `Nenhum cliente encontrado para "${q}".`
                 : "Nenhum cliente ainda."
           }
-          hint={
-            pagina === 1 && !q ? "Um contato vira cliente quando o negócio dele é ganho." : undefined
-          }
+          hint={pagina === 1 && !q ? dicaDaListaVazia(daGestao) : undefined}
           action={
             pagina > 1 ? (
               <Link href={paraPagina(1)} className="text-sm font-medium text-primary hover:underline">
                 Voltar para a primeira página
               </Link>
+            ) : daGestao && !q ? (
+              <NovoClienteDialog />
             ) : undefined
           }
         />

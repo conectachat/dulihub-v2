@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   caminhoDoDocumento,
+  dicaDaListaVazia,
   documentosPorCategoria,
+  oQueAbrir,
 } from "./regras";
 
 /** Os documentos do cliente (CLI-8). A paginação mora em `@/lib/paginacao`. */
@@ -45,5 +47,34 @@ describe("documentosPorCategoria", () => {
     const grupos = documentosPorCategoria([doc("1", "xyz")]);
 
     expect(grupos.map((g) => g.rotulo)).toEqual(["Outro"]);
+  });
+});
+
+describe("dicaDaListaVazia (CLI-15)", () => {
+  it("para a gestão, cita o Novo cliente", () => {
+    expect(dicaDaListaVazia(true)).toBe(
+      "Um contato vira cliente quando o negócio dele é ganho, ou pelo Novo cliente.",
+    );
+  });
+
+  it("para os outros, a frase de sempre", () => {
+    expect(dicaDaListaVazia(false)).toBe("Um contato vira cliente quando o negócio dele é ganho.");
+  });
+});
+
+describe("oQueAbrir (?novo-processo=)", () => {
+  const NEGOCIOS = [{ id: "n1" }, { id: "n2" }];
+
+  it("novo: abre sem negócio", () => {
+    expect(oQueAbrir("novo", NEGOCIOS)).toEqual({ abrir: true });
+  });
+
+  it("um negócio do cliente: abre com ele", () => {
+    expect(oQueAbrir("n2", NEGOCIOS)).toEqual({ abrir: true, negocioInicial: "n2" });
+  });
+
+  it("um id desconhecido ou nada: não abre", () => {
+    expect(oQueAbrir("outro", NEGOCIOS)).toEqual({ abrir: false });
+    expect(oQueAbrir(undefined, NEGOCIOS)).toEqual({ abrir: false });
   });
 });

@@ -3,6 +3,7 @@
  */
 
 import { limparNome } from "@/lib/arquivos";
+import { NOVO_PROCESSO_SEM_NEGOCIO } from "@/lib/pessoa";
 
 // -------------------------------------------------------------- documentos
 
@@ -45,4 +46,25 @@ export function documentosPorCategoria<T extends { category: string }>(
       valor === "outro" ? d.category === "outro" || !conhecida(d.category) : d.category === valor,
     ),
   })).filter((g) => g.documentos.length > 0);
+}
+
+/** O que a lista vazia de Clientes diz: a gestão também cria à mão (CLI-15). */
+export function dicaDaListaVazia(daGestao: boolean): string {
+  return daGestao
+    ? "Um contato vira cliente quando o negócio dele é ganho, ou pelo Novo cliente."
+    : "Um contato vira cliente quando o negócio dele é ganho.";
+}
+
+/**
+ * O que o `?novo-processo=` do perfil abre: `novo` abre sem negócio (o Novo
+ * cliente, CLI-15); o id de um negócio **deste** cliente abre com ele (o
+ * atalho do CRM); qualquer outra coisa não abre.
+ */
+export function oQueAbrir(
+  atalho: string | undefined,
+  negocios: { id: string }[],
+): { abrir: boolean; negocioInicial?: string } {
+  if (atalho === NOVO_PROCESSO_SEM_NEGOCIO) return { abrir: true };
+  if (atalho && negocios.some((n) => n.id === atalho)) return { abrir: true, negocioInicial: atalho };
+  return { abrir: false };
 }

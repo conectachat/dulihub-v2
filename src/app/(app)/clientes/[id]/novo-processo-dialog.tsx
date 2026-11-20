@@ -26,13 +26,16 @@ export function NovoProcessoDialog({
   vistos,
   negocios,
   negocioInicial,
+  abertoDeInicio,
 }: {
   personId: string;
   personName: string;
   vistos: { id: string; name: string }[];
   negocios: { id: string; title: string }[];
-  /** Vindo do atalho do CRM: abre já aberto e com o negócio escolhido. */
+  /** Vindo do atalho do CRM: o negócio já escolhido. */
   negocioInicial?: string;
+  /** Abre sozinho: o atalho do CRM, ou depois do Novo cliente (sem negócio). */
+  abertoDeInicio: boolean;
 }) {
   return (
     <FormDialog
@@ -41,7 +44,7 @@ export function NovoProcessoDialog({
       descricao="As etapas e as pastas exigidas vêm do tipo de visto. Mudar o tipo de visto depois não altera este processo."
       salvar="Criar processo"
       pendente="Criando..."
-      abertoDeInicio={Boolean(negocioInicial)}
+      abertoDeInicio={abertoDeInicio}
       gatilho={
         <Button size="sm" variant="outline">
           <Plus className="mr-1 h-4 w-4" />

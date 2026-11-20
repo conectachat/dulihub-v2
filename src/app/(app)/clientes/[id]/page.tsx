@@ -19,6 +19,7 @@ import { getTimeline } from "@/features/people/timeline-queries";
 import { processosDoContato, vistosParaProcesso } from "@/features/projects/queries";
 import { formatarDia, hojeEmSaoPaulo, telefoneCompleto } from "@/lib/formatar";
 import { origemDoPedido } from "@/lib/origem";
+import { oQueAbrir } from "@/features/clientes/regras";
 import { destinoDoPerfil, type AbaDoPerfil } from "@/lib/pessoa";
 import { createClient } from "@/lib/supabase/server";
 
@@ -53,7 +54,7 @@ export default async function ClientePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  /** `novo-processo=<negócio>`: o atalho do CRM abre o diálogo já preenchido. */
+  /** `novo-processo=<negócio>` (atalho do CRM) ou `novo` (Novo cliente): abre o diálogo. */
   searchParams: Promise<{ "novo-processo"?: string }>;
 }) {
   const [{ id }, { "novo-processo": negocioDoAtalho }] = await Promise.all([params, searchParams]);
@@ -141,8 +142,8 @@ export default async function ClientePage({
   // aqui onde o processo nasce.
   const comProcesso = new Set(processos.map((p) => p.opportunity_id));
   const ganhosSemProcesso = negocios.filter((o) => o.status === "won" && !comProcesso.has(o.id));
-  // Só abre sozinho se o negócio do link é mesmo deste cliente.
-  const negocioInicial = negocios.some((o) => o.id === negocioDoAtalho) ? negocioDoAtalho : undefined;
+  // Só abre sozinho com `novo` (Novo cliente) ou com um negócio deste cliente.
+  const { abrir: abrirNovoProcesso, negocioInicial } = oQueAbrir(negocioDoAtalho, negocios);
 
   return (
     <main className="space-y-6 p-6">
@@ -219,13 +220,14 @@ export default async function ClientePage({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-base font-medium">Processos ({processos.length})</h2>
             <NovoProcessoDialog
-              // A chave remonta o diálogo quando o atalho muda de negócio.
-              key={negocioInicial ?? "sem-atalho"}
+              // A chave remonta o diálogo quando o atalho muda.
+              key={abrirNovoProcesso ? (negocioInicial ?? "sem-negocio") : "sem-atalho"}
               personId={person.id}
               personName={person.full_name}
               vistos={vistos}
               negocios={negocios.map((o) => ({ id: o.id, title: o.title }))}
               negocioInicial={negocioInicial}
+              abertoDeInicio={abrirNovoProcesso}
             />
           </div>
 
