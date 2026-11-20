@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, RotateCcw, Trophy, XCircle } from "lucide-react";
+import { CalendarDays, Pencil, RotateCcw, Trophy, XCircle } from "lucide-react";
 
 import {
   CampoDoDono,
@@ -13,7 +13,11 @@ import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { moveOpportunity, updateOpportunity } from "@/features/opportunities/actions";
+import {
+  ajustarDataDoGanho,
+  moveOpportunity,
+  updateOpportunity,
+} from "@/features/opportunities/actions";
 import { comAviso } from "@/lib/avisar";
 
 import {
@@ -88,6 +92,51 @@ export function ReabrirGanho({
       </Button>
       <DialogoDeReabrir negocio={negocio} destino={destino} aberto={aberto} aoMudar={setAberto} />
     </>
+  );
+}
+
+/**
+ * Ajustar a data do Ganho (CRM-17), só para a gestão: o cliente antigo ganho
+ * agora passa a ter a data real. De 01/01/2000 até hoje (dias de São Paulo);
+ * o banco confere de novo e registra no histórico.
+ */
+export function AjustarDataDoGanho({
+  negocioId,
+  dia,
+  hoje,
+}: {
+  negocioId: string;
+  /** O dia do ganho em São Paulo (AAAA-MM-DD). */
+  dia: string;
+  /** Hoje em São Paulo, vindo do servidor. */
+  hoje: string;
+}) {
+  return (
+    <FormDialog
+      acao={ajustarDataDoGanho}
+      titulo="Ajustar a data do ganho"
+      descricao="Para o cliente antigo ganho agora: a data passa a ser a real, e o ganho conta no mês certo. O histórico registra a mudança."
+      gatilho={
+        <Button size="sm" variant="outline" className="rounded-xl">
+          <CalendarDays className="mr-1 h-4 w-4 text-primary" />
+          Ajustar data
+        </Button>
+      }
+    >
+      <input type="hidden" name="id" value={negocioId} />
+      <div className="space-y-2">
+        <Label htmlFor="data-do-ganho">Data do ganho</Label>
+        <Input
+          id="data-do-ganho"
+          name="data"
+          type="date"
+          defaultValue={dia}
+          min="2000-01-01"
+          max={hoje}
+          required
+        />
+      </div>
+    </FormDialog>
   );
 }
 

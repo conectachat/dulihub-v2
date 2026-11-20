@@ -14,7 +14,8 @@ import { equipeDaOrganizacao } from "@/features/pages/queries";
 import { trilhaDoFunil } from "@/features/opportunities/regras";
 import { listTags } from "@/features/people/queries";
 import { getTimeline } from "@/features/people/timeline-queries";
-import { formatarData, telefoneCompleto } from "@/lib/formatar";
+import { diaEmSaoPaulo, formatarData, hojeEmSaoPaulo, telefoneCompleto } from "@/lib/formatar";
+import { daGestaoDe } from "@/lib/organizacao";
 import { origemDoPedido } from "@/lib/origem";
 import { createClient } from "@/lib/supabase/server";
 
@@ -23,7 +24,13 @@ import { PersonTags } from "@/components/perfil/person-tags";
 import { Timeline } from "@/components/perfil/timeline";
 import { enderecoDaPessoa } from "@/lib/pessoa";
 import { PersonDialog } from "../../contatos/person-dialog";
-import { EditarNegocio, GanhoEPerdido, Reabrir, ReabrirGanho } from "./acoes-do-negocio";
+import {
+  AjustarDataDoGanho,
+  EditarNegocio,
+  GanhoEPerdido,
+  Reabrir,
+  ReabrirGanho,
+} from "./acoes-do-negocio";
 import { Trilha } from "./trilha";
 import { Vistos } from "./vistos";
 
@@ -74,6 +81,15 @@ export default async function LeadPage({
 
   const falha = tagsError ?? timelineError ?? cadastroError ?? userError?.message;
   if (falha) return <QueryError detalhe={falha} />;
+
+  // "Ajustar data" é da gestão da organização do negócio (CRM-17); o banco
+  // confere de novo.
+  const { daGestao, error: papelError } = await daGestaoDe(
+    supabase,
+    negocio.organization_id,
+    user?.id ?? null,
+  );
+  if (papelError) return <QueryError detalhe={papelError} />;
 
   const degraus = trilhaDoFunil(etapas, negocio.stage_id);
   const aberto = negocio.status === "open";
@@ -133,6 +149,13 @@ export default async function LeadPage({
             <Button asChild size="sm" className="rounded-xl">
               <Link href={enderecoDaPessoa(pessoa.id, "client")}>Abrir perfil do cliente</Link>
             </Button>
+            {daGestao && negocio.closed_at ? (
+              <AjustarDataDoGanho
+                negocioId={negocio.id}
+                dia={diaEmSaoPaulo(negocio.closed_at)}
+                hoje={hojeEmSaoPaulo()}
+              />
+            ) : null}
             {degraus[0] ? (
               <ReabrirGanho
                 negocio={{ id: negocio.id, cliente: pessoa.full_name }}

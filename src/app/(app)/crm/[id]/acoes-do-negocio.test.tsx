@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
  */
 
 vi.mock("@/features/opportunities/actions", () => ({
+  ajustarDataDoGanho: vi.fn(async () => ({ error: null, ok: true, token: "t" })),
   ganharOportunidade: vi.fn(),
   perderOportunidade: vi.fn(),
   resumoDoGanho: vi.fn(),
@@ -15,7 +16,8 @@ vi.mock("@/features/opportunities/actions", () => ({
   updateOpportunity: vi.fn(),
 }));
 
-const { EditarNegocio, ReabrirGanho } = await import("./acoes-do-negocio");
+const { ajustarDataDoGanho } = await import("@/features/opportunities/actions");
+const { AjustarDataDoGanho, EditarNegocio, ReabrirGanho } = await import("./acoes-do-negocio");
 
 describe("ReabrirGanho", () => {
   it("abre o diálogo de reabrir, com a etapa para onde o negócio volta", () => {
@@ -61,5 +63,32 @@ describe("EditarNegocio: dono e participantes do negócio", () => {
     const dono = screen.getByLabelText("Dono") as HTMLSelectElement;
     expect(dono.value).toBe("u9");
     expect([...dono.options].map((o) => o.text)).toContain("Fulana");
+  });
+});
+
+describe("AjustarDataDoGanho (CRM-17)", () => {
+  it("abre com o dia do ganho, de 01/01/2000 até hoje", () => {
+    render(<AjustarDataDoGanho negocioId="n1" dia="2026-11-20" hoje="2026-11-20" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Ajustar data" }));
+
+    const campo = screen.getByLabelText("Data do ganho");
+    expect(campo).toHaveAttribute("type", "date");
+    expect(campo).toHaveValue("2026-11-20");
+    expect(campo).toHaveAttribute("min", "2000-01-01");
+    expect(campo).toHaveAttribute("max", "2026-11-20");
+  });
+
+  it("salvar manda o negócio e o dia escolhido", async () => {
+    render(<AjustarDataDoGanho negocioId="n1" dia="2026-11-20" hoje="2026-11-20" />);
+    fireEvent.click(screen.getByRole("button", { name: "Ajustar data" }));
+
+    fireEvent.change(screen.getByLabelText("Data do ganho"), { target: { value: "2024-05-02" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await vi.waitFor(() => expect(ajustarDataDoGanho).toHaveBeenCalledTimes(1));
+    const enviado = vi.mocked(ajustarDataDoGanho).mock.calls[0]![1];
+    expect(enviado.get("id")).toBe("n1");
+    expect(enviado.get("data")).toBe("2024-05-02");
   });
 });

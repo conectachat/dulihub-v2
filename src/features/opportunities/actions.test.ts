@@ -2,12 +2,14 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { contextoAtual } from "@/lib/organizacao";
 import { CAMPO_CONFIRMAR_OPORTUNIDADE } from "@/lib/parecidos";
 
 import {
+  ajustarDataDoGanho,
   createOpportunity,
   deleteOpportunity,
   ganharOportunidade,
@@ -410,5 +412,45 @@ describe("updateOpportunity: dono e participantes do negócio", () => {
 
     expect(estado.error).toBeNull();
     expect(b.update).toHaveBeenCalled();
+  });
+});
+
+describe("ajustarDataDoGanho (CRM-17)", () => {
+  const ajuste = (dia: string) => {
+    const fd = comId(NEGOCIO);
+    fd.set("data", dia);
+    return fd;
+  };
+
+  it("ajusta pela função e revalida o negócio, Encerradas e a pessoa devolvida", async () => {
+    rpc.mockResolvedValue({ data: PESSOA, error: null });
+
+    const estado = await ajustarDataDoGanho({ error: null }, ajuste("2025-03-10"));
+
+    expect(rpc).toHaveBeenCalledWith("ajustar_data_do_ganho", { p_negocio: NEGOCIO, p_data: "2025-03-10" });
+    expect(estado.ok).toBe(true);
+    expect(revalidatePath).toHaveBeenCalledWith("/crm");
+    expect(revalidatePath).toHaveBeenCalledWith(`/crm/${NEGOCIO}`);
+    expect(revalidatePath).toHaveBeenCalledWith("/crm/encerradas");
+    expect(revalidatePath).toHaveBeenCalledWith(`/clientes/${PESSOA}`);
+  });
+
+  it("dia fora do formato não vai ao banco", async () => {
+    for (const dia of ["", "10/03/2025", "2025-3-1"]) {
+      const estado = await ajustarDataDoGanho({ error: null }, ajuste(dia));
+      expect(estado.error).toBe("Informe a data.");
+    }
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("a recusa do banco volta com a frase dele", async () => {
+    rpc.mockResolvedValue({
+      data: null,
+      error: { code: "P0001", message: "Só a gestão ajusta a data do ganho." },
+    });
+
+    const estado = await ajustarDataDoGanho({ error: null }, ajuste("2025-03-10"));
+
+    expect(estado.error).toBe("Só a gestão ajusta a data do ganho.");
   });
 });

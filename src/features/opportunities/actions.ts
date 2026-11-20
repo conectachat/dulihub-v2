@@ -251,6 +251,37 @@ export async function reabrirOportunidade(formData: FormData): Promise<ActionSta
   return gravou();
 }
 
+const diaDoFormulario = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+/**
+ * Ajustar a data do Ganho (CRM-17): o cliente antigo ganho agora passa a ter a
+ * data real. Só a gestão, de 01/01/2000 até hoje, e o mesmo dia não grava nada
+ * — quem confere é o banco (`ajustar_data_do_ganho`, 0056), que grava a data e
+ * o histórico juntos e devolve a pessoa, para revalidar o perfil dela.
+ */
+export async function ajustarDataDoGanho(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const id = formData.get("id");
+  if (typeof id !== "string" || !id) return falhou("Negócio não informado.");
+  const dia = diaDoFormulario.safeParse(formData.get("data"));
+  if (!dia.success) return falhou("Informe a data.");
+
+  const contexto = await contextoAtual();
+  if (contexto.error) return falhou(contexto.error);
+
+  const { data: pessoa, error } = await contexto.supabase.rpc("ajustar_data_do_ganho", {
+    p_negocio: id,
+    p_data: dia.data,
+  });
+  if (error) return falhou(traduzirErro(error));
+
+  revalidar(id, pessoa);
+  revalidatePath("/crm/encerradas");
+  return gravou();
+}
+
 /** Perdido, com o motivo. O negócio continua no quadro, na coluna de perda. */
 export async function perderOportunidade(
   _prev: ActionState,
