@@ -12,6 +12,14 @@
 
 export const ABAS_DO_PERFIL = ["dados", "financeiro", "projetos", "documentos", "notas"] as const;
 
+/** `?novo-processo=novo`: o "+ Novo processo" abre sem negócio (CLI-15). */
+export const NOVO_PROCESSO_SEM_NEGOCIO = "novo";
+
+/** Para onde vai o Novo cliente depois de gravar: Projetos, com o processo a criar. */
+export function enderecoDoNovoCliente(id: string): string {
+  return `/clientes/${id}?aba=projetos&novo-processo=${NOVO_PROCESSO_SEM_NEGOCIO}`;
+}
+
 export type AbaDoPerfil = (typeof ABAS_DO_PERFIL)[number];
 
 /**

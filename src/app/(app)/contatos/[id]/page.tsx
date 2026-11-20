@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { QueryError } from "@/components/query-error";
 import { formatarPorMoeda, somarItensPorMoeda } from "@/lib/totals";
 import { origemDoPedido } from "@/lib/origem";
+import { daGestaoDe } from "@/lib/organizacao";
 import { cadastroDoContato } from "@/features/cadastro/queries";
 import { LIFECYCLE_LABELS } from "@/features/people/schema";
 import { listTags } from "@/features/people/queries";
@@ -93,15 +94,12 @@ export default async function PersonPage({
 
   // "Marcar como cliente" é da gestão da organização da pessoa: a mesma regra
   // de `private.current_user_manages`, que o banco aplica de novo.
-  const { data: papel, error: papelError } = user
-    ? await supabase
-        .from("organization_members")
-        .select("role")
-        .eq("organization_id", person.organization_id)
-        .eq("user_id", user.id)
-        .maybeSingle()
-    : { data: null, error: null };
-  if (papelError) return <QueryError detalhe={papelError.message} />;
+  const { daGestao, error: papelError } = await daGestaoDe(
+    supabase,
+    person.organization_id,
+    user?.id ?? null,
+  );
+  if (papelError) return <QueryError detalhe={papelError} />;
 
   // O endereço público da ficha de cadastro sai do endereço em que o app foi
   // aberto: o link gerado em produção aponta para produção.
@@ -114,7 +112,6 @@ export default async function PersonPage({
   const tags = person.person_tags.map((t) => t.tag);
 
   const phone = telefoneCompleto(person.phone_country_code, person.phone);
-  const daGestao = papel?.role === "owner" || papel?.role === "admin";
 
   return (
     <main className="space-y-6 p-6">

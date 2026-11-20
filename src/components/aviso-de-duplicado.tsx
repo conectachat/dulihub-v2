@@ -103,7 +103,23 @@ export function AvisoDeDuplicado({
               </a>{" "}
               ({ESTAGIO[p.estagio]}){p.naLixeira ? " · na lixeira" : ""}
             </span>
-            {outraPessoa ? null : p.naLixeira && aoRestaurar ? (
+            {outraPessoa ? null : p.outraOrganizacao ? (
+              // Contato de outra organização não se usa nem se restaura daqui:
+              // quem o torna cliente é a gestão dele (CLI-15).
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="text-muted-foreground">
+                  Este contato é de outra organização; quem o torna cliente é a gestão de lá.
+                </span>
+                <a
+                  href={enderecoDaPessoa(p.id, p.estagio)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-primary underline underline-offset-4"
+                >
+                  Abrir perfil
+                </a>
+              </span>
+            ) : p.naLixeira && aoRestaurar ? (
               <Button
                 type="button"
                 size="sm"

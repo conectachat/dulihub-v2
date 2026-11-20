@@ -5,47 +5,21 @@ import { Plus } from "lucide-react";
 
 import { AvisoDeDuplicado } from "@/components/aviso-de-duplicado";
 import { AvisoDeOportunidade } from "@/components/aviso-de-oportunidade";
-import { FormDialog, useDispensarAviso } from "@/components/form-dialog";
+import { CamposDoContatoNovo } from "@/components/campos-do-contato-novo";
+import { FormDialog } from "@/components/form-dialog";
+import { BotaoQueDispensa, ModosDoContato, type ModoDoContato } from "@/components/modos-do-contato";
 import { NativeSelect } from "@/components/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createOpportunity } from "@/features/opportunities/actions";
 import { restorePerson } from "@/features/people/actions";
-import { DDI_PADRAO } from "@/lib/contato";
 import {
   CAMPO_CONFIRMAR_OPORTUNIDADE,
   CAMPO_CONFIRMAR_PARECIDO,
   type ContatoParecido,
   type EstadoComConfirmacao,
 } from "@/lib/parecidos";
-
-type ModoDoContato = "existente" | "novo";
-
-/**
- * Botão que muda o contato que vai ser enviado sem ser campo de formulário
- * (o modo, o "Trocar"): tira o aviso da tela como uma edição faria — senão
- * ele ofereceria "Criar mesmo assim" para um contato que já não está na tela.
- */
-function BotaoQueDispensa({
-  dispensa = true,
-  onClick,
-  ...props
-}: React.ComponentProps<typeof Button> & {
-  /** Falso quando o clique não muda nada (o modo que já está ativo). */
-  dispensa?: boolean;
-}) {
-  const dispensar = useDispensarAviso();
-  return (
-    <Button
-      {...props}
-      onClick={(evento) => {
-        if (dispensa) dispensar();
-        onClick?.(evento);
-      }}
-    />
-  );
-}
 
 /**
  * Nova oportunidade: com um contato que já existe ou com um contato novo,
@@ -136,29 +110,7 @@ export function OpportunityDialog({
         return null;
       }}
     >
-      <input type="hidden" name="modo_contato" value={modo} />
-
-      <div className="flex gap-2" role="group" aria-label="Contato da oportunidade">
-        {(
-          [
-            ["existente", "Contato existente"],
-            ["novo", "Novo contato"],
-          ] as const
-        ).map(([valor, rotulo]) => (
-          <BotaoQueDispensa
-            key={valor}
-            type="button"
-            size="sm"
-            variant={modo === valor ? "default" : "outline"}
-            className="rounded-xl"
-            aria-pressed={modo === valor}
-            dispensa={modo !== valor}
-            onClick={() => setModo(valor)}
-          >
-            {rotulo}
-          </BotaoQueDispensa>
-        ))}
-      </div>
+      <ModosDoContato modo={modo} aoTrocar={setModo} rotulo="Contato da oportunidade" />
 
       {modo === "existente" ? (
         escolhido ? (
@@ -194,32 +146,7 @@ export function OpportunityDialog({
           </div>
         )
       ) : (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="novo_full_name">Nome *</Label>
-            <Input id="novo_full_name" name="novo_full_name" required autoComplete="off" />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-[6rem_1fr]">
-            <div className="space-y-2">
-              <Label htmlFor="novo_phone_country_code">DDI *</Label>
-              <Input
-                id="novo_phone_country_code"
-                name="novo_phone_country_code"
-                placeholder={DDI_PADRAO}
-                defaultValue={DDI_PADRAO}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="novo_phone">Telefone *</Label>
-              <Input id="novo_phone" name="novo_phone" inputMode="tel" required />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="novo_email">E-mail *</Label>
-            <Input id="novo_email" name="novo_email" type="email" required />
-          </div>
-        </div>
+        <CamposDoContatoNovo />
       )}
 
       <div className="space-y-2">

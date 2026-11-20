@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { falhou, gravou, type ActionState } from "@/lib/action-state";
-import { aparar, erroDeContato, normalizarDdi } from "@/lib/contato";
+import { contatoNovoDoFormulario } from "@/lib/contato";
 import { traduzirErro } from "@/lib/erros";
 import { resultado } from "@/lib/gravar";
 import { novoId } from "@/lib/id";
@@ -67,25 +67,9 @@ export async function createOpportunity(
 
   let contato: { p_contato: string } | { p_novo_contato: Record<string, string | null> };
   if (formData.get("modo_contato") === "novo") {
-    const nome = aparar(texto(formData.get("novo_full_name")));
-    if (!nome) return falhou("Informe o nome");
-
-    const novo = {
-      email: aparar(texto(formData.get("novo_email"))),
-      ddi: aparar(texto(formData.get("novo_phone_country_code"))),
-      telefone: aparar(texto(formData.get("novo_phone"))),
-    };
-    const erro = erroDeContato(novo);
-    if (erro) return falhou(erro.mensagem);
-
-    contato = {
-      p_novo_contato: {
-        full_name: nome,
-        email: novo.email,
-        phone_country_code: normalizarDdi(novo.ddi),
-        phone: novo.telefone,
-      },
-    };
+    const novo = contatoNovoDoFormulario(formData);
+    if (!novo.ok) return falhou(novo.erro);
+    contato = { p_novo_contato: novo.contato };
   } else {
     const id = texto(formData.get("person_id"));
     if (!id || !z.string().uuid().safeParse(id).success) return falhou("Escolha um contato");

@@ -23,6 +23,11 @@ export type ContatoParecido = {
   naLixeira: boolean;
   bateEmail: boolean;
   bateTelefone: boolean;
+  /**
+   * De outra organização que não a atual (Novo cliente, CLI-15): não se usa
+   * nem se restaura daqui. Só `criar_cliente` manda; nos outros avisos, falta.
+   */
+  outraOrganizacao?: boolean;
 };
 
 export type OportunidadeExistente = {
@@ -81,25 +86,29 @@ export async function buscarParecidos(
   };
 }
 
-const parecidoDaCriacao = z
-  .object({
-    id: z.string(),
-    nome: z.string(),
-    estagio: z.enum(Constants.public.Enums.person_lifecycle_stage),
-    na_lixeira: z.boolean(),
-    bate_email: z.boolean(),
-    bate_telefone: z.boolean(),
-  })
-  .transform(
-    (p): ContatoParecido => ({
-      id: p.id,
-      nome: p.nome,
-      estagio: p.estagio,
-      naLixeira: p.na_lixeira,
-      bateEmail: p.bate_email,
-      bateTelefone: p.bate_telefone,
-    }),
-  );
+const camposDoParecido = z.object({
+  id: z.string(),
+  nome: z.string(),
+  estagio: z.enum(Constants.public.Enums.person_lifecycle_stage),
+  na_lixeira: z.boolean(),
+  bate_email: z.boolean(),
+  bate_telefone: z.boolean(),
+});
+
+const comoParecido = (p: z.output<typeof camposDoParecido>): ContatoParecido => ({
+  id: p.id,
+  nome: p.nome,
+  estagio: p.estagio,
+  naLixeira: p.na_lixeira,
+  bateEmail: p.bate_email,
+  bateTelefone: p.bate_telefone,
+});
+
+const parecidoDaCriacao = camposDoParecido.transform(comoParecido);
+
+const parecidoDoNovoCliente = camposDoParecido
+  .extend({ outra_organizacao: z.boolean() })
+  .transform((p): ContatoParecido => ({ ...comoParecido(p), outraOrganizacao: p.outra_organizacao }));
 
 const oportunidadeDaCriacao = z
   .object({
@@ -133,6 +142,21 @@ export const respostaDaCriacao = z.discriminatedUnion("situacao", [
 ]);
 
 export type RespostaDaCriacao = z.output<typeof respostaDaCriacao>;
+
+/**
+ * A resposta de `criar_cliente` (0055): ou criou (a pessoa, agora cliente), ou
+ * parou para perguntar, com os parecidos — cada um dizendo se é de outra
+ * organização.
+ */
+export const respostaDoNovoCliente = z.discriminatedUnion("situacao", [
+  z.object({ situacao: z.literal("criado"), pessoa: z.string() }),
+  z.object({
+    situacao: z.literal("precisa_confirmar"),
+    parecidos: z.array(parecidoDoNovoCliente),
+  }),
+]);
+
+export type RespostaDoNovoCliente = z.output<typeof respostaDoNovoCliente>;
 
 /**
  * O e-mail, o DDI ou o telefone mudaram de verdade? Compara normalizado:

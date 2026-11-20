@@ -80,3 +80,45 @@ export function erroDeContato(
   }
   return null;
 }
+
+export type ContatoNovo = {
+  full_name: string;
+  email: string | null;
+  phone_country_code: string | null;
+  phone: string | null;
+};
+
+/**
+ * Os quatro campos `novo_*` do contato que nasce junto (Nova oportunidade,
+ * Novo cliente), lidos no servidor: nome aparado, a regra de `erroDeContato` e
+ * o DDI normalizado — o mesmo que o banco confere de novo.
+ */
+export function contatoNovoDoFormulario(
+  formData: FormData,
+): { ok: true; contato: ContatoNovo } | { ok: false; erro: string } {
+  const campo = (nome: string) => {
+    const valor = formData.get(nome);
+    return typeof valor === "string" ? valor : null;
+  };
+
+  const nome = aparar(campo("novo_full_name"));
+  if (!nome) return { ok: false, erro: "Informe o nome" };
+
+  const contato = {
+    email: aparar(campo("novo_email")),
+    ddi: aparar(campo("novo_phone_country_code")),
+    telefone: aparar(campo("novo_phone")),
+  };
+  const erro = erroDeContato(contato);
+  if (erro) return { ok: false, erro: erro.mensagem };
+
+  return {
+    ok: true,
+    contato: {
+      full_name: nome,
+      email: contato.email,
+      phone_country_code: normalizarDdi(contato.ddi),
+      phone: contato.telefone,
+    },
+  };
+}

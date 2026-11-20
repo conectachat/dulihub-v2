@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
 
-import { buscarParecidos, contatoMudou, respostaDaCriacao } from "./parecidos";
+import { buscarParecidos, contatoMudou, respostaDaCriacao, respostaDoNovoCliente } from "./parecidos";
 import type { Database } from "./supabase/database.types";
 
 /**
@@ -165,5 +165,46 @@ describe("contatoMudou", () => {
         { email: "ana@x.co", ddi: "+55", telefone: "31999990000" },
       ),
     ).toBe(true);
+  });
+});
+
+describe("respostaDoNovoCliente", () => {
+  it("lê o criado", () => {
+    expect(respostaDoNovoCliente.parse({ situacao: "criado", pessoa: "p1" })).toEqual({
+      situacao: "criado",
+      pessoa: "p1",
+    });
+  });
+
+  it("lê os parecidos, com outra_organizacao virando outraOrganizacao", () => {
+    expect(
+      respostaDoNovoCliente.parse({
+        situacao: "precisa_confirmar",
+        parecidos: [
+          {
+            id: "p1",
+            nome: "Ana",
+            estagio: "contact",
+            na_lixeira: false,
+            bate_email: true,
+            bate_telefone: false,
+            outra_organizacao: true,
+          },
+        ],
+      }),
+    ).toEqual({
+      situacao: "precisa_confirmar",
+      parecidos: [
+        {
+          id: "p1",
+          nome: "Ana",
+          estagio: "contact",
+          naLixeira: false,
+          bateEmail: true,
+          bateTelefone: false,
+          outraOrganizacao: true,
+        },
+      ],
+    });
   });
 });

@@ -126,3 +126,39 @@ describe("AvisoDeDuplicado", () => {
     expect(aoGravarMesmoAssim).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("AvisoDeDuplicado com parecido de outra organização (CLI-15)", () => {
+  const DE_FORA: ContatoParecido = {
+    id: "p9",
+    nome: "Paula Fora",
+    estagio: "contact",
+    naLixeira: false,
+    bateEmail: true,
+    bateTelefone: false,
+    outraOrganizacao: true,
+  };
+
+  it("diz quem decide e oferece só abrir o perfil", () => {
+    montar({ parecidos: [DE_FORA] });
+
+    expect(
+      screen.getByText("Este contato é de outra organização; quem o torna cliente é a gestão de lá."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Abrir perfil" })).toHaveAttribute("href", "/contatos/p9");
+    expect(screen.queryByRole("button", { name: /Sim, é a mesma pessoa/ })).toBeNull();
+  });
+
+  it("na lixeira também não oferece Restaurar", () => {
+    montar({ parecidos: [{ ...DE_FORA, naLixeira: true }], aoRestaurar: vi.fn() });
+
+    expect(screen.queryByRole("button", { name: /Restaurar/ })).toBeNull();
+    expect(screen.getByRole("link", { name: "Abrir perfil" })).toBeInTheDocument();
+  });
+
+  it("os parecidos da organização continuam com o Sim", () => {
+    montar({ parecidos: [DE_FORA, PARECIDO] });
+
+    expect(screen.getByRole("button", { name: "Sim, é a mesma pessoa: Carlos Souza" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sim, é a mesma pessoa: Paula Fora" })).toBeNull();
+  });
+});

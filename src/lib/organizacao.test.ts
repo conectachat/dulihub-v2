@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { escolherOrganizacao } from "./organizacao";
+import { daGestaoDe, ehDaGestao, escolherOrganizacao } from "./organizacao";
 
 /**
  * Sete cópias do mesmo lookup faziam `.limit(1)` **sem** `order by` e sem
@@ -83,5 +83,52 @@ describe("escolherOrganizacao", () => {
     ]);
 
     expect(escolhida!.organization_id).toBe("a");
+  });
+});
+
+describe("ehDaGestao", () => {
+  it("owner e admin são da gestão; staff, nulo e indefinido não", () => {
+    expect(ehDaGestao("owner")).toBe(true);
+    expect(ehDaGestao("admin")).toBe(true);
+    expect(ehDaGestao("staff")).toBe(false);
+    expect(ehDaGestao(null)).toBe(false);
+    expect(ehDaGestao(undefined)).toBe(false);
+  });
+});
+
+describe("daGestaoDe", () => {
+  function bancoFalso(resposta: { data: { role: string } | null; error: { message: string } | null }) {
+    const maybeSingle = vi.fn(async () => resposta);
+    const eqUsuario = vi.fn(() => ({ maybeSingle }));
+    const eqOrg = vi.fn(() => ({ eq: eqUsuario }));
+    const select = vi.fn(() => ({ eq: eqOrg }));
+    const from = vi.fn(() => ({ select }));
+    return { supabase: { from } as never, from, eqOrg, eqUsuario };
+  }
+
+  it("lê o papel de quem chama na organização do registro", async () => {
+    const banco = bancoFalso({ data: { role: "admin" }, error: null });
+    expect(await daGestaoDe(banco.supabase, "org-1", "u-1")).toEqual({ daGestao: true, error: null });
+    expect(banco.from).toHaveBeenCalledWith("organization_members");
+    expect(banco.eqOrg).toHaveBeenCalledWith("organization_id", "org-1");
+    expect(banco.eqUsuario).toHaveBeenCalledWith("user_id", "u-1");
+  });
+
+  it("staff e nenhuma linha não são da gestão", async () => {
+    const comStaff = bancoFalso({ data: { role: "staff" }, error: null });
+    expect(await daGestaoDe(comStaff.supabase, "o", "u")).toEqual({ daGestao: false, error: null });
+    const semLinha = bancoFalso({ data: null, error: null });
+    expect(await daGestaoDe(semLinha.supabase, "o", "u")).toEqual({ daGestao: false, error: null });
+  });
+
+  it("erro de leitura vem como erro, não como \"não é da gestão\"", async () => {
+    const banco = bancoFalso({ data: null, error: { message: "caiu" } });
+    expect(await daGestaoDe(banco.supabase, "o", "u")).toEqual({ daGestao: false, error: "caiu" });
+  });
+
+  it("sem usuário, não consulta", async () => {
+    const banco = bancoFalso({ data: { role: "owner" }, error: null });
+    expect(await daGestaoDe(banco.supabase, "o", null)).toEqual({ daGestao: false, error: null });
+    expect(banco.from).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,8 @@
 import { escolherOrganizacao } from "@/lib/escolher-organizacao";
 import { traduzirErro } from "@/lib/erros";
-import type { Enums } from "@/lib/supabase/database.types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import type { Database, Enums } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
 export { escolherOrganizacao };
@@ -77,3 +79,34 @@ export async function contextoAtual() {
 /** A frase única para quem chegou sem organização. */
 export const SEM_ORGANIZACAO =
   "Sua conta não está vinculada a nenhuma organização.";
+
+/**
+ * "É da gestão": `owner` ou `admin` — a mesma regra de
+ * `private.current_user_manages`, que o banco aplica de novo. Na tela, decide
+ * só o que aparece; quem decide de verdade é o banco.
+ */
+export function ehDaGestao(papel: PapelNaOrganizacao | null | undefined): boolean {
+  return papel === "owner" || papel === "admin";
+}
+
+/**
+ * Se quem chama é da gestão da organização **do registro** (contato,
+ * negócio) — que pode não ser a organização atual. Erro de leitura volta como
+ * erro, nunca como "não é da gestão".
+ */
+export async function daGestaoDe(
+  supabase: SupabaseClient<Database>,
+  organizationId: string,
+  userId: string | null,
+): Promise<{ daGestao: boolean; error: string | null }> {
+  if (!userId) return { daGestao: false, error: null };
+
+  const { data, error } = await supabase
+    .from("organization_members")
+    .select("role")
+    .eq("organization_id", organizationId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) return { daGestao: false, error: error.message };
+  return { daGestao: ehDaGestao(data?.role), error: null };
+}

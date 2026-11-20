@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  diaEmSaoPaulo,
   formatarData,
   formatarDataHora,
   formatarDia,
@@ -63,5 +64,18 @@ describe("formatarDataHora", () => {
     expect(formatarDataHora("2026-09-17T12:30:00-03:00")).toMatch(
       /^17\/09\/2026,? 12:30$/,
     );
+  });
+});
+
+describe("diaEmSaoPaulo", () => {
+  it("o dia de São Paulo de um instante, em AAAA-MM-DD", () => {
+    // 22h30 de 01/11 em São Paulo ainda é dia 1.
+    expect(diaEmSaoPaulo("2026-11-02T01:30:00Z")).toBe("2026-11-01");
+    // O início do dia 1 em São Paulo (como o Ajustar grava) é dia 1.
+    expect(diaEmSaoPaulo("2026-11-01T03:00:00Z")).toBe("2026-11-01");
+  });
+
+  it("o início do dia em São Paulo aparece como esse dia", () => {
+    expect(formatarData("2026-11-01T03:00:00+00:00")).toBe("01/11/2026");
   });
 });

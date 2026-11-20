@@ -2,7 +2,13 @@
 
 import { describe, expect, it } from "vitest";
 
-import { destinoDoContato, destinoDoPerfil, enderecoDaPessoa } from "./pessoa";
+import {
+  destinoDoContato,
+  destinoDoPerfil,
+  enderecoDaPessoa,
+  enderecoDoNovoCliente,
+  NOVO_PROCESSO_SEM_NEGOCIO,
+} from "./pessoa";
 
 /**
  * Para onde vai o link de uma pessoa (CLI-2, CLI-3).
@@ -63,5 +69,12 @@ describe("destinoDoPerfil", () => {
     expect(destinoDoPerfil({ id: ID, lifecycle_stage: "opportunity", deleted_at: null })).toBe(
       `/contatos/${ID}`,
     );
+  });
+});
+
+describe("enderecoDoNovoCliente", () => {
+  it("abre o perfil na aba Projetos com o + Novo processo aberto e sem negócio", () => {
+    expect(NOVO_PROCESSO_SEM_NEGOCIO).toBe("novo");
+    expect(enderecoDoNovoCliente("p1")).toBe("/clientes/p1?aba=projetos&novo-processo=novo");
   });
 });

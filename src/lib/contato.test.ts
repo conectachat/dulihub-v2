@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { erroDeContato, normalizarDdi } from "./contato";
+import { contatoNovoDoFormulario, erroDeContato, normalizarDdi } from "./contato";
 import { CASOS_DE_CONTATO } from "./contato.casos";
 
 /**
@@ -38,5 +38,46 @@ describe("normalizarDdi", () => {
 
   it("fora do formato volta como veio (o erro sai de erroDeContato)", () => {
     expect(normalizarDdi("+5a")).toBe("+5a");
+  });
+});
+
+describe("contatoNovoDoFormulario", () => {
+  function formulario(campos: Record<string, string>) {
+    const fd = new FormData();
+    for (const [chave, valor] of Object.entries(campos)) fd.set(chave, valor);
+    return fd;
+  }
+
+  const valido = {
+    novo_full_name: "  Maria Souza ",
+    novo_email: "maria@exemplo.com",
+    novo_phone_country_code: "55",
+    novo_phone: "(31) 99999-0000",
+  };
+
+  it("lê os quatro campos novo_*, apara o nome e normaliza o DDI", () => {
+    expect(contatoNovoDoFormulario(formulario(valido))).toEqual({
+      ok: true,
+      contato: {
+        full_name: "Maria Souza",
+        email: "maria@exemplo.com",
+        phone_country_code: "+55",
+        phone: "(31) 99999-0000",
+      },
+    });
+  });
+
+  it("sem nome: Informe o nome", () => {
+    expect(contatoNovoDoFormulario(formulario({ ...valido, novo_full_name: "  " }))).toEqual({
+      ok: false,
+      erro: "Informe o nome",
+    });
+  });
+
+  it("e-mail inválido: a frase de erroDeContato", () => {
+    expect(contatoNovoDoFormulario(formulario({ ...valido, novo_email: "sem-arroba" }))).toEqual({
+      ok: false,
+      erro: "E-mail inválido",
+    });
   });
 });

@@ -54,6 +54,11 @@ export function hojeEmSaoPaulo(agora: Date = new Date()): string {
   }).format(agora);
 }
 
+/** O dia de São Paulo de um instante (`timestamptz` em ISO), em AAAA-MM-DD. */
+export function diaEmSaoPaulo(iso: string): string {
+  return hojeEmSaoPaulo(new Date(iso));
+}
+
 export function formatarDataHora(valor: string | Date): string {
   return DATA_HORA.format(new Date(valor));
 }
