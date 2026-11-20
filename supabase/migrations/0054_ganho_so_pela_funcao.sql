@@ -16,7 +16,8 @@
 -- - **Negócio ganho não se apaga** (texto da spec). A cascata da pessoa passa.
 -- - **Regra (2) do estágio:** passar a cliente, no update ou no insert já
 --   como `client`, só com a marca ou pela gestão. Sem usuário passa
---   (importação, migrations). Sem liberação por profundidade (§3): quem
+--   (migrations, SQL Editor; a importação entra com login da gestão). Sem
+--   liberação por profundidade (§3): quem
 --   promove por gatilho (`quem_tem_processo_e_cliente`) já é a gestão ou
 --   está sob a marca.
 -- - **A marca em `marcar_como_cliente`**, e o ramo dela em
@@ -149,7 +150,8 @@ $$;
 create function private.opportunities_ganho_so_pela_funcao()
 returns trigger language plpgsql security definer set search_path = '' as $$
 begin
-  -- Ação de chave estrangeira, ou `ganhar_negocio`/`reabrir_negocio`.
+  -- `ganhar_negocio`/`reabrir_negocio`. A profundidade segue a §3; hoje
+  -- nenhuma ação de chave estrangeira grava `status` nem `stage_id`.
   if pg_trigger_depth() > 1
      or coalesce(current_setting('dulihub.via_ganho', true), '') = 'on' then
     return new;
@@ -242,8 +244,8 @@ $$;
 
 revoke execute on function private.people_trava_do_estagio_no_insert() from public, anon, authenticated;
 
--- Depois de `people_organizacao_fixa` pela ordem alfabética: a organização
--- conferida aqui já é a final.
+-- A organização conferida é a da linha gravada: ninguém a escolhe por outra
+-- (a RLS de insert exige ser membro dela).
 create trigger people_trava_do_estagio_no_insert
   before insert on public.people
   for each row execute function private.people_trava_do_estagio_no_insert();

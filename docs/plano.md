@@ -279,6 +279,12 @@ por migration foi dispensada pelo Renato em 19/nov.
 | Dados | O valor do negócio ganho de hoje virou um item sem visto, ligado ao processo dele |
 | Telas | Cartão Vistos na tela do lead (o valor sai da criação e da edição); Ganho com resumo; Reabrir com confirmação no quadro e na tela do lead; quadro com os encerrados só dos últimos 30 dias; CRM › Encerradas; Dono e Participantes no Editar negócio |
 
+Na aplicação da 0054, a recópia e a correção de item antigo (D19) foram
+conferidas à mão: dois negócios plantados numa pessoa da organização de teste
+saíram certos, e a pessoa foi apagada depois, junto com as duas linhas dela
+em `private.backup_opportunities_value` (que guarda só o valor real). Nos dados
+de verdade não havia nada para recopiar nem dono a zerar.
+
 Fica para a entrega 4: **cobranças no Ganho, forma de pagamento e o aviso de
 parcela vencida**. Até lá, o resumo diz "Forma de pagamento: definir na aba
 Financeiro" e o Ganho não cria cobrança.

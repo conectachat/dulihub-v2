@@ -21,6 +21,11 @@
  *
  * O DDI é gravado como "+NN", como a 0040 normalizou (`ddiGravado`).
  *
+ * RODE COM UMA CONTA DA GESTÃO (owner ou admin) da organização. Desde a 0054
+ * só a gestão — ou o Ganho — grava pessoa como cliente, e o upsert dispara a
+ * regra no insert até para quem já é cliente: com outra conta, todo lote que
+ * traz um cliente é recusado.
+ *
  * PODE RODAR QUANTAS VEZES QUISER. O casamento é feito por `legacy_id`, então
  * a segunda execução atualiza em vez de duplicar.
  *
