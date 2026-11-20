@@ -218,9 +218,12 @@ Dizer o que precisa de atenção hoje.
 - No lead de um negócio **ganho**, ao lado de "Negócio ganho em ‹data›.", o
   botão "Ajustar data" aparece só para `owner` e `admin` da organização do
   negócio.
-- O diálogo pede o dia. Vale qualquer dia até hoje em São Paulo, inclusive
+- O diálogo pede o dia. Vale de 01/01/2000 até hoje em São Paulo, inclusive
   antes de o negócio ter sido criado; dia no futuro é recusado ("A data do
-  ganho não pode ser no futuro.").
+  ganho não pode ser no futuro."), e antes de 2000 também ("A data do ganho
+  não pode ser antes de 2000.", para pegar erro de digitação no ano).
+- Confirmar o mesmo dia que já está gravado não grava nada nem escreve no
+  histórico.
 - **O dia não escorrega:** grava-se o início do dia escolhido em São Paulo, e o
   lead, Encerradas e a linha do histórico ("de ‹antes› para ‹depois›") mostram
   exatamente esse dia, a qualquer hora em que se ajuste. Prova: ajustar para o
@@ -576,7 +579,7 @@ e cada pessoa da equipe define a sua senha.
 | 18/nov | Anexos da parcela vão direto do navegador ao servidor, só com internet: a tela Financeiro é migrada e não tem Server Action (CLI-6) |
 | 18/nov | "Só a gestão ou o Ganho tornam cliente" pela API fica para a entrega 3, junto com o Ganho no banco; na entrega 2, a gestão e o Ganho de hoje (D1 do plano) |
 | 20/nov | Novo cliente à mão na tela Clientes, só para a gestão, para o cliente que não passou pelo funil; escolhe o contato ou cria ali mesmo, sem "cliente desde" no formulário (fica hoje, corrige-se em Editar); quem está no funil fica de fora (use o Ganho); quem cria fica como dono se a pessoa não tiver — e o "Marcar como cliente" passa a fazer o mesmo (CLI-15, CLI-12) |
-| 20/nov | A data do Ganho se ajusta depois, só pela gestão e só pelo "Ajustar data", com histórico, para o ganho do cliente antigo não contar no mês errado (CRM-17) |
+| 20/nov | A data do Ganho se ajusta depois, só pela gestão e só pelo "Ajustar data", com histórico, para o ganho do cliente antigo não contar no mês errado; de 01/01/2000 até hoje, e o mesmo dia não grava nada (CRM-17) |
 
 ## 11. Ordem proposta
 

@@ -27,7 +27,7 @@
 | D8 | "É da gestão" vira `ehDaGestao(papel)` (regra pura) e `daGestaoDe(supabase, organizationId, userId)` (a consulta), em `src/lib/organizacao.ts`, usados por `contatos/[id]`, pelo lead e por Clientes | Segunda cópia da consulta de `contatos/[id]/page.tsx:95-117` e da regra "owner ou admin" | Nenhum |
 | D9 | O histórico do ajuste formata as datas com `private.dia_em_sao_paulo(timestamptz) → 'DD/MM/AAAA'` | O fuso da sessão no Supabase é UTC: um ganho às 22h30 de 31/10 escreveria "01/11" (rodada 3 da spec) | Nenhum |
 | D10 | O seletor de contato existente busca no servidor (`buscar_contatos_para_cliente`, até 20, com o total), já ao abrir, com 350 ms de espera entre teclas; resposta atrasada é descartada | A spec pede busca e "Mostrando 20 de N". As Server Functions do Next 16 rodam uma de cada vez, então a espera evita fila | Uma consulta por pausa de digitação |
-| D11 | Ajustar para o mesmo dia que já está gravado não grava nada nem escreve histórico | Quem confirma sem mudar nada espera que nada aconteça | Nenhum |
+| D11 | Ajustar para o mesmo dia que já está gravado não grava nada nem escreve histórico (confirmado pelo Renato em 20/nov, e na spec) | Quem confirma sem mudar nada espera que nada aconteça | Nenhum |
 
 ## Restrições globais
 
@@ -57,6 +57,7 @@ Da spec, cópia exata:
 | `update` direto de `closed_at` de negócio ganho | "Use o Ajustar data." |
 | Negócio não ganho | "Só o negócio ganho tem a data ajustada." |
 | Dia no futuro | "A data do ganho não pode ser no futuro." |
+| Dia antes de 01/01/2000 | "A data do ganho não pode ser antes de 2000." |
 | Negócio que não se enxerga | "Negócio não encontrado." |
 | Sem dia | "Informe a data." |
 | Histórico do ajuste | "Data do ganho ajustada de DD/MM/AAAA para DD/MM/AAAA" |
@@ -162,7 +163,7 @@ Todas com `errcode = 'P0001'`. "Hoje" no banco é `(now() at time zone 'America/
 - [ ] Vermelho: `bun x vitest run --no-file-parallelism tests/rls/novo-cliente.test.ts tests/rls/estagio-do-cliente.test.ts`. Esperado: falham os testes novos (função inexistente, dono nulo), e os outros passam.
 - [ ] Aplicar a 0055 pelo conector.
 - [ ] Verde nos dois arquivos e em `tests/rls/buscar-clientes.test.ts`.
-- [ ] Tipos: `generate_typescript_types` grava o resultado num arquivo; o script `tipos.py` do rascunho da sessão (`C:\Users\renat\AppData\Local\Temp\claude\5e04d219d31dad4a\e1aa611e-0d4d-4e32-9670-a1be0bd7428e\scratchpad\tipos.py <arquivo> src/lib/supabase/database.types.ts`) o escreve e corrige a nulidade das funções que devolvem tabela.
+- [ ] Tipos: `generate_typescript_types` grava o resultado num arquivo; o script `tipos.py` do rascunho da sessão (`C:\Users\renat\AppData\Local\Temp\claude\5e04d219d31dad4a\e1aa611e-0d4d-4e32-9670-a1be0bd7428e\scratchpad\tipos.py <arquivo> src/lib/supabase/database.types.ts`) só extrai o campo `types` e grava. O gerador perde a nulidade das colunas de função que devolve tabela; quem lê alarga o tipo à mão (T4).
 - [ ] `docs/banco.md`: as RPCs novas, a linha de `buscar_clientes`, `private.casa_com_a_busca` nas auxiliares, a linha de `marcar_como_cliente`, a §6 e a situação "0001 a 0055".
 - [ ] `bun run test:rls` inteiro.
 - [ ] Commit `feat(banco): Novo cliente (0055)`.
@@ -179,6 +180,7 @@ Todas com `errcode = 'P0001'`. "Hoje" no banco é `(now() at time zone 'America/
 
 - **Ajuste válido:** a gestão ajusta para um dia passado `D`. `closed_at` passa a ser `new Date(\`${D}T00:00:00-03:00\`)`. O histórico da pessoa tem "Data do ganho ajustada de ‹hoje em DD/MM/AAAA› para ‹D em DD/MM/AAAA›". Ajustar de novo para `E` grava "de ‹D› para ‹E›".
 - **Mesmo dia:** ajustar para o dia que já está gravado não muda `closed_at` nem cria linha no histórico.
+- **Antes de 2000:** `1999-12-31` recebe "A data do ganho não pode ser antes de 2000."; `2000-01-01` passa.
 - **Hoje e futuro:** ajustar para hoje passa. Amanhã, em São Paulo, recebe "A data do ganho não pode ser no futuro.".
 - **Recusas:**
   - o `staff`: "Só a gestão ajusta a data do ganho.";
@@ -199,13 +201,13 @@ Todas com `errcode = 'P0001'`. "Hoje" no banco é `(now() at time zone 'America/
   2. Não é gestão da organização do negócio: frase da gestão do ajuste.
   3. Status diferente de `won`: frase do não ganho.
   4. `p_data` nulo: "Informe a data.".
-  5. `p_data` maior que hoje em São Paulo: frase do futuro.
+  5. `p_data` maior que hoje em São Paulo: frase do futuro. `p_data` antes de `date '2000-01-01'`: frase de antes de 2000.
   5a. O mesmo dia que já está gravado (em São Paulo): não grava nada nem escreve histórico, e devolve o `person_id`.
   6. Liga a marca e faz `update closed_at = (p_data::timestamp at time zone 'America/Sao_Paulo')`.
   7. Desliga a marca.
   8. Grava a atividade `stage_change`, com `opportunity_id`, "Data do ganho ajustada de " || `dia_em_sao_paulo(antes)` || " para " || `dia_em_sao_paulo(depois)`.
   9. Devolve o `person_id`.
-- **Gatilho:** passa com `pg_trigger_depth() > 1` ou com a marca. Com `old.status = 'won' and new.status = 'won' and new.closed_at is distinct from old.closed_at`, recusa com "Use o Ajustar data.". O `update` que tenta sair do ganho (status muda) não é recusado por ele: `opportunities_data_do_ganho` vem antes de `opportunities_ganho_so_pela_funcao` na ordem alfabética, e a frase daquele caso continua a da 0054.
+- **Gatilho:** passa com `pg_trigger_depth() > 1` ou com a marca. Com `old.status = 'won' and new.status = 'won' and new.closed_at is distinct from old.closed_at`, recusa com "Use o Ajustar data.". O `update` que tenta sair do ganho (status muda) não é recusado por ele: quem garante é a condição `new.status = 'won'`. Sem ela, como `opportunities_data_do_ganho` vem antes de `opportunities_ganho_so_pela_funcao` na ordem alfabética, a frase daquele caso deixaria de ser a da 0054.
 
 **Passos:**
 - [ ] Vermelho: `data-do-ganho.test.ts`.
@@ -224,7 +226,7 @@ Todas com `errcode = 'P0001'`. "Hoje" no banco é `(now() at time zone 'America/
   - `contatoNovoDoFormulario(formData: FormData): { ok: true; contato: { full_name: string; email: string | null; phone_country_code: string | null; phone: string | null } } | { ok: false; erro: string }`, em `src/lib/contato.ts`. Lê os quatro campos `novo_*`. Sem nome, devolve "Informe o nome". Depois aplica `erroDeContato` e `normalizarDdi`.
   - `CamposDoContatoNovo()`, em `src/components/campos-do-contato-novo.tsx`. É o bloco de `opportunity-dialog.tsx:197-222`, sem mudança visível.
   - `ehDaGestao(papel: PapelNaOrganizacao | null | undefined): boolean` (`owner` ou `admin`) e `daGestaoDe(supabase, organizationId: string, userId: string | null): Promise<{ daGestao: boolean; error: string | null }>`, em `src/lib/organizacao.ts`. A segunda usa a primeira.
-  - `BotaoQueDispensa` e `ModosDoContato({ modo, aoTrocar }: { modo: "existente" | "novo"; aoTrocar: (m) => void })` sobem de `crm/opportunity-dialog.tsx:30-48 e 136-158` para `src/components/modos-do-contato.tsx` (segunda cópia: o Novo cliente usa os dois). O campo oculto `modo_contato` vai junto.
+  - `BotaoQueDispensa` e `ModosDoContato({ modo, aoTrocar, rotulo }: { modo: "existente" | "novo"; aoTrocar: (m) => void; rotulo: string })` (o `aria-label` do grupo: "Contato da oportunidade" na Nova oportunidade, "Contato do cliente" no Novo cliente) sobem de `crm/opportunity-dialog.tsx:30-48 e 136-158` para `src/components/modos-do-contato.tsx` (segunda cópia: o Novo cliente usa os dois). O campo oculto `modo_contato` vai junto.
   - `NOVO_PROCESSO_SEM_NEGOCIO = "novo"` e `enderecoDoNovoCliente(id: string): string`, que devolve `/clientes/<id>?aba=projetos&novo-processo=novo`, em `src/lib/pessoa.ts`.
   - `ContatoParecido.outraOrganizacao?: boolean`.
   - `respostaDoNovoCliente`, schema zod em `src/lib/parecidos.ts`, com `outra_organizacao` virando `outraOrganizacao`.
@@ -257,7 +259,7 @@ Todas com `errcode = 'P0001'`. "Hoje" no banco é `(now() at time zone 'America/
 **Interfaces:**
 - **Consome:** T1 e T3.
 - **Produz:**
-  - `criarCliente(prev: EstadoComConfirmacao, formData: FormData): Promise<EstadoComConfirmacao>` e `buscarContatosParaCliente(busca: string): Promise<{ linhas: ContatoParaCliente[]; total: number; error: string | null }>`, em `src/features/clientes/novo-cliente-actions.ts` (`"use server"`). `ContatoParaCliente` = `Omit<Database["public"]["Functions"]["buscar_contatos_para_cliente"]["Returns"][number], "total">`. O formulário usa os campos da Nova oportunidade: `modo_contato`, `person_id` e os quatro `novo_*`;
+  - `criarCliente(prev: EstadoComConfirmacao, formData: FormData): Promise<EstadoComConfirmacao>` e `buscarContatosParaCliente(busca: string): Promise<{ linhas: ContatoParaCliente[]; total: number; error: string | null }>`, em `src/features/clientes/novo-cliente-actions.ts` (`"use server"`). `ContatoParaCliente` é declarado à mão — `{ id: string; full_name: string; email: string | null; phone_country_code: string | null; phone: string | null }` — e a leitura alarga o tipo gerado com um comentário do motivo, como `ClienteDaLista` (`features/clientes/queries.ts:5-14`): o gerador dá as três como não nulas, e contato sem e-mail ou telefone existe (0040). O formulário usa os campos da Nova oportunidade: `modo_contato`, `person_id` e os quatro `novo_*`;
   - `NovoClienteDialog()`, em `src/app/(app)/clientes/novo-cliente-dialog.tsx`;
   - `dicaDaListaVazia(daGestao: boolean): string`, em `src/features/clientes/regras.ts`.
 
@@ -271,7 +273,7 @@ Todas com `errcode = 'P0001'`. "Hoje" no banco é `(now() at time zone 'America/
   - erro do banco passa por `traduzirErro`.
 - **`buscarContatosParaCliente`:** chama a RPC com `p_organizacao` e `p_limite: 20`; devolve as linhas e o `total` da primeira linha, ou 0.
 - **`NovoClienteDialog`:**
-  - abre com "Contato existente" e já busca com o termo vazio: os 20 primeiros e o total;
+  - abre com "Contato existente" e já busca com o termo vazio — no `aoAbrir` do `FormDialog`, que é um evento (como o `recomecar` da Nova oportunidade), junto com a volta do termo, da lista e do escolhido ao começo; nada de `useEffect` —: os 20 primeiros e o total;
   - digitar busca, depois de 350 ms (a espera de `BuscaNaUrl`, num timer do `onChange`, sem `setState` em `useEffect`), mostra as linhas com nome, e-mail e telefone;
   - resposta atrasada não vale: com duas buscas resolvidas fora de ordem, a lista é a do termo que está na caixa;
   - Enter na caixa de busca não envia o formulário, e a caixa não tem `name`;
@@ -316,14 +318,14 @@ Todas com `errcode = 'P0001'`. "Hoje" no banco é `(now() at time zone 'America/
   - erro passa por `traduzirErro`.
 - **O componente:**
   - o gatilho é "Ajustar data";
-  - o campo `type="date"` vem com `dia` e `max={hoje}`;
+  - o campo `type="date"` vem com `dia`, `min="2000-01-01"` e `max={hoje}`;
   - salvar chama a ação com o dia escolhido.
 
 **Tela:**
 - `crm/[id]/page.tsx`:
   - `daGestaoDe(supabase, negocio.organization_id, user.id)`;
-  - no bloco "Negócio ganho em ‹data›.", `<AjustarDataDoGanho negocioId dia={diaEmSaoPaulo(negocio.closed_at)} hoje={hojeEmSaoPaulo()} />` só para a gestão.
-- **Prova do Foco 3 na tela:** com `vi.setSystemTime("2026-11-02T01:30:00Z")` (22h30 de 01/11 em São Paulo), `hojeEmSaoPaulo()` dá `2026-11-01` — em `formatar.test.ts`.
+  - no bloco "Negócio ganho em ‹data›.", `<AjustarDataDoGanho negocioId dia={diaEmSaoPaulo(negocio.closed_at)} hoje={hojeEmSaoPaulo()} />` só para a gestão e só com `negocio.closed_at` preenchido (o tipo é `string | null`; o bloco já faz `negocio.closed_at ? … : …`).
+- **Prova do Foco 3 na tela:** já existe — `formatar.test.ts:54-58` prova que 22h30 de São Paulo continua sendo o dia de São Paulo em `hojeEmSaoPaulo`; `diaEmSaoPaulo` é ela com a data do negócio, e o teste dela é o do T3.
 
 - [ ] Vermelho → código → verde → `bun run verify` → commit `feat(crm): ajustar a data do Ganho (CRM-17)`.
 
