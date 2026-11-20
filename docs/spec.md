@@ -127,8 +127,8 @@ Lead entra → conversa → proposta → ficha → contrato → assinatura → G
    estágios.
 2. **Lead não é cliente.** Enquanto o negócio está no funil, a pessoa não tem
    processo nem financeiro à vista. O **Ganho** — contrato assinado — é o que a
-   faz cliente; fora dele, só a gestão, marcando à mão ou criando processo ou
-   cobrança (CLI-12, CLI-14). Cliente não volta a ser lead, garantido no
+   faz cliente; fora dele, só a gestão, marcando à mão, pelo Novo cliente ou
+   criando processo ou cobrança (CLI-12, CLI-14, CLI-15). Cliente não volta a ser lead, garantido no
    banco desde a 0045 (CLI-13, fecha o M17).
 3. **Negócio não é pessoa.** A mesma pessoa pode ter vários negócios ao longo do
    tempo.
@@ -211,6 +211,37 @@ Dizer o que precisa de atenção hoje.
 | CRM-14 | **Ganho com resumo** (vistos, valores, forma de pagamento, o que vai acontecer) e, só após confirmar, numa gravação só: ganho, histórico, cliente, dono, **um processo por visto** e as cobranças. *Entrega 3 (19/nov): `ganhar_negocio` (0052) e o resumo pela mesma função com `p_simular`; as cobranças e a forma de pagamento vêm na entrega 4* | P0 | 🟡 |
 | CRM-15 | Reabrir um ganho pede confirmação também no quadro (I3); ganhar de novo não duplica processo nem cobrança. *Entrega 3 (19/nov): `reabrir_negocio` (0052), diálogo no quadro e na tela do lead; a ligação processo → visto (0051) impede o repetido* | P0 | ✅ |
 | CRM-16 | Oportunidades encerradas: ganhas e perdidas saem do quadro (as colunas Ganho e Perdido mostram só os últimos 30 dias) e são achadas em CRM › Encerradas, com busca e filtro. *Entrega 3 (19/nov): `buscar_encerradas` (0053) e `/crm/encerradas`* | P0 | ✅ |
+| CRM-17 | **Ajustar a data do Ganho**, só a gestão: para o cliente antigo que estava no funil e foi ganho agora, a data passa a ser a real, e o ganho não conta no mês errado. Critério de aceite abaixo | P0 | ⬜ |
+
+**Critério de aceite do CRM-17** (desenhado com o Renato em 20/nov):
+
+- No lead de um negócio **ganho**, ao lado de "Negócio ganho em ‹data›.", o
+  botão "Ajustar data" aparece só para `owner` e `admin` da organização do
+  negócio.
+- O diálogo pede o dia. Vale qualquer dia até hoje em São Paulo, inclusive
+  antes de o negócio ter sido criado; dia no futuro é recusado ("A data do
+  ganho não pode ser no futuro.").
+- **O dia não escorrega:** grava-se o início do dia escolhido em São Paulo, e o
+  lead, Encerradas e a linha do histórico ("de ‹antes› para ‹depois›") mostram
+  exatamente esse dia, a qualquer hora em que se ajuste. Prova: ajustar para o
+  dia 1 às 22h de São Paulo mostra o dia 1 (e não o último dia do mês
+  anterior), e um ganho feito às 22h aparece no histórico com o dia dele.
+- **Um caminho só:** a data de um negócio ganho muda só pela função do ajuste,
+  que confere a gestão da organização do negócio ("Só a gestão ajusta a data
+  do ganho.") e grava a data e o histórico numa gravação só. Por `update`
+  direto ninguém muda, nem a gestão ("Use o Ajustar data."). Negócio que não
+  está ganho é recusado ("Só o negócio ganho tem a data ajustada."), e o que
+  não se enxerga também ("Negócio não encontrado."). O Ganho e o Reabrir
+  continuam gravando a data deles.
+- O histórico do contato registra "Data do ganho ajustada de ‹antes› para
+  ‹depois›".
+- O "cliente desde" não muda: ele se corrige em Editar, no perfil do cliente
+  (CLI-11).
+- O quadro mostra o ganho dos últimos 30 dias: ajustado para 31 dias atrás ou
+  mais, o cartão sai do quadro; para 29, fica. Em Encerradas, fica na posição da
+  data nova (CRM-16).
+- Reabrir e ganhar de novo grava o dia do novo Ganho; a gestão ajusta de novo
+  se precisar.
 
 ### 7.4 Ficha de cadastro (lead, sem login)
 
@@ -390,7 +421,8 @@ Ver os clientes separados de quem nunca fechou, com tudo de cada um num lugar
 só. Cliente é a mesma linha de `people` (§6.1), com estágio `client`; a tela é
 que é própria. Desenho técnico e critério de aceite de cada requisito:
 `docs/superpowers/specs/2026-11-17-contato-oportunidade-cliente-design.md`
-(§6.2; entregas 1, 3 e 4 nos §6.1, §6.3 e §6.4).
+(§6.2; entregas 1, 3 e 4 nos §6.1, §6.3 e §6.4). O critério do CLI-15 está
+aqui mesmo, abaixo da tabela.
 
 | ID | Requisito | Pri. | Estado |
 |---|---|---|---|
@@ -405,9 +437,64 @@ que é própria. Desenho técnico e critério de aceite de cada requisito:
 | CLI-9 | Notas e histórico desde a fase de lead, do mais recente para o mais antigo, com a nota nova no topo e "Oportunidade ganha — virou cliente"; quem tem acesso ao cliente lê e escreve, **o cliente nunca lê** | P0 | ✅ |
 | CLI-10 | Dono e participantes do cliente e da oportunidade; o cliente herda no Ganho. Por ora só marcam quem cuida — não restringem quem vê. **Entrega 2:** dono e participantes do cliente no Editar; as tabelas da oportunidade (0044). **Entrega 3:** dono e participantes do negócio no Editar negócio, e o Ganho os passa ao cliente (0052) | P1 | ✅ |
 | CLI-11 | Cliente desde: gravado quando a pessoa passa a ser cliente, editável à mão; os atuais recebem a data do primeiro processo ou cobrança | P0 | ✅ |
-| CLI-12 | Marcar como cliente à mão, só a gestão (conferido no banco). **Entrega 2:** o botão e a função `marcar_como_cliente`, só da gestão; promover por `update` direto pela API, ou inserir já como cliente, também é só da gestão desde a 0054 (entrega 3) | P0 | ✅ |
+| CLI-12 | Marcar como cliente à mão, só a gestão (conferido no banco). **Entrega 2:** o botão e a função `marcar_como_cliente`, só da gestão; promover por `update` direto pela API, ou inserir já como cliente, também é só da gestão desde a 0054 (entrega 3). **CLI-15 (20/nov):** quem marca fica como dono, se a pessoa não tiver | P0 | ✅ |
 | CLI-13 | Cliente não volta a ser lead, garantido no banco (fecha o M17) | P0 | ✅ |
 | CLI-14 | Quem tem processo ou cobrança é cliente: criar um ou outro promove a pessoa, com registro no histórico — fora do Ganho, só a gestão; os contatos assim hoje viram clientes na migration. Substitui o CON-3. **Entrega 2:** no banco (0045), também pela fila do Financeiro; **Entrega 3:** o ramo do Ganho (marca `via_ganho`, 0054) | P0 | ✅ |
+| CLI-15 | **Novo cliente** à mão, para o cliente que não passou pelo funil (o cliente antigo): botão na tela Clientes, só para a gestão; escolhe um contato que ainda não é cliente nem está no funil, ou cria o contato ali mesmo, e abre o perfil na aba Projetos com o "+ Novo processo" aberto. Critério de aceite abaixo | P0 | ⬜ |
+
+**Critério de aceite do CLI-15** (desenhado com o Renato em 20/nov):
+
+- **Quem:** o botão "Novo cliente" fica no topo de Clientes e aparece só para
+  quem é `owner` ou `admin` da organização atual. O banco confere a gestão da
+  organização **da pessoa** logo depois de achá-la (no contato novo, antes de
+  tudo) e antes de qualquer gravação: pela função do Novo cliente, o `staff`
+  recebe "Só a gestão marca alguém como cliente."; por `insert` ou `update`
+  direto, a frase de sempre (0054). Nada se grava.
+- **Só a organização atual:** a lista e o "contato existente" são só as pessoas
+  cuja organização é a atual (não as atribuídas a ela por outra). Contato de
+  outra organização que aparecer como parecido não se usa: no aviso, ele vem
+  com "Este contato é de outra organização; quem o torna cliente é a gestão de
+  lá." e, no lugar de "Sim, é a mesma pessoa", um link "Abrir perfil".
+- **Quem está no funil fica de fora:** a lista não traz quem tem negócio aberto,
+  e o banco recusa com "Este contato está no funil: use o Ganho." — também
+  quando ele chega pelo aviso de parecido. O Novo cliente é para quem nunca
+  passou pelo funil; o cliente antigo que está no funil é ganho pelo Ganho, e a
+  data do ganho se ajusta depois (CRM-17). Negócio perdido não impede.
+- **Contato existente:** a escolha é por busca (nome, e-mail ou telefone), e
+  cada linha mostra nome, e-mail e telefone. A lista traz quem ainda não é
+  cliente, está fora da lixeira e não tem negócio aberto. Mostra até 20; acima
+  disso, "Mostrando 20 de N; refine a busca." — nunca corta em silêncio.
+- **Contato novo:** nome, DDI, telefone e e-mail obrigatórios, com as mesmas
+  regras e frases do Novo contato. Nasce na organização atual, já cliente.
+- **Parecido:** se já existe alguém com o mesmo e-mail ou telefone, nada se
+  grava e aparece o aviso de contato parecido (`AvisoDeDuplicado`, CON-4).
+  "Sim, é a mesma pessoa" usa a existente: se ela ainda não é cliente, vira
+  cliente; se já é, abre o perfil dela sem gravar; se está na lixeira,
+  "Restaurar" restaura e depois usa (são dois passos, como na Nova
+  oportunidade: se o segundo falha, ela fica restaurada e a frase aparece).
+  "Não, é outra pessoa" leva ao "Criar mesmo assim", que cria o novo.
+- **Antes de gravar**, o diálogo avisa: "Não tem volta: cliente não volta a ser
+  lead.".
+- **O que grava:** estágio cliente, "cliente desde" = hoje em São Paulo, a
+  linha "Marcado como cliente" no histórico e, se a pessoa ainda não tem dono,
+  **quem criou fica como dono** (decisão do Renato, 20/nov). Dono que já
+  existe não muda; os outros dados também não. **Vale também para o "Marcar
+  como cliente"** (CLI-12): quem marca fica como dono, se a pessoa não tiver
+  — os dois caminhos à mão gravam igual.
+- **Uma gravação só:** contato novo e cliente nascem juntos. Se algo falha,
+  não sobra contato solto nem cliente pela metade.
+- **Recusas com frase:** pessoa que já é cliente ("Já é cliente."), na lixeira
+  ("Este contato está na lixeira. Restaure antes.") ou que não existe para
+  quem chama ("Contato não encontrado.").
+- **Depois de gravar**, e também quando o parecido já é cliente: abre
+  `/clientes/<id>?aba=projetos`, com o "+ Novo processo" aberto e sem negócio.
+- **Cliente desde** não está no formulário: fica hoje e se corrige depois em
+  Editar (CLI-11).
+- **Clientes vazia:** para a gestão, o aviso diz "Um contato vira cliente
+  quando o negócio dele é ganho, ou pelo Novo cliente."; para os outros, a
+  frase de hoje.
+- No celular, o botão fica no topo e o diálogo rola por inteiro (conferência à
+  mão). Sem internet não abre, como o resto de Clientes.
 
 ---
 
@@ -488,6 +575,8 @@ e cada pessoa da equipe define a sua senha.
 | 18/nov | Clientes lê do servidor, como Contatos e CRM — exceção à "tela nova nasce migrada", registrada no `AGENTS.md`; a aba Financeiro continua lendo do aparelho |
 | 18/nov | Anexos da parcela vão direto do navegador ao servidor, só com internet: a tela Financeiro é migrada e não tem Server Action (CLI-6) |
 | 18/nov | "Só a gestão ou o Ganho tornam cliente" pela API fica para a entrega 3, junto com o Ganho no banco; na entrega 2, a gestão e o Ganho de hoje (D1 do plano) |
+| 20/nov | Novo cliente à mão na tela Clientes, só para a gestão, para o cliente que não passou pelo funil; escolhe o contato ou cria ali mesmo, sem "cliente desde" no formulário (fica hoje, corrige-se em Editar); quem está no funil fica de fora (use o Ganho); quem cria fica como dono se a pessoa não tiver — e o "Marcar como cliente" passa a fazer o mesmo (CLI-15, CLI-12) |
+| 20/nov | A data do Ganho se ajusta depois, só pela gestão e só pelo "Ajustar data", com histórico, para o ganho do cliente antigo não contar no mês errado (CRM-17) |
 
 ## 11. Ordem proposta
 
