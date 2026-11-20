@@ -3,6 +3,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { filtroDoQuadro } from "@/features/opportunities/regras";
+import { hojeEmSaoPaulo } from "@/lib/formatar";
 
 import { entrarComo, fixture, type Cliente } from "./clientes";
 
@@ -239,9 +240,9 @@ describe("buscar_encerradas (0053)", () => {
       const ganho = await parceiro.rpc("ganhar_negocio", { p_negocio: antigo });
       expect(ganho.error).toBeNull();
 
-      // Só `closed_at`: nenhuma trava guarda a data de encerramento.
-      const quarentaDias = new Date(Date.now() - 40 * 86_400_000).toISOString();
-      const mudou = await parceiro.from("opportunities").update({ closed_at: quarentaDias }).eq("id", antigo);
+      // A data do ganho só muda pelo Ajustar (0056, CRM-17).
+      const quarentaDias = hojeEmSaoPaulo(new Date(Date.now() - 40 * 86_400_000));
+      const mudou = await parceiro.rpc("ajustar_data_do_ganho", { p_negocio: antigo, p_data: quarentaDias });
       expect(mudou.error).toBeNull();
 
       const { data } = await doQuadro([antigo]);

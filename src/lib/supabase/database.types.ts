@@ -2000,6 +2000,10 @@ export type Database = {
           telefone: string
         }[]
       }
+      ajustar_data_do_ganho: {
+        Args: { p_data: string; p_negocio: string }
+        Returns: string
+      }
       buscar_clientes: {
         Args: { p_busca?: string; p_deslocamento?: number; p_limite?: number }
         Returns: {
