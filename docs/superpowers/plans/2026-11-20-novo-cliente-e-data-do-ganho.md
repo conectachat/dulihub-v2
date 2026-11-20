@@ -180,7 +180,7 @@ Todas com `errcode = 'P0001'`. "Hoje" no banco é `(now() at time zone 'America/
 
 - **Ajuste válido:** a gestão ajusta para um dia passado `D`. `closed_at` passa a ser `new Date(\`${D}T00:00:00-03:00\`)`. O histórico da pessoa tem "Data do ganho ajustada de ‹hoje em DD/MM/AAAA› para ‹D em DD/MM/AAAA›". Ajustar de novo para `E` grava "de ‹D› para ‹E›".
 - **Mesmo dia:** ajustar para o dia que já está gravado não muda `closed_at` nem cria linha no histórico.
-- **Antes de 2000:** `1999-12-31` recebe "A data do ganho não pode ser antes de 2000."; `2000-01-01` passa.
+- **Antes de 2000:** `1999-12-31` recebe "A data do ganho não pode ser antes de 2000."; `2000-01-01` passa — neste caso confere-se o dia em São Paulo (`hojeEmSaoPaulo(new Date(closed_at)) === "2000-01-01"`), não o instante: em 01/01/2000 São Paulo estava em horário de verão (`-02:00`), e a regra `-03:00` do ajuste válido não vale.
 - **Hoje e futuro:** ajustar para hoje passa. Amanhã, em São Paulo, recebe "A data do ganho não pode ser no futuro.".
 - **Recusas:**
   - o `staff`: "Só a gestão ajusta a data do ganho.";
