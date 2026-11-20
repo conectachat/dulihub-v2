@@ -11,7 +11,7 @@ no `docs/spec.md`, que vem antes de qualquer funcionalidade nova.
 
 ---
 
-## 1. Estado atual (3/out/2026; hospedagem em 16/nov; Clientes em 19/nov)
+## 1. Estado atual (3/out/2026; hospedagem em 16/nov; Clientes em 19/nov; Ganho com resumo em 20/nov)
 
 ### No ar
 
@@ -26,8 +26,8 @@ se encaixam: `docs/spec.md` §12.
 | Ficha do contato | Perfil enxuto de quem ainda não é cliente: dados, tags, oportunidades, linha do tempo; **Dados cadastrais** (o que vai para o contrato: CPF, RG, estado civil, endereço, dependentes) e o **link da ficha** para o cliente preencher. "Marcar como cliente" para a gestão. Cliente abre em `/clientes/<id>` (o endereço antigo redireciona) |
 | Clientes | **Lista** com busca por nome, e-mail ou telefone, 50 por página com o total. **Perfil em abas**: Dados cadastrais, Financeiro (totais por moeda, cobranças, baixa, anexos da parcela), Projetos, Documentos (passaporte, identidade, comprovante, contrato) e Notas; cabeçalho com copiar telefone e e-mail, dono, cliente desde, tags e Editar (dono e participantes) |
 | Ficha de cadastro (pública) | `/cadastro/<token>`: o cliente preenche no celular, **sem login**; ao enviar, a ficha do contato se atualiza e o link morre |
-| CRM | Quadro do funil, com **cartões que se arrastam** entre as colunas (o seletor de etapa continua, para o celular); negócio em Ganho oferece "Criar processo"; cada cartão mostra em que pé está a ficha de cadastro |
-| Lead (`/crm/[id]`) | O negócio enquanto está no funil: trilha das etapas, **Ganho** e **Perdido** (com motivo), contato, valor e origem, dados cadastrais com o link da ficha, histórico. Sem processos e sem financeiro |
+| CRM | Quadro do funil, com **cartões que se arrastam** entre as colunas (o seletor de etapa continua, para o celular) e o total de cada coluna por moeda; soltar em Ganho abre o **resumo**, e o cartão ganho leva aos processos; ganhos e perdidos ficam no quadro 30 dias e depois em **CRM › Encerradas** (busca por título ou contato); cada cartão mostra em que pé está a ficha de cadastro |
+| Lead (`/crm/[id]`) | O negócio enquanto está no funil: trilha das etapas, **Ganho com resumo** (numa gravação só: cliente, dono, participantes e um processo por visto), **Reabrir** um ganho e **Perdido** (com motivo); contato, **Vistos** (valor e moeda de cada um, total por moeda), origem, dono e participantes, dados cadastrais com o link da ficha, histórico. Sem processos e sem financeiro |
 | Projetos | Lista de processos: cliente, visto, status, progresso (etapas concluídas, em %), próximo prazo |
 | Processo | Status e campos do USCIS, inclusive quando a resposta da RFE foi enviada; abas **Etapas** (tabela com status, data prevista e de conclusão, sub-etapas em grupo), **Documentos** (pastas, envio, visualizar, aprovar, recusar com motivo, resolver) e **Observações** (editor estilo Notion, várias pessoas ao mesmo tempo) |
 | Configurações | Etapas do funil, tags, catálogo de pastas, tipos de visto, status de etapa — **abre e grava sem internet**, e sincroniza sozinha |
@@ -251,13 +251,12 @@ junto com a 0049.
 | Telas | Item Clientes no menu; lista com busca e total; perfil em abas; Editar com dono, cliente desde e participantes; "Marcar como cliente" no perfil enxuto, só para a gestão; links do app inteiro levam ao perfil certo (`enderecoDaPessoa`) |
 | Importação | Não rebaixa cliente e grava o DDI como "+NN" |
 
-Decisões que valem até a entrega 3 (detalhe no plano):
+Decisões que valeram até a entrega 3 (detalhe no plano), já fechadas:
 
-- **Promover por `update` direto pela API continua aberto a qualquer membro**
-  (D1): o Ganho de hoje promove assim, e travar agora impediria colaborador de
-  ganhar negócio. A trava vem com o Ganho no banco (`ganhar_negocio`).
-- **Dono e participantes da oportunidade**: as tabelas existem (0044); a tela
-  e a herança no Ganho vieram na entrega 3.
+- ~~Promover por `update` direto pela API aberto a qualquer membro (D1)~~ — a
+  0054 trouxe a regra: só o Ganho (marca `via_ganho`) ou a gestão.
+- ~~Dono e participantes da oportunidade sem tela~~ — a tela e a herança no
+  Ganho vieram na entrega 3.
 - **Clientes lê do servidor** e **anexos vão direto do navegador**: as duas
   exceções estão no `AGENTS.md`.
 
@@ -266,7 +265,7 @@ teste de `src/` que importava `migration/`, pasta que o Docker não recebe (o CI
 com o repositório inteiro, passava). Corrigido em 19/nov, com um teste que barra
 a repetição; a regra está no `AGENTS.md` ("A VPS não monta o repositório inteiro").
 
-### Entrega 3 — vistos na oportunidade e Ganho com resumo (19/nov, fase 1)
+### Entrega 3 — vistos na oportunidade e Ganho com resumo (19 e 20/nov)
 
 Plano: `docs/superpowers/plans/2026-11-19-entrega-3-vistos-e-ganho.md` (CRM-10,
 CRM-13 a CRM-16, PRO-12). Duas fases: a 1 (0051–0053 e as telas) vai no push 1;
@@ -276,16 +275,13 @@ por migration foi dispensada pelo Renato em 19/nov.
 | Parte | O que ficou pronto |
 |---|---|
 | Banco | Vistos do negócio (`opportunity_items`), processo ligado ao visto de onde nasceu e que não se apaga (0051); `ganhar_negocio` e `reabrir_negocio`, numa transação, com o CRM-10 conferido (0052); `buscar_encerradas` (0053) |
+| Banco, fase 2 (0054, 20/nov) | Ganho e reabrir **só pelas funções** (o `update` direto é recusado, também para a gestão); negócio ganho não se apaga; só o Ganho ou a gestão tornam cliente, no update e no insert; item com processo não se apaga; dono do negócio preso à equipe; saíram `value`, `currency`, `products` e `opportunity_products` (o valor ficou em `private.backup_opportunities_value`) |
 | Dados | O valor do negócio ganho de hoje virou um item sem visto, ligado ao processo dele |
 | Telas | Cartão Vistos na tela do lead (o valor sai da criação e da edição); Ganho com resumo; Reabrir com confirmação no quadro e na tela do lead; quadro com os encerrados só dos últimos 30 dias; CRM › Encerradas; Dono e Participantes no Editar negócio |
 
-Decisões que valem até a fase 2 (detalhe no plano):
-
-- **Entrar e sair do ganho por `update` direto pela API ainda passa**, e
-  promover a cliente também (D4): travar antes do deploy recusaria o código
-  antigo. A 0054 traz as duas travas, e a de excluir negócio ganho.
-- **Cobranças no Ganho, forma de pagamento e o aviso de parcela vencida** são
-  da entrega 4; o resumo diz "Forma de pagamento: definir na aba Financeiro".
+Fica para a entrega 4: **cobranças no Ganho, forma de pagamento e o aviso de
+parcela vencida**. Até lá, o resumo diz "Forma de pagamento: definir na aba
+Financeiro" e o Ganho não cria cobrança.
 
 ---
 

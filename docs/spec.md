@@ -104,12 +104,12 @@ Lead entra → conversa → proposta → ficha → contrato → assinatura → G
 |---|---|---|---|---|
 | 1 | O lead entra (manual, agendamento, Calendly) | Equipe / automático | CRM | 🟡 só manual |
 | 2 | Conversa e reunião | Equipe | Tela do lead: histórico, WhatsApp | 🟡 sem agenda |
-| 3 | Proposta (visto, valor, condições) | Renato | Tela do lead: negócio | 🟡 valor e origem; sem visto de interesse nem condição de pagamento |
+| 3 | Proposta (visto, valor, condições) | Renato | Tela do lead: negócio | 🟡 vistos do catálogo com valor e moeda (CRM-13); sem condição de pagamento (entrega 4) |
 | 4 | O lead aceita → **ficha de cadastro** por link | Lead | `/cadastro/<token>` | ✅ |
 | 5 | **Contrato** gerado com os dados da ficha e a forma de pagamento | Renato | Tela do lead | ⬜ |
 | 6 | **Assinatura** (ZapSign) | Lead | Fora do app, volta por webhook | ⬜ |
-| 7 | **Ganho** com resumo: o lead vira cliente (a assinatura só oferece; o dono confirma — 17/nov) | Dono do negócio | Tela do lead | 🟡 manual, sem resumo |
-| 8 | **Processo** criado no Ganho, um por visto do negócio | Automático no Ganho | Clientes › Projetos | 🟡 hoje à mão, um de cada vez |
+| 7 | **Ganho** com resumo: o lead vira cliente (a assinatura só oferece; o dono confirma — 17/nov) | Dono do negócio | Tela do lead | 🟡 com resumo e numa gravação só (CRM-14); a oferta pela assinatura vem com o contrato (CTR-4) |
+| 8 | **Processo** criado no Ganho, um por visto do negócio | Automático no Ganho | Clientes › Projetos | ✅ |
 | 9 | **Cobrança** e parcelas, da forma de pagamento confirmada na ficha | Automático no Ganho, ou à mão | Clientes › Financeiro | 🟡 hoje só à mão |
 | 10 | Cliente recebe acesso e envia documentos | Cliente | Portal | ⬜ Fase 6 |
 | 11 | Equipe revisa documentos, toca etapas, registra observações | Equipe | Processo | ✅ |
@@ -197,14 +197,14 @@ Dizer o que precisa de atenção hoje.
 |---|---|---|---|
 | CRM-1 | Quadro do funil, cartões arrastáveis, seletor de etapa no celular | P0 | 🟡 — mover não é tudo-ou-nada (I2) |
 | CRM-2 | Tela do lead: trilha das etapas, contato, negócio, ficha, histórico | P0 | ✅ |
-| CRM-3 | Ganho com confirmação; Perdido com motivo; reabrir | P0 | 🟡 — o quadro reabre um ganho sem perguntar (I3) |
+| CRM-3 | Ganho com confirmação; Perdido com motivo; reabrir | P0 | ✅ — o reabrir pergunta também no quadro desde a entrega 3 (I3, CRM-15) |
 | CRM-4 | Etapas do funil configuráveis | P0 | ✅ |
 | CRM-5 | **Etapas automáticas**: ficha enviada, ficha recebida, contrato enviado — o negócio anda sozinho quando o fato acontece | P1 | ⬜ |
 | CRM-6 | Visto de interesse no negócio — substituído pelo CRM-13 (17/nov) | — | — |
 | CRM-7 | Mais de um funil | P2 | ⬜ (o banco já suporta) |
 | CRM-8 | Dias na etapa e previsão de fechamento | P2 | ⬜ (oferecido em 3/out, não escolhido) |
 | CRM-9 | Entrada automática de lead (agendamento, Calendly, formulário do site) | P1 | ⬜ — ver 7.12 |
-| CRM-10 | **Ganho e reabrir um ganho** (critério de aceite deste e de CRM-11 a CRM-15, CON-4, CON-8, PRO-12: `docs/superpowers/specs/2026-11-17-contato-oportunidade-cliente-design.md`): só o dono do negócio e a linha ascendente dele (decisão de 6/nov). Até a Q10, a gestão (`owner`/`admin`) faz o papel da linha ascendente. Vale também para trocar o dono do negócio, e é garantido no banco, por qualquer caminho. *Entrega 3, fase 1 (19/nov): ganhar e reabrir pelas funções `ganhar_negocio`/`reabrir_negocio` (0052), que conferem; trocar o dono, pela 0044. Falta a fase 2 (0054): o `update` direto de `status`/`stage_id` pela API ainda passa* | P0 | 🟡 |
+| CRM-10 | **Ganho e reabrir um ganho** (critério de aceite deste e de CRM-11 a CRM-15, CON-4, CON-8, PRO-12: `docs/superpowers/specs/2026-11-17-contato-oportunidade-cliente-design.md`): só o dono do negócio e a linha ascendente dele (decisão de 6/nov). Até a Q10, a gestão (`owner`/`admin`) faz o papel da linha ascendente. Vale também para trocar o dono do negócio, e é garantido no banco, por qualquer caminho. *Entrega 3 (19–20/nov): ganhar e reabrir só pelas funções `ganhar_negocio`/`reabrir_negocio` (0052), que conferem; a 0054 recusa entrar e sair do ganho por `update` direto — também para a gestão — e apagar negócio ganho; trocar o dono, pela 0044, e o dono é sempre da equipe da organização (0054)* | P0 | ✅ |
 | CRM-11 | Nova oportunidade com "contato existente" ou "novo contato" no mesmo formulário, numa gravação só | P0 | ✅ |
 | CRM-12 | Aviso de oportunidade já existente para o contato (título, situação, data de criação), com confirmação para criar outra | P0 | ✅ |
 | CRM-13 | Um ou mais **vistos** do catálogo na oportunidade, cada um com valor e moeda sugeridos do visto e gravados no item; total por moeda. *Entrega 3 (19/nov): `opportunity_items` (0051), cartão Vistos na tela do lead; o valor único sai da criação e da edição* | P0 | ✅ |
@@ -403,11 +403,11 @@ que é própria. Desenho técnico e critério de aceite de cada requisito:
 | CLI-7 | Projetos: os processos do cliente, com andamento; clicar abre o processo; **+ Novo processo** à mão | P0 | ✅ |
 | CLI-8 | Documentos do cliente por categoria (identidade, passaporte, comprovante de residência, contrato, outro); os do processo ficam no processo | P0 | ✅ |
 | CLI-9 | Notas e histórico desde a fase de lead, do mais recente para o mais antigo, com a nota nova no topo e "Oportunidade ganha — virou cliente"; quem tem acesso ao cliente lê e escreve, **o cliente nunca lê** | P0 | ✅ |
-| CLI-10 | Dono e participantes do cliente e da oportunidade; o cliente herda no Ganho. Por ora só marcam quem cuida — não restringem quem vê. **Entrega 2:** dono e participantes do cliente no Editar; as tabelas da oportunidade existem (0044), a tela e a herança no Ganho vêm na entrega 3 | P1 | 🟡 |
+| CLI-10 | Dono e participantes do cliente e da oportunidade; o cliente herda no Ganho. Por ora só marcam quem cuida — não restringem quem vê. **Entrega 2:** dono e participantes do cliente no Editar; as tabelas da oportunidade (0044). **Entrega 3:** dono e participantes do negócio no Editar negócio, e o Ganho os passa ao cliente (0052) | P1 | ✅ |
 | CLI-11 | Cliente desde: gravado quando a pessoa passa a ser cliente, editável à mão; os atuais recebem a data do primeiro processo ou cobrança | P0 | ✅ |
-| CLI-12 | Marcar como cliente à mão, só a gestão (conferido no banco). **Entrega 2:** o botão e a função `marcar_como_cliente`, só da gestão; promover por `update` direto pela API ainda é de qualquer membro até a marca `via_ganho` da entrega 3 (D1 do plano) | P0 | 🟡 |
+| CLI-12 | Marcar como cliente à mão, só a gestão (conferido no banco). **Entrega 2:** o botão e a função `marcar_como_cliente`, só da gestão; promover por `update` direto pela API, ou inserir já como cliente, também é só da gestão desde a 0054 (entrega 3) | P0 | ✅ |
 | CLI-13 | Cliente não volta a ser lead, garantido no banco (fecha o M17) | P0 | ✅ |
-| CLI-14 | Quem tem processo ou cobrança é cliente: criar um ou outro promove a pessoa, com registro no histórico — fora do Ganho, só a gestão; os contatos assim hoje viram clientes na migration. Substitui o CON-3. **Entrega 2:** no banco (0045), também pela fila do Financeiro; o ramo do Ganho (marca `via_ganho`) vem na entrega 3 | P0 | 🟡 |
+| CLI-14 | Quem tem processo ou cobrança é cliente: criar um ou outro promove a pessoa, com registro no histórico — fora do Ganho, só a gestão; os contatos assim hoje viram clientes na migration. Substitui o CON-3. **Entrega 2:** no banco (0045), também pela fila do Financeiro; **Entrega 3:** o ramo do Ganho (marca `via_ganho`, 0054) | P0 | ✅ |
 
 ---
 
