@@ -118,6 +118,8 @@ describe("NovoClienteDialog", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Escolher Ana Souza/ }));
     expect(screen.queryByLabelText("Buscar contato")).toBeNull();
     expect(screen.getByText("Ana Souza")).toBeInTheDocument();
+    // O escolhido é um grupo com nome: o leitor de tela ouve "Contato".
+    expect(screen.getByRole("group", { name: "Contato *" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Trocar" }));
     fireEvent.click(await screen.findByRole("button", { name: /Escolher Ana Souza/ }));
