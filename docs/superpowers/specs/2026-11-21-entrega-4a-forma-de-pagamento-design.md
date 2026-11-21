@@ -231,9 +231,13 @@ Financeiro":
 
 - parcelas que vão nascer com vencimento antes de hoje: "2 parcelas já vencidas"
   ou "1 parcela já vencida";
-- a coerência (§5.2).
+- a coerência (§5.2), menos na situação `cobrancas_criadas`, em que a forma
+  congelada não se compara com os vistos de agora;
+- na situação `cobrancas_criadas`, para cada visto que ganha processo agora: "‹visto›
+  não está na forma de pagamento: crie a cobrança à mão na aba Financeiro." Assim
+  um visto acrescentado no negócio reaberto não fica sem cobrança por engano.
 
-**A gravação, passo (7)**, como a §6.4, linha 855, com o que fica decidido aqui:
+**A gravação, passo (7)**, como a linha "`ganhar_negocio`, passo (7)" da tabela Banco da §6.4, com o que fica decidido aqui:
 
 - só com a forma `confirmada` e `charges_created_at` nulo. O passo grava
   `charges_created_at = now()`;
@@ -285,7 +289,7 @@ novo, porque `charges_created_at` continua preenchido.
 |---|---|
 | Salvar ou confirmar com a forma já confirmada | "A forma está confirmada. Use Refazer para mudar." |
 | Salvar, confirmar ou refazer com o negócio encerrado | "O negócio está encerrado; reabra para mexer na forma de pagamento." |
-| Salvar ou refazer depois de o Ganho criar as cobranças (vale antes das outras frases) | "As cobranças já foram criadas. Para mudar, exclua a cobrança e crie outra na aba Financeiro do cliente." |
+| Salvar, confirmar ou refazer depois de o Ganho criar as cobranças (vale antes das outras frases) | "As cobranças já foram criadas. Para mudar, exclua a cobrança e crie outra na aba Financeiro do cliente." |
 | Confirmar sem parte ou sem visto | "Acrescente pelo menos um visto e uma parte antes de confirmar." |
 | Confirmar ou refazer sem ser dono do negócio nem da gestão | "Só o dono do negócio ou a gestão confirmam a forma de pagamento." |
 | Parcelas que não somam o total | "As parcelas de ‹rótulo› somam ‹valor›; o total é ‹valor›." |
@@ -299,9 +303,9 @@ Uma migration, compatível com o código no ar (§4).
 |---|---|
 | `payment_plans` | Como na §6.4. O `check` de `status` tem os quatro estados. RLS: leitura, insert e update só para membros da organização do negócio, pela organização (não por `can_access_person`, que deixaria o cliente do portal ler a própria forma); **sem policy de delete**, como `projects` na 0051. Um gatilho recusa, sem a marca, qualquer `insert` e qualquer mudança que não seja em `reference_rate` (`> 0`, ou nulo), `reference_rate_note` (até 200 caracteres) e no `updated_at` que o `set_updated_at` grava junto; isso inclui `status` e `charges_created_at`, que só o passo (7) do Ganho grava. Outro gatilho recusa o `delete` direto, também na organização de teste; só a cascata do negócio e da pessoa passa. A cotação na tela usa a mesma leitura da cotação da baixa ("5,425" é cinco e 425 milésimos, `financeiro/schema.ts:74-75`) |
 | `payment_plan_parts` e `payment_plan_installments` | Como na §6.4, com os limites da §5.2, **sem** `card_with_interest`. O `check` passa a ser: cartão tem `installments_count = 1`; os outros métodos, de 1 a 36. Insert, update e delete só com a marca, e a cascata passa. `numeric(12,2)` cabe em `receivables` e `installments`, que são `numeric(14,2)` |
-| `payment_plan_responses` | Como na §6.4, inteira, inclusive `registration_form_id`, nulo na 4a, com uma mudança: `answered_by` referencia `profiles` com `on delete set null`, como o `created_by` da casa, e a resposta guarda também `answered_by_name`, o nome de quem confirmou na hora. A obrigação de `answered_by` na confirmação da equipe é conferida no gatilho de insert, e não num `check`. Assim, excluir o usuário não é recusado com um erro obscuro, e a prova continua dizendo quem foi *(minha decisão: o `check` da §6.4 recusaria a exclusão de qualquer usuário que já confirmou uma forma)*. O gatilho `before insert` aceita na 4a só `confirmada_pela_equipe`, vindo de `rascunho`. O ramo do cliente (`enviada`) entra na 4b. Update e delete recusados; só a cascata e a ação da chave estrangeira passam |
+| `payment_plan_responses` | Como na §6.4, inteira, inclusive `registration_form_id`, nulo na 4a, com uma mudança: `answered_by` referencia `profiles` com `on delete set null`, como o `created_by` da casa, e a resposta guarda também `answered_by_name`, o nome de quem confirmou na hora. O gatilho de insert preenche `answered_by` com `auth.uid()` e `answered_by_name` a partir de `profiles` (o `full_name`, ou o e-mail quando o nome falta), e confere ali a obrigação de `answered_by`, e não num `check`. O resto do `check` da §6.4 continua: `registration_form_id` nulo na confirmação da equipe, e preenchido na do cliente. Assim, excluir o usuário não é recusado com um erro obscuro, e a prova continua dizendo quem foi *(minha decisão: o `check` da §6.4 recusaria a exclusão de qualquer usuário que já confirmou uma forma)*. O gatilho `before insert` aceita na 4a só `confirmada_pela_equipe`, vindo de `rascunho`. O ramo do cliente (`enviada`) entra na 4b. Update e delete recusados; só a cascata e a ação da chave estrangeira passam |
 | `receivables.payment_plan_part_id` | Como na §6.4: único quando não nulo; FK composta, `on delete set null (payment_plan_part_id)` |
-| `salvar_forma_de_pagamento(p_negocio, p_forma jsonb)` | Como na §6.4, com as regras da §5.1 e da §5.2. A forma nasce no primeiro salvar |
+| `salvar_forma_de_pagamento(p_negocio, p_forma jsonb)` | Como na §6.4, com as regras da §5.1 e da §5.2. A forma nasce no primeiro salvar, por `insert … on conflict (opportunity_id) do nothing` antes do `for update`, para dois primeiros salvamentos ao mesmo tempo não darem erro cru de duplicata |
 | `confirmar_forma_de_pagamento_pela_equipe(p_negocio, p_observacao)` | Na 4a, só a partir de `rascunho`. O ramo de `enviada`, que cancela o link, entra na 4b |
 | `voltar_forma_para_rascunho(p_negocio)` | Na 4a, só o "Refazer" de `confirmada`, com o CRM-10. "Editar", "Ajustar" e "Cancelar link" entram na 4b, e lá se decide quem pode cada um |
 | `ganhar_negocio`, passo (7) | Como na §5.4, no caminho de simulação e no de gravação. `p_cobrancas_sem_confirmacao` continua sem efeito |
@@ -360,8 +364,10 @@ Total da forma: R$ 10.000 + US$ 9.000
 **"Confirmar pela equipe"** abre uma confirmação com o resumo das partes, o aviso de
 coerência, quando houver, e o campo de observação.
 
-**A lista Vistos do cartão Negócio**, com a forma confirmada: some o "adicionar", e
-os itens ficam só para leitura, com a frase da §5.1.
+**A lista Vistos do cartão Negócio**, com a forma confirmada e sem cobranças
+criadas (`charges_created_at` nulo): some o "adicionar", e os itens ficam só para
+leitura, com a frase da §5.1. Depois que o Ganho cria as cobranças, a lista volta a
+funcionar como antes no negócio reaberto, igual ao banco.
 
 **O resumo do Ganho** (`ResumoDoGanhoNaTela`) troca o fixo "Forma de pagamento:
 definir na aba Financeiro" e o "Nenhuma cobrança será criada." pelo que a §5.4
@@ -415,9 +421,11 @@ cair no aviso de vencida sem querer: "daqui a 10 dias", "daqui a 1 mês".
 - **Sem cobrança duplicada:** Ganho com a forma confirmada, depois reabrir. Refazer
   é recusado com a frase da §5.6. Ganhar de novo não cria cobrança, e o resumo diz
   que já foram criadas.
-- **Negócio reaberto depois das cobranças:** acrescentar um visto passa, e ganhar
-  de novo cria só o processo do visto novo, sem cobrança. O cartão mostra
-  "Cobranças criadas no Ganho em ‹data›" e não mostra Refazer.
+- **Negócio reaberto depois das cobranças:** acrescentar um visto passa, pela tela
+  e pela API. Ganhar de novo cria só o processo do visto novo, sem cobrança, e o
+  resumo avisa "O-1 não está na forma de pagamento: crie a cobrança à mão na aba
+  Financeiro.", sem aviso de coerência. O cartão mostra "Cobranças criadas no Ganho
+  em ‹data›" e não mostra Refazer.
 - **Negócio encerrado:** salvar a forma de um negócio ganho é recusado. A cotação
   continua editável.
 - **Vistos travados:** com a forma `confirmada`, acrescentar, mudar ou retirar um

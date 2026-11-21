@@ -284,8 +284,9 @@ Critério de aceite de FIC-7 a FIC-12: `docs/superpowers/specs/2026-11-17-contat
   cotação muda direto.
 - Com a forma confirmada, mudar os vistos pela API é recusado (FIC-12);
   depois de "Refazer", passa. No negócio reaberto depois de o Ganho criar
-  as cobranças, acrescentar um visto passa, e ganhar de novo cria só o
-  processo dele, sem cobrança.
+  as cobranças, acrescentar um visto passa, pela tela e pela API, e ganhar de
+  novo cria só o processo dele, sem cobrança, com o aviso "‹visto› não está
+  na forma de pagamento: crie a cobrança à mão na aba Financeiro."
 - Negócio cuja forma já teve uma confirmação, mesmo depois de "Refazer",
   não se exclui: "A forma de pagamento já foi confirmada; o negócio fica
   como registro."
@@ -627,7 +628,7 @@ e cada pessoa da equipe define a sua senha.
 | 20/nov | A data do Ganho se ajusta depois, só pela gestão e só pelo "Ajustar data", com histórico, para o ganho do cliente antigo não contar no mês errado; de 01/01/2000 até hoje, e o mesmo dia não grava nada (CRM-17) |
 | 20/nov | A entrega 4 vai em duas metades: 4a — a equipe define e confirma a forma de pagamento, e o Ganho cria as cobranças; 4b — o link com a forma, a resposta do cliente e os avisos da Início |
 | 21/nov | Cartão é um pagamento só, sem número de vezes nem juros: a Duli recebe tudo antecipado. Entrada e parcelas viram parcelas no Financeiro, pela programação da forma (FIC-7) |
-| 21/nov | Com a forma de pagamento confirmada, os vistos do negócio não mudam; para mudar, "Refazer" a forma antes (FIC-12) |
+| 21/nov | Com a forma de pagamento confirmada, os vistos do negócio não mudam; para mudar, "Refazer" a forma antes (FIC-12). Depois que o Ganho cria as cobranças, a forma vira registro e a trava acaba, para o negócio reaberto aceitar visto novo (CRM-15); a cobrança dele se cria à mão |
 
 ## 11. Ordem proposta
 

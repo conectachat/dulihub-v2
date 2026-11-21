@@ -763,11 +763,16 @@ que também muda regras daqui. As principais:
 
 - o cartão vira um pagamento só, sem número de vezes nem juros, e sai a anotação "Nx
   com/sem juros" do passo (7);
-- os vistos travam enquanto a forma estiver confirmada e sem cobranças;
+- os vistos travam enquanto a forma estiver confirmada e sem cobranças, e a trava
+  acaba quando o Ganho cria as cobranças;
 - a forma só muda com o negócio aberto;
 - a frase de excluir negócio com a forma confirmada muda;
 - `payment_plans` não se apaga direto;
-- a resposta guarda o nome de quem confirmou.
+- a resposta guarda o nome de quem confirmou;
+- a frase do Refazer depois das cobranças passa a ser "As cobranças já foram
+  criadas. Para mudar, exclua a cobrança e crie outra na aba Financeiro do
+  cliente.", porque o Financeiro não edita valor nem data de parcela (vale onde
+  aqui se lê "Ajuste na aba Financeiro").
 
 A lista completa está na §10 daquele documento.*
 
