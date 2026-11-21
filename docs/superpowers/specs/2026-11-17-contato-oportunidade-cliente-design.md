@@ -757,6 +757,11 @@ plano da entrega 4 cobrir junto:*
   pagamento aberto ("Cancele o link de pagamento antes"), também no gatilho
   `opportunities_ganho_nao_se_apaga` da 0054 e no `deleteOpportunity`.*
 
+*21/nov: a entrega 4 vai em duas metades. A 4a (a equipe define e confirma a forma,
+e o Ganho cria as cobranças) está em `2026-11-21-entrega-4a-forma-de-pagamento-design.md`,
+que também muda duas regras daqui: o cartão vira um pagamento só, sem número de vezes
+nem juros, e os vistos travam enquanto a forma estiver confirmada.*
+
 | ID | Requisito | Pri. |
 |---|---|---|
 | FIC-7 | **Enviar ficha** pela oportunidade abre a janela da **forma de pagamento**: vistos e total, as partes (cartão até 10x sem juros ou até 18x com juros, parcelas iguais até 36, entrada com forma e moeda + parcelas, à vista), com as datas. Depois vem o resumo e a confirmação, e só então o link | P0 |

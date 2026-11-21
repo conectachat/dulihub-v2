@@ -176,7 +176,7 @@ Dizer o que precisa de atenção hoje.
 | INI-5 | Tarefas minhas, de hoje e atrasadas | P0 | ⬜ (depende de 7.9) |
 | INI-6 | Contas a pagar da semana | P1 | ⬜ (depende de 7.8) |
 | INI-7 | Números do mês: negócios ganhos, entradas, saídas | P2 | ⬜ |
-| INI-8 | Forma de pagamento recusada (some no reenvio) e confirmada — pronto para o contrato (some no Ganho) | P0 | ⬜ |
+| INI-8 | Forma de pagamento recusada (some no reenvio) e confirmada — pronto para o contrato (some no Ganho). *Entrega 4b* | P0 | ⬜ |
 
 ### 7.2 Contatos
 
@@ -208,7 +208,7 @@ Dizer o que precisa de atenção hoje.
 | CRM-11 | Nova oportunidade com "contato existente" ou "novo contato" no mesmo formulário, numa gravação só | P0 | ✅ |
 | CRM-12 | Aviso de oportunidade já existente para o contato (título, situação, data de criação), com confirmação para criar outra | P0 | ✅ |
 | CRM-13 | Um ou mais **vistos** do catálogo na oportunidade, cada um com valor e moeda sugeridos do visto e gravados no item; total por moeda. *Entrega 3 (19/nov): `opportunity_items` (0051), cartão Vistos na tela do lead; o valor único sai da criação e da edição* | P0 | ✅ |
-| CRM-14 | **Ganho com resumo** (vistos, valores, forma de pagamento, o que vai acontecer) e, só após confirmar, numa gravação só: ganho, histórico, cliente, dono, **um processo por visto** e as cobranças. *Entrega 3 (19/nov): `ganhar_negocio` (0052) e o resumo pela mesma função com `p_simular`; as cobranças e a forma de pagamento vêm na entrega 4* | P0 | 🟡 |
+| CRM-14 | **Ganho com resumo** (vistos, valores, forma de pagamento, o que vai acontecer) e, só após confirmar, numa gravação só: ganho, histórico, cliente, dono, **um processo por visto** e as cobranças. *Entrega 3 (19/nov): `ganhar_negocio` (0052) e o resumo pela mesma função com `p_simular`; as cobranças e a forma de pagamento vêm na entrega 4. Entrega 4a (21/nov): o resumo mostra a forma e as cobranças que vão nascer, avisa das parcelas já vencidas, e a gravação cria uma cobrança por parte da forma confirmada; as formas `enviada` e `recusada`, na 4b* | P0 | 🟡 |
 | CRM-15 | Reabrir um ganho pede confirmação também no quadro (I3); ganhar de novo não duplica processo nem cobrança. *Entrega 3 (19/nov): `reabrir_negocio` (0052), diálogo no quadro e na tela do lead; a ligação processo → visto (0051) impede o repetido* | P0 | ✅ |
 | CRM-16 | Oportunidades encerradas: ganhas e perdidas saem do quadro (as colunas Ganho e Perdido mostram só os últimos 30 dias) e são achadas em CRM › Encerradas, com busca e filtro. *Entrega 3 (19/nov): `buscar_encerradas` (0053) e `/crm/encerradas`* | P0 | ✅ |
 | CRM-17 | **Ajustar a data do Ganho**, só a gestão: para o cliente antigo que estava no funil e foi ganho agora, a data passa a ser a real, e o ganho não conta no mês errado. Critério de aceite abaixo. *20/nov: `ajustar_data_do_ganho` e a trava de `closed_at` (0056); "Ajustar data" no lead ganho* | P0 | ✅ |
@@ -256,13 +256,34 @@ Dizer o que precisa de atenção hoje.
 | FIC-4 | Enviar pelo WhatsApp com a mensagem pronta | P0 | ✅ |
 | FIC-5 | Rascunho: o lead pode parar e voltar sem perder o que digitou | P1 | ⬜ |
 | FIC-6 | Endereço preenchido pelo CEP | P2 | ⬜ |
-| FIC-7 | **Enviar ficha** pela oportunidade abre a **forma de pagamento** (cartão até 10x sem juros / 18x com juros, parcelas iguais até 36, entrada + parcelas, à vista; cada parte na sua moeda, com as datas), resumo e confirmação antes do link | P0 | ⬜ |
-| FIC-8 | O cliente, depois dos dados pessoais, **confirma** a forma de pagamento ou diz **o que está errado** | P0 | ⬜ |
-| FIC-9 | Recusada: o dono ajusta e reenvia; o link novo abre direto no pagamento, sem mostrar de novo os dados pessoais, e não aceita dados pessoais | P0 | ⬜ |
-| FIC-10 | Confirmação da forma de pagamento pela equipe (dono do negócio ou gestão), também sem link enviado, registrando quem | P0 | ⬜ |
+| FIC-7 | **Forma de pagamento** na oportunidade: os vistos e o total, e as partes — entrada, parcelas iguais até 36, cartão num pagamento só, à vista —, cada parte na sua moeda, com as datas. **Enviar ficha** leva a forma no link, com resumo e confirmação antes. *21/nov: o cartão é um pagamento só, sem número de vezes nem juros, porque a Duli recebe tudo antecipado (era até 10x sem juros ou 18x com juros). Entrega 4a: a janela da forma, por "Definir" e "Editar" no lead; o envio pelo link, na 4b* | P0 | ⬜ |
+| FIC-8 | O cliente, depois dos dados pessoais, **confirma** a forma de pagamento ou diz **o que está errado**. *Entrega 4b* | P0 | ⬜ |
+| FIC-9 | Recusada: o dono ajusta e reenvia; o link novo abre direto no pagamento, sem mostrar de novo os dados pessoais, e não aceita dados pessoais. *Entrega 4b* | P0 | ⬜ |
+| FIC-10 | Confirmação da forma de pagamento pela equipe (dono do negócio ou gestão), também sem link enviado, registrando quem, quando e uma observação; desfazer ("Refazer") também é do dono ou da gestão, e é recusado depois que o Ganho criou as cobranças. *Entrega 4a: a partir de `rascunho`; a partir de `enviada`, na 4b* | P0 | ⬜ |
 | FIC-11 | Cotação usada (C6) anotada na forma de pagamento, em qualquer estado; só a equipe vê | P1 | ⬜ |
+| FIC-12 | **Vistos travados com a forma confirmada**: não se acrescenta, muda nem retira visto do negócio enquanto a forma estiver confirmada ("A forma de pagamento está confirmada. Use Refazer para mudar os vistos."), garantido no banco; a forma só muda com o negócio aberto, e a cotação, sempre. *21/nov; na 4b vale também para a forma `enviada`* | P0 | ⬜ |
 
-Critério de aceite de FIC-7 a FIC-11: `docs/superpowers/specs/2026-11-17-contato-oportunidade-cliente-design.md` §6.4.
+Critério de aceite de FIC-7 a FIC-12: `docs/superpowers/specs/2026-11-17-contato-oportunidade-cliente-design.md` §6.4, com o recorte e as mudanças da entrega 4a em `docs/superpowers/specs/2026-11-21-entrega-4a-forma-de-pagamento-design.md` §8. Os da entrega 4a, resumidos:
+
+- Entrada de R$ 10.000 no pix em 10/nov e 3 × US$ 3.000 por transferência a
+  partir de 10/dez: o lead mostra "R$ 10.000 + US$ 9.000" e as 4 datas.
+- Cartão com mais de 1 parcela, parcelas iguais com 37, e parcelas que não
+  somam o total da parte são recusados, no banco e na tela.
+- "Confirmar pela equipe" numa forma em rascunho a deixa confirmada e
+  registra quem, quando e a observação, com uma cópia do combinado sem a
+  cotação; `teste-staff`, que não é dono do negócio, é recusado.
+- Pela API, na organização de teste, são recusados: inserir resposta,
+  mudar o estado da forma, gravar partes ou parcelas, e mudar ou apagar
+  resposta. A cotação muda direto.
+- Com a forma confirmada, mudar os vistos pela API é recusado (FIC-12);
+  depois de "Refazer", passa.
+- Negócio cuja forma já teve uma confirmação, mesmo depois de "Refazer",
+  não se exclui: "A forma de pagamento já foi confirmada; o negócio fica
+  como registro. Marque como perdido."
+- O usuário do portal não lê a forma, as partes, as parcelas nem as
+  respostas.
+
+Os do Ganho estão no REC-6.
 
 ### 7.5 Contrato e assinatura — **próximo**
 
@@ -324,10 +345,23 @@ Dúvidas que bloqueiam este módulo estão em §10 (Q1, Q2, Q4 e Q14; a Q3 foi d
 | REC-3 | Lista com filtros (vencidas, a vencer, pagas) e números do mês | P0 | ✅ |
 | REC-4 | Funciona sem internet | P0 | 🟡 — sem o prazo de 14 dias (I19), "Nenhuma cobrança" antes de baixar (I26), e os defeitos da fila (I17, I21, I23) |
 | REC-5 | Anexar boleto e nota fiscal à parcela — virou o CLI-6 (entregue em 19/nov) | P1 | ✅ |
-| REC-6 | Cobranças criadas no Ganho a partir da forma de pagamento confirmada, uma por parte, sem duplicar (17/nov; antes dependia do contrato, CTR-2) | P0 | ⬜ |
+| REC-6 | Cobranças criadas no Ganho a partir da forma de pagamento confirmada, uma por parte, sem duplicar (17/nov; antes dependia do contrato, CTR-2). Nascem no banco, na mesma gravação do Ganho, com a organização **da pessoa** — esse caminho não passa pelos defeitos I20 e I24 da cobrança manual. *Entrega 4a; "criar as cobranças mesmo assim" com a forma enviada ou recusada, na 4b* | P0 | ⬜ |
 | REC-7 | Boleto do Itaú e link do C6 emitidos pelo app | P2 | ⬜ — depende das credenciais |
 | REC-8 | Nota fiscal emitida pelo app | P2 | ⬜ — depende do provedor |
 | REC-9 | Cotação do dólar sugerida automaticamente (Banco Central), sempre corrigível | P2 | ⬜ |
+
+Critério de aceite do REC-6 (entrega 4a; o resto em `docs/superpowers/specs/2026-11-21-entrega-4a-forma-de-pagamento-design.md` §8):
+
+- Ganho com a forma do FIC-7 confirmada: nascem 2 cobranças — uma em R$ com
+  1 parcela e uma em US$ com 3 —, com a organização da pessoa, sem processo,
+  com o título "‹rótulo› — ‹vistos›" ("Entrada — EB-1A, O-1"). O resumo
+  listou as mesmas 2.
+- Forma em rascunho, ou sem forma: nenhuma cobrança, e o resumo diz por quê.
+- Uma parcela com vencimento de ontem: o resumo avisa "1 parcela já
+  vencida", e o Ganho passa.
+- Ganho, reabrir, ganhar de novo: nenhuma cobrança nova, e o resumo diz que
+  já foram criadas; "Refazer" é recusado ("As cobranças já foram criadas.
+  Ajuste na aba Financeiro do cliente.").
 
 ### 7.8 Financeiro — a pagar e caixa
 
@@ -580,6 +614,9 @@ e cada pessoa da equipe define a sua senha.
 | 18/nov | "Só a gestão ou o Ganho tornam cliente" pela API fica para a entrega 3, junto com o Ganho no banco; na entrega 2, a gestão e o Ganho de hoje (D1 do plano) |
 | 20/nov | Novo cliente à mão na tela Clientes, só para a gestão, para o cliente que não passou pelo funil; escolhe o contato ou cria ali mesmo, sem "cliente desde" no formulário (fica hoje, corrige-se em Editar); quem está no funil fica de fora (use o Ganho); quem cria fica como dono se a pessoa não tiver — e o "Marcar como cliente" passa a fazer o mesmo (CLI-15, CLI-12) |
 | 20/nov | A data do Ganho se ajusta depois, só pela gestão e só pelo "Ajustar data", com histórico, para o ganho do cliente antigo não contar no mês errado; de 01/01/2000 até hoje, e o mesmo dia não grava nada (CRM-17) |
+| 20/nov | A entrega 4 vai em duas metades: 4a — a equipe define e confirma a forma de pagamento, e o Ganho cria as cobranças; 4b — o link com a forma, a resposta do cliente e os avisos da Início |
+| 21/nov | Cartão é um pagamento só, sem número de vezes nem juros: a Duli recebe tudo antecipado. Entrada e parcelas viram parcelas no Financeiro, pela programação da forma (FIC-7) |
+| 21/nov | Com a forma de pagamento confirmada, os vistos do negócio não mudam; para mudar, "Refazer" a forma antes (FIC-12) |
 
 ## 11. Ordem proposta
 
@@ -589,7 +626,8 @@ caminho até o uso diário (§9):
 0. **Cópia de segurança e monitor (OPS-1, OPS-2)**: hoje não existe cópia, e
    tudo — testes, desenvolvimento, migrations — bate no banco de produção.
 1. **Contato → oportunidade → cliente (17/nov)**: contato completo, Clientes,
-   vistos e Ganho com resumo, forma de pagamento na ficha — entregas 0 a 4 de
+   vistos e Ganho com resumo, forma de pagamento na ficha — entregas 0 a 4 (a 4
+   em duas metades, 4a e 4b) de
    `docs/superpowers/specs/2026-11-17-contato-oportunidade-cliente-design.md`.
    Prepara o contrato.
 2. **Contrato e assinatura (7.5)**: fecha a jornada do lead. Depende de Q1,
