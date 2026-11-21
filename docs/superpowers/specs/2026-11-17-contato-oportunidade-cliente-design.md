@@ -759,8 +759,17 @@ plano da entrega 4 cobrir junto:*
 
 *21/nov: a entrega 4 vai em duas metades. A 4a (a equipe define e confirma a forma,
 e o Ganho cria as cobranças) está em `2026-11-21-entrega-4a-forma-de-pagamento-design.md`,
-que também muda duas regras daqui: o cartão vira um pagamento só, sem número de vezes
-nem juros, e os vistos travam enquanto a forma estiver confirmada.*
+que também muda regras daqui. As principais:
+
+- o cartão vira um pagamento só, sem número de vezes nem juros, e sai a anotação "Nx
+  com/sem juros" do passo (7);
+- os vistos travam enquanto a forma estiver confirmada e sem cobranças;
+- a forma só muda com o negócio aberto;
+- a frase de excluir negócio com a forma confirmada muda;
+- `payment_plans` não se apaga direto;
+- a resposta guarda o nome de quem confirmou.
+
+A lista completa está na §10 daquele documento.*
 
 | ID | Requisito | Pri. |
 |---|---|---|
