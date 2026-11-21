@@ -13,6 +13,21 @@ Hoje o Ganho cria cliente e processos, mas nenhuma cobrança. Depois do Ganho, o
 Renato abre a aba Financeiro do cliente e digita a mesma combinação que já tinha
 fechado na conversa: entrada, parcelas, datas.
 
+**O fluxo, nas palavras do Renato (21/nov):**
+
+1. O cliente diz "vamos fechar".
+2. A equipe põe a forma de pagamento que o cliente escolheu.
+3. A equipe envia o link da ficha. O cliente preenche os dados cadastrais, vê a
+   forma de pagamento que escolheu e dá um OK.
+4. Esses dados vão para o contrato.
+5. Depois que o cliente assina, a oportunidade é marcada como ganha.
+6. O Ganho cria o perfil do cliente com o processo de cada visto contratado e a
+   forma de pagamento no Financeiro.
+
+A forma serve a duas coisas: dizer no contrato como o cliente vai pagar, e deixar
+no Financeiro as parcelas em que a equipe dá baixa e anexa a nota fiscal quando o
+dinheiro entra. A baixa e o anexo da nota fiscal (CLI-6) já existem.
+
 A entrega 4 inteira faz a forma de pagamento nascer no negócio e virar cobrança no
 Ganho. A parte mais arriscada é o cliente confirmar pelo link, porque alarga a
 única porta sem login. Por isso a entrega vem em duas metades:
@@ -131,15 +146,14 @@ os vistos."
     ou cripto;
   - moeda, BRL ou USD;
   - total maior que zero;
-  - número de parcelas;
-  - juros, só no cartão.
+  - número de parcelas.
 - **Os botões só preenchem a parte.** "+ Entrada", "+ Parcelas", "+ Cartão" e
   "+ À vista" não são tipos de parte. O que se grava é o rótulo, o método e o
   número de parcelas que o botão sugere, e a pessoa pode mudar tudo.
   - **Entrada:** rótulo "Entrada", 1 parcela.
   - **À vista:** rótulo "À vista", 1 parcela.
   - **Parcelas:** rótulo "Parcelas", N parcelas.
-  - **Cartão:** rótulo "Cartão", método cartão.
+  - **Cartão:** rótulo "Cartão", método cartão, 1 parcela.
   - Os outros padrões ficam com quem constrói.
 - **Parcelas iguais** (todo método menos cartão):
   - de 1 a 36;
@@ -149,10 +163,11 @@ os vistos."
   - valor e data de cada parcela podem ser editados;
   - a soma tem de bater com o total da parte, ou a forma não salva;
   - data no passado é aceita, e o Ganho avisa.
-- **Cartão:**
-  - sem juros, de 1 a 10x; com juros, de 1 a 18x;
-  - vira **uma** parcela, com o total, na data da cobrança no cartão;
-  - o número de vezes fica em `installments_count`, e só serve para a anotação.
+- **Cartão:** **uma** parcela, com o total, numa data *(decisão do Renato,
+  21/nov)*. Não se registra em quantas vezes o cliente parcela nem se há juros: a
+  Duli recebe tudo de uma vez, antecipado pela operadora. Quando o dinheiro entra,
+  a equipe dá baixa nessa parcela e anexa a nota fiscal, como em qualquer outra. Na
+  §6.4, o cartão tinha de 1 a 10x sem juros ou até 18x com juros, e isso sai.
 - **Coerência.** Quando os vistos e as partes estão todos na **mesma** moeda e os
   totais diferem, aparece um aviso, mas nada é bloqueado: "A forma soma US$ 13.000
   e os vistos, US$ 14.000." O aviso aparece na janela da forma, na confirmação e no
@@ -217,10 +232,8 @@ Financeiro":
   - `payment_plan_part_id` é a parte;
   - `amount` é o total da parte, na moeda da parte;
 - **título:** "‹rótulo› — ‹vistos›", com os `visa_name` dos itens na ordem de
-  `position`, separados por vírgula. Por exemplo, "Entrada — EB-1A, O-1";
-- **no cartão:** o título leva as vezes, como em "Cartão (6x sem juros) — EB-1A,
-  O-1", e a parcela leva a mesma anotação em `notes`. *(Minha decisão: o
-  Financeiro não mostra `notes`, então só no título a anotação aparece.)*
+  `position`, separados por vírgula. Por exemplo, "Entrada — EB-1A, O-1" ou
+  "Cartão — EB-1A, O-1";
 - **parcelas:** cópia das parcelas da forma (número, valor e vencimento), com o
   método da parte;
 - **o retorno:** cada item de `cobrancas` traz `id` (nulo na simulação), `titulo`,
@@ -253,7 +266,6 @@ novo, porque `charges_created_at` continua preenchido.
 | Confirmar sem parte ou sem visto | "Acrescente pelo menos um visto e uma parte antes de confirmar." |
 | Confirmar ou refazer sem ser dono do negócio nem da gestão | "Só o dono do negócio ou a gestão confirmam a forma de pagamento." |
 | Parcelas que não somam o total | "As parcelas de ‹rótulo› somam ‹valor›; o total é ‹valor›." |
-| Cartão acima do limite | "Cartão sem juros vai até 10x; com juros, até 18x." |
 | Parcelas fora de 1 a 36 | "Parcelas vão de 1 a 36." |
 
 ## 6. Banco
@@ -263,7 +275,7 @@ Uma migration, compatível com o código no ar (§4).
 | Peça | O que entra na 4a |
 |---|---|
 | `payment_plans` | Como na §6.4. O `check` de `status` tem os quatro estados. RLS: leitura e escrita só para membros da organização do negócio; o cliente do portal não lê nada. Um gatilho recusa, sem a marca, qualquer mudança que não seja em `reference_rate` (`> 0`, ou nulo) e `reference_rate_note` (até 200 caracteres), inclusive o `insert` e o `update` de `status` pela API |
-| `payment_plan_parts` e `payment_plan_installments` | Como na §6.4, com os limites da §5.2. Escrita só com a marca, e a cascata passa. `numeric(12,2)` cabe em `receivables` e `installments`, que são `numeric(14,2)` |
+| `payment_plan_parts` e `payment_plan_installments` | Como na §6.4, com os limites da §5.2, **sem** `card_with_interest`. O `check` passa a ser: cartão tem `installments_count = 1`; os outros métodos, de 1 a 36. Escrita só com a marca, e a cascata passa. `numeric(12,2)` cabe em `receivables` e `installments`, que são `numeric(14,2)` |
 | `payment_plan_responses` | Como na §6.4, inteira, inclusive `registration_form_id`, nulo na 4a. O gatilho `before insert` aceita na 4a só `confirmada_pela_equipe`, vindo de `rascunho`. O ramo do cliente (`enviada`) entra na 4b. Update e delete recusados; só a cascata passa |
 | `receivables.payment_plan_part_id` | Como na §6.4: único quando não nulo; FK composta, `on delete set null (payment_plan_part_id)` |
 | `salvar_forma_de_pagamento(p_negocio, p_forma jsonb)` | Como na §6.4, com as regras da §5.1 e da §5.2. A forma nasce no primeiro salvar |
@@ -316,8 +328,7 @@ Total da forma: R$ 10.000 + US$ 9.000
 - Mudar o total, o número de parcelas ou a 1ª data gera de novo as parcelas
   daquela parte. Editar uma parcela à mão vale até a próxima geração.
 - A soma errada aparece junto da parte e impede salvar.
-- No cartão, no lugar das parcelas, aparecem "sem juros / com juros", o número de
-  vezes e uma data só.
+- No cartão, e em toda parte de 1 parcela, aparecem só o valor e uma data.
 - **No celular de 375 px:** as partes empilham, e cada parcela é uma linha com
   data e valor, sem rolagem horizontal.
 
@@ -341,7 +352,7 @@ Os da §6.4 que valem na 4a, mais os desta metade:
   transferência a partir de 10/dez. O cartão mostra "R$ 10.000 + US$ 9.000" e as 4
   datas.
 - As validações, no banco e na tela:
-  - cartão sem juros com 11x é recusado; com juros, 18x é aceito e 19x é recusado;
+  - cartão com mais de 1 parcela é recusado;
   - parcelas com 37 são recusadas;
   - parcelas que somam diferente do total não salvam.
 - **Confirmar pela equipe** numa forma em `rascunho`: ela vira `confirmada`, a
@@ -384,7 +395,7 @@ O que a 4a entrega de cada requisito. A spec é atualizada no passo seguinte.
 
 | ID | Na 4a | Fica para a 4b |
 |---|---|---|
-| FIC-7 | A janela da forma (o passo 1), aberta por "Definir" ou "Editar" | "Enviar ficha", o resumo (passo 2) e o link |
+| FIC-7 | A janela da forma (o passo 1), aberta por "Definir" ou "Editar". O texto do requisito muda: o cartão é um pagamento só, sem as 10x e 18x | "Enviar ficha", o resumo (passo 2) e o link |
 | FIC-10 | A confirmação a partir de `rascunho` | A partir de `enviada`, cancelando o link |
 | FIC-11 | Inteiro | — |
 | REC-6 | Inteiro para a forma confirmada | "Criar as cobranças mesmo assim" (§6.3) |
@@ -401,14 +412,16 @@ O que a 4a entrega de cada requisito. A spec é atualizada no passo seguinte.
 | 4 | A forma só se mexe com o negócio aberto; a cotação, sempre | A cobrança nasce no Ganho. Uma forma confirmada depois dele não geraria nada |
 | 5 | Refazer pede o dono do negócio ou a gestão | Desfazer a confirmação pesa o mesmo que fazê-la |
 | 6 | Negócio com confirmação registrada não se exclui, mesmo depois de Refazer; a saída é marcar como perdido | Excluir apagaria a prova pela cascata |
-| 7 | No cartão, as vezes vão no título da cobrança | O Financeiro não mostra a anotação da parcela |
-| 8 | Até 10 partes por forma | Limite contra erro de digitação; nenhum acerto real chega perto |
-| 9 | Histórico com um tipo de sistema novo, `forma_de_pagamento` | Fica separado da troca de etapa e não se apaga |
-| 10 | O `check` de estado já leva `enviada` e `recusada`, e `payment_plan_responses` nasce inteira | A 4b não precisa migrar dado nem mudar `check` |
-| 11 | A corrida entre abrir o resumo do Ganho e confirmar fica aceita, como na entrega 3 | Barrar exigiria mudar a assinatura de `ganhar_negocio`, e a janela é de segundos |
+| 7 | Até 10 partes por forma | Limite contra erro de digitação; nenhum acerto real chega perto |
+| 8 | Histórico com um tipo de sistema novo, `forma_de_pagamento` | Fica separado da troca de etapa e não se apaga |
+| 9 | O `check` de estado já leva `enviada` e `recusada`, e `payment_plan_responses` nasce inteira | A 4b não precisa migrar dado nem mudar `check` |
+| 10 | A corrida entre abrir o resumo do Ganho e confirmar fica aceita, como na entrega 3 | Barrar exigiria mudar a assinatura de `ganhar_negocio`, e a janela é de segundos |
 
-**Decidido pelo Renato em 21/nov:** os vistos travam enquanto a forma estiver
-confirmada (§5.1).
+**Decidido pelo Renato em 21/nov:**
+
+- os vistos travam enquanto a forma estiver confirmada (§5.1);
+- o cartão é uma parcela só, sem número de vezes nem juros, porque a Duli recebe
+  tudo antecipado (§5.2).
 
 ## 11. Fica com quem constrói
 
