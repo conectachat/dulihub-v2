@@ -27,7 +27,7 @@
   - O que se cria nele (só no T3, portal) é apagado em `finally`.
 - **Migration:**
   - aplicada pelo conector do Supabase (`apply_migration`, projeto `xigmtofpmfqeehhcdasf`);
-  - no mesmo commit vão o arquivo `supabase/migrations/NNNN_nome.sql`, o `src/lib/supabase/database.types.ts` regenerado (`generate_typescript_types` → `python -I <scratchpad>/tipos.py <arquivo> src/lib/supabase/database.types.ts`) e o `docs/banco.md`;
+  - no mesmo commit vão o arquivo `supabase/migrations/NNNN_nome.sql`, o `src/lib/supabase/database.types.ts` regenerado e o `docs/banco.md`. Para regenerar: `generate_typescript_types` devolve um JSON; o script `tipos.py` do rascunho da sessão (`python -I <scratchpad>/tipos.py <arquivo> src/lib/supabase/database.types.ts`) só extrai o campo `types` e grava o arquivo. Sem o script, extrair à mão;
   - o tipo gerado perde a nulidade em `returns table`, então alargar à mão se aparecer.
 - **Função nova em `public`:** `security invoker` e `set search_path = ''`, com `revoke execute … from public, anon` e `grant execute … to authenticated`. Função de gatilho em `private` é `security definer`, com `revoke … from public, anon, authenticated`.
 - **Marca:**
@@ -51,7 +51,8 @@
   | Salvar, confirmar ou refazer depois das cobranças (vence as outras) | "As cobranças já foram criadas. Para mudar, exclua a cobrança e crie outra na aba Financeiro do cliente." |
   | Confirmar sem parte ou sem visto | "Acrescente pelo menos um visto e uma parte antes de confirmar." |
   | Confirmar ou refazer sem ser o dono nem da gestão | "Só o dono do negócio ou a gestão confirmam a forma de pagamento." |
-  | Parcelas que não somam o total | "As parcelas de ‹rótulo› somam ‹valor›; o total é ‹valor›." |
+  | Parcelas que não somam o total, na tela | "As parcelas de ‹rótulo› somam ‹valor›; o total é ‹valor›." |
+  | Parcelas que não somam o total, no banco (P11) | "As parcelas de ‹rótulo› não somam o total." |
   | Parcelas fora de 1 a 36 | "Parcelas vão de 1 a 36." |
   | Mexer em visto com a forma confirmada e sem cobranças | "A forma de pagamento está confirmada. Use Refazer para mudar os vistos." |
   | Excluir negócio com confirmação registrada | "A forma de pagamento já foi confirmada; o negócio fica como registro." |
@@ -65,6 +66,13 @@
   | Parcela com valor zero ou negativo (P5) | "Cada parcela de ‹rótulo› precisa de valor." |
   | Observação longa (P5) | "A observação vai até 500 caracteres." |
   | Refazer sem forma confirmada (P5) | "A forma não está confirmada." |
+  | Data de parcela inválida (P5) | "A data da parcela ‹n› de ‹rótulo› não é válida." |
+  | Valor acima de 9.999.999.999,99 (P5) | "O valor de ‹rótulo› passa do limite." |
+  | Valor com mais de 2 casas decimais (P5) | "Use no máximo 2 casas decimais em ‹rótulo›." |
+  | Número de parcelas diferente da lista, ou numeração fora de 1..N (P5) | "O número de parcelas de ‹rótulo› não bate com a lista." |
+  | `p_forma` fora do formato, pela API (P5) | "A forma de pagamento veio num formato inválido." |
+  | Cotação zero ou negativa (P5) | "Informe uma cotação maior que zero." |
+  | Anotação da cotação com mais de 200 caracteres (P5) | "A anotação da cotação vai até 200 caracteres." |
 
 ## Decisões deste plano
 
@@ -81,17 +89,22 @@ Cada uma é um desvio do desenho ou um detalhe que ele deixou com quem constrói
 | P7 | O teste do portal (T3) usa uma forma em **rascunho** num negócio do "Cliente de Teste", e não uma forma confirmada | Negócio com resposta não se apaga (§5.5), e o "Cliente de Teste" nunca é apagado: uma confirmação deixaria lixo permanente. A leitura não depende do estado (P6), então o rascunho prova o mesmo | Se um dia a policy depender do estado, o teste não pega. Ela não depende, e a revisão confere |
 | P8 | Salvar mantém o id da parte pela posição. As parcelas de cada parte são trocadas inteiras (apagar e inserir) | O desenho pede o id da parte. O da parcela nada usa até o Ganho, que copia | Nenhum |
 | P9 | `situacao` em `forma` aceita também `enviada` e `recusada` no esquema zod. Na 4a elas não aparecem, e a tela as trata como `rascunho` | A 4b não quebra a leitura do resumo | Nenhum |
-| P10 | Os padrões dos botões: Entrada é pix com 1 parcela; Parcelas, transferência com 3; Cartão, cartão com 1; À vista, pix com 1. A moeda é a dos vistos, quando são todos da mesma, e BRL nos outros casos. A 1ª data é hoje mais 7 dias | O desenho deixou com quem constrói, e o teste precisa de valor | Padrões a ajustar |
+| P10 | Os padrões dos botões: Entrada é pix com 1 parcela; Parcelas, transferência com 3; Cartão, cartão com 1; À vista, pix com 1. A moeda é a dos vistos, quando são todos da mesma, e BRL nos outros casos. A 1ª data é hoje (`hojeEmSaoPaulo()`) | O desenho deixou com quem constrói, e o teste precisa de valor. Hoje dispensa uma função de somar dias | Padrões a ajustar |
+| P11 | No banco, a frase da soma errada não leva os valores: "As parcelas de ‹rótulo› não somam o total." A tela continua dando a frase com os valores | O banco confere a mesma regra, mas formatar dinheiro em SQL igual ao `formatarMoeda` (Intl, espaço rígido, centavos só quando há) seria uma segunda implementação para manter. A frase do banco só aparece para quem chama a API direto, porque a tela pega o erro antes | Nenhum para quem usa a tela |
+| P12 | Salvar não fica desabilitado: o `FormDialog` não deixa o filho travar o botão. A janela embrulha a ação (`exigeFormaValida`, como `exigeValor` em `vistos.tsx:45-50`), e ela devolve `falhou(erroDaForma(...))` sem chamar o servidor | O padrão da casa, sem mexer no `FormDialog` | Nenhum: a frase aparece no rodapé, como nos outros diálogos |
+| P13 | `receivables.payment_plan_part_id` só se grava com a marca `via_forma`, ou na ação da chave estrangeira | Sem isso, um membro marcaria uma cobrança manual como da forma pela API, e o próximo Ganho daquela parte cairia com duplicata | Nenhum |
+| P14 | `payment_plan_responses` tem `updated_at` e o gatilho `set_updated_at`, como toda tabela (§3 do desenho de origem) | O único update que a resposta sofre é o `set null` de `answered_by`, e ele grava `updated_at` | Nenhum |
+| P15 | No resumo do Ganho, a parcela vencida só é avisada com a forma `confirmada`, porque só aí a parcela vai nascer. A coerência é avisada em `confirmada`, `rascunho`, `enviada` e `recusada` com partes; em `cobrancas_criadas` e `sem_forma`, não | O desenho, §5.2 e §5.4 | Nenhum |
 
 ## Foco da revisão
 
 Cada item tem teste na tarefa dona.
 
-1. **Um centavo de diferença.** Parcelas editadas à mão que somam R$ 9.999,99 contra R$ 10.000: a tela e o banco recusam, com a frase e os dois valores (T2, T3).
-2. **Cotação com vírgula.** "5,425" grava 5,425, e não 5425 (G3). A mesma leitura da baixa, `parseCotacao` (T5).
-3. **Clique duplo em "Confirmar pela equipe".** A segunda chamada é recusada, e fica uma resposta só (T3).
-4. **Salvar duas vezes a mesma forma.** Os ids das partes não mudam e nenhuma parcela se duplica. Tirar a parte do meio deixa as outras inteiras (T3).
-5. **Data inválida e valor grande demais.** "2026-02-31" e um total acima de 9.999.999.999,99 são recusados com frase, nunca com erro cru do banco (T2 e T3).
+1. **Um centavo de diferença.** Parcelas editadas à mão que somam R$ 9.999,99 contra R$ 10.000: a tela recusa com a frase e os dois valores, e o banco recusa com a frase do P11. Valor com 3 casas decimais pela API também é recusado (T2, T3).
+2. **Campo vazio no meio da digitação.** Apagar o "3" para digitar "12", ou limpar a 1ª data, não derruba a janela: as parcelas somem, e a frase aparece até o campo ficar válido. Trocar uma parte "Parcelas" para cartão a deixa com 1 parcela (T2, T6).
+3. **Data de parcela um dia antes.** `due_on` é dia, não instante: "2026-12-10" aparece "10/12/2026" no cartão, na janela e no resumo, e nunca "09/12/2026" (T6, T7).
+4. **Clique duplo em "Confirmar pela equipe".** Duas chamadas ao mesmo tempo: uma passa, a outra é recusada, e fica uma resposta só (T3).
+5. **Vistos com a mesma posição.** O título da cobrança e a cópia saem na ordem `position, created_at`, sem depender da sorte (T3, T4).
 
 ---
 
@@ -162,7 +175,12 @@ export const LIMITES = { partes: 10, rotulo: 80, observacao: 500, parcelas: 36 }
 export function moedaSugerida(itens: { currency: string }[]): Moeda;           // P10
 export function parteSugerida(tipo: TipoDeParte, moeda: Moeda, primeiraData: string): ParteDaForma; // total 0
 export function comParcelasGeradas(parte: ParteDaForma, primeiraData: string): ParteDaForma;
+// Nunca lança: número fora de 1..36 (ou NaN), data inválida ou total que não é número → parcelas: [].
+// No cartão, sempre 1 parcela com o total. A tela chama também ao trocar o método.
 export function errosDaParte(parte: ParteDaForma): string[];
+// Rótulo, total (> 0, ≤ 9.999.999.999,99, até 2 casas), número de parcelas (1..36; 1 no cartão),
+// lista com installments_count itens numerados 1..N, cada valor > 0 e com até 2 casas,
+// cada due_on um dia válido, e a soma (em centavos) igual ao total. Frases da tabela global.
 export function erroDaForma(partes: ParteDaForma[]): string | null;           // 11ª parte e erros das partes
 export function totaisDaForma(partes: Pick<ParteDaForma, "total" | "currency">[]): PorMoeda;
 export function totalDaForma(partes: Pick<ParteDaForma, "total" | "currency">[]): string; // "R$ 10.000 + US$ 9.000"
@@ -173,26 +191,34 @@ export function avisosDoResumo(resumo: ResumoDoGanho, hoje: string): string[]; /
 
 ```ts
 // forma-schema.ts
-export const parteSchema; // label trim 1..80, method z.enum(METODOS), currency, total > 0 e ≤ 9999999999.99,
-                          // installments_count int 1..36, parcelas [{ number int ≥ 1, amount > 0, due_on z.iso.date() }],
-                          // superRefine com errosDaParte
+export const parteSchema; // label, method z.enum(METODOS), currency z.enum(["BRL","USD"]), total, installments_count,
+                          // parcelas [{ number, amount, due_on z.iso.date() }], superRefine com errosDaParte.
+                          // Toda mensagem em português, campo a campo (o zod 4 responde em inglês por padrão):
+                          // as frases da tabela global, e "A forma de pagamento veio num formato inválido."
+                          // para tipo errado.
 export const formaSchema = z.object({ partes: z.array(parteSchema).max(10, "A forma vai até 10 partes.") });
 export type FormaParaSalvar = z.infer<typeof formaSchema>;
 export const observacaoSchema; // string trim ≤ 500 ("A observação vai até 500 caracteres."), vazia → null
-export const cotacaoSchema;    // parseCotacao; nula aceita (limpar); > 0
+export const cotacaoSchema;    // parseCotacao; vazia → null (limpar); ≤ 0 → "Informe uma cotação maior que zero."
+export const anotacaoDaCotacaoSchema; // trim ≤ 200 ("A anotação da cotação vai até 200 caracteres."), vazia → null
 ```
 
 `avisosDoResumo` depende do `ResumoDoGanho` com `forma`, que nasce no T4. Ela entra no T4, junto com o esquema. O resto entra aqui.
 
 - [ ] **Testes primeiro** em `forma-regras.test.ts`. A data base é `2026-12-10`.
   - `parteSugerida("parcelas", "USD", "2026-12-10")`: rótulo "Parcelas", `transferencia`, 3 parcelas; `"cartao"`: `cartao`, 1 parcela; `"entrada"` e `"a_vista"`: `pix`, 1 parcela.
-  - `comParcelasGeradas({ ...parcelas, total: 9000 }, "2026-12-10")`: 3 × 3000 em `2026-12-10`, `2027-01-10` e `2027-02-10`. No cartão, sempre 1 parcela com o total.
+  - `comParcelasGeradas({ ...parcelas, total: 9000 }, "2026-12-10")`: 3 × 3000 em `2026-12-10`, `2027-01-10` e `2027-02-10`. No cartão, sempre 1 parcela com o total; uma parte "Parcelas" com 3, passada a `method: "cartao"`, sai com 1.
+  - `comParcelasGeradas` com `installments_count` 0, `NaN` ou 37, ou com a data `""`, devolve `parcelas: []` sem lançar (foco 2).
   - `errosDaParte`:
     - parcelas 3000 + 3000 + 2999,99 contra o total 9000: `["As parcelas de Parcelas somam " + formatarMoeda(8999.99, "USD") + "; o total é " + formatarMoeda(9000, "USD") + "."]`;
     - 37 parcelas: "Parcelas vão de 1 a 36.";
     - cartão com 2: "Cartão é um pagamento só, numa data.";
     - rótulo "" ou com 81 caracteres: "Dê um nome à parte, com até 80 caracteres.";
-    - total 0: "Informe o valor de Parcelas.".
+    - total 0: "Informe o valor de Parcelas.";
+    - total `10000000000`: "O valor de Parcelas passa do limite.";
+    - total `9000.005`: "Use no máximo 2 casas decimais em Parcelas.";
+    - `installments_count` 3 com 2 parcelas na lista, ou com a numeração 1, 2, 4: "O número de parcelas de Parcelas não bate com a lista.";
+    - uma parcela com `due_on: "2026-02-31"`: "A data da parcela 1 de Parcelas não é válida.".
   - `erroDaForma` com 11 partes: "A forma vai até 10 partes.".
   - `totalDaForma([{ total: 10000, currency: "BRL" }, { total: 9000, currency: "USD" }])`: `formatarMoeda(10000, "BRL") + " + " + formatarMoeda(9000, "USD")`, com BRL antes de USD.
   - `avisoDeCoerencia`:
@@ -205,12 +231,12 @@ export const cotacaoSchema;    // parseCotacao; nula aceita (limpar); > 0
     - duas antes de hoje: "2 parcelas já vencidas";
     - a de `2026-12-10` não conta.
 - [ ] **Testes** em `forma-schema.test.ts`:
-  - `due_on: "2026-02-31"` é recusado;
-  - total `10000000000` é recusado;
+  - `due_on: "2026-02-31"` e total `10000000000` são recusados com as frases em português de cima;
+  - `method: "dinheiro"` ou `total: "abc"`: "A forma de pagamento veio num formato inválido.";
   - a mesma soma errada de cima é recusada com a mesma frase;
   - `observacaoSchema` com 501 caracteres é recusado;
-  - `cotacaoSchema.parse("5,425") === 5.425`;
-  - `cotacaoSchema.parse("") === null`.
+  - `cotacaoSchema.parse("5,425") === 5.425`, `cotacaoSchema.parse("") === null`, e `"0"` é recusado com a frase;
+  - `anotacaoDaCotacaoSchema` com 201 caracteres é recusado.
 - [ ] `bun x vitest run src/features/opportunities/forma-regras.test.ts src/features/opportunities/forma-schema.test.ts`. Esperado: FALHA (módulos não existem).
 - [ ] Implementar.
   - `comParcelasGeradas` usa `gerarParcelas` sem `entrada`.
@@ -235,11 +261,12 @@ export const cotacaoSchema;    // parseCotacao; nula aceita (limpar); > 0
     - `answered_by` com `on delete set null`;
     - o `check` só de `registration_form_id`: nulo em `confirmada_pela_equipe`, preenchido nas outras;
     - `reason` com `check` de até 500.
-  - **Em todas:** lápide (`private.marcar_lapide`), `set_updated_at`, `unique (id, organization_id)` e chaves compostas.
-  - **`receivables.payment_plan_part_id`:** único parcial; FK composta `on delete set null (payment_plan_part_id)`.
+  - **`payment_plans`:** `reference_rate numeric(12,4) check (reference_rate > 0)` e `reference_rate_note` com `check` de até 200.
+  - **Em todas as quatro:** `updated_at` com `set_updated_at` (também nas respostas, P14), lápide (`private.marcar_lapide`), `unique (id, organization_id)` e chaves compostas.
+  - **`receivables.payment_plan_part_id`:** único parcial; FK composta `on delete set null (payment_plan_part_id)`; gatilho `receivables_parte_so_pelo_ganho` (`before insert or update of payment_plan_part_id`): valor não nulo no insert, ou mudado no update, exige a marca `via_forma` ou profundidade > 1 (P13).
 - **RLS** (P6):
   - **`payment_plans`:** `select`, `insert` e `update` para membros. Sem `delete`.
-  - **Partes e parcelas:** `select` por `exists` em `payment_plans`; `insert`, `update` e `delete` para membros.
+  - **Partes:** `select` por `exists` em `payment_plans`. **Parcelas:** `select` por `exists` na parte, que passa pela forma (a parcela não tem `plan_id`). As duas: `insert`, `update` e `delete` para membros.
   - **Respostas:** `select` por `exists` em `payment_plans`; `insert` para membros. Sem `update` e sem `delete`.
 - **Gatilhos**, com nomes que rodam na ordem certa:
   - `payment_plans_so_pelas_funcoes` (`before insert or update`): sem a marca, recusa o insert, e no update deixa mudar só `reference_rate`, `reference_rate_note` e `updated_at`;
@@ -255,37 +282,47 @@ export const cotacaoSchema;    // parseCotacao; nula aceita (limpar); > 0
   - trava o negócio com `for share`;
   - `insert … on conflict (opportunity_id) do nothing`, com a organização do negócio, e depois a forma com `for update`;
   - a ordem das frases: `charges_created_at` preenchido → a frase das cobranças, antes de todas; negócio com status diferente de `open` → a de encerrado; `status` diferente de `rascunho` → "A forma está confirmada…";
-  - valida o que o T2 valida, com as mesmas frases, em `numeric`;
+  - valida o que o T2 valida, em `numeric`, com as mesmas frases, menos a da soma (P11):
+    - confere `jsonb_typeof` de `partes` (array), de cada parte (objeto) e dos campos numéricos e de texto, e um `due_on` que não converte para `date`: fora disso, "A forma de pagamento veio num formato inválido." ou a frase da data, nunca o erro cru (`22P02`, `22008`, `22003`);
+    - valor com `v <> round(v, 2)` → a frase das 2 casas, antes de gravar (o `numeric(12,2)` arredondaria em silêncio);
+    - número de itens da lista igual a `installments_count`, numerados 1..N;
   - grava as partes por posição (P8).
 - **`public.confirmar_forma_de_pagamento_pela_equipe(p_negocio uuid, p_observacao text default null) returns void`:**
   - as mesmas travas e a ordem de frases do salvar, sem criar a forma (sem forma → "Acrescente pelo menos um visto e uma parte…"), e o CRM-10;
   - pelo menos um item e uma parte;
-  - monta a cópia `{ "vistos": [ { "visa_name", "amount", "currency" } ], "partes": [ … como no p_forma … ] }`, sem cotação;
+  - monta a cópia `{ "vistos": [ { "visa_name", "amount", "currency" } ], "partes": [ … como no p_forma … ] }`, sem cotação, com os vistos em `order by position, created_at` e as partes por `position`;
   - insere a resposta, põe `confirmada` e grava a atividade `forma_de_pagamento` "Forma de pagamento confirmada pela equipe".
 - **`public.voltar_forma_para_rascunho(p_negocio uuid) returns void`:** o CRM-10; a mesma ordem de frases (cobranças, encerrado); sem forma ou fora de `confirmada` → "A forma não está confirmada."; volta a `rascunho` e grava a atividade "Forma de pagamento refeita".
 - **As três funções:** ligam a marca e a desligam no fim; travam negócio e depois forma; `revoke`/`grant` como nas restrições.
 
 - [ ] **Testes primeiro** em `tests/rls/forma-de-pagamento.test.ts`.
   - **A base do arquivo:**
-    - os ajudantes são os de `ganho.test.ts:55-160`: `novaPessoa`, `novoNegocio` e `novoItem`, com dois itens EB-1A US$ 8.000 e O-1 US$ 6.000;
-    - a forma do critério: Entrada, pix, BRL 10.000, 1 parcela em hoje + 10 dias; Parcelas, transferência, USD 9.000, 3 × 3.000 a partir de hoje + 1 mês. As datas são calculadas com `somarMeses` de `@/lib/parcelas`;
+    - os ajudantes são os de `ganho.test.ts:55-160`: `novaPessoa`, `novoNegocio` e `novoItem`, com dois itens EB-1A US$ 8.000 (`position: 0`) e O-1 US$ 6.000 (`position: 1`);
+    - a forma do critério: Entrada, pix, BRL 10.000, 1 parcela em hoje + 10 dias; Parcelas, transferência, USD 9.000, 3 × 3.000 a partir de hoje + 1 mês. "Hoje + 10 dias" é um ajudante do próprio arquivo; os meses vêm de `somarMeses` (`@/lib/parcelas`);
     - as frases vêm num `MSG` com as da tabela global.
   - **Os casos:**
     1. `staff` salva a forma do critério: `status = 'rascunho'`, 2 partes e 4 parcelas. Salvar de novo igual deixa os mesmos ids de parte. Salvar só a 2ª parte deixa 1 parte e 3 parcelas (foco 4).
     2. Salvar é recusado, cada caso com a frase:
-       - a soma 3000 + 3000 + 2999,99 (foco 1);
-       - 37 parcelas;
-       - cartão com 2;
-       - 11 partes;
-       - `due_on` inválido e total `10000000000` (foco 5): recusados com frase, e o erro não traz `22008` nem `22003` cru.
+       - a soma 3000 + 3000 + 2999,99: "As parcelas de Parcelas não somam o total." (foco 1, P11);
+       - 3333,335 + 3333,335 + 3333,33 contra 10000: a frase das 2 casas (foco 1);
+       - `installments_count` 3 com 2 parcelas na lista;
+       - 37 parcelas; cartão com 2; 11 partes;
+       - rótulo com 81 caracteres;
+       - `due_on: "2026-02-31"`, total `10000000000` e `total: "abc"`: recusados com frase, e o erro não traz `22P02`, `22008` nem `22003`.
     3. Confirmar:
        - `staff`, que não é dono, é recusado com a frase;
        - sem parte e sem visto, recusado com a frase;
        - o `parceiro` (gestão) confirma com "acertado por WhatsApp": a forma fica `confirmada`, e há uma resposta com `decision = 'confirmada_pela_equipe'`, `reason`, `answered_by = parceiroId`, `answered_by_name` preenchido e `registration_form_id` nulo;
        - a cópia tem 2 vistos e 2 partes, e `JSON.stringify(snapshot)` não contém `reference_rate`;
-       - o histórico tem `{ type: "forma_de_pagamento", description: "Forma de pagamento confirmada pela equipe" }`.
-    4. Confirmar de novo é recusado ("A forma está confirmada…"), e continua havendo **uma** resposta (foco 3). Salvar com a forma confirmada também é recusado.
-    5. Refazer: `staff` é recusado. A gestão volta a forma para `rascunho`, a resposta continua lá e o histórico ganha "Forma de pagamento refeita".
+       - o histórico tem `{ type: "forma_de_pagamento", description: "Forma de pagamento confirmada pela equipe" }`;
+       - a observação com 501 caracteres é recusada com a frase da observação;
+       - o lado "dono" do CRM-10: num negócio do `staff` (`novoNegocio(p, staffId, staff)`), o `staff` confirma, com `answered_by = staffId`, e depois refaz.
+    4. Clique duplo (foco 4): duas confirmações ao mesmo tempo (`Promise.all`, como `ganho.test.ts:356-367`). Uma passa, a outra é recusada com "A forma está confirmada…", e há **uma** resposta. Salvar com a forma confirmada também é recusado.
+    5. Refazer:
+       - `staff`, que não é dono, é recusado;
+       - a gestão volta a forma para `rascunho`, a resposta continua lá e o histórico ganha "Forma de pagamento refeita";
+       - refazer de novo, em rascunho: "A forma não está confirmada.";
+       - confirmar outra vez deixa **duas** respostas.
     6. A prova não se forja: pela API do `parceiro`,
        - o `insert` em `payment_plan_responses`, com cada um dos três `decision`, dá erro;
        - `update payment_plans set status = 'confirmada'` dá erro;
@@ -293,8 +330,12 @@ export const cotacaoSchema;    // parseCotacao; nula aceita (limpar); > 0
        - o `insert` direto em `payment_plans`, num negócio sem forma, dá erro;
        - o `delete` em `payment_plans` devolve 0 linhas, e a forma e a resposta continuam;
        - `insert`, `update` e `delete` em partes e parcelas dão erro;
-       - `update` e `delete` em respostas devolvem 0 linhas, e a resposta não muda.
-    7. Cotação: com a forma `confirmada`, `update payment_plans set reference_rate = 5.425, reference_rate_note = 'C6, hoje'` funciona, e a cópia não muda.
+       - `update` e `delete` em respostas devolvem 0 linhas, e a resposta não muda;
+       - `insert` em `receivables` com `payment_plan_part_id` preenchido, e `update` que o preenche numa cobrança manual, dão erro (P13).
+    7. Cotação:
+       - com a forma `confirmada`, `update payment_plans set reference_rate = 5.425, reference_rate_note = 'C6, hoje'` funciona, e a cópia não muda;
+       - `reference_rate = 0` e uma anotação com 201 caracteres dão erro (`check`);
+       - `reference_rate = null` funciona (limpar).
     8. Vistos travados:
        - com a forma `confirmada`, `insert`, `update` e `delete` em `opportunity_items` são recusados com a frase dos vistos;
        - depois de Refazer, passam;
@@ -303,10 +344,14 @@ export const cotacaoSchema;    // parseCotacao; nula aceita (limpar); > 0
     10. Excluir:
         - o negócio com resposta, mesmo depois de Refazer, é recusado com a frase, e o negócio continua;
         - o negócio só com forma em rascunho se apaga, e a forma some.
-    11. Portal (P7): num negócio novo do "Cliente de Teste", criado pelo `parceiro`, com a forma em rascunho, o `cliente` lê 0 linhas de `payment_plans`, partes e parcelas. Em `finally`, o `parceiro` apaga esse negócio.
+    11. Portal (P7): num negócio novo do "Cliente de Teste", criado pelo `parceiro`, com a forma em rascunho, o `cliente` lê 0 linhas de `payment_plans`, partes, parcelas e respostas. Em `finally`, o `parceiro` apaga esse negócio, e o teste **falha** se o delete não apagou exatamente 1 linha. O ledger registra que a resposta não é provada aqui pelo portal (P7); o caso 13 a prova para outra organização.
     12. Apagar a pessoa descartável com a forma confirmada e com resposta funciona, e o `parceiro` passa a ler 0 formas daquele negócio.
+    13. A organização A não vê a B. Com o padrão de `ganho.test.ts:520-528`, o `colaborador` da Duli, diante de uma forma confirmada do parceiro:
+        - lê 0 linhas de `payment_plans`, partes, parcelas e respostas;
+        - o `update` da cotação devolve 0 linhas;
+        - as três funções devolvem "Negócio não encontrado.".
 - [ ] `bun x vitest run tests/rls/forma-de-pagamento.test.ts`. Esperado: FALHA (`relation "payment_plans" does not exist` ou função inexistente).
-- [ ] Escrever a 0058, com o comentário do topo explicando: a forma só pelas funções, a prova imutável, a trava dos vistos até as cobranças e o P6.
+- [ ] Escrever a 0058, com o comentário do topo explicando: a forma só pelas funções, a prova imutável, a trava dos vistos até as cobranças e o P6. A tarefa fica inteira, sem dividir: as travas só se provam com uma forma, e a forma só nasce pelas funções.
 - [ ] Aplicar a migration e regenerar os tipos.
 - [ ] Rodar de novo. Esperado: verde.
 - [ ] Regressão: `bun x vitest run tests/rls/vistos-do-negocio.test.ts tests/rls/ganho.test.ts tests/rls/funil.test.ts tests/rls/portal-do-cliente.test.ts tests/rls/financeiro.test.ts --no-file-parallelism`. Esperado: verde.
@@ -321,6 +366,7 @@ export const cotacaoSchema;    // parseCotacao; nula aceita (limpar); > 0
 - Criar: `supabase/migrations/0059_cobrancas_no_ganho.sql` e `tests/rls/cobrancas-do-ganho.test.ts`.
 - Mexer:
   - `src/features/opportunities/schema.ts:35-60` e `schema.test.ts`;
+  - `src/features/opportunities/actions.test.ts:160-167`: o `RESUMO` simulado ganha `forma` (`situacao: "sem_forma"`, o resto nulo ou vazio), senão "simula o Ganho" e "ganha pela função" caem com o esquema novo;
   - `forma-regras.ts` e o teste, com `avisosDoResumo`;
   - `database.types.ts` e `docs/banco.md`.
 
@@ -335,23 +381,29 @@ forma: z.object({
   confirmada_em: z.string().nullable(),       // answered_at da última resposta
   confirmada_por: z.string().nullable(),      // answered_by_name da última resposta
   cobrancas_criadas_em: z.string().nullable(),
-  partes: z.array(z.object({ label, method, currency, total, installments_count,
-                             parcelas: z.array(z.object({ number, amount, due_on })) })),
+  partes: z.array(z.object({ id: z.string(), label: z.string(), method: z.enum(METODOS),
+                             currency: z.enum(["BRL", "USD"]), total: z.number(), installments_count: z.number().int(),
+                             parcelas: z.array(z.object({ number: z.number().int(), amount: z.number(), due_on: z.string() })) })),
 }),
 cobrancas: z.array(z.object({ id: z.string().nullable(), titulo: z.string(),
                               moeda: z.enum(["BRL", "USD"]), total: z.number(), parcelas: z.number().int() })),
 ```
 
 - **SQL:**
-  - `private.forma_do_ganho(p_negocio uuid) returns jsonb`, `security invoker`, com `grant` a `authenticated`. Devolve `{ forma, cobrancas }`, com as cobranças **sem id** e na ordem das partes. A situação vem nesta precedência: `charges_created_at` preenchido → `cobrancas_criadas`; sem linha → `sem_forma`; senão, o `status`. As cobranças só aparecem com `confirmada`.
-  - **Títulos:** "‹label› — ‹vistos›", com os `visa_name` dos itens por `position`, separados por ", ".
+  - `private.forma_do_ganho(p_negocio uuid) returns jsonb`, `security invoker`, com `revoke … from public, anon` e `grant` a `authenticated` (em `private`, a execução padrão é de `public`). Devolve `{ forma, cobrancas }`:
+    - as partes de `forma` levam o `id` da parte;
+    - cada cobrança leva `parte` (o id da parte), sem `id` de cobrança, na ordem das partes;
+    - a situação vem nesta precedência: `charges_created_at` preenchido → `cobrancas_criadas`; sem linha → `sem_forma`; senão, o `status`;
+    - as cobranças só aparecem com `confirmada`;
+    - `confirmada_em` e `confirmada_por` vêm da última resposta (`order by answered_at desc limit 1`).
+  - **Títulos:** "‹label› — ‹vistos›", com os `visa_name` dos itens em `order by position, created_at` (foco 5), separados por ", ".
 - **`ganhar_negocio`**, com `create or replace` e a mesma assinatura:
   - **na simulação:** devolve `forma` e `cobrancas` de `private.forma_do_ganho`;
   - **na gravação,** depois do passo (6):
     - `perform … from payment_plans where opportunity_id = p_negocio for update`;
     - lê `private.forma_do_ganho`;
     - se a situação é `confirmada`, liga `via_forma`;
-    - por parte, faz `insert` em `receivables` (organização e pessoa do negócio, `project_id` nulo, `created_by = v_eu`, `payment_plan_part_id`) e em `installments` (as parcelas e o `method` da parte);
+    - itera **o mesmo** `jsonb` de `cobrancas` que `forma_do_ganho` devolveu, e não uma segunda leitura das tabelas. Por item, faz `insert` em `receivables` (organização e pessoa do negócio, `project_id` nulo, `created_by = v_eu`, `payment_plan_part_id = parte`) e em `installments` (as parcelas daquela parte em `forma`, com o `method` dela);
     - grava `charges_created_at = now()` e desliga `via_forma`;
     - devolve `cobrancas` com os ids e `forma` relida;
   - `avisos` não muda (P1).
@@ -372,8 +424,14 @@ cobrancas: z.array(z.object({ id: z.string().nullable(), titulo: z.string(),
      - o Ganho cria só o processo dele, e continua havendo 2 cobranças;
      - `update payment_plans set charges_created_at = null` pela API dá erro.
   5. Parcela com vencimento ontem: o Ganho passa e cria a cobrança, e a parte devolvida em `forma` traz essa data.
+  6. Refazer e confirmar de novo, antes do Ganho: `forma.confirmada_por` e `confirmada_em` saem da **segunda** resposta.
+  7. Negócio ganho:
+     - com a forma em rascunho, salvar e confirmar são recusados com a frase de encerrado;
+     - com as cobranças criadas, a cotação ainda muda pela API (FIC-11, "inclusive com o negócio ganho").
+  8. Itens com a mesma `position` (os dois com 0): o título sai na ordem de criação (foco 5).
 - [ ] **Testes** em `forma-regras.test.ts`, para `avisosDoResumo`, com um resumo montado à mão:
   - `confirmada` com uma parcela ontem e coerência ok: `["1 parcela já vencida"]`;
+  - `rascunho` com uma parcela ontem e US$ 13.000 contra US$ 14.000: só o aviso de coerência (P15);
   - `confirmada` em US$ 13.000 com vistos de US$ 14.000: o aviso de coerência;
   - `cobrancas_criadas` com `processos` do item "EB-2 NIW": `["EB-2 NIW não está na forma de pagamento: crie a cobrança à mão na aba Financeiro."]`, sem coerência;
   - `sem_forma`: `[]`.
@@ -390,7 +448,8 @@ cobrancas: z.array(z.object({ id: z.string().nullable(), titulo: z.string(),
 - Criar: `src/features/opportunities/forma-actions.ts` e o `.test.ts`.
 - Mexer:
   - `src/features/opportunities/queries.ts:170-217` (`obterNegocio`);
-  - `src/features/people/montagem.ts:48` e o teste dele.
+  - `src/features/people/montagem.ts:48` e o teste dele;
+  - `src/components/perfil/timeline.tsx:39-61` e `src/features/people/timeline-queries.ts:7-18`.
 
 **Interfaces:**
 - Consome `formaSchema`, `observacaoSchema` e `cotacaoSchema` (T2), e as funções da 0058.
@@ -401,12 +460,14 @@ export async function salvarFormaDePagamento(anterior: ActionState, formData: Fo
 // campos: negocio (uuid), forma (JSON de FormaParaSalvar). Inválido → falhou(primeira frase do zod), sem chamar o banco.
 export async function confirmarFormaPelaEquipe(anterior: ActionState, formData: FormData): Promise<ActionState>;
 // campos: negocio, observacao
-export async function refazerFormaDePagamento(formData: FormData): Promise<ActionState>;   // campo: negocio
+// observação vazia → a chamada não leva p_observacao (o tipo gerado não aceita null; como actions.ts:88)
+export async function refazerFormaDePagamento(anterior: ActionState, formData: FormData): Promise<ActionState>; // campo: negocio
 export async function salvarCotacao(formData: FormData): Promise<ActionState>;
-// campos: plano (uuid), negocio (uuid), e reference_rate OU reference_rate_note (o name do InlineText)
+// campos: plano (uuid), negocio (uuid), e reference_rate (cotacaoSchema) OU reference_rate_note
+// (anotacaoDaCotacaoSchema) — o name do InlineText
 ```
 
-  - Todas usam `contextoAtual()`, `traduzirErro`, `gravou()`/`falhou()` e `revalidatePath(`/crm/${negocio}`)`.
+  - Todas usam `contextoAtual()`, `traduzirErro`, `gravou()`/`falhou()` e `revalidatePath(`/crm/${negocio}`)`. Confirmar e refazer também chamam `revalidarPessoa(pessoaId)` (`@/lib/revalidar`), por causa do histórico no perfil do cliente: o campo escondido `pessoa` vai junto.
   - **`obterNegocio`** passa a devolver também:
 
     ```ts
@@ -417,14 +478,15 @@ export async function salvarCotacao(formData: FormData): Promise<ActionState>;
     } | null
     ```
 
-    Vem embutida no mesmo `select`: `payment_plans` é um para um. O tipo sai como `export type FormaDoNegocio`, usado pelo T6.
-  - **`TIPOS_DO_SISTEMA`** ganha `"forma_de_pagamento"`.
+    Vem embutida no mesmo `select`. O PostgREST a devolve como **lista**, porque o único é só `(opportunity_id)` e a chave é composta: ler `forma[0] ?? null`. `ultimaResposta` é a de maior `answered_at`. `method` e `currency` se estreitam com `METODOS` e a lista de moedas, sem `as`. O tipo sai como `export type FormaDoNegocio`, usado pelo T6.
+  - **`TIPOS_DO_SISTEMA`** ganha `"forma_de_pagamento"`. O tipo também entra em `LABELS` e `ICONS` (`src/components/perfil/timeline.tsx:39-61`, rótulo "Forma de pagamento", ícone `Wallet`) e em `ACTIVITY_LABELS` (`src/features/people/timeline-queries.ts:7-18`), senão o histórico mostra "Registro".
 
 - [ ] **Testes primeiro.** Cliente Supabase simulado, como em `itens-actions.test.ts`:
   - `salvarFormaDePagamento` com uma forma de soma errada não chama `rpc` e devolve a frase;
   - com uma forma válida, chama `rpc("salvar_forma_de_pagamento", { p_negocio, p_forma })` com o objeto validado;
   - um erro `P0001` do banco volta como a frase;
-  - `confirmarFormaPelaEquipe` manda `p_observacao: null` para uma observação vazia;
+  - `confirmarFormaPelaEquipe` com observação vazia chama o `rpc` **sem** `p_observacao`;
+  - `obterNegocio` com a forma em lista de 1 devolve o objeto, e com lista vazia devolve `null`;
   - `salvarCotacao` com `reference_rate = "5,425"` faz `update({ reference_rate: 5.425 })` filtrado por `id = plano` (foco 2), e com `""` grava `null`.
 - [ ] **Teste:** um `activities` do tipo `forma_de_pagamento` sai com `system: true` na montagem da linha do tempo.
 - [ ] Rodar. Esperado: FALHA.
@@ -458,33 +520,37 @@ export function JanelaDaForma(props: {
 // Vistos ganha a prop travadaPelaForma: boolean
 ```
 
+**Datas (foco 3):** `due_on` é dia e se mostra com `formatarDia` (`@/lib/formatar`). `answered_at` e `charges_created_at` são instantes e se mostram com `formatarData`. Vale para o cartão, a janela e o resumo (T7).
+
 **O cartão:**
-- **Sem forma:** `EmptyState` com "Definir forma de pagamento", que abre a janela.
+- **Sem forma, negócio aberto:** `EmptyState` com o botão "Definir forma de pagamento", que abre a janela.
+- **Sem forma, negócio encerrado:** `EmptyState` sem botão ("Sem forma de pagamento.").
 - **Com forma:**
   - selo "rascunho" ou "confirmada";
   - uma linha por parte: "‹rótulo› · ‹método› · ‹n› × ‹valor› · ‹datas›", ou "‹rótulo› · ‹método› · ‹valor› · ‹data›" com 1 parcela;
   - "Total: " + `totalDaForma`;
-  - a confirmação: "Confirmada pela equipe em ‹formatarData› por ‹nome›", e a observação entre aspas, quando há;
-  - a cotação em dois `InlineText`, `reference_rate` com `inputMode="decimal"` e `reference_rate_note`, em qualquer estado.
+  - **só com `status = 'confirmada'`:** "Confirmada pela equipe em ‹data›, por ‹nome›", da `ultimaResposta`, e a observação entre aspas, quando há. Em rascunho, depois de Refazer, a linha não aparece;
+  - a cotação em dois `InlineText` com `required={false}` (o padrão é obrigatório, e o campo vazio voltaria ao valor antigo): `reference_rate` com `inputMode="decimal"` e `reference_rate_note`, em qualquer estado.
 - **Botões:**
   - rascunho e negócio aberto: "Editar", e "Confirmar pela equipe" só com `podeConfirmar`;
-  - confirmada, negócio aberto, sem cobranças: "Refazer" só com `podeConfirmar`, por `ConfirmAction`;
+  - confirmada, negócio aberto, sem cobranças: "Refazer" só com `podeConfirmar`. É um `FormDialog` como o `DialogoDeReabrir`, com o ícone `RotateCcw`, o texto "A forma volta para rascunho. A confirmação de ‹data› continua registrada." e a ação `refazerFormaDePagamento`. Não é `ConfirmAction`, que tem o visual de excluir;
   - encerrado, ou com `charges_created_at`: só leitura;
   - com `charges_created_at`: "Cobranças criadas no Ganho em ‹data›", ligado a `enderecoDaPessoa(pessoaId, "client", "financeiro")`.
 - **"Confirmar pela equipe"** é um `FormDialog`: o resumo das partes, o `avisoDeCoerencia` quando há, e um `Textarea` com `name="observacao"` e `maxLength` 500.
 
 **A janela:**
-- `FormDialog` com `acao={salvarFormaDePagamento}`. O estado das partes fica no cliente, e um `<input type="hidden" name="forma">` leva o JSON.
+- `FormDialog` com `acao={exigeFormaValida(salvarFormaDePagamento)}` (P12). O embrulho lê o `forma` escondido e, se `erroDaForma` não for nulo, devolve `falhou(erro)` sem chamar o servidor. O estado das partes fica no cliente, e um `<input type="hidden" name="forma">` leva o JSON.
 - **Cabeçalho:** os vistos e os totais por moeda (`somarItensPorMoeda`).
 - **Botões de parte:** "+ Entrada", "+ Parcelas", "+ Cartão" e "+ À vista", com `parteSugerida` e `moedaSugerida`. Com 10 partes, ficam desabilitados.
 - **Cada parte:**
   - campos de rótulo, método (`METODOS` e `ROTULO_DO_METODO`), moeda, total, número de parcelas (fora do cartão) e 1ª data;
-  - mudar o total, o número ou a 1ª data chama `comParcelasGeradas`;
+  - mudar o total, o número, a 1ª data ou o método chama `comParcelasGeradas`. O campo guarda o que se digita, mesmo vazio ou inválido: as parcelas somem e a frase aparece, sem derrubar a janela (foco 2);
+  - parte de 1 parcela, e todo cartão: só o valor e uma data, sem a lista;
   - cada parcela tem a data e o valor editáveis;
   - os `errosDaParte` aparecem junto da parte;
   - um botão "remover".
 - **Rodapé:** "Total da forma: " + `totalDaForma`, e o aviso de coerência, se houver.
-- **Salvar** fica desabilitado enquanto `erroDaForma` não for nulo.
+- **Salvar** continua clicável (P12). Com erro, a frase aparece no rodapé, e nada vai ao servidor.
 - **No celular:** as partes empilham, e cada parcela é uma linha com data e valor (`grid-cols-[auto_1fr_1fr]`), sem largura fixa.
 
 **A página:**
@@ -495,19 +561,24 @@ export function JanelaDaForma(props: {
 
 - [ ] **Testes primeiro.**
   - **Cartão:**
-    - sem forma, mostra "Definir forma de pagamento";
-    - com a forma do critério, mostra as 2 linhas e `totalDaForma`;
+    - sem forma e aberto, mostra "Definir forma de pagamento"; sem forma e encerrado, não mostra botão;
+    - com a forma do critério, mostra as 2 linhas e `totalDaForma`, e a parcela com `due_on: "2026-12-10"` aparece como "10/12/2026", escrito à mão no teste (foco 3);
     - "Confirmar pela equipe" aparece só com `podeConfirmar` e em rascunho;
     - "Refazer" aparece só confirmada, sem `charges_created_at` e com `podeConfirmar`;
+    - em rascunho com `ultimaResposta` preenchida (depois de Refazer), não aparece "Confirmada pela equipe";
     - com `charges_created_at`, mostra "Cobranças criadas no Ganho em …" com `href` `/clientes/<id>?aba=financeiro`, sem Refazer;
-    - com o negócio encerrado, sem Editar; a cotação continua editável.
+    - com o negócio encerrado, sem Editar; a cotação continua editável e não é obrigatória;
+    - a confirmação com partes de US$ 13.000 e vistos de US$ 14.000 mostra o aviso de coerência.
   - **Janela:**
     - "+ Parcelas" gera 3 parcelas;
     - mudar o total para 9000 regera 3 × 3000;
-    - editar uma parcela para 2999,99 mostra a frase da soma e desabilita Salvar;
+    - apagar o número de parcelas não derruba a janela: as parcelas somem e a frase aparece; digitar "12" gera 12 (foco 2);
+    - trocar o método de uma parte "Parcelas" para cartão a deixa com 1 parcela (foco 2);
+    - editar uma parcela para 2999,99 mostra a frase da soma; clicar Salvar mostra a frase e **não** chama a ação (P12);
     - "+ Cartão" não mostra número de parcelas;
     - com 10 partes, os botões ficam desabilitados;
-    - Salvar manda `forma` com o JSON das partes.
+    - US$ 13.000 contra vistos de US$ 14.000 mostra o aviso de coerência; R$ e US$ mostram os dois totais, sem aviso;
+    - Salvar com a forma válida chama a ação com `forma` levando o JSON das partes.
   - **Vistos:** com `travadaPelaForma`, não há "Acrescentar visto" e aparece a frase; com `false` e o negócio aberto, há.
 - [ ] Rodar. Esperado: FALHA.
 - [ ] Implementar, com os componentes do `AGENTS.md` (`FormDialog`, `ConfirmAction`, `EmptyState`, `InlineText`), os tokens e os raios.
@@ -524,7 +595,7 @@ export function JanelaDaForma(props: {
 
 | Situação | O que mostra |
 |---|---|
-| `confirmada` | "Confirmada pela equipe em ‹data›, por ‹nome›" e uma linha por parte |
+| `confirmada` | "Confirmada pela equipe em ‹data›, por ‹nome›" (`formatarData`) e uma linha por parte, com as datas por `formatarDia` |
 | `rascunho`, `enviada` ou `recusada` | "Em rascunho: nenhuma cobrança será criada. Para criá-las, confirme a forma antes do Ganho." |
 | `sem_forma` | "Não definida: nenhuma cobrança será criada." |
 | `cobrancas_criadas` | "As cobranças desta forma já foram criadas em ‹data›." |
@@ -537,6 +608,9 @@ export function JanelaDaForma(props: {
   - Resumo `confirmada` com 2 cobranças: "Serão criadas 2 cobranças (R$ 10.000; US$ 9.000)", pela mesma `formatarMoeda`, e a linha "Confirmada pela equipe em …".
   - `rascunho` e `sem_forma`: as frases da tabela, sem linha de cobrança.
   - `cobrancas_criadas` com um processo do "EB-2 NIW": a frase das cobranças já criadas e o aviso do visto fora da forma.
+  - `confirmada` com uma parcela de ontem (a data calculada no teste a partir de `hojeEmSaoPaulo()`): "1 parcela já vencida" na lista "Ao confirmar".
+  - `confirmada` com partes de US$ 13.000 e vistos de US$ 14.000: o aviso de coerência.
+  - A parcela com `due_on: "2026-12-10"` aparece como "10/12/2026" (foco 3).
   - "Forma de pagamento: definir na aba Financeiro" e "Nenhuma cobrança será criada." não aparecem mais.
 - [ ] Rodar. Esperado: FALHA.
 - [ ] Implementar.
@@ -557,6 +631,7 @@ export function JanelaDaForma(props: {
   - `bun run dev` num terminal e `bun run test:fumaca` no outro.
 
   Esperado: tudo verde. Registrar os números.
+- [ ] Registrar no ledger a conferência do espelho (desenho §6): `receivables` desce por `select("*")`, e o Dexie guarda a coluna nova sem mudar o esquema local nem o `sync_manifesto`; as lápides das tabelas novas, fora do espelho, são filtradas (`espelho.ts:93-96`).
 - [ ] Commit `docs: entrega 4a na spec, no plano e no AGENTS`.
 - [ ] **Revisão final:**
   - Code Reviewer no modelo mais capaz, sobre o intervalo da entrega;
