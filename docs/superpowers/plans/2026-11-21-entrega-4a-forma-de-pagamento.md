@@ -66,6 +66,8 @@
   | Parcela com valor zero ou negativo (P5) | "Cada parcela de ‹rótulo› precisa de valor." |
   | Observação longa (P5) | "A observação vai até 500 caracteres." |
   | Refazer sem forma confirmada (P5) | "A forma não está confirmada." |
+  | Negócio que não existe ou que a RLS esconde, nas três funções (como a 0054) | "Negócio não encontrado." |
+  | `payment_plan_part_id` gravado fora do Ganho (P13) | "A cobrança da forma de pagamento só nasce no Ganho." |
   | Data de parcela inválida (P5) | "A data da parcela ‹n› de ‹rótulo› não é válida." |
   | Valor acima de 9.999.999.999,99 (P5) | "O valor de ‹rótulo› passa do limite." |
   | Valor com mais de 2 casas decimais (P5) | "Use no máximo 2 casas decimais em ‹rótulo›." |
@@ -177,10 +179,12 @@ export function parteSugerida(tipo: TipoDeParte, moeda: Moeda, primeiraData: str
 export function comParcelasGeradas(parte: ParteDaForma, primeiraData: string): ParteDaForma;
 // Nunca lança: número fora de 1..36 (ou NaN), data inválida ou total que não é número → parcelas: [].
 // No cartão, sempre 1 parcela com o total. A tela chama também ao trocar o método.
-export function errosDaParte(parte: ParteDaForma): string[];
-// Rótulo, total (> 0, ≤ 9.999.999.999,99, até 2 casas), número de parcelas (1..36; 1 no cartão),
-// lista com installments_count itens numerados 1..N, cada valor > 0 e com até 2 casas,
-// cada due_on um dia válido, e a soma (em centavos) igual ao total. Frases da tabela global.
+export function erroDaParte(parte: ParteDaForma): string | null;
+// No máximo UMA frase por parte: a primeira falha, nesta ordem, que é a mesma do banco:
+// rótulo → total (> 0, ≤ 9.999.999.999,99, até 2 casas) → número de parcelas (1..36; 1 no cartão)
+// → lista (installments_count itens, numerados 1..N) → cada parcela, em ordem (valor > 0, até 2 casas,
+// due_on no formato AAAA-MM-DD e dia válido) → soma (em centavos) igual ao total.
+// Falhou o número ou a lista, não se confere a soma. Frases da tabela global.
 export function erroDaForma(partes: ParteDaForma[]): string | null;           // 11ª parte e erros das partes
 export function totaisDaForma(partes: Pick<ParteDaForma, "total" | "currency">[]): PorMoeda;
 export function totalDaForma(partes: Pick<ParteDaForma, "total" | "currency">[]): string; // "R$ 10.000 + US$ 9.000"
@@ -192,7 +196,9 @@ export function avisosDoResumo(resumo: ResumoDoGanho, hoje: string): string[]; /
 ```ts
 // forma-schema.ts
 export const parteSchema; // label, method z.enum(METODOS), currency z.enum(["BRL","USD"]), total, installments_count,
-                          // parcelas [{ number, amount, due_on z.iso.date() }], superRefine com errosDaParte.
+                          // parcelas [{ number, amount, due_on: z.string() }] — o campo confere só o tipo; o dia
+                          // válido é conferido em erroDaParte, para a frase dela vir primeiro (o zod 4 põe a
+                          // mensagem estática do campo na frente). superRefine com erroDaParte.
                           // Toda mensagem em português, campo a campo (o zod 4 responde em inglês por padrão):
                           // as frases da tabela global, e "A forma de pagamento veio num formato inválido."
                           // para tipo errado.
@@ -209,8 +215,9 @@ export const anotacaoDaCotacaoSchema; // trim ≤ 200 ("A anotação da cotaçã
   - `parteSugerida("parcelas", "USD", "2026-12-10")`: rótulo "Parcelas", `transferencia`, 3 parcelas; `"cartao"`: `cartao`, 1 parcela; `"entrada"` e `"a_vista"`: `pix`, 1 parcela.
   - `comParcelasGeradas({ ...parcelas, total: 9000 }, "2026-12-10")`: 3 × 3000 em `2026-12-10`, `2027-01-10` e `2027-02-10`. No cartão, sempre 1 parcela com o total; uma parte "Parcelas" com 3, passada a `method: "cartao"`, sai com 1.
   - `comParcelasGeradas` com `installments_count` 0, `NaN` ou 37, ou com a data `""`, devolve `parcelas: []` sem lançar (foco 2).
-  - `errosDaParte`:
-    - parcelas 3000 + 3000 + 2999,99 contra o total 9000: `["As parcelas de Parcelas somam " + formatarMoeda(8999.99, "USD") + "; o total é " + formatarMoeda(9000, "USD") + "."]`;
+  - `erroDaParte`, sempre **uma** frase (ou `null` na parte válida):
+    - parcelas 3000 + 3000 + 2999,99 contra o total 9000: `"As parcelas de Parcelas somam " + formatarMoeda(8999.99, "USD") + "; o total é " + formatarMoeda(9000, "USD") + "."`;
+    - 3 parcelas declaradas com só 2 na lista (que também somariam errado): só a frase da lista;
     - 37 parcelas: "Parcelas vão de 1 a 36.";
     - cartão com 2: "Cartão é um pagamento só, numa data.";
     - rótulo "" ou com 81 caracteres: "Dê um nome à parte, com até 80 caracteres.";
@@ -241,7 +248,7 @@ export const anotacaoDaCotacaoSchema; // trim ≤ 200 ("A anotação da cotaçã
 - [ ] Implementar.
   - `comParcelasGeradas` usa `gerarParcelas` sem `entrada`.
   - As somas são em centavos.
-  - `errosDaParte` e o esquema usam as frases da tabela global.
+  - `erroDaParte` e o esquema usam as frases da tabela global.
 - [ ] Rodar de novo. Esperado: verde.
 - [ ] Commit `feat(crm): regras da forma de pagamento (entrega 4a)`.
 
@@ -279,11 +286,11 @@ export const anotacaoDaCotacaoSchema; // trim ≤ 200 ("A anotação da cotaçã
 - **`private.opportunity_items_trava_do_ganho`** (`create or replace` da 0054:110-146): depois do ramo "ganho", lê a forma com `for share`. Com `status = 'confirmada'` e `charges_created_at` nulo, recusa com a frase dos vistos. A ordem de travas é negócio, depois forma.
 - **`private.opportunities_ganho_nao_se_apaga`** (`create or replace` da 0054:183-200): depois do ramo "ganho", recusa com a frase de excluir quando há resposta da forma do negócio.
 - **`public.salvar_forma_de_pagamento(p_negocio uuid, p_forma jsonb) returns uuid`** (o id da forma). O `jsonb` é `{ "partes": [ { "label", "method", "currency", "total", "installments_count", "parcelas": [ { "number", "amount", "due_on" } ] } ] }`, e `position` é o índice. Faz:
-  - trava o negócio com `for share`;
+  - trava o negócio com `for share`; sem linha (a RLS esconde o de outra organização) → "Negócio não encontrado.", antes de qualquer outra conferência, como `0054:395-397`;
   - `insert … on conflict (opportunity_id) do nothing`, com a organização do negócio, e depois a forma com `for update`;
   - a ordem das frases: `charges_created_at` preenchido → a frase das cobranças, antes de todas; negócio com status diferente de `open` → a de encerrado; `status` diferente de `rascunho` → "A forma está confirmada…";
-  - valida o que o T2 valida, em `numeric`, com as mesmas frases, menos a da soma (P11):
-    - confere `jsonb_typeof` de `partes` (array), de cada parte (objeto) e dos campos numéricos e de texto, e um `due_on` que não converte para `date`: fora disso, "A forma de pagamento veio num formato inválido." ou a frase da data, nunca o erro cru (`22P02`, `22008`, `22003`);
+  - valida o que o T2 valida, em `numeric`, na **mesma ordem** de `erroDaParte` e parando na primeira falha, com as mesmas frases, menos a da soma (P11):
+    - confere `jsonb_typeof` de `partes` (array), de cada parte (objeto) e dos campos numéricos e de texto, e o `due_on`, que precisa casar com `^\d{4}-\d{2}-\d{2}$` **antes** de virar `date` (o Postgres aceitaria "today", "infinity" e "2026-2-3") e depois converter: fora disso, "A forma de pagamento veio num formato inválido." ou a frase da data, nunca o erro cru (`22P02`, `22008`, `22003`);
     - valor com `v <> round(v, 2)` → a frase das 2 casas, antes de gravar (o `numeric(12,2)` arredondaria em silêncio);
     - número de itens da lista igual a `installments_count`, numerados 1..N;
   - grava as partes por posição (P8).
@@ -331,7 +338,7 @@ export const anotacaoDaCotacaoSchema; // trim ≤ 200 ("A anotação da cotaçã
        - o `delete` em `payment_plans` devolve 0 linhas, e a forma e a resposta continuam;
        - `insert`, `update` e `delete` em partes e parcelas dão erro;
        - `update` e `delete` em respostas devolvem 0 linhas, e a resposta não muda;
-       - `insert` em `receivables` com `payment_plan_part_id` preenchido, e `update` que o preenche numa cobrança manual, dão erro (P13).
+       - `insert` em `receivables` com `payment_plan_part_id` preenchido, e `update` que o preenche numa cobrança manual, dão erro com a frase do P13. A cobrança manual nasce numa pessoa descartável só deste caso, promovida pela gestão (a cobrança a torna cliente e grava histórico), e apagada no fim.
     7. Cotação:
        - com a forma `confirmada`, `update payment_plans set reference_rate = 5.425, reference_rate_note = 'C6, hoje'` funciona, e a cópia não muda;
        - `reference_rate = 0` e uma anotação com 201 caracteres dão erro (`check`);
@@ -533,9 +540,10 @@ export function JanelaDaForma(props: {
   - a cotação em dois `InlineText` com `required={false}` (o padrão é obrigatório, e o campo vazio voltaria ao valor antigo): `reference_rate` com `inputMode="decimal"` e `reference_rate_note`, em qualquer estado.
 - **Botões:**
   - rascunho e negócio aberto: "Editar", e "Confirmar pela equipe" só com `podeConfirmar`;
-  - confirmada, negócio aberto, sem cobranças: "Refazer" só com `podeConfirmar`. É um `FormDialog` como o `DialogoDeReabrir`, com o ícone `RotateCcw`, o texto "A forma volta para rascunho. A confirmação de ‹data› continua registrada." e a ação `refazerFormaDePagamento`. Não é `ConfirmAction`, que tem o visual de excluir;
+  - confirmada, negócio aberto, sem cobranças: "Refazer" só com `podeConfirmar`. É um `FormDialog` com `salvar="Refazer"` e `pendente="Refazendo..."`, gatilho com o ícone `RotateCcw`, o texto "A forma volta para rascunho. A confirmação de ‹data› continua registrada." e a ação `refazerFormaDePagamento`. Não é `ConfirmAction`, que tem o visual de excluir;
   - encerrado, ou com `charges_created_at`: só leitura;
   - com `charges_created_at`: "Cobranças criadas no Ganho em ‹data›", ligado a `enderecoDaPessoa(pessoaId, "client", "financeiro")`.
+- **Os diálogos de confirmar e refazer** levam os campos escondidos `negocio` e `pessoa` (a T5 revalida a pessoa).
 - **"Confirmar pela equipe"** é um `FormDialog`: o resumo das partes, o `avisoDeCoerencia` quando há, e um `Textarea` com `name="observacao"` e `maxLength` 500.
 
 **A janela:**
@@ -547,7 +555,7 @@ export function JanelaDaForma(props: {
   - mudar o total, o número, a 1ª data ou o método chama `comParcelasGeradas`. O campo guarda o que se digita, mesmo vazio ou inválido: as parcelas somem e a frase aparece, sem derrubar a janela (foco 2);
   - parte de 1 parcela, e todo cartão: só o valor e uma data, sem a lista;
   - cada parcela tem a data e o valor editáveis;
-  - os `errosDaParte` aparecem junto da parte;
+  - o `erroDaParte` aparece junto da parte;
   - um botão "remover".
 - **Rodapé:** "Total da forma: " + `totalDaForma`, e o aviso de coerência, se houver.
 - **Salvar** continua clicável (P12). Com erro, a frase aparece no rodapé, e nada vai ao servidor.
@@ -581,7 +589,7 @@ export function JanelaDaForma(props: {
     - Salvar com a forma válida chama a ação com `forma` levando o JSON das partes.
   - **Vistos:** com `travadaPelaForma`, não há "Acrescentar visto" e aparece a frase; com `false` e o negócio aberto, há.
 - [ ] Rodar. Esperado: FALHA.
-- [ ] Implementar, com os componentes do `AGENTS.md` (`FormDialog`, `ConfirmAction`, `EmptyState`, `InlineText`), os tokens e os raios.
+- [ ] Implementar, com os componentes do `AGENTS.md` (`FormDialog`, `EmptyState`, `InlineText`), os tokens e os raios.
 - [ ] Rodar os testes de `src/app/(app)/crm/[id]`. Esperado: verde.
 - [ ] Commit `feat(crm): forma de pagamento no lead (entrega 4a)`.
 
@@ -645,7 +653,7 @@ export function JanelaDaForma(props: {
   git -C "D:\Projetos Apps\dulihub-v2" push
   ```
 
-  Lembrar a troca da senha do banco que vazou.
+  Dizer também que, no banco, a frase da soma errada não leva os valores (P11): a tabela §5.6 do desenho continua valendo para a tela. Lembrar a troca da senha do banco que vazou.
 
 ## Verificação
 
