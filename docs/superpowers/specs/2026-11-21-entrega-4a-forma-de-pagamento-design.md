@@ -184,7 +184,7 @@ os vistos."
 - **Coerência.** Quando os vistos e as partes estão todos na **mesma** moeda e os
   totais diferem, aparece um aviso, mas nada é bloqueado: "A forma soma US$ 13.000
   e os vistos, US$ 14.000." O aviso aparece na janela da forma, na confirmação e no
-  resumo do Ganho. Com moedas diferentes, os dois totais aparecem lado a lado, sem
+  resumo do Ganho (menos em `cobrancas_criadas`, §5.4). Com moedas diferentes, os dois totais aparecem lado a lado, sem
   aviso.
 - **A mesma validação nos dois lados.** O banco (`salvar_forma_de_pagamento`)
   confere tudo o que a tela confere. A tela só adianta a frase.
@@ -422,9 +422,9 @@ cair no aviso de vencida sem querer: "daqui a 10 dias", "daqui a 1 mês".
   é recusado com a frase da §5.6. Ganhar de novo não cria cobrança, e o resumo diz
   que já foram criadas.
 - **Negócio reaberto depois das cobranças:** acrescentar um visto passa, pela tela
-  e pela API. Ganhar de novo cria só o processo do visto novo, sem cobrança, e o
-  resumo avisa "O-1 não está na forma de pagamento: crie a cobrança à mão na aba
-  Financeiro.", sem aviso de coerência. O cartão mostra "Cobranças criadas no Ganho
+  e pela API. Acrescentado o EB-2 NIW, ganhar de novo cria só o processo dele, sem
+  cobrança, e o resumo avisa "EB-2 NIW não está na forma de pagamento: crie a
+  cobrança à mão na aba Financeiro.", sem aviso de coerência. O cartão mostra "Cobranças criadas no Ganho
   em ‹data›" e não mostra Refazer.
 - **Negócio encerrado:** salvar a forma de um negócio ganho é recusado. A cotação
   continua editável.
