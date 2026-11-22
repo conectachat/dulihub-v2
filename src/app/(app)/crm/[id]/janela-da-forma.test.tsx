@@ -118,6 +118,19 @@ describe("JanelaDaForma", () => {
     expect(campo("Data da parcela 2 da parte 1").value).not.toBe("2027-04-05");
   });
 
+  it("limpar a data da parcela 1 não derruba a lista nem a 1ª data", () => {
+    abrir();
+    fireEvent.click(screen.getByRole("button", { name: "Parcelas" }));
+    fireEvent.change(campo("Total da parte 1"), { target: { value: "9000" } });
+    fireEvent.change(campo("1ª data da parte 1"), { target: { value: "2026-12-10" } });
+
+    fireEvent.change(campo("Data da parcela 1 da parte 1"), { target: { value: "" } });
+
+    expect(campo("Data da parcela 1 da parte 1").value).toBe("");
+    expect(campo("1ª data da parte 1").value).toBe("2026-12-10");
+    expect(screen.getByText("A data da parcela 1 de Parcelas não é válida.")).toBeTruthy();
+  });
+
   it("+ Cartão não mostra número de parcelas", () => {
     abrir();
     fireEvent.click(screen.getByRole("button", { name: "Cartão" }));

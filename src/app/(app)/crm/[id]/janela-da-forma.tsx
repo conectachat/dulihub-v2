@@ -195,8 +195,12 @@ function CamposDaForma({ itens, partes: gravadas }: { itens: Item[]; partes: Par
         if (r.chave !== chave) return r;
         const parcelas = r.parcelas.map((p) => (p.number === numero ? { ...p, ...mudanca } : p));
         // A data da parcela 1 é a 1ª data: o campo de cima acompanha, sem gerar
-        // as outras de novo.
-        const primeiraData = numero === 1 && mudanca.due_on !== undefined ? mudanca.due_on : r.primeiraData;
+        // as outras de novo — mas só um dia válido. Vazia no meio da edição, a
+        // 1ª data fica, a lista continua na tela e a frase da data aparece.
+        const primeiraData =
+          numero === 1 && mudanca.due_on !== undefined && diaValido(mudanca.due_on)
+            ? mudanca.due_on
+            : r.primeiraData;
         return { ...r, parcelas, primeiraData };
       }),
     );
