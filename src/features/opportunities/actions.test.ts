@@ -294,6 +294,26 @@ describe("deleteOpportunity", () => {
     const estado = await deleteOpportunity(comId(NEGOCIO));
     expect(estado.error).toBeNull();
   });
+
+  it("negócio com a forma confirmada: a frase da trava da 0058 volta como está", async () => {
+    const frase = "A forma de pagamento já foi confirmada; o negócio fica como registro.";
+    const supabase = {
+      from: vi.fn(() => ({
+        delete: () => ({
+          eq: () => ({
+            neq: () => ({
+              select: async () => ({ data: null, error: { code: "P0001", message: frase } }),
+            }),
+          }),
+        }),
+      })),
+    };
+    vi.mocked(contextoAtual).mockResolvedValue({ supabase, error: null } as never);
+
+    const estado = await deleteOpportunity(comId(NEGOCIO));
+
+    expect(estado.error).toBe(frase);
+  });
 });
 
 describe("updateOpportunity: dono e participantes do negócio", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useId, useState, useTransition } from "react";
 
 import { FieldError } from "@/components/field-error";
 import { NativeSelect } from "@/components/native-select";
@@ -22,9 +22,11 @@ import {
   reabrirOportunidade,
   resumoDoGanho,
 } from "@/features/opportunities/actions";
+import { avisosDoResumo, linhaDaParte } from "@/features/opportunities/forma-regras";
 import { MOTIVOS_DE_PERDA, motivoDaPerda } from "@/features/opportunities/regras";
 import type { ResumoDoGanho } from "@/features/opportunities/schema";
 import { ESTADO_INICIAL } from "@/lib/action-state";
+import { formatarData, hojeEmSaoPaulo } from "@/lib/formatar";
 import { formatarMoeda, somarItensPorMoeda } from "@/lib/totals";
 
 /**
@@ -140,11 +142,56 @@ export function DialogoDeGanho({
   );
 }
 
+/**
+ * O que a forma de pagamento faz no Ganho (entrega 4a; CRM-14, §5.4 do
+ * desenho): só a confirmada vira cobrança, uma por parte.
+ */
+function FormaNoResumo({ forma }: { forma: ResumoDoGanho["forma"] }) {
+  if (forma.situacao === "confirmada") {
+    return (
+      <>
+        <p>
+          {"Confirmada pela equipe" +
+            (forma.confirmada_em ? ` em ${formatarData(forma.confirmada_em)}` : "") +
+            (forma.confirmada_por ? `, por ${forma.confirmada_por}` : "")}
+        </p>
+        <ul className="space-y-1">
+          {forma.partes.map((parte) => (
+            <li key={parte.id}>{linhaDaParte(parte)}</li>
+          ))}
+        </ul>
+      </>
+    );
+  }
+
+  if (forma.situacao === "cobrancas_criadas") {
+    return (
+      <p>
+        {"As cobranças desta forma já foram criadas" +
+          (forma.cobrancas_criadas_em ? ` em ${formatarData(forma.cobrancas_criadas_em)}` : "") +
+          "."}
+      </p>
+    );
+  }
+
+  if (forma.situacao === "sem_forma") return <p>Não definida: nenhuma cobrança será criada.</p>;
+
+  // Rascunho — e, até a 4b, enviada e recusada (P9).
+  return (
+    <p>
+      Em rascunho: nenhuma cobrança será criada. Para criá-las, confirme a forma antes do Ganho.
+    </p>
+  );
+}
+
 function ResumoDoGanhoNaTela({ resumo }: { resumo: ResumoDoGanho }) {
   const totais = Object.entries(somarItensPorMoeda(resumo.itens)).sort(([a], [b]) =>
     a.localeCompare(b),
   );
-  const { processos } = resumo;
+  const { processos, cobrancas } = resumo;
+  // Os avisos do banco (dono) e os da forma, montados aqui (P1): nada bloqueia.
+  const avisos = [...resumo.avisos, ...avisosDoResumo(resumo, hojeEmSaoPaulo())];
+  const aoConfirmar = useId();
 
   return (
     <div className="space-y-4 text-sm">
@@ -168,12 +215,16 @@ function ResumoDoGanhoNaTela({ resumo }: { resumo: ResumoDoGanho }) {
         </div>
       </section>
 
-      {/* Entrega 4: a forma de pagamento da ficha, e as cobranças dela. */}
-      <p>Forma de pagamento: definir na aba Financeiro</p>
+      <section className="space-y-1">
+        <h3 className="text-xs text-muted-foreground">Forma de pagamento</h3>
+        <FormaNoResumo forma={resumo.forma} />
+      </section>
 
       <section className="space-y-1">
-        <h3 className="text-xs text-muted-foreground">Ao confirmar</h3>
-        <ul className="list-disc space-y-1 pl-5">
+        <h3 id={aoConfirmar} className="text-xs text-muted-foreground">
+          Ao confirmar
+        </h3>
+        <ul aria-labelledby={aoConfirmar} className="list-disc space-y-1 pl-5">
           {resumo.pessoa.vira_cliente ? <li>{resumo.pessoa.nome} passa a ser cliente</li> : null}
           <li>
             {processos.length === 0
@@ -184,9 +235,17 @@ function ResumoDoGanhoNaTela({ resumo }: { resumo: ResumoDoGanho }) {
                     .map((p) => p.titulo)
                     .join("; ")}`}
           </li>
-          <li>Nenhuma cobrança será criada.</li>
-          {resumo.avisos.map((aviso) => (
-            <li key={aviso}>{aviso}</li>
+          {cobrancas.length === 1 ? (
+            <li>{`Será criada 1 cobrança (${formatarMoeda(cobrancas[0]!.total, cobrancas[0]!.moeda)})`}</li>
+          ) : cobrancas.length > 1 ? (
+            <li>
+              {`Serão criadas ${cobrancas.length} cobranças (${cobrancas
+                .map((c) => formatarMoeda(c.total, c.moeda))
+                .join("; ")})`}
+            </li>
+          ) : null}
+          {avisos.map((aviso, i) => (
+            <li key={i}>{aviso}</li>
           ))}
         </ul>
       </section>

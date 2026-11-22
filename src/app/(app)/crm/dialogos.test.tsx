@@ -1,7 +1,14 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { hojeEmSaoPaulo } from "@/lib/formatar";
+import { somarMeses } from "@/lib/parcelas";
+import { formatarMoeda as moeda } from "@/lib/totals";
+
 import { DialogoDeGanho, DialogoDePerda, DialogoDeReabrir } from "./dialogos";
+
+/** O valor como a tela o lê: o espaço rígido de `Intl` vira espaço comum na comparação. */
+const formatarMoeda = (valor: number, m: string) => moeda(valor, m).replace(/\s/g, " ");
 
 const acoes = vi.hoisted(() => ({
   ganharOportunidade: vi.fn(),
@@ -30,8 +37,61 @@ const RESUMO = {
     { item: "i1", titulo: "EB-1A — Ana de Teste", id: null },
     { item: "i2", titulo: "O-1 — Ana de Teste", id: null },
   ],
+  forma: {
+    situacao: "sem_forma",
+    confirmada_em: null,
+    confirmada_por: null,
+    cobrancas_criadas_em: null,
+    partes: [],
+  },
   cobrancas: [],
   avisos: [],
+};
+
+/** Daqui a um mês: nenhuma parcela vencida, seja qual for o dia em que o teste roda. */
+const MES_QUE_VEM = somarMeses(hojeEmSaoPaulo(), 1);
+
+function ontem(): string {
+  const [ano, mes, dia] = hojeEmSaoPaulo().split("-").map(Number) as [number, number, number];
+  return new Date(Date.UTC(ano, mes - 1, dia - 1)).toISOString().slice(0, 10);
+}
+
+const parte = (
+  id: string,
+  label: string,
+  currency: "BRL" | "USD",
+  total: number,
+  parcelas: { number: number; amount: number; due_on: string }[],
+) => ({
+  id,
+  label,
+  method: currency === "BRL" ? ("pix" as const) : ("transferencia" as const),
+  currency,
+  total,
+  installments_count: parcelas.length,
+  parcelas,
+});
+
+/** Entrada em real e 2 transferências em dólar: 2 cobranças. */
+const CONFIRMADA = {
+  ...RESUMO,
+  forma: {
+    situacao: "confirmada",
+    confirmada_em: "2026-11-05T15:00:00Z",
+    confirmada_por: "Ana Lima",
+    cobrancas_criadas_em: null,
+    partes: [
+      parte("pt1", "Entrada", "BRL", 10000, [{ number: 1, amount: 10000, due_on: MES_QUE_VEM }]),
+      parte("pt2", "Parcelas", "USD", 14000, [
+        { number: 1, amount: 7000, due_on: MES_QUE_VEM },
+        { number: 2, amount: 7000, due_on: somarMeses(MES_QUE_VEM, 1) },
+      ]),
+    ],
+  },
+  cobrancas: [
+    { id: null, titulo: "Entrada — EB-1A, O-1", moeda: "BRL", total: 10000, parcelas: 1 },
+    { id: null, titulo: "Parcelas — EB-1A, O-1", moeda: "USD", total: 14000, parcelas: 2 },
+  ],
 };
 
 beforeEach(() => {
@@ -48,12 +108,153 @@ describe("DialogoDeGanho", () => {
     expect(screen.getByText("O-1")).toBeTruthy();
     const totais = within(screen.getByRole("group", { name: "Totais por moeda" }));
     expect(totais.getByText(/US\$\s14\.000/)).toBeTruthy();
-    expect(screen.getByText("Forma de pagamento: definir na aba Financeiro")).toBeTruthy();
+    expect(screen.getByText("Não definida: nenhuma cobrança será criada.")).toBeTruthy();
     expect(screen.getByText("Ana de Teste passa a ser cliente")).toBeTruthy();
     expect(
       screen.getByText("Serão criados 2 processos: EB-1A — Ana de Teste; O-1 — Ana de Teste"),
     ).toBeTruthy();
-    expect(screen.getByText("Nenhuma cobrança será criada.")).toBeTruthy();
+    // Os fixos de antes da entrega 4a saíram.
+    expect(screen.queryByText("Forma de pagamento: definir na aba Financeiro")).toBeNull();
+    expect(screen.queryByText("Nenhuma cobrança será criada.")).toBeNull();
+  });
+
+  it("forma confirmada: quem confirmou, as partes e as cobranças que vão nascer", async () => {
+    acoes.resumoDoGanho.mockResolvedValue({ resumo: CONFIRMADA, error: null });
+    render(<DialogoDeGanho negocio={negocio} aberto aoMudar={() => {}} />);
+
+    expect(
+      await screen.findByText("Confirmada pela equipe em 05/11/2026, por Ana Lima"),
+    ).toBeTruthy();
+    expect(screen.getByText(/^Entrada · Pix · /)).toBeTruthy();
+    expect(screen.getByText(/^Parcelas · Transferência · 2 × /)).toBeTruthy();
+    expect(
+      screen.getByText(
+        `Serão criadas 2 cobranças (${formatarMoeda(10000, "BRL")}; ${formatarMoeda(14000, "USD")})`,
+      ),
+    ).toBeTruthy();
+    // Vistos de US$ 14.000 e partes em duas moedas: não há o que comparar.
+    expect(screen.queryByText(/A forma soma/)).toBeNull();
+    expect(screen.queryByText(/já vencida/)).toBeNull();
+  });
+
+  it("uma cobrança só: no singular", async () => {
+    acoes.resumoDoGanho.mockResolvedValue({
+      resumo: {
+        ...CONFIRMADA,
+        forma: { ...CONFIRMADA.forma, partes: [CONFIRMADA.forma.partes[0]!] },
+        cobrancas: [CONFIRMADA.cobrancas[0]!],
+      },
+      error: null,
+    });
+    render(<DialogoDeGanho negocio={negocio} aberto aoMudar={() => {}} />);
+
+    expect(
+      await screen.findByText(`Será criada 1 cobrança (${formatarMoeda(10000, "BRL")})`),
+    ).toBeTruthy();
+  });
+
+  it("forma em rascunho: nenhuma cobrança, e o porquê", async () => {
+    acoes.resumoDoGanho.mockResolvedValue({
+      resumo: {
+        ...CONFIRMADA,
+        forma: { ...CONFIRMADA.forma, situacao: "rascunho", confirmada_em: null, confirmada_por: null },
+        cobrancas: [],
+      },
+      error: null,
+    });
+    render(<DialogoDeGanho negocio={negocio} aberto aoMudar={() => {}} />);
+
+    expect(
+      await screen.findByText(
+        "Em rascunho: nenhuma cobrança será criada. Para criá-las, confirme a forma antes do Ganho.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/cobranças? \(/)).toBeNull();
+    expect(screen.queryByText(/Confirmada pela equipe/)).toBeNull();
+  });
+
+  it("cobranças já criadas: a data, e o visto novo fora da forma", async () => {
+    acoes.resumoDoGanho.mockResolvedValue({
+      resumo: {
+        ...RESUMO,
+        itens: [...RESUMO.itens, { id: "i3", visa_name: "EB-2 NIW", amount: 5000, currency: "USD" }],
+        processos: [{ item: "i3", titulo: "EB-2 NIW — Ana de Teste", id: null }],
+        forma: {
+          ...CONFIRMADA.forma,
+          situacao: "cobrancas_criadas",
+          cobrancas_criadas_em: "2026-11-21T18:00:00Z",
+        },
+        cobrancas: [],
+      },
+      error: null,
+    });
+    render(<DialogoDeGanho negocio={negocio} aberto aoMudar={() => {}} />);
+
+    expect(
+      await screen.findByText("As cobranças desta forma já foram criadas em 21/11/2026."),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "EB-2 NIW não está na forma de pagamento: crie a cobrança à mão na aba Financeiro.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/cobranças? \(/)).toBeNull();
+  });
+
+  it("parcela de ontem que vai nascer: 1 parcela já vencida, em Ao confirmar", async () => {
+    acoes.resumoDoGanho.mockResolvedValue({
+      resumo: {
+        ...CONFIRMADA,
+        forma: {
+          ...CONFIRMADA.forma,
+          partes: [parte("pt1", "Entrada", "BRL", 10000, [{ number: 1, amount: 10000, due_on: ontem() }])],
+        },
+        cobrancas: [CONFIRMADA.cobrancas[0]!],
+      },
+      error: null,
+    });
+    render(<DialogoDeGanho negocio={negocio} aberto aoMudar={() => {}} />);
+
+    const aoConfirmar = await screen.findByRole("list", { name: "Ao confirmar" });
+    expect(within(aoConfirmar).getByText("1 parcela já vencida")).toBeTruthy();
+  });
+
+  it("forma de US$ 13.000 para vistos de US$ 14.000: o aviso de coerência", async () => {
+    acoes.resumoDoGanho.mockResolvedValue({
+      resumo: {
+        ...CONFIRMADA,
+        forma: {
+          ...CONFIRMADA.forma,
+          partes: [parte("pt1", "À vista", "USD", 13000, [{ number: 1, amount: 13000, due_on: MES_QUE_VEM }])],
+        },
+        cobrancas: [{ id: null, titulo: "À vista — EB-1A, O-1", moeda: "USD", total: 13000, parcelas: 1 }],
+      },
+      error: null,
+    });
+    render(<DialogoDeGanho negocio={negocio} aberto aoMudar={() => {}} />);
+
+    expect(
+      await screen.findByText(
+        `A forma soma ${formatarMoeda(13000, "USD")} e os vistos, ${formatarMoeda(14000, "USD")}.`,
+      ),
+    ).toBeTruthy();
+  });
+
+  it("o dia da parcela não volta um dia: 2026-12-10 é 10/12/2026", async () => {
+    acoes.resumoDoGanho.mockResolvedValue({
+      resumo: {
+        ...CONFIRMADA,
+        forma: {
+          ...CONFIRMADA.forma,
+          partes: [parte("pt1", "Entrada", "BRL", 10000, [{ number: 1, amount: 10000, due_on: "2026-12-10" }])],
+        },
+        cobrancas: [CONFIRMADA.cobrancas[0]!],
+      },
+      error: null,
+    });
+    render(<DialogoDeGanho negocio={negocio} aberto aoMudar={() => {}} />);
+
+    expect(await screen.findByText(/^Entrada · Pix · .* · 10\/12\/2026$/)).toBeTruthy();
   });
 
   it("quem já é cliente não ganha a linha de 'passa a ser cliente'", async () => {
