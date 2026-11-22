@@ -7,6 +7,7 @@ import { formatarMoeda } from "@/lib/totals";
 import {
   avisoDeCoerencia,
   avisoDeVencidas,
+  avisosDoResumo,
   comParcelasGeradas,
   erroDaForma,
   erroDaParte,
@@ -16,6 +17,7 @@ import {
   totaisDaForma,
   type ParteDaForma,
 } from "./forma-regras";
+import type { ResumoDoGanho } from "./schema";
 
 /**
  * A forma de pagamento do negócio (entrega 4a), sem banco e sem tela.
@@ -225,5 +227,76 @@ describe("avisoDeVencidas", () => {
     expect(avisoDeVencidas(com("2026-12-09", "2026-12-10"), BASE)).toBe("1 parcela já vencida");
     expect(avisoDeVencidas(com("2026-12-01", "2026-12-09"), BASE)).toBe("2 parcelas já vencidas");
     expect(avisoDeVencidas(com("2026-12-10"), BASE)).toBeNull();
+  });
+});
+
+describe("avisosDoResumo (P1, P15)", () => {
+  const HOJE = "2026-12-10";
+  const parte = (total: number, currency: "BRL" | "USD", due_on: string) => ({
+    id: "p1",
+    label: "Parcelas",
+    method: "transferencia" as const,
+    currency,
+    total,
+    installments_count: 1,
+    parcelas: [{ number: 1, amount: total, due_on }],
+  });
+  const resumo = (forma: Partial<ResumoDoGanho["forma"]>, extra: Partial<ResumoDoGanho> = {}): ResumoDoGanho => ({
+    negocio: "n1",
+    pessoa: { id: "pe1", nome: "Maria Souza", vira_cliente: true },
+    itens: [
+      { id: "i1", visa_name: "EB-1A", amount: 8000, currency: "USD" },
+      { id: "i2", visa_name: "O-1", amount: 6000, currency: "USD" },
+    ],
+    processos: [],
+    cobrancas: [],
+    avisos: [],
+    ...extra,
+    forma: {
+      situacao: "confirmada",
+      confirmada_em: null,
+      confirmada_por: null,
+      cobrancas_criadas_em: null,
+      partes: [],
+      ...forma,
+    },
+  });
+
+  it("confirmada com parcela de ontem e totais iguais: só a vencida", () => {
+    expect(avisosDoResumo(resumo({ partes: [parte(14000, "USD", "2026-12-09")] }), HOJE)).toEqual([
+      "1 parcela já vencida",
+    ]);
+  });
+
+  it("confirmada com totais diferentes: a coerência", () => {
+    expect(avisosDoResumo(resumo({ partes: [parte(13000, "USD", "2027-01-10")] }), HOJE)).toEqual([
+      "A forma soma " + formatarMoeda(13000, "USD") + " e os vistos, " + formatarMoeda(14000, "USD") + ".",
+    ]);
+  });
+
+  it("rascunho: a coerência sim, a vencida não (nada vai nascer)", () => {
+    expect(
+      avisosDoResumo(resumo({ situacao: "rascunho", partes: [parte(13000, "USD", "2026-12-09")] }), HOJE),
+    ).toEqual(["A forma soma " + formatarMoeda(13000, "USD") + " e os vistos, " + formatarMoeda(14000, "USD") + "."]);
+  });
+
+  it("cobranças já criadas: o visto que ganha processo agora não está na forma, sem coerência", () => {
+    const r = resumo(
+      { situacao: "cobrancas_criadas", partes: [parte(13000, "USD", "2026-12-09")] },
+      {
+        itens: [
+          { id: "i1", visa_name: "EB-1A", amount: 8000, currency: "USD" },
+          { id: "i3", visa_name: "EB-2 NIW", amount: 5000, currency: "USD" },
+        ],
+        processos: [{ item: "i3", titulo: "EB-2 NIW — Maria Souza", id: null }],
+      },
+    );
+    expect(avisosDoResumo(r, HOJE)).toEqual([
+      "EB-2 NIW não está na forma de pagamento: crie a cobrança à mão na aba Financeiro.",
+    ]);
+  });
+
+  it("sem forma: nenhum aviso", () => {
+    expect(avisosDoResumo(resumo({ situacao: "sem_forma" }), HOJE)).toEqual([]);
   });
 });

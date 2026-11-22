@@ -1,6 +1,8 @@
 import { gerarParcelas, type Metodo, type ParcelaNova } from "@/lib/parcelas";
 import { emCentavos, emMoeda, formatarMoeda, type PorMoeda } from "@/lib/totals";
 
+import type { ResumoDoGanho } from "./schema";
+
 /**
  * A forma de pagamento do negócio (entrega 4a) — regras puras, testadas em
  * `forma-regras.test.ts`.
@@ -196,4 +198,38 @@ export function avisoDeVencidas(
   const vencidas = partes.flatMap((p) => p.parcelas).filter((p) => p.due_on < hoje).length;
   if (vencidas === 0) return null;
   return vencidas === 1 ? "1 parcela já vencida" : `${vencidas} parcelas já vencidas`;
+}
+
+/**
+ * Os avisos que a forma acrescenta ao resumo do Ganho (P1 do plano da 4a),
+ * montados aqui a partir do que `ganhar_negocio` devolve — a mesma frase de
+ * coerência da janela e da confirmação. Nada bloqueia.
+ *
+ * - Parcela vencida, só com a forma confirmada: só aí a parcela vai nascer.
+ * - Coerência, com a forma em rascunho (ou enviada/recusada) e confirmada.
+ * - Com as cobranças já criadas, a forma é registro e não se compara: avisa
+ *   cada visto que ganha processo agora, porque a cobrança dele é à mão.
+ */
+export function avisosDoResumo(resumo: ResumoDoGanho, hoje: string): string[] {
+  const { forma } = resumo;
+
+  if (forma.situacao === "sem_forma") return [];
+
+  if (forma.situacao === "cobrancas_criadas") {
+    const nomeDoItem = new Map(resumo.itens.map((i) => [i.id, i.visa_name]));
+    return resumo.processos.map(
+      (p) =>
+        `${nomeDoItem.get(p.item) ?? p.titulo} não está na forma de pagamento: ` +
+        "crie a cobrança à mão na aba Financeiro.",
+    );
+  }
+
+  const avisos: string[] = [];
+  if (forma.situacao === "confirmada") {
+    const vencidas = avisoDeVencidas(forma.partes, hoje);
+    if (vencidas) avisos.push(vencidas);
+  }
+  const coerencia = avisoDeCoerencia(resumo.itens, forma.partes);
+  if (coerencia) avisos.push(coerencia);
+  return avisos;
 }

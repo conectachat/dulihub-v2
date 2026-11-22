@@ -162,6 +162,13 @@ const RESUMO = {
   pessoa: { id: PESSOA, nome: "Maria Souza", vira_cliente: true },
   itens: [{ id: "i1", visa_name: "EB-1A", amount: 8000, currency: "USD" }],
   processos: [{ item: "i1", titulo: "EB-1A — Maria Souza", id: null }],
+  forma: {
+    situacao: "sem_forma",
+    confirmada_em: null,
+    confirmada_por: null,
+    cobrancas_criadas_em: null,
+    partes: [],
+  },
   cobrancas: [],
   avisos: [],
 };

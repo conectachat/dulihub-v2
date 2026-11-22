@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { parseMoney } from "@/lib/numbers";
+import { METODOS } from "@/lib/parcelas";
 
 /**
  * Valor e moeda de um visto do negócio (CRM-13). O valor é obrigatório: em
@@ -30,7 +31,11 @@ export function itemFromForm(formData: FormData) {
  * Chega do banco como `Json`; este esquema é o que o transforma em tipo sem
  * `as unknown as` (AGENTS), e recusa um formato que a tela não saberia
  * desenhar. O resumo da tela e o resultado da gravação têm o mesmo formato:
- * simulando, o `id` de cada processo vem nulo.
+ * simulando, o `id` de cada processo e de cada cobrança vem nulo.
+ *
+ * `forma` e `cobrancas` saem de `private.forma_do_ganho` (0059), a mesma
+ * leitura para o resumo e para a gravação. `enviada` e `recusada` só se
+ * alcançam na 4b; a tela os trata como rascunho (P9 do plano da 4a).
  */
 export const resumoDoGanhoSchema = z.object({
   negocio: z.string(),
@@ -54,8 +59,35 @@ export const resumoDoGanhoSchema = z.object({
       id: z.string().nullable(),
     }),
   ),
-  // Entrega 4: as cobranças da forma de pagamento. Até lá, sempre vazia.
-  cobrancas: z.array(z.unknown()),
+  forma: z.object({
+    situacao: z.enum(["sem_forma", "rascunho", "enviada", "recusada", "confirmada", "cobrancas_criadas"]),
+    confirmada_em: z.string().nullable(),
+    confirmada_por: z.string().nullable(),
+    cobrancas_criadas_em: z.string().nullable(),
+    partes: z.array(
+      z.object({
+        id: z.string(),
+        label: z.string(),
+        method: z.enum(METODOS),
+        currency: z.enum(["BRL", "USD"]),
+        total: z.number(),
+        installments_count: z.number().int(),
+        parcelas: z.array(
+          z.object({ number: z.number().int(), amount: z.number(), due_on: z.string() }),
+        ),
+      }),
+    ),
+  }),
+  // Uma por parte da forma confirmada; vazia nas outras situações.
+  cobrancas: z.array(
+    z.object({
+      id: z.string().nullable(),
+      titulo: z.string(),
+      moeda: z.enum(["BRL", "USD"]),
+      total: z.number(),
+      parcelas: z.number().int(),
+    }),
+  ),
   avisos: z.array(z.string()),
 });
 

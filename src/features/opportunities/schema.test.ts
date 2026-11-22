@@ -17,8 +17,38 @@ const EXEMPLO = {
   processos: [
     { item: "33333333-3333-4333-8333-333333333333", titulo: "EB-1A — Maria Souza", id: null },
   ],
+  forma: {
+    situacao: "sem_forma",
+    confirmada_em: null,
+    confirmada_por: null,
+    cobrancas_criadas_em: null,
+    partes: [],
+  },
   cobrancas: [],
   avisos: [],
+};
+
+/** A forma do critério (entrega 4a), confirmada, com as duas cobranças. */
+const CONFIRMADA = {
+  ...EXEMPLO,
+  forma: {
+    situacao: "confirmada",
+    confirmada_em: "2026-11-21T13:00:00.000Z",
+    confirmada_por: "Ana Lima",
+    cobrancas_criadas_em: null,
+    partes: [
+      {
+        id: "55555555-5555-4555-8555-555555555555",
+        label: "Entrada",
+        method: "pix",
+        currency: "BRL",
+        total: 10000,
+        installments_count: 1,
+        parcelas: [{ number: 1, amount: 10000, due_on: "2026-12-10" }],
+      },
+    ],
+  },
+  cobrancas: [{ id: null, titulo: "Entrada — EB-1A", moeda: "BRL", total: 10000, parcelas: 1 }],
 };
 
 describe("resumoDoGanhoSchema", () => {
@@ -38,6 +68,22 @@ describe("resumoDoGanhoSchema", () => {
 
   it("recusa processo sem título", () => {
     const quebrado = { ...EXEMPLO, processos: [{ item: EXEMPLO.processos[0]!.item, id: null }] };
+    expect(resumoDoGanhoSchema.safeParse(quebrado).success).toBe(false);
+  });
+
+  it("exige a forma de pagamento (0059), e lê a confirmada com as cobranças", () => {
+    const semForma: Record<string, unknown> = { ...EXEMPLO };
+    delete semForma.forma;
+    expect(resumoDoGanhoSchema.safeParse(semForma).success).toBe(false);
+
+    const lido = resumoDoGanhoSchema.parse(CONFIRMADA);
+    expect(lido.forma.situacao).toBe("confirmada");
+    expect(lido.forma.partes[0]!.parcelas[0]!.due_on).toBe("2026-12-10");
+    expect(lido.cobrancas[0]).toEqual({ id: null, titulo: "Entrada — EB-1A", moeda: "BRL", total: 10000, parcelas: 1 });
+  });
+
+  it("recusa cobrança em moeda fora de BRL e USD", () => {
+    const quebrado = { ...CONFIRMADA, cobrancas: [{ ...CONFIRMADA.cobrancas[0]!, moeda: "EUR" }] };
     expect(resumoDoGanhoSchema.safeParse(quebrado).success).toBe(false);
   });
 });
