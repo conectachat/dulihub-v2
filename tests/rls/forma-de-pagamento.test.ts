@@ -459,6 +459,11 @@ describe("forma de pagamento no banco (0058)", { timeout: 60_000 }, () => {
         (await parceiro.from("payment_plans").update({ charges_created_at: new Date().toISOString() }).eq("id", forma.id))
           .error,
       ).not.toBeNull();
+      // A 0060 libera anular `created_by` só dentro de gatilho (o usuário
+      // excluído); pela API, continua recusado.
+      expect(
+        (await parceiro.from("payment_plans").update({ created_by: null }).eq("id", forma.id)).error?.message,
+      ).toBe("Mude a forma de pagamento pela tela do negócio.");
 
       const outro = await novoNegocio(await novaPessoa(), parceiroId);
       expect(

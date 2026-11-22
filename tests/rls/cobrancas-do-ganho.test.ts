@@ -340,6 +340,25 @@ describe("cobranças no Ganho (0059)", { timeout: 60_000 }, () => {
     expect((await parcelasDas([cobranca!.id]))[0]!.due_on).toBe(ontem);
   });
 
+  it("o dono do negócio que não é da gestão confirma e ganha: as cobranças nascem", async () => {
+    // O caminho mais comum: um colaborador dono do negócio. O passo (7) precisa
+    // das policies de membro em payment_plans, receivables e installments.
+    const pessoa = await novaPessoa();
+    const negocio = await novoNegocio(pessoa, staffId, staff);
+    await comVistos(negocio);
+    expect((await salvar(staff, negocio, CRITERIO())).error).toBeNull();
+    expect((await confirmar(staff, negocio)).error).toBeNull();
+
+    const gravado = await ganhar(staff, negocio);
+    expect(gravado.error).toBeNull();
+    expect(lerResumo(gravado.data).cobrancas.every((c) => c.id)).toBe(true);
+
+    const cobrancas = await cobrancasDa(pessoa);
+    expect(cobrancas.map((c) => c.title)).toEqual(["Entrada — EB-1A, O-1", "Parcelas — EB-1A, O-1"]);
+    expect((await parcelasDas(cobrancas.map((c) => c.id))).length).toBe(4);
+    expect((await formaDo(negocio)).charges_created_at).not.toBeNull();
+  });
+
   it("depois de Refazer e confirmar de novo, o resumo traz a segunda confirmação", async () => {
     const pessoa = await novaPessoa();
     const negocio = await novoNegocio(pessoa, staffId, staff);
