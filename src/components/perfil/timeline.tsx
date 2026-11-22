@@ -12,6 +12,7 @@ import {
   Phone,
   StickyNote,
   Users,
+  Wallet,
 } from "lucide-react";
 
 import { useFormulario } from "@/lib/use-formulario";
@@ -45,6 +46,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   stage_change: ArrowRightLeft,
   registration_submitted: ClipboardCheck,
   virou_cliente: BadgeCheck,
+  forma_de_pagamento: Wallet,
 };
 
 const LABELS: Record<string, string> = {
@@ -58,6 +60,8 @@ const LABELS: Record<string, string> = {
   registration_submitted: "Ficha de cadastro",
   // Gravado ao virar cliente: pelo Ganho, por processo ou cobrança, ou à mão (0045).
   virou_cliente: "Virou cliente",
+  // Gravado pela confirmação e pelo Refazer da forma de pagamento (0058).
+  forma_de_pagamento: "Forma de pagamento",
 };
 
 /**

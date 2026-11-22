@@ -15,6 +15,8 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   registration_submitted: "Ficha de cadastro",
   // Gravado ao virar cliente: pelo Ganho, por processo ou cobrança, ou à mão (0045).
   virou_cliente: "Virou cliente",
+  // Gravado pela confirmação e pelo Refazer da forma de pagamento (0058).
+  forma_de_pagamento: "Forma de pagamento",
 };
 
 /**

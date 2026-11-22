@@ -43,9 +43,15 @@ export type AtividadeLida = {
 /**
  * Tipos que o sistema grava sozinho — não são lançamentos de quem usa, e não
  * se editam nem se apagam, nem pela API (`deleteEntry`). `virou_cliente` vem
- * do banco (0045) e do Ganho.
+ * do banco (0045) e do Ganho; `forma_de_pagamento`, da confirmação e do
+ * Refazer da forma (0058).
  */
-export const TIPOS_DO_SISTEMA = ["stage_change", "registration_submitted", "virou_cliente"];
+export const TIPOS_DO_SISTEMA = [
+  "stage_change",
+  "registration_submitted",
+  "virou_cliente",
+  "forma_de_pagamento",
+];
 
 const SYSTEM_TYPES = new Set(TIPOS_DO_SISTEMA);
 

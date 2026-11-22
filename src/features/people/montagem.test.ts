@@ -32,6 +32,15 @@ describe("montarLinhaDoTempo", () => {
     expect(item.system).toBe(true);
   });
 
+  it("forma de pagamento é registro do sistema: não se apaga (entrega 4a)", () => {
+    const [item] = montarLinhaDoTempo(
+      [],
+      [atividade("a1", "forma_de_pagamento", "2026-11-21T12:00:00Z")],
+    );
+
+    expect(item.system).toBe(true);
+  });
+
   it("movimento no funil e ficha recebida são do sistema; ligação não", () => {
     const itens = montarLinhaDoTempo(
       [],

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { POR_PAGINA } from "@/lib/paginacao";
 import { somarItensPorMoeda, type PorMoeda } from "@/lib/totals";
 
+import { formaDoNegocio } from "./montagem";
 import { filtroDoQuadro } from "./regras";
 
 export type Stage = Pick<
@@ -161,8 +162,11 @@ export async function listPeopleForPicker() {
 }
 
 /**
- * Um negócio inteiro, para a tela do lead: o negócio, o contato dele e as
- * etapas do funil em que ele está. Negócio nulo quando a RLS esconde.
+ * Um negócio inteiro, para a tela do lead: o negócio, o contato dele, a forma
+ * de pagamento (entrega 4a) e as etapas do funil em que ele está. Negócio nulo
+ * quando a RLS esconde.
+ *
+ * A forma vem no mesmo `select`, em lista (ver `formaDoNegocio`).
  *
  * As etapas vêm em leitura à parte: etapa e funil têm duas chaves entre si (a
  * simples e a composta da 0027), e o embutido não sabe qual seguir.
@@ -179,13 +183,20 @@ export async function obterNegocio(id: string) {
        itens:opportunity_items(id, visa_type_id, visa_name, amount, currency, position,
          processos:projects!projects_item_same_org(id)),
        person:people(id, full_name, email, phone, phone_country_code, company,
-         job_title, lifecycle_stage, person_tags(tag:tags(id, name)))`,
+         job_title, lifecycle_stage, person_tags(tag:tags(id, name))),
+       forma:payment_plans(id, status, reference_rate, reference_rate_note, charges_created_at,
+         partes:payment_plan_parts(position, label, method, currency, total, installments_count,
+           parcelas:payment_plan_installments(number, amount, due_on)),
+         respostas:payment_plan_responses(answered_at, created_at, answered_by_name, reason))`,
     )
     .eq("id", id)
     .maybeSingle();
 
   if (error) return { negocio: null, etapas: [], catalogo: [], error: error.message };
   if (!negocio) return { negocio: null, etapas: [], catalogo: [], error: null };
+
+  const { forma: lidas, ...semForma } = negocio;
+  const { forma, error: erroForma } = formaDoNegocio(lidas);
 
   // O catálogo da organização do negócio — inclusive os inativos, para a
   // edição de um item antigo; o seletor de visto novo mostra só os ativos.
@@ -205,14 +216,15 @@ export async function obterNegocio(id: string) {
 
   return {
     negocio: {
-      ...negocio,
+      ...semForma,
       itens: [...negocio.itens]
         .sort((a, b) => a.position - b.position)
         .map(({ processos, ...item }) => ({ ...item, temProcesso: processos.length > 0 })),
+      forma,
     },
     etapas: (etapas ?? []) as Stage[],
     catalogo: catalogo ?? [],
-    error: erroEtapas?.message ?? erroCatalogo?.message ?? null,
+    error: erroForma ?? erroEtapas?.message ?? erroCatalogo?.message ?? null,
   };
 }
 

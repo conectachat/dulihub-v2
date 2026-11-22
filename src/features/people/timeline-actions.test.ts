@@ -52,7 +52,7 @@ describe("deleteEntry", () => {
       "not",
       "type",
       "in",
-      "(stage_change,registration_submitted,virou_cliente)",
+      "(stage_change,registration_submitted,virou_cliente,forma_de_pagamento)",
     ]);
   });
 });
