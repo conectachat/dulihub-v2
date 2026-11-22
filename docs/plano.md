@@ -299,9 +299,25 @@ clientes antigos sem criar oportunidade.
 Quem está no funil vira cliente pelo Ganho; a data se ajusta depois. O
 "cliente desde" continua se corrigindo em Editar, no perfil do cliente.
 
-Fica para a entrega 4: **cobranças no Ganho, forma de pagamento e o aviso de
-parcela vencida**. Até lá, o resumo diz "Forma de pagamento: definir na aba
-Financeiro" e o Ganho não cria cobrança.
+### Entrega 4a — forma de pagamento pela equipe e cobranças no Ganho (22/nov)
+
+Plano: `docs/superpowers/plans/2026-11-21-entrega-4a-forma-de-pagamento.md`
+(FIC-7, FIC-10 a FIC-12, REC-6, CRM-14). Desenho:
+`docs/superpowers/specs/2026-11-21-entrega-4a-forma-de-pagamento-design.md`. Um
+push só, no fim: as duas migrations são compatíveis com o código no ar.
+
+| Parte | O que ficou pronto |
+|---|---|
+| Banco | A forma do negócio, as partes, as parcelas e as confirmações (0058), mudadas só pelas três funções — salvar, confirmar pela equipe e refazer —, com a cotação do C6 gravada direto; vistos travados com a forma confirmada; negócio com confirmação não se apaga. O Ganho cria uma cobrança por parte da forma confirmada, uma vez só (0059) |
+| Telas | Cartão "Forma de pagamento" no lead, abaixo do Negócio, com a janela de definir e editar; "Confirmar pela equipe" e "Refazer" para o dono do negócio e a gestão; resumo do Ganho com a forma, as cobranças que vão nascer e os avisos (parcela vencida, coerência, visto fora da forma) |
+
+Cartão é um pagamento só, numa data: a Duli recebe tudo antecipado (Renato,
+21/nov). Entrada e parcelas viram parcelas no Financeiro, pela programação da
+forma.
+
+Fica para a **4b**: o link para o cliente ver a forma e dar o OK, a resposta
+dele (aceita ou recusada), reenviar só o pagamento, os alertas do Início e o
+"criar as cobranças mesmo assim" com a forma enviada ou recusada.
 
 ---
 
