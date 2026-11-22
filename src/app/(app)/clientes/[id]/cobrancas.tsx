@@ -32,7 +32,7 @@ import {
   excluirCobranca,
   renomearCobranca,
 } from "@/features/financeiro/escritas-locais";
-import { METODOS, ROTULO_DO_METODO } from "@/features/financeiro/schema";
+import { METODOS, ROTULO_DO_METODO } from "@/lib/parcelas";
 import { situacaoDaParcela, totaisPorMoeda } from "@/features/financeiro/regras";
 import { falhou, type ActionState } from "@/lib/action-state";
 import { abrirEmNovaAba, baixar } from "@/lib/abrir";

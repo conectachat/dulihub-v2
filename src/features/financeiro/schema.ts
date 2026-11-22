@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { parseCotacao, parseMoney, parseWholeNumber } from "@/lib/numbers";
+import { METODOS } from "@/lib/parcelas";
 
 /**
  * O que vale como entrada no a receber — puro, e o mesmo dos dois lados.
@@ -16,16 +17,6 @@ const dataISO = z
   .string()
   .trim()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Informe a data do primeiro vencimento");
-
-export const METODOS = ["pix", "boleto", "cartao", "transferencia", "cripto"] as const;
-
-export const ROTULO_DO_METODO: Record<(typeof METODOS)[number], string> = {
-  pix: "Pix",
-  boleto: "Boleto",
-  cartao: "Cartão",
-  transferencia: "Transferência",
-  cripto: "Cripto",
-};
 
 export const cobrancaSchema = z
   .object({

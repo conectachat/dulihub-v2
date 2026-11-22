@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { parcelasDoAparelho } from "@/features/financeiro/consultas-locais";
 import { recebidoNoMes, situacaoDaParcela } from "@/features/financeiro/regras";
-import { ROTULO_DO_METODO } from "@/features/financeiro/schema";
+import { ROTULO_DO_METODO } from "@/lib/parcelas";
 import { formatarDia, hojeEmSaoPaulo } from "@/lib/formatar";
 import { useSincronia } from "@/lib/local/estado";
 import { bancoDoUsuario, filaDoUsuario } from "@/lib/local/sincronizador";

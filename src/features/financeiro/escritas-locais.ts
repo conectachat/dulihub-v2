@@ -17,7 +17,7 @@ import { usuarioLocal } from "@/lib/local/usuario";
 import { formatarDia, hojeEmSaoPaulo } from "@/lib/formatar";
 
 import { cobrancasDoContato } from "./consultas-locais";
-import { gerarParcelas } from "./regras";
+import { gerarParcelas } from "@/lib/parcelas";
 import { baixaSchema, cobrancaSchema } from "./schema";
 
 /**
