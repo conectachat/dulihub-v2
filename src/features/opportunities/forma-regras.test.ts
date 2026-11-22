@@ -11,6 +11,7 @@ import {
   comParcelasGeradas,
   erroDaForma,
   erroDaParte,
+  linhaDaParte,
   moedaSugerida,
   parteSugerida,
   totalDaForma,
@@ -298,5 +299,38 @@ describe("avisosDoResumo (P1, P15)", () => {
 
   it("sem forma: nenhum aviso", () => {
     expect(avisosDoResumo(resumo({ situacao: "sem_forma" }), HOJE)).toEqual([]);
+  });
+});
+
+describe("linhaDaParte", () => {
+  const parte = (total: number, quantidade: number, metodo: ParteDaForma["method"] = "transferencia") =>
+    comParcelasGeradas(
+      { label: "Parcelas", method: metodo, currency: "USD", total, installments_count: quantidade, parcelas: [] },
+      "2026-12-10",
+    );
+
+  it("uma parcela: o valor e o dia", () => {
+    expect(linhaDaParte(parte(13000, 1, "pix"))).toBe(
+      `Parcelas · Pix · ${formatarMoeda(13000, "USD")} · 10/12/2026`,
+    );
+  });
+
+  it("parcelas iguais: n × o valor, e as datas", () => {
+    expect(linhaDaParte(parte(9000, 3))).toBe(
+      `Parcelas · Transferência · 3 × ${formatarMoeda(3000, "USD")} · 10/12/2026, 10/01/2027, 10/02/2027`,
+    );
+  });
+
+  it("parcelas que não dividem igual: o total, sem prometer um valor por parcela", () => {
+    expect(linhaDaParte(parte(10000, 3))).toBe(
+      `Parcelas · Transferência · 3 parcelas, ${formatarMoeda(10000, "USD")} · ` +
+        "10/12/2026, 10/01/2027, 10/02/2027",
+    );
+  });
+
+  it("mais de 4 datas: a primeira e a última", () => {
+    expect(linhaDaParte(parte(12000, 12))).toBe(
+      `Parcelas · Transferência · 12 × ${formatarMoeda(1000, "USD")} · de 10/12/2026 a 10/11/2027`,
+    );
   });
 });

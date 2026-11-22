@@ -121,6 +121,35 @@ describe("Vistos", () => {
     expect(screen.getByText("Tem processo: para desistir, encerre o processo.")).toBeTruthy();
   });
 
+  it("travada pela forma confirmada: só leitura, com a frase do Refazer (entrega 4a)", () => {
+    render(
+      <Vistos negocioId="n1" itens={ITENS} catalogo={CATALOGO} ganho={false} travadaPelaForma />,
+    );
+
+    expect(screen.getByText("EB-1A")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Acrescentar visto" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Editar EB-1A" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Remover EB-1A" })).toBeNull();
+    expect(
+      screen.getByText("A forma de pagamento está confirmada. Use Refazer para mudar os vistos."),
+    ).toBeTruthy();
+  });
+
+  it("sem a trava e com o negócio aberto, acrescentar continua", () => {
+    render(
+      <Vistos
+        negocioId="n1"
+        itens={ITENS}
+        catalogo={CATALOGO}
+        ganho={false}
+        travadaPelaForma={false}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Acrescentar visto" })).toBeTruthy();
+    expect(screen.queryByText(/Use Refazer para mudar os vistos/)).toBeNull();
+  });
+
   it("negócio ganho antigo, sem vistos, não pede visto para o Ganho", () => {
     render(<Vistos negocioId="n1" itens={[]} catalogo={CATALOGO} ganho />);
     expect(screen.getByText("Nenhum visto registrado.")).toBeTruthy();

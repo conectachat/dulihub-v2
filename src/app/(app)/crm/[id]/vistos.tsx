@@ -56,25 +56,32 @@ function exigeValor(acao: (anterior: ActionState, formData: FormData) => Promise
  * preço nas Configurações não mexe aqui. Trocar para outra moeda esvazia o
  * valor — nunca converte. Depois do Ganho, os vistos não mudam: desistir de
  * um é encerrar o processo dele.
+ *
+ * Com a forma de pagamento confirmada e sem cobranças, os vistos também ficam
+ * só para leitura (entrega 4a): a forma foi feita deles. O banco recusa do
+ * mesmo jeito (0058).
  */
 export function Vistos({
   negocioId,
   itens,
   catalogo,
   ganho,
+  travadaPelaForma = false,
 }: {
   negocioId: string;
   itens: ItemDoNegocio[];
   catalogo: VistoDoCatalogo[];
   ganho: boolean;
+  travadaPelaForma?: boolean;
 }) {
+  const soLeitura = ganho || travadaPelaForma;
   const totais = Object.entries(somarItensPorMoeda(itens)).sort(([a], [b]) => a.localeCompare(b));
 
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-xs text-muted-foreground">Vistos</h3>
-        {ganho ? null : <AcrescentarVisto negocioId={negocioId} catalogo={catalogo} />}
+        {soLeitura ? null : <AcrescentarVisto negocioId={negocioId} catalogo={catalogo} />}
       </div>
 
       {itens.length === 0 ? (
@@ -93,7 +100,7 @@ export function Vistos({
                 <span className="font-semibold tabular-nums">
                   {formatarMoeda(item.amount, item.currency)}
                 </span>
-                {ganho ? null : (
+                {soLeitura ? null : (
                   <>
                     <EditarVisto
                       item={item}
@@ -132,6 +139,10 @@ export function Vistos({
       {ganho ? (
         <p className="text-xs text-muted-foreground">
           Negócio ganho: para desistir de um visto, encerre o processo dele.
+        </p>
+      ) : travadaPelaForma ? (
+        <p className="text-xs text-muted-foreground">
+          A forma de pagamento está confirmada. Use Refazer para mudar os vistos.
         </p>
       ) : itens.some((item) => item.temProcesso) ? (
         <p className="text-xs text-muted-foreground">

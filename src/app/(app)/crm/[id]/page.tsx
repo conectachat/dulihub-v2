@@ -31,6 +31,7 @@ import {
   Reabrir,
   ReabrirGanho,
 } from "./acoes-do-negocio";
+import { CartaoDaFormaDePagamento } from "./forma-de-pagamento";
 import { Trilha } from "./trilha";
 import { Vistos } from "./vistos";
 
@@ -82,18 +83,22 @@ export default async function LeadPage({
   const falha = tagsError ?? timelineError ?? cadastroError ?? userError?.message;
   if (falha) return <QueryError detalhe={falha} />;
 
-  // "Ajustar data" é da gestão da organização do negócio (CRM-17); o banco
-  // confere de novo. Só o negócio ganho precisa saber.
-  const { daGestao, error: papelError } =
-    negocio.status === "won"
-      ? await daGestaoDe(supabase, negocio.organization_id, user?.id ?? null)
-      : { daGestao: false, error: null };
+  // "Ajustar data" (CRM-17) e confirmar ou refazer a forma de pagamento
+  // (entrega 4a) são da gestão da organização do negócio; a forma, também do
+  // dono. O banco confere de novo.
+  const { daGestao, error: papelError } = await daGestaoDe(
+    supabase,
+    negocio.organization_id,
+    user?.id ?? null,
+  );
   if (papelError) return <QueryError detalhe={papelError} />;
+  const podeConfirmar = (user !== null && negocio.owner_id === user.id) || daGestao;
 
   const degraus = trilhaDoFunil(etapas, negocio.stage_id);
   const aberto = negocio.status === "open";
   const ganho = negocio.status === "won";
   const perdido = negocio.status === "lost";
+  const { forma } = negocio;
 
   const telefone = telefoneCompleto(pessoa.phone_country_code, pessoa.phone);
   const whatsapp = linkDoWhatsApp(pessoa.phone_country_code, pessoa.phone, "");
@@ -241,6 +246,7 @@ export default async function LeadPage({
                 itens={negocio.itens}
                 catalogo={catalogo}
                 ganho={ganho}
+                travadaPelaForma={forma?.status === "confirmada" && !forma.charges_created_at}
               />
               <dl className="mt-4 space-y-3 text-sm">
                 <div>
@@ -258,6 +264,16 @@ export default async function LeadPage({
               </dl>
             </CardContent>
           </Card>
+
+          <CartaoDaFormaDePagamento
+            negocioId={negocio.id}
+            pessoaId={pessoa.id}
+            nomeDaPessoa={pessoa.full_name}
+            itens={negocio.itens}
+            forma={forma}
+            aberto={aberto}
+            podeConfirmar={podeConfirmar}
+          />
         </div>
 
         <div className="space-y-6 lg:col-span-2">

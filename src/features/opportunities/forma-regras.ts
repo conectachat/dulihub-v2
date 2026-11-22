@@ -1,4 +1,5 @@
-import { gerarParcelas, type Metodo, type ParcelaNova } from "@/lib/parcelas";
+import { formatarDia } from "@/lib/formatar";
+import { gerarParcelas, ROTULO_DO_METODO, type Metodo, type ParcelaNova } from "@/lib/parcelas";
 import { emCentavos, emMoeda, formatarMoeda, type PorMoeda } from "@/lib/totals";
 
 import type { ResumoDoGanho } from "./schema";
@@ -188,6 +189,33 @@ export function avisoDeCoerencia(
     `A forma soma ${formatarMoeda(emMoeda(forma), moeda!)} ` +
     `e os vistos, ${formatarMoeda(emMoeda(vistos), moeda!)}.`
   );
+}
+
+/**
+ * A parte numa linha, para o cartão do lead e a confirmação: "Entrada · Pix ·
+ * R$ 10.000 · 10/11/2026" ou "Parcelas · Transferência · 3 × US$ 3.000 ·
+ * 10/12/2026, 10/01/2027, 10/02/2027".
+ *
+ * `due_on` é dia, não instante (`formatarDia`). Parcelas que não dividem igual
+ * (R$ 10.000 em 3) mostram o total, em vez de um "3 ×" que não é verdade; mais
+ * de 4 datas viram a primeira e a última.
+ */
+export function linhaDaParte(parte: ParteDaForma): string {
+  const { parcelas } = parte;
+  const inicio = `${parte.label} · ${ROTULO_DO_METODO[parte.method]}`;
+  const datas = parcelas.map((p) => formatarDia(p.due_on));
+
+  if (parcelas.length <= 1) {
+    return `${inicio} · ${formatarMoeda(parte.total, parte.currency)} · ${datas[0] ?? "—"}`;
+  }
+
+  const primeira = parcelas[0]!.amount;
+  const valor = parcelas.every((p) => emCentavos(p.amount) === emCentavos(primeira))
+    ? `${parcelas.length} × ${formatarMoeda(primeira, parte.currency)}`
+    : `${parcelas.length} parcelas, ${formatarMoeda(parte.total, parte.currency)}`;
+  const quando = datas.length <= 4 ? datas.join(", ") : `de ${datas[0]} a ${datas.at(-1)}`;
+
+  return `${inicio} · ${valor} · ${quando}`;
 }
 
 /** Parcelas com vencimento antes de hoje (`AAAA-MM-DD` de São Paulo). */
