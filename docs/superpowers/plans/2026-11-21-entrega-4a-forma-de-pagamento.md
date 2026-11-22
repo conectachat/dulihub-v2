@@ -184,8 +184,9 @@ export function erroDaParte(parte: ParteDaForma): string | null;
 // rótulo → total (> 0, ≤ 9.999.999.999,99, até 2 casas) → número de parcelas (1..36; 1 no cartão)
 // → lista (installments_count itens, numerados 1..N) → cada parcela, em ordem (valor > 0, até 2 casas,
 // due_on no formato AAAA-MM-DD e dia válido) → soma (em centavos) igual ao total.
+// "Até 2 casas" é emMoeda(emCentavos(v)) === v, nunca Number.isInteger(v * 100) (2999.99 * 100 não é inteiro exato).
 // Falhou o número ou a lista, não se confere a soma. Frases da tabela global.
-export function erroDaForma(partes: ParteDaForma[]): string | null;           // 11ª parte e erros das partes
+export function erroDaForma(partes: ParteDaForma[]): string | null;           // 11ª parte, ou o primeiro erroDaParte
 export function totaisDaForma(partes: Pick<ParteDaForma, "total" | "currency">[]): PorMoeda;
 export function totalDaForma(partes: Pick<ParteDaForma, "total" | "currency">[]): string; // "R$ 10.000 + US$ 9.000"
 export function avisoDeCoerencia(itens: { amount: number; currency: string }[], partes: Pick<ParteDaForma, "total" | "currency">[]): string | null;
@@ -290,7 +291,7 @@ export const anotacaoDaCotacaoSchema; // trim ≤ 200 ("A anotação da cotaçã
   - `insert … on conflict (opportunity_id) do nothing`, com a organização do negócio, e depois a forma com `for update`;
   - a ordem das frases: `charges_created_at` preenchido → a frase das cobranças, antes de todas; negócio com status diferente de `open` → a de encerrado; `status` diferente de `rascunho` → "A forma está confirmada…";
   - valida o que o T2 valida, em `numeric`, na **mesma ordem** de `erroDaParte` e parando na primeira falha, com as mesmas frases, menos a da soma (P11):
-    - confere `jsonb_typeof` de `partes` (array), de cada parte (objeto) e dos campos numéricos e de texto, e o `due_on`, que precisa casar com `^\d{4}-\d{2}-\d{2}$` **antes** de virar `date` (o Postgres aceitaria "today", "infinity" e "2026-2-3") e depois converter: fora disso, "A forma de pagamento veio num formato inválido." ou a frase da data, nunca o erro cru (`22P02`, `22008`, `22003`);
+    - confere `jsonb_typeof` de `partes` (array), de cada parte (objeto) e dos campos numéricos e de texto, e o `due_on`, que precisa casar com `^\d{4}-\d{2}-\d{2}$` **antes** de virar `date` (o Postgres aceitaria "today", "infinity" e "2026-2-3") e depois converter: fora disso, "A forma de pagamento veio num formato inválido." para tipo errado, e a frase da data para o `due_on` que não casa ou não converte (a mesma da tela), nunca o erro cru (`22P02`, `22008`, `22003`);
     - valor com `v <> round(v, 2)` → a frase das 2 casas, antes de gravar (o `numeric(12,2)` arredondaria em silêncio);
     - número de itens da lista igual a `installments_count`, numerados 1..N;
   - grava as partes por posição (P8).
@@ -299,7 +300,7 @@ export const anotacaoDaCotacaoSchema; // trim ≤ 200 ("A anotação da cotaçã
   - pelo menos um item e uma parte;
   - monta a cópia `{ "vistos": [ { "visa_name", "amount", "currency" } ], "partes": [ … como no p_forma … ] }`, sem cotação, com os vistos em `order by position, created_at` e as partes por `position`;
   - insere a resposta, põe `confirmada` e grava a atividade `forma_de_pagamento` "Forma de pagamento confirmada pela equipe".
-- **`public.voltar_forma_para_rascunho(p_negocio uuid) returns void`:** o CRM-10; a mesma ordem de frases (cobranças, encerrado); sem forma ou fora de `confirmada` → "A forma não está confirmada."; volta a `rascunho` e grava a atividade "Forma de pagamento refeita".
+- **`public.voltar_forma_para_rascunho(p_negocio uuid) returns void`:** nesta ordem: não encontrado → CRM-10 → cobranças → encerrado → sem forma ou fora de `confirmada` ("A forma não está confirmada."); volta a `rascunho` e grava a atividade "Forma de pagamento refeita".
 - **As três funções:** ligam a marca e a desligam no fim; travam negócio e depois forma; `revoke`/`grant` como nas restrições.
 
 - [ ] **Testes primeiro** em `tests/rls/forma-de-pagamento.test.ts`.
