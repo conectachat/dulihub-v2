@@ -132,7 +132,7 @@ Cada item tem teste na tarefa dona.
 
 ---
 
-### T1 Parcelas e métodos sobem para `src/lib/` (P3)
+### Task 1: Parcelas e métodos sobem para `src/lib/` (P3)
 
 **Arquivos:**
 - Criar: `src/lib/parcelas.ts` e `src/lib/parcelas.test.ts`.
@@ -159,7 +159,7 @@ Cada item tem teste na tarefa dona.
 - [ ] `bun x vitest run src/lib/parcelas.test.ts src/features/financeiro "src/app/(app)/clientes" "src/app/(app)/financeiro"` e `bun x tsc --noEmit`. Esperado: tudo verde.
 - [ ] Commit `refactor: parcelas e métodos de pagamento sobem para lib (entrega 4a)`.
 
-### T2 Regras e esquema da forma (puros)
+### Task 2: Regras e esquema da forma (puros)
 
 **Arquivos:** criar `src/features/opportunities/forma-regras.ts`, `forma-schema.ts` e os dois `.test.ts`.
 
@@ -253,7 +253,7 @@ export const anotacaoDaCotacaoSchema; // trim ≤ 200 ("A anotação da cotaçã
 - [ ] Rodar de novo. Esperado: verde.
 - [ ] Commit `feat(crm): regras da forma de pagamento (entrega 4a)`.
 
-### T3 0058 — a forma no banco (FIC-7, FIC-10, FIC-11, FIC-12)
+### Task 3: 0058 — a forma no banco (FIC-7, FIC-10, FIC-11, FIC-12)
 
 **Arquivos:**
 - Criar: `supabase/migrations/0058_forma_de_pagamento.sql` e `tests/rls/forma-de-pagamento.test.ts`.
@@ -368,7 +368,7 @@ export const anotacaoDaCotacaoSchema; // trim ≤ 200 ("A anotação da cotaçã
   - as quatro tabelas, a coluna de `receivables`, os gatilhos, as três funções e as duas travas ampliadas.
 - [ ] `bun run verify` → commit `feat(banco): forma de pagamento (0058)`.
 
-### T4 0059 — cobranças no Ganho (REC-6, CRM-14)
+### Task 4: 0059 — cobranças no Ganho (REC-6, CRM-14)
 
 **Arquivos:**
 - Criar: `supabase/migrations/0059_cobrancas_no_ganho.sql` e `tests/rls/cobrancas-do-ganho.test.ts`.
@@ -450,7 +450,7 @@ cobrancas: z.array(z.object({ id: z.string().nullable(), titulo: z.string(),
 - [ ] `docs/banco.md`: 0059, o passo (7) e `private.forma_do_ganho`.
 - [ ] `bun run verify` → commit `feat(banco): cobranças no Ganho (0059)`.
 
-### T5 Ações da forma e a leitura do lead
+### Task 5: Ações da forma e a leitura do lead
 
 **Arquivos:**
 - Criar: `src/features/opportunities/forma-actions.ts` e o `.test.ts`.
@@ -502,7 +502,7 @@ export async function salvarCotacao(formData: FormData): Promise<ActionState>;
 - [ ] Rodar, mais `bun x tsc --noEmit`. Esperado: verde.
 - [ ] Commit `feat(crm): ações da forma de pagamento (entrega 4a)`.
 
-### T6 O cartão e a janela da forma no lead (FIC-7, FIC-10, FIC-11, FIC-12)
+### Task 6: O cartão e a janela da forma no lead (FIC-7, FIC-10, FIC-11, FIC-12)
 
 **Arquivos:**
 - Criar: `src/app/(app)/crm/[id]/forma-de-pagamento.tsx` e `janela-da-forma.tsx`, cada um com o seu `.test.tsx`.
@@ -594,7 +594,7 @@ export function JanelaDaForma(props: {
 - [ ] Rodar os testes de `src/app/(app)/crm/[id]`. Esperado: verde.
 - [ ] Commit `feat(crm): forma de pagamento no lead (entrega 4a)`.
 
-### T7 O resumo do Ganho com a forma (CRM-14)
+### Task 7: O resumo do Ganho com a forma (CRM-14)
 
 **Arquivos:** mexer em `src/app/(app)/crm/dialogos.tsx:143-195` e `dialogos.test.tsx` (linhas 33, 51 e 56, os fixos de hoje).
 
@@ -627,7 +627,7 @@ export function JanelaDaForma(props: {
 - [ ] **Teste em `opportunities/actions.test.ts`:** o `deleteOpportunity` com o erro `{ code: "P0001", message: <frase de excluir> }` devolve a frase. A trava é da 0058, e a ação só repassa. Se já passar sem mudança, registrar no ledger que o teste fixa o comportamento.
 - [ ] Commit `feat(crm): resumo do Ganho com a forma de pagamento (CRM-14)`.
 
-### T8 Documentação, verificação e revisão
+### Task 8: Documentação, verificação e revisão
 
 - [ ] **`docs/spec.md`:**
   - FIC-7 🟡 (o envio na 4b), FIC-10 🟡 (a partir de `enviada` na 4b), FIC-11 ✅, FIC-12 ✅, REC-6 🟡 ("mesmo assim" na 4b), CRM-14 🟡 (as formas enviada e recusada);
