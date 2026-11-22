@@ -21,6 +21,10 @@ declare
   r_api_dono text; r_api_cotacao text; r_api_status text; r_fk text; r_fk_valor text;
   r_forjado text; r_coluna text;
 begin
+  -- O `alter table` lá embaixo pede trava exclusiva: ao lado de uma transação
+  -- longa, a prova desiste em 3 s em vez de enfileirar as leituras do lead.
+  perform set_config('lock_timeout', '3s', true);
+
   select id into v_org from public.organizations where slug = 'parceiro-teste';
   select user_id into v_user from public.organization_members
    where organization_id = v_org order by created_at limit 1;

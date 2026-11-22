@@ -582,6 +582,11 @@ describe("forma de pagamento no banco (0058)", { timeout: 60_000 }, () => {
     expect((await respostasDa(forma.id))[0]!.snapshot).toEqual(antes!.snapshot);
 
     expect((await parceiro.from("payment_plans").update({ reference_rate: 0 }).eq("id", forma.id)).error).not.toBeNull();
+    // NaN passava no `> 0` (o Postgres o ordena acima de todo número) e a tela
+    // do lead caía ao ler de volta o texto "NaN" (0062).
+    expect(
+      (await parceiro.from("payment_plans").update({ reference_rate: "NaN" as never }).eq("id", forma.id)).error?.code,
+    ).toBe("23514");
     expect(
       (await parceiro.from("payment_plans").update({ reference_rate_note: "x".repeat(201) }).eq("id", forma.id)).error,
     ).not.toBeNull();
