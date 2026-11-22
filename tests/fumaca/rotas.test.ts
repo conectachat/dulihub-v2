@@ -471,6 +471,10 @@ describe("com um lead de verdade", () => {
     expect(html).toContain("Perdido");
     // A ficha de cadastro vem antes do contrato: mora na tela do lead.
     expect(html).toContain("Dados cadastrais");
+    // A forma de pagamento vem no mesmo select do negócio (entrega 4a): se o
+    // embutido falhasse, a página seria o aviso de erro, sem o cartão.
+    expect(html).toContain("Forma de pagamento");
+    expect(html).toContain("Definir forma de pagamento");
   }, 60_000);
 
   it("a tela do lead não tem processo nem financeiro", async () => {
