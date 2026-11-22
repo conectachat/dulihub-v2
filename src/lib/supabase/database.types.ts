@@ -792,6 +792,225 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_plan_installments: {
+        Row: {
+          amount: number
+          created_at: string
+          due_on: string
+          id: string
+          number: number
+          organization_id: string
+          part_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_on: string
+          id?: string
+          number: number
+          organization_id: string
+          part_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_on?: string
+          id?: string
+          number?: number
+          organization_id?: string
+          part_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_plan_installments_part_same_org"
+            columns: ["part_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "payment_plan_parts"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      payment_plan_parts: {
+        Row: {
+          created_at: string
+          currency: string
+          id: string
+          installments_count: number
+          label: string
+          method: string
+          organization_id: string
+          plan_id: string
+          position: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency: string
+          id?: string
+          installments_count: number
+          label: string
+          method: string
+          organization_id: string
+          plan_id: string
+          position: number
+          total: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          id?: string
+          installments_count?: number
+          label?: string
+          method?: string
+          organization_id?: string
+          plan_id?: string
+          position?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_plan_parts_plan_same_org"
+            columns: ["plan_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "payment_plans"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      payment_plan_responses: {
+        Row: {
+          answered_at: string
+          answered_by: string | null
+          answered_by_name: string | null
+          created_at: string
+          decision: string
+          id: string
+          organization_id: string
+          plan_id: string
+          reason: string | null
+          registration_form_id: string | null
+          snapshot: Json
+          updated_at: string
+        }
+        Insert: {
+          answered_at?: string
+          answered_by?: string | null
+          answered_by_name?: string | null
+          created_at?: string
+          decision: string
+          id?: string
+          organization_id: string
+          plan_id: string
+          reason?: string | null
+          registration_form_id?: string | null
+          snapshot: Json
+          updated_at?: string
+        }
+        Update: {
+          answered_at?: string
+          answered_by?: string | null
+          answered_by_name?: string | null
+          created_at?: string
+          decision?: string
+          id?: string
+          organization_id?: string
+          plan_id?: string
+          reason?: string | null
+          registration_form_id?: string | null
+          snapshot?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_plan_responses_answered_by_fkey"
+            columns: ["answered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_plan_responses_form_same_org"
+            columns: ["registration_form_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "registration_forms"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "payment_plan_responses_plan_same_org"
+            columns: ["plan_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "payment_plans"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      payment_plans: {
+        Row: {
+          charges_created_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          opportunity_id: string
+          organization_id: string
+          reference_rate: number | null
+          reference_rate_note: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          charges_created_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          opportunity_id: string
+          organization_id: string
+          reference_rate?: number | null
+          reference_rate_note?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          charges_created_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          opportunity_id?: string
+          organization_id?: string
+          reference_rate?: number | null
+          reference_rate_note?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_plans_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_plans_opportunity_same_org"
+            columns: ["opportunity_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "payment_plans_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people: {
         Row: {
           address_city: string | null
@@ -1594,6 +1813,7 @@ export type Database = {
           list_amount: number | null
           notes: string | null
           organization_id: string
+          payment_plan_part_id: string | null
           person_id: string
           project_id: string | null
           title: string
@@ -1608,6 +1828,7 @@ export type Database = {
           list_amount?: number | null
           notes?: string | null
           organization_id: string
+          payment_plan_part_id?: string | null
           person_id: string
           project_id?: string | null
           title: string
@@ -1622,6 +1843,7 @@ export type Database = {
           list_amount?: number | null
           notes?: string | null
           organization_id?: string
+          payment_plan_part_id?: string | null
           person_id?: string
           project_id?: string | null
           title?: string
@@ -1641,6 +1863,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivables_payment_plan_part_same_org"
+            columns: ["payment_plan_part_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "payment_plan_parts"
+            referencedColumns: ["id", "organization_id"]
           },
           {
             foreignKeyName: "receivables_person_same_org"
@@ -2055,6 +2284,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      confirmar_forma_de_pagamento_pela_equipe: {
+        Args: { p_negocio: string; p_observacao?: string }
+        Returns: undefined
+      }
       contatos_parecidos: {
         Args: {
           p_ddi: string
@@ -2127,6 +2360,10 @@ export type Database = {
         Args: { p_completo?: boolean; p_dados: Json; p_person: string }
         Returns: Json
       }
+      salvar_forma_de_pagamento: {
+        Args: { p_forma: Json; p_negocio: string }
+        Returns: string
+      }
       set_default_stage_status: { Args: { p_id: string }; Returns: undefined }
       swap_positions: {
         Args: { p_a: string; p_b: string; p_tabela: string }
@@ -2139,6 +2376,10 @@ export type Database = {
           maximo_updated_at: string
           tabela: string
         }[]
+      }
+      voltar_forma_para_rascunho: {
+        Args: { p_negocio: string }
+        Returns: undefined
       }
     }
     Enums: {
