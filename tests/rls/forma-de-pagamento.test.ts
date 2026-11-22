@@ -465,6 +465,15 @@ describe("forma de pagamento no banco (0058)", { timeout: 60_000 }, () => {
         (await parceiro.from("payment_plans").update({ created_by: null }).eq("id", forma.id)).error?.message,
       ).toBe("Mude a forma de pagamento pela tela do negócio.");
 
+      // O critério, ao pé da letra: o rascunho não vira confirmada sem a função.
+      const rascunho = await novoNegocio(await novaPessoa(), parceiroId);
+      expect((await salvar(parceiro, rascunho, CRITERIO())).error).toBeNull();
+      expect(
+        (await parceiro.from("payment_plans").update({ status: "confirmada" }).eq("opportunity_id", rascunho))
+          .error?.message,
+      ).toBe("Mude a forma de pagamento pela tela do negócio.");
+      expect((await formaDo(rascunho))?.status).toBe("rascunho");
+
       const outro = await novoNegocio(await novaPessoa(), parceiroId);
       expect(
         (await parceiro.from("payment_plans").insert({ organization_id: org, opportunity_id: outro, status: "confirmada" }))

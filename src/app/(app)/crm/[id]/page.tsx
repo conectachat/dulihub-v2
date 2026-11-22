@@ -247,6 +247,7 @@ export default async function LeadPage({
                 catalogo={catalogo}
                 ganho={ganho}
                 travadaPelaForma={forma?.status === "confirmada" && !forma.charges_created_at}
+                negocioAberto={aberto}
               />
               <dl className="mt-4 space-y-3 text-sm">
                 <div>

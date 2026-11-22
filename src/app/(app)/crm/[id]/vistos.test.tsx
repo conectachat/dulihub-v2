@@ -135,6 +135,26 @@ describe("Vistos", () => {
     ).toBeTruthy();
   });
 
+  it("travada e com o negócio encerrado: a frase manda reabrir antes do Refazer", () => {
+    render(
+      <Vistos
+        negocioId="n1"
+        itens={ITENS}
+        catalogo={CATALOGO}
+        ganho={false}
+        travadaPelaForma
+        negocioAberto={false}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "A forma de pagamento está confirmada. Reabra o negócio e use Refazer para mudar os vistos.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Acrescentar visto" })).toBeNull();
+  });
+
   it("sem a trava e com o negócio aberto, acrescentar continua", () => {
     render(
       <Vistos

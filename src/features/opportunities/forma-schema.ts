@@ -23,7 +23,9 @@ const numero = z.number({ error: FORMATO });
 export const parteSchema = z
   .object(
     {
-      label: z.string({ error: FORMATO }),
+      // Aparado aqui, com o trim do JavaScript: o `trim()` do banco não tira o
+      // espaço rígido, e o título da cobrança sairia com ele.
+      label: z.string({ error: FORMATO }).trim(),
       method: z.enum(METODOS, { error: FORMATO }),
       currency: z.enum(["BRL", "USD"], { error: FORMATO }),
       total: numero,
@@ -76,6 +78,9 @@ export const anotacaoDaCotacaoSchema = textoOpcional(
 
 const COTACAO = "Informe uma cotação maior que zero.";
 
+/** O maior valor que `numeric(12,4)` guarda. */
+const COTACAO_MAXIMA = 99_999_999.9999;
+
 /**
  * A cotação do C6 (FIC-11), lida como a da baixa: "5,425" é cinco e 425
  * milésimos, não milhar (G3). Vazia limpa o campo.
@@ -89,6 +94,16 @@ export const cotacaoSchema = z
     const valor = parseCotacao(bruto);
     if (valor === null || !(valor > 0)) {
       ctx.addIssue({ code: "custom", message: COTACAO });
+      return z.NEVER;
+    }
+    // A coluna guarda 4 casas: a quinta seria arredondada calada, e acima do
+    // limite o banco devolveria só um código.
+    if (valor > COTACAO_MAXIMA) {
+      ctx.addIssue({ code: "custom", message: "A cotação passa do limite." });
+      return z.NEVER;
+    }
+    if (Number(valor.toFixed(4)) !== valor) {
+      ctx.addIssue({ code: "custom", message: "Use no máximo 4 casas decimais na cotação." });
       return z.NEVER;
     }
     return valor;

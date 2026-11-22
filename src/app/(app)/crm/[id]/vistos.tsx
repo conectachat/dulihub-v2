@@ -67,12 +67,15 @@ export function Vistos({
   catalogo,
   ganho,
   travadaPelaForma = false,
+  negocioAberto = true,
 }: {
   negocioId: string;
   itens: ItemDoNegocio[];
   catalogo: VistoDoCatalogo[];
   ganho: boolean;
   travadaPelaForma?: boolean;
+  /** Encerrado, o Refazer só vem depois de reabrir: a frase diz isso. */
+  negocioAberto?: boolean;
 }) {
   const soLeitura = ganho || travadaPelaForma;
   const totais = Object.entries(somarItensPorMoeda(itens)).sort(([a], [b]) => a.localeCompare(b));
@@ -142,7 +145,9 @@ export function Vistos({
         </p>
       ) : travadaPelaForma ? (
         <p className="text-xs text-muted-foreground">
-          A forma de pagamento está confirmada. Use Refazer para mudar os vistos.
+          {negocioAberto
+            ? "A forma de pagamento está confirmada. Use Refazer para mudar os vistos."
+            : "A forma de pagamento está confirmada. Reabra o negócio e use Refazer para mudar os vistos."}
         </p>
       ) : itens.some((item) => item.temProcesso) ? (
         <p className="text-xs text-muted-foreground">

@@ -106,6 +106,18 @@ describe("JanelaDaForma", () => {
     expect(screen.queryByText(/não bate|vão de 1 a 36/)).toBeNull();
   });
 
+  it("editar a data da parcela 1 à mão leva a 1ª data junto", () => {
+    abrir();
+    fireEvent.click(screen.getByRole("button", { name: "Parcelas" }));
+    fireEvent.change(campo("Total da parte 1"), { target: { value: "9000" } });
+
+    fireEvent.change(campo("Data da parcela 1 da parte 1"), { target: { value: "2027-03-05" } });
+
+    expect(campo("1ª data da parte 1").value).toBe("2027-03-05");
+    // Só a data mexida: as outras parcelas não são geradas de novo.
+    expect(campo("Data da parcela 2 da parte 1").value).not.toBe("2027-04-05");
+  });
+
   it("+ Cartão não mostra número de parcelas", () => {
     abrir();
     fireEvent.click(screen.getByRole("button", { name: "Cartão" }));

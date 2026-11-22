@@ -70,6 +70,11 @@ describe("formaSchema", () => {
     );
   });
 
+  it("o rótulo vai aparado, também do espaço rígido que o trim do banco não tira", () => {
+    const lido = formaSchema.parse({ partes: [parte({ label: " Entrada\u00a0" })] });
+    expect(lido.partes[0]!.label).toBe("Entrada");
+  });
+
   it("a 11ª parte é recusada", () => {
     expect(primeiraFrase({ partes: Array.from({ length: 11 }, () => parte()) })).toBe(
       "A forma vai até 10 partes.",
@@ -101,6 +106,20 @@ describe("cotacaoSchema", () => {
       expect(lido.success).toBe(false);
       expect(lido.error?.issues[0]?.message).toBe("Informe uma cotação maior que zero.");
     }
+  });
+
+  it("até 4 casas decimais, que é o que a coluna guarda — sem arredondar calado", () => {
+    expect(cotacaoSchema.parse("5,4321")).toBe(5.4321);
+    const longa = cotacaoSchema.safeParse("5,43215");
+    expect(longa.success).toBe(false);
+    expect(longa.error?.issues[0]?.message).toBe("Use no máximo 4 casas decimais na cotação.");
+  });
+
+  it("acima do que numeric(12,4) guarda: a frase, não o código do banco", () => {
+    expect(cotacaoSchema.parse("99999999,9999")).toBe(99999999.9999);
+    const grande = cotacaoSchema.safeParse("100000000");
+    expect(grande.success).toBe(false);
+    expect(grande.error?.issues[0]?.message).toBe("A cotação passa do limite.");
   });
 });
 
