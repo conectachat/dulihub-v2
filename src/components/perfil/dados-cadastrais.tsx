@@ -1,11 +1,13 @@
+import Link from "next/link";
+
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { CadastroDoContato } from "@/features/cadastro/queries";
+import type { CadastroDoContato, LinkDaFicha } from "@/features/cadastro/queries";
 import {
   linkDoWhatsApp,
   mensagemDoWhatsApp,
   ROTULO_DA_SITUACAO,
-  situacaoDaFicha,
+  situacaoDoCadastro,
   urlDaFicha,
 } from "@/features/cadastro/regras";
 import { ESTADOS_CIVIS, RELACIONAMENTOS, SEXOS } from "@/features/cadastro/schema";
@@ -47,8 +49,13 @@ export function DadosCadastrais({
   origem: string;
   agora?: Date;
 }) {
-  const { ficha, dependentes, link } = cadastro;
-  const situacao = situacaoDaFicha(link, agora);
+  const { ficha, dependentes, fichaRecebida: recebida, linkAtual: link } = cadastro;
+  // A ficha recebida e o link atual são coisas separadas (I4): o selo olha os dois.
+  const situacao = situacaoDoCadastro(
+    [recebida, link].filter((l): l is LinkDaFicha => l !== null),
+    agora,
+  );
+  const vencido = link !== null && new Date(link.expires_at).getTime() <= agora.getTime();
 
   // Nome, e-mail e telefone já moram no cartão "Contato"; aqui conta o resto.
   const temDado =
@@ -89,19 +96,45 @@ export function DadosCadastrais({
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {/* ----------------------------------------------- a ficha recebida */}
+        {recebida?.submitted_at ? (
+          <div className="space-y-3 rounded-2xl border p-3">
+            {recebida.reviewed_at ? (
+              <p className="text-sm text-muted-foreground">
+                Ficha preenchida pelo cliente em {formatarData(recebida.submitted_at)} e
+                conferida.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm">
+                  O cliente preencheu a ficha em {formatarData(recebida.submitted_at)}.
+                  Confira os dados abaixo antes de montar o contrato.
+                </p>
+                <Conferir id={recebida.id} />
+              </>
+            )}
+          </div>
+        ) : null}
+
         {/* ------------------------------------------------- o link da ficha */}
         <div className="space-y-3 rounded-2xl border p-3">
-          {situacao === "sem-link" ? (
+          {link?.negocio ? (
+            // O link com a forma de pagamento é do negócio: cancela-se lá (P8).
             <>
               <p className="text-sm text-muted-foreground">
-                Envie a ficha para o cliente preencher pelo celular. Ao enviar, os
-                dados entram aqui sozinhos.
+                Link da ficha enviado com a forma do negócio {link.negocio.title}
+                {vencido ? ", vencido sem resposta" : ""}.
               </p>
-              <GerarLink personId={personId} novo={false} />
+              <Link
+                href={`/crm/${link.negocio.id}`}
+                className="inline-flex text-sm font-medium text-primary hover:underline"
+              >
+                Abrir o negócio
+              </Link>
             </>
           ) : null}
 
-          {situacao === "aguardando" && link ? (
+          {link && !link.negocio && !vencido ? (
             <>
               <p className="text-sm text-muted-foreground">
                 Link enviado ao cliente — vale até {formatarData(link.expires_at)} e
@@ -119,7 +152,7 @@ export function DadosCadastrais({
             </>
           ) : null}
 
-          {situacao === "expirada" && link ? (
+          {link && !link.negocio && vencido ? (
             <>
               <p className="text-sm text-muted-foreground">
                 O link venceu em {formatarData(link.expires_at)} sem resposta. Gere
@@ -129,26 +162,14 @@ export function DadosCadastrais({
             </>
           ) : null}
 
-          {situacao === "recebida" && link?.submitted_at ? (
-            <>
-              <p className="text-sm">
-                O cliente preencheu a ficha em {formatarData(link.submitted_at)}.
-                Confira os dados abaixo antes de montar o contrato.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Conferir id={link.id} />
-                <GerarLink personId={personId} novo />
-              </div>
-            </>
-          ) : null}
-
-          {situacao === "conferida" && link?.submitted_at ? (
+          {!link ? (
             <>
               <p className="text-sm text-muted-foreground">
-                Ficha preenchida pelo cliente em {formatarData(link.submitted_at)} e
-                conferida. Para o cliente corrigir algo, gere outro link.
+                {recebida
+                  ? "Para o cliente corrigir algo, gere outro link."
+                  : "Envie a ficha para o cliente preencher pelo celular. Ao enviar, os dados entram aqui sozinhos."}
               </p>
-              <GerarLink personId={personId} novo />
+              <GerarLink personId={personId} novo={recebida !== null} />
             </>
           ) : null}
         </div>

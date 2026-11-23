@@ -109,12 +109,15 @@ export async function gerarLink(formData: FormData): Promise<ActionState> {
   if (erroPessoa) return falhou(traduzirErro(erroPessoa));
   if (!pessoa) return falhou("Contato não encontrado.");
 
+  // Só a ficha comum aberta. O link com a forma se cancela no negócio: aberto,
+  // o banco recusa o link novo com a frase e o título do negócio (P7).
   const cancelado = await supabase
     .from("registration_forms")
     .update({ cancelled_at: new Date().toISOString() })
     .eq("person_id", personId)
-    .is("submitted_at", null)
-    .is("cancelled_at", null);
+    .is("closed_at", null)
+    .is("cancelled_at", null)
+    .is("payment_plan_id", null);
   if (cancelado.error) return falhou(traduzirErro(cancelado.error));
 
   const estado = resultado(
@@ -136,7 +139,10 @@ export async function gerarLink(formData: FormData): Promise<ActionState> {
   return estado;
 }
 
-/** Mata o link que ainda não foi usado. Ficha já enviada não se cancela. */
+/**
+ * Mata o link que ainda não foi usado. Ficha já enviada não se cancela, nem o
+ * link com a forma: esse é do negócio (P8), e o banco recusaria.
+ */
 export async function cancelarLink(formData: FormData): Promise<ActionState> {
   const id = formData.get("id");
   if (typeof id !== "string" || !id) return falhou("Link não informado.");
@@ -147,6 +153,7 @@ export async function cancelarLink(formData: FormData): Promise<ActionState> {
     .update({ cancelled_at: new Date().toISOString() })
     .eq("id", id)
     .is("submitted_at", null)
+    .is("payment_plan_id", null)
     .select("person_id");
   const estado = resultado({ data, error });
   if (estado.error) return estado;

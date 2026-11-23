@@ -65,21 +65,31 @@ const PREENCHIDA: CadastroDoContato["ficha"] = {
   address_postal_code: "65000000",
 };
 
-const link = (campos: Partial<NonNullable<CadastroDoContato["link"]>> = {}) => ({
+type Link = NonNullable<CadastroDoContato["linkAtual"]>;
+
+const link = (campos: Partial<Link> = {}): Link => ({
   id: "l1",
   token: "tok-do-teste",
+  mode: "completa",
+  negocio: null,
+  created_at: "2026-10-02T10:00:00Z",
   expires_at: "2026-10-18T12:00:00Z",
   cancelled_at: null,
   submitted_at: null,
   reviewed_at: null,
+  closed_at: null,
   ...campos,
 });
+
+/** A ficha comum recebida: a 0064 fecha o link junto com o envio. */
+const recebida = (campos: Partial<Link> = {}) =>
+  link({ id: "r1", submitted_at: "2026-10-02T15:00:00Z", closed_at: "2026-10-02T15:00:00Z", ...campos });
 
 function montar(cadastro: Partial<CadastroDoContato>) {
   render(
     <DadosCadastrais
       personId="p1"
-      cadastro={{ ficha: VAZIA, dependentes: [], link: null, ...cadastro }}
+      cadastro={{ ficha: VAZIA, dependentes: [], fichaRecebida: null, linkAtual: null, ...cadastro }}
       origem={ORIGEM}
       agora={AGORA}
     />,
@@ -118,7 +128,7 @@ describe("DadosCadastrais", () => {
   });
 
   it("link aguardando: mostra o endereço, o prazo e o atalho do WhatsApp", () => {
-    montar({ link: link() });
+    montar({ linkAtual: link() });
 
     expect(screen.getByText("Aguardando o cliente")).toBeTruthy();
     expect(screen.getByDisplayValue(`${ORIGEM}/cadastro/tok-do-teste`)).toBeTruthy();
@@ -132,14 +142,14 @@ describe("DadosCadastrais", () => {
   });
 
   it("sem telefone, o atalho do WhatsApp não aparece — só o copiar", () => {
-    montar({ ficha: { ...VAZIA, phone: null }, link: link() });
+    montar({ ficha: { ...VAZIA, phone: null }, linkAtual: link() });
 
     expect(screen.queryByRole("link", { name: /WhatsApp/ })).toBeNull();
     expect(screen.getByRole("button", { name: /Copiar/ })).toBeTruthy();
   });
 
   it("link expirado: avisa e deixa gerar outro, sem mostrar o endereço morto", () => {
-    montar({ link: link({ expires_at: "2026-10-01T12:00:00Z" }) });
+    montar({ linkAtual: link({ expires_at: "2026-10-01T12:00:00Z" }) });
 
     expect(screen.getByText("Link expirado")).toBeTruthy();
     expect(screen.queryByDisplayValue(/cadastro\/tok-do-teste/)).toBeNull();
@@ -147,7 +157,7 @@ describe("DadosCadastrais", () => {
   });
 
   it("ficha recebida pede conferência; conferida, para de pedir", () => {
-    montar({ ficha: PREENCHIDA, link: link({ submitted_at: "2026-10-02T15:00:00Z" }) });
+    montar({ ficha: PREENCHIDA, fichaRecebida: recebida() });
 
     expect(screen.getByText("Ficha recebida")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Conferi/ })).toBeTruthy();
@@ -156,14 +166,35 @@ describe("DadosCadastrais", () => {
   it("ficha conferida não pede mais nada, e ainda deixa gerar outro link", () => {
     montar({
       ficha: PREENCHIDA,
-      link: link({
-        submitted_at: "2026-10-02T15:00:00Z",
-        reviewed_at: "2026-10-03T09:00:00Z",
-      }),
+      fichaRecebida: recebida({ reviewed_at: "2026-10-03T09:00:00Z" }),
     });
 
     expect(screen.getByText("Ficha conferida")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Conferi/ })).toBeNull();
     expect(screen.getByRole("button", { name: /Gerar novo link/ })).toBeTruthy();
+  });
+
+  it("I4: um link novo não esconde o Conferi da ficha recebida", () => {
+    montar({
+      ficha: PREENCHIDA,
+      fichaRecebida: recebida(),
+      linkAtual: link({ id: "l2", created_at: "2026-10-03T10:00:00Z" }),
+    });
+
+    expect(screen.getByText("Ficha recebida")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Conferi/ })).toBeTruthy();
+    expect(screen.getByDisplayValue(`${ORIGEM}/cadastro/tok-do-teste`)).toBeTruthy();
+  });
+
+  it("link com a forma aberto: leva ao negócio, sem Cancelar aqui (P8)", () => {
+    montar({
+      linkAtual: link({ payment_plan_id: "pl1", negocio: { id: "n1", title: "Contrato EB-2" } } as Partial<Link>),
+    });
+
+    const atalho = screen.getByRole("link", { name: /negócio/ });
+    expect(atalho.getAttribute("href")).toBe("/crm/n1");
+    expect(screen.getByText(/Link da ficha enviado com a forma do negócio Contrato EB-2/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Cancelar link/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Gerar/ })).toBeNull();
   });
 });

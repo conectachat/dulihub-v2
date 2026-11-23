@@ -21,10 +21,10 @@ export type BoardCard = Pick<
   itens: Pick<Tables<"opportunity_items">, "amount" | "currency">[];
   person:
     | (Pick<Tables<"people">, "id" | "full_name"> & {
-        /** Os links da ficha de cadastro do contato; a tela escolhe o vigente. */
+        /** Os links da ficha de cadastro do contato; a tela tira deles o selo (I4). */
         fichas: Pick<
           Tables<"registration_forms">,
-          "created_at" | "expires_at" | "cancelled_at" | "submitted_at" | "reviewed_at"
+          "created_at" | "expires_at" | "cancelled_at" | "submitted_at" | "reviewed_at" | "closed_at"
         >[];
       })
     | null;
@@ -94,7 +94,8 @@ export async function getBoard(): Promise<Board> {
           `id, title, status, stage_id, created_at,
            itens:opportunity_items(amount, currency),
            person:people(id, full_name,
-             fichas:registration_forms(created_at, expires_at, cancelled_at, submitted_at, reviewed_at)),
+             fichas:registration_forms(created_at, expires_at, cancelled_at, submitted_at, reviewed_at,
+               closed_at)),
            processos:projects!projects_opportunity_same_org(id)`,
         )
         .eq("pipeline_id", pipeline.id)

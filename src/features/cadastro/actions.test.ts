@@ -3,9 +3,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buscarParecidos, CAMPO_CONFIRMAR_PARECIDO, type ContatoParecido } from "@/lib/parecidos";
+import { contextoAtual } from "@/lib/organizacao";
 import { createClient } from "@/lib/supabase/server";
 
-import { salvarCadastro } from "./actions";
+import { gerarLink, salvarCadastro } from "./actions";
 
 /**
  * A ficha editada pela equipe, com o aviso de parecidos (CON-4). O banco é
@@ -21,6 +22,8 @@ import { salvarCadastro } from "./actions";
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
+
+vi.mock("@/lib/organizacao", () => ({ contextoAtual: vi.fn() }));
 
 // Parcial: `CAMPO_CONFIRMAR_PARECIDO` e `contatoMudou` continuam os de verdade.
 vi.mock("@/lib/parecidos", async (importOriginal) => ({
@@ -110,5 +113,75 @@ describe("salvarCadastro", () => {
     expect(buscarParecidos).not.toHaveBeenCalled();
     expect(banco.rpc).toHaveBeenCalledTimes(1);
     expect(r.error).toBeNull();
+  });
+});
+
+describe("gerarLink", () => {
+  /**
+   * O banco falso do link: a pessoa, o cancelamento (os filtros ficam
+   * guardados) e o insert, com a resposta que o teste pedir.
+   */
+  function bancoDoLink(erroDoInsert: { code: string; message: string } | null = null) {
+    const filtros: [string, unknown][] = [];
+    const cancelamento = {
+      eq: vi.fn((coluna: string, valor: unknown) => {
+        filtros.push([coluna, valor]);
+        return cancelamento;
+      }),
+      is: vi.fn((coluna: string, valor: unknown) => {
+        filtros.push([coluna, valor]);
+        return cancelamento;
+      }),
+      then: (resolver: (r: { error: null }) => unknown) => resolver({ error: null }),
+    };
+    const pessoa = {
+      eq: () => pessoa,
+      maybeSingle: async () => ({ data: { id: "p1", organization_id: "org" }, error: null }),
+    };
+    const supabase = {
+      from: vi.fn((tabela: string) =>
+        tabela === "people"
+          ? { select: () => pessoa }
+          : {
+              update: vi.fn(() => cancelamento),
+              insert: vi.fn(() => ({
+                select: async () =>
+                  erroDoInsert ? { data: null, error: erroDoInsert } : { data: [{ id: "l1" }], error: null },
+              })),
+            },
+      ),
+    };
+    vi.mocked(contextoAtual).mockResolvedValue({
+      supabase,
+      userId: "u1",
+      organizationId: "org",
+      error: null,
+    } as never);
+    return filtros;
+  }
+
+  const formulario = () => {
+    const fd = new FormData();
+    fd.set("person_id", "p1");
+    return fd;
+  };
+
+  it("cancela só a ficha comum aberta: nem a fechada, nem o link com a forma", async () => {
+    const filtros = bancoDoLink();
+    const r = await gerarLink(formulario());
+
+    expect(r.ok).toBe(true);
+    expect(filtros).toContainEqual(["person_id", "p1"]);
+    expect(filtros).toContainEqual(["closed_at", null]);
+    expect(filtros).toContainEqual(["cancelled_at", null]);
+    expect(filtros).toContainEqual(["payment_plan_id", null]);
+  });
+
+  it("com o link com a forma aberto, a frase do banco volta como está (P7)", async () => {
+    const frase = "Há um link da ficha aberto no negócio Contrato EB-2. Cancele-o no negócio antes.";
+    bancoDoLink({ code: "P0001", message: frase });
+    const r = await gerarLink(formulario());
+
+    expect(r.error).toBe(frase);
   });
 });

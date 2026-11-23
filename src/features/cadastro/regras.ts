@@ -90,51 +90,6 @@ export function ultimoDiaDoLink(expiresAt: string): string {
   return diaEmSaoPaulo(new Date(new Date(expiresAt).getTime() - 1).toISOString());
 }
 
-/*
- * As duas de antes da 4b, ainda usadas pelo contato e pelo quadro do CRM até
- * eles lerem `closed_at` (0064). Saem quando a última delas trocar para
- * `situacaoDoCadastro`.
- */
-
-type Link = {
-  expires_at: string;
-  cancelled_at: string | null;
-  submitted_at: string | null;
-  reviewed_at: string | null;
-};
-
-/**
- * Onde a ficha de um contato está, a partir do link mais recente dele.
- *
- * Sem coluna de status, como no resto do app: o estado sai das datas, e não
- * envelhece. Enviada vem primeiro — uma ficha recebida não vira "expirada"
- * quando o prazo do link passa.
- */
-export function situacaoDaFicha(link: Link | null, agora: Date = new Date()): SituacaoDaFicha {
-  if (!link) return "sem-link";
-  if (link.submitted_at) return link.reviewed_at ? "conferida" : "recebida";
-  if (link.cancelled_at) return "sem-link";
-  if (new Date(link.expires_at).getTime() <= agora.getTime()) return "expirada";
-  return "aguardando";
-}
-
-/**
- * O link que conta, entre todos os de um contato: o mais recente que não foi
- * cancelado. Gerar um link novo cancela o anterior, e uma ficha já recebida
- * continua valendo até haver outra.
- *
- * `queries.ts` faz a mesma escolha no banco; esta é para quem recebe a lista
- * inteira junto de outra leitura — o quadro do CRM.
- */
-export function linkVigente<T extends Link & { created_at: string }>(links: T[]): T | null {
-  let vigente: T | null = null;
-  for (const link of links) {
-    if (link.cancelled_at) continue;
-    if (!vigente || link.created_at > vigente.created_at) vigente = link;
-  }
-  return vigente;
-}
-
 export const ROTULO_DA_SITUACAO: Record<SituacaoDaFicha, string> = {
   "sem-link": "Sem ficha",
   aguardando: "Aguardando o cliente",

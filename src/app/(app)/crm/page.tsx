@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
 import { formatarPorMoeda, somarItensPorMoeda } from "@/lib/totals";
-import { linkVigente, situacaoDaFicha } from "@/features/cadastro/regras";
+import { situacaoDoCadastro } from "@/features/cadastro/regras";
 import { getBoard, listPeopleForPicker } from "@/features/opportunities/queries";
 import { etapasDeEntrada } from "@/features/opportunities/regras";
 
@@ -64,7 +64,7 @@ export default async function CrmPage() {
         ? { id: card.person.id, full_name: card.person.full_name }
         : null,
       processos: card.processos.map((p) => p.id),
-      ficha: situacaoDaFicha(linkVigente(card.person?.fichas ?? []), agora),
+      ficha: situacaoDoCadastro(card.person?.fichas ?? [], agora),
     })),
   );
 

@@ -5,10 +5,8 @@ import {
   fichaRecebida,
   linkAtual,
   linkDoWhatsApp,
-  linkVigente,
   mensagemDaFormaNoWhatsApp,
   mensagemDoWhatsApp,
-  situacaoDaFicha,
   situacaoDoCadastro,
   ultimoDiaDoLink,
   urlDaFicha,
@@ -190,100 +188,5 @@ describe("linkDoWhatsApp", () => {
 describe("declaracao", () => {
   it("nomeia a organização que vai usar os dados", () => {
     expect(declaracao("Duli Consulting")).toContain("junto à Duli Consulting.");
-  });
-});
-
-/* As de antes da 4b: saem junto com o último uso (contato e quadro). */
-
-const linkAntigo = (campos: Partial<Parameters<typeof situacaoDaFicha>[0] & object> = {}) => ({
-  expires_at: "2026-10-18T12:00:00Z",
-  cancelled_at: null,
-  submitted_at: null,
-  reviewed_at: null,
-  ...campos,
-});
-
-describe("situacaoDaFicha", () => {
-  it("sem link nenhum", () => {
-    expect(situacaoDaFicha(null, AGORA)).toBe("sem-link");
-  });
-
-  it("link aberto e dentro do prazo: aguardando o lead", () => {
-    expect(situacaoDaFicha(linkAntigo(), AGORA)).toBe("aguardando");
-  });
-
-  it("passou do prazo sem resposta: expirada", () => {
-    expect(situacaoDaFicha(linkAntigo({ expires_at: "2026-10-03T11:59:00Z" }), AGORA)).toBe(
-      "expirada",
-    );
-  });
-
-  it("cancelado volta a ser sem link — é o que deixa gerar outro", () => {
-    expect(
-      situacaoDaFicha(linkAntigo({ cancelled_at: "2026-10-02T12:00:00Z" }), AGORA),
-    ).toBe("sem-link");
-  });
-
-  it("enviada e ainda não conferida: recebida", () => {
-    expect(
-      situacaoDaFicha(linkAntigo({ submitted_at: "2026-10-02T12:00:00Z" }), AGORA),
-    ).toBe("recebida");
-  });
-
-  it("enviada vale mesmo com o prazo vencido depois", () => {
-    expect(
-      situacaoDaFicha(
-        linkAntigo({ submitted_at: "2026-10-02T12:00:00Z", expires_at: "2026-10-03T00:00:00Z" }),
-        AGORA,
-      ),
-    ).toBe("recebida");
-  });
-
-  it("conferida para de avisar", () => {
-    expect(
-      situacaoDaFicha(
-        linkAntigo({
-          submitted_at: "2026-10-02T12:00:00Z",
-          reviewed_at: "2026-10-03T09:00:00Z",
-        }),
-        AGORA,
-      ),
-    ).toBe("conferida");
-  });
-});
-
-describe("linkVigente", () => {
-  const de = (created_at: string, campos: Record<string, string | null> = {}) => ({
-    created_at,
-    expires_at: "2026-10-18T12:00:00Z",
-    cancelled_at: null,
-    submitted_at: null,
-    reviewed_at: null,
-    ...campos,
-  });
-
-  it("sem link, nulo", () => {
-    expect(linkVigente([])).toBeNull();
-  });
-
-  it("o mais recente que não foi cancelado", () => {
-    const antigo = de("2026-09-01T10:00:00Z", { submitted_at: "2026-09-02T10:00:00Z" });
-    const novo = de("2026-10-01T10:00:00Z");
-
-    expect(linkVigente([antigo, novo])).toBe(novo);
-    expect(linkVigente([novo, antigo])).toBe(novo);
-  });
-
-  it("cancelado não conta: vale a ficha recebida antes dele", () => {
-    const recebida = de("2026-09-01T10:00:00Z", { submitted_at: "2026-09-02T10:00:00Z" });
-    const cancelado = de("2026-10-01T10:00:00Z", { cancelled_at: "2026-10-02T10:00:00Z" });
-
-    expect(linkVigente([recebida, cancelado])).toBe(recebida);
-  });
-
-  it("só cancelados é o mesmo que nenhum", () => {
-    expect(
-      linkVigente([de("2026-10-01T10:00:00Z", { cancelled_at: "2026-10-02T10:00:00Z" })]),
-    ).toBeNull();
   });
 });
