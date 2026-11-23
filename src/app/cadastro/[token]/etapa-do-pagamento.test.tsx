@@ -90,6 +90,7 @@ describe("EtapaDoPagamento", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirmo" }));
 
     expect((await screen.findByRole("alert")).textContent).toContain("Este link não está mais disponível.");
-    expect(screen.getByRole("button", { name: "Confirmo" })).toBeTruthy();
+    // O erro aparece ainda durante a transição ("Enviando..."); o botão volta logo depois.
+    expect(await screen.findByRole("button", { name: "Confirmo" })).toBeTruthy();
   });
 });
