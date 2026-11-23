@@ -59,7 +59,7 @@ describe("formaParaOClienteSchema", () => {
   });
 
   it("cópia antiga, sem a conversão, lê como sem conversão", () => {
-    const { usd_equivalent: _sem, ...antiga } = CARTAO;
+    const antiga = { label: "Cartão", method: "cartao", currency: "BRL", total: 21527.76, parcelas: CARTAO.parcelas };
     const lido = formaParaOClienteSchema.parse({ vistos: [], partes: [antiga] });
     expect(lido.partes[0]!.usd_equivalent).toBeNull();
   });
