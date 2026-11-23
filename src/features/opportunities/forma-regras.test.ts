@@ -37,6 +37,7 @@ function parcelas(extra: Partial<ParteDaForma> = {}): ParteDaForma {
     currency: "USD",
     total: 9000,
     installments_count: 3,
+    usd_equivalent: null,
     parcelas: [
       { number: 1, amount: 3000, due_on: "2026-12-10" },
       { number: 2, amount: 3000, due_on: "2027-01-10" },
@@ -55,6 +56,10 @@ describe("parteSugerida", () => {
     expect(parteSugerida("cartao", "BRL", BASE)).toMatchObject({ label: "Cartão", method: "cartao", installments_count: 1 });
     expect(parteSugerida("entrada", "BRL", BASE)).toMatchObject({ label: "Entrada", method: "pix", installments_count: 1 });
     expect(parteSugerida("a_vista", "BRL", BASE)).toMatchObject({ label: "À vista", method: "pix", installments_count: 1 });
+  });
+
+  it("nasce sem conversão (FIC-13)", () => {
+    expect(parteSugerida("cartao", "BRL", BASE).usd_equivalent).toBeNull();
   });
 });
 
@@ -165,6 +170,49 @@ describe("erroDaParte", () => {
   });
 });
 
+describe("erroDaParte — a conversão (FIC-13, P10)", () => {
+  /** A parte "Cartão" do critério da 4b: R$ 21.527,76, de US$ 3.900. */
+  const cartao = (extra: Partial<ParteDaForma> = {}): ParteDaForma => ({
+    label: "Cartão",
+    method: "cartao",
+    currency: "BRL",
+    total: 21527.76,
+    installments_count: 1,
+    usd_equivalent: 3900,
+    parcelas: [{ number: 1, amount: 21527.76, due_on: "2026-12-15" }],
+    ...extra,
+  });
+
+  it("a parte em reais convertida de dólar não tem erro", () => {
+    expect(erroDaParte(cartao())).toBeNull();
+  });
+
+  it("só a parte em reais é convertida", () => {
+    expect(
+      erroDaParte(
+        cartao({ currency: "USD", total: 3900, parcelas: [{ number: 1, amount: 3900, due_on: "2026-12-15" }] }),
+      ),
+    ).toBe("Só a parte em reais é convertida de dólar.");
+  });
+
+  it.each([0, -1, Number.NaN])("conversão %s pede o valor", (valor) => {
+    expect(erroDaParte(cartao({ usd_equivalent: valor }))).toBe(
+      "Informe de quantos dólares Cartão foi convertida.",
+    );
+  });
+
+  it("acima do limite e com 3 casas, as frases da 4a", () => {
+    expect(erroDaParte(cartao({ usd_equivalent: 10_000_000_000 }))).toBe("O valor de Cartão passa do limite.");
+    expect(erroDaParte(cartao({ usd_equivalent: 3900.005 }))).toBe("Use no máximo 2 casas decimais em Cartão.");
+  });
+
+  it("o rótulo vem antes da conversão (a ordem do banco)", () => {
+    expect(erroDaParte(cartao({ label: "", currency: "USD" }))).toBe(
+      "Dê um nome à parte, com até 80 caracteres.",
+    );
+  });
+});
+
 describe("erroDaForma", () => {
   it("a 11ª parte é recusada", () => {
     const onze = Array.from({ length: 11 }, () => parcelas());
@@ -240,6 +288,7 @@ describe("avisosDoResumo (P1, P15)", () => {
     currency,
     total,
     installments_count: 1,
+    usd_equivalent: null,
     parcelas: [{ number: 1, amount: total, due_on }],
   });
   const resumo = (forma: Partial<ResumoDoGanho["forma"]>, extra: Partial<ResumoDoGanho> = {}): ResumoDoGanho => ({
@@ -305,7 +354,7 @@ describe("avisosDoResumo (P1, P15)", () => {
 describe("linhaDaParte", () => {
   const parte = (total: number, quantidade: number, metodo: ParteDaForma["method"] = "transferencia") =>
     comParcelasGeradas(
-      { label: "Parcelas", method: metodo, currency: "USD", total, installments_count: quantidade, parcelas: [] },
+      { label: "Parcelas", method: metodo, currency: "USD", total, installments_count: quantidade, usd_equivalent: null, parcelas: [] },
       "2026-12-10",
     );
 
@@ -325,6 +374,29 @@ describe("linhaDaParte", () => {
     expect(linhaDaParte(parte(10000, 3))).toBe(
       `Parcelas · Transferência · 3 parcelas, ${formatarMoeda(10000, "USD")} · ` +
         "10/12/2026, 10/01/2027, 10/02/2027",
+    );
+  });
+
+  it("a parte convertida diz de quantos dólares veio (FIC-13)", () => {
+    const linha = linhaDaParte({
+      label: "Cartão",
+      method: "cartao",
+      currency: "BRL",
+      total: 21527.76,
+      installments_count: 1,
+      usd_equivalent: 3900,
+      parcelas: [{ number: 1, amount: 21527.76, due_on: "2026-12-15" }],
+    }).replaceAll(" ", " ");
+    expect(linha).toBe("Cartão · Cartão · US$ 3.900 convertidos para R$ 21.527,76 · 15/12/2026");
+  });
+
+  it("parcelada e convertida: a conversão, depois as parcelas", () => {
+    const parte = comParcelasGeradas(
+      { label: "Parcelas", method: "pix", currency: "BRL", total: 30000, installments_count: 3, usd_equivalent: 5500, parcelas: [] },
+      "2026-12-10",
+    );
+    expect(linhaDaParte(parte).replaceAll(" ", " ")).toBe(
+      "Parcelas · Pix · US$ 5.500 convertidos para R$ 30.000 · 3 × R$ 10.000 · 10/12/2026, 10/01/2027, 10/02/2027",
     );
   });
 

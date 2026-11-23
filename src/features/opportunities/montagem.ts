@@ -34,6 +34,8 @@ const linhaSchema = z.object({
       currency: z.enum(["BRL", "USD"]),
       total: z.number(),
       installments_count: z.number(),
+      // A coluna nasce na 0064; até lá, e na linha antiga, sem conversão.
+      usd_equivalent: z.number().nullable().default(null),
       parcelas: z.array(z.object({ number: z.number(), amount: z.number(), due_on: z.string() })),
     }),
   ),
@@ -83,6 +85,7 @@ export function formaDoNegocio(linhas: unknown[]): {
           currency: p.currency,
           total: p.total,
           installments_count: p.installments_count,
+          usd_equivalent: p.usd_equivalent,
           parcelas: [...p.parcelas].sort((a, b) => a.number - b.number),
         })),
       ultimaResposta: ultima

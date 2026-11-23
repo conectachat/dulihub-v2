@@ -30,6 +30,8 @@ export const parteSchema = z
       currency: z.enum(["BRL", "USD"], { error: FORMATO }),
       total: numero,
       installments_count: numero,
+      // FIC-13: "convertido de US$", só na parte em reais. Sem a chave, nula.
+      usd_equivalent: numero.nullable().default(null),
       parcelas: z.array(
         z.object(
           { number: numero, amount: numero, due_on: z.string({ error: FORMATO }) },

@@ -72,6 +72,8 @@ export const resumoDoGanhoSchema = z.object({
         currency: z.enum(["BRL", "USD"]),
         total: z.number(),
         installments_count: z.number().int(),
+        // FIC-13. Antes da 0064 a chave não vem: sem conversão.
+        usd_equivalent: z.number().nullable().default(null),
         parcelas: z.array(
           z.object({ number: z.number().int(), amount: z.number(), due_on: z.string() }),
         ),

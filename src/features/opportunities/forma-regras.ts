@@ -1,3 +1,4 @@
+import { valorComConversao } from "@/lib/forma-do-cliente";
 import { formatarDia } from "@/lib/formatar";
 import { gerarParcelas, ROTULO_DO_METODO, type Metodo, type ParcelaNova } from "@/lib/parcelas";
 import { emCentavos, emMoeda, formatarMoeda, type PorMoeda } from "@/lib/totals";
@@ -24,6 +25,11 @@ export type ParteDaForma = {
   currency: Moeda;
   total: number;
   installments_count: number;
+  /**
+   * A parte em reais diz de quantos dólares veio (FIC-13): o Renato digita os
+   * dois valores, e o app não converte nada. Nula: sem conversão.
+   */
+  usd_equivalent: number | null;
   parcelas: ParcelaNova[];
 };
 
@@ -53,7 +59,10 @@ export function moedaSugerida(itens: { currency: string }[]): Moeda {
 }
 
 export function parteSugerida(tipo: TipoDeParte, moeda: Moeda, primeiraData: string): ParteDaForma {
-  return comParcelasGeradas({ ...SUGESTOES[tipo], currency: moeda, total: 0, parcelas: [] }, primeiraData);
+  return comParcelasGeradas(
+    { ...SUGESTOES[tipo], currency: moeda, total: 0, usd_equivalent: null, parcelas: [] },
+    primeiraData,
+  );
 }
 
 /** Um dia de verdade no formato `AAAA-MM-DD` — "2026-02-31" não é. */
@@ -99,8 +108,12 @@ export function comParcelasGeradas(parte: ParteDaForma, primeiraData: string): P
 
 /**
  * A primeira falha da parte, ou nulo. A ordem é a mesma do banco: rótulo →
- * total → número de parcelas → lista → cada parcela → soma. Com o número ou a
- * lista errados, a soma não é conferida.
+ * total → conversão → número de parcelas → lista → cada parcela → soma. Com o
+ * número ou a lista errados, a soma não é conferida.
+ *
+ * A conversão (FIC-13, P10 do plano da 4b): só a parte em reais a tem, e o
+ * valor em dólar passa pelas mesmas regras de um valor — maior que zero,
+ * dentro do limite, até 2 casas.
  */
 export function erroDaParte(parte: ParteDaForma): string | null {
   const rotulo = parte.label.trim();
@@ -111,6 +124,17 @@ export function erroDaParte(parte: ParteDaForma): string | null {
   if (!Number.isFinite(parte.total) || parte.total <= 0) return `Informe o valor de ${rotulo}.`;
   if (parte.total > VALOR_MAXIMO) return `O valor de ${rotulo} passa do limite.`;
   if (!duasCasas(parte.total)) return `Use no máximo 2 casas decimais em ${rotulo}.`;
+
+  // Parte montada antes da 4b não tem a chave: é sem conversão.
+  const dolares = parte.usd_equivalent ?? null;
+  if (dolares !== null) {
+    if (parte.currency !== "BRL") return "Só a parte em reais é convertida de dólar.";
+    if (!Number.isFinite(dolares) || dolares <= 0) {
+      return `Informe de quantos dólares ${rotulo} foi convertida.`;
+    }
+    if (dolares > VALOR_MAXIMO) return `O valor de ${rotulo} passa do limite.`;
+    if (!duasCasas(dolares)) return `Use no máximo 2 casas decimais em ${rotulo}.`;
+  }
 
   const n = parte.installments_count;
   if (parte.method === "cartao") {
@@ -198,21 +222,31 @@ export function avisoDeCoerencia(
  *
  * `due_on` é dia, não instante (`formatarDia`). Parcelas que não dividem igual
  * (R$ 10.000 em 3) mostram o total, em vez de um "3 ×" que não é verdade; mais
- * de 4 datas viram a primeira e a última.
+ * de 4 datas viram a primeira e a última. A parte convertida diz antes de
+ * quantos dólares veio: "Cartão · Cartão · US$ 3.900 convertidos para
+ * R$ 21.527,76 · 15/12/2026" (FIC-13).
  */
 export function linhaDaParte(parte: ParteDaForma): string {
   const { parcelas } = parte;
   const inicio = `${parte.label} · ${ROTULO_DO_METODO[parte.method]}`;
   const datas = parcelas.map((p) => formatarDia(p.due_on));
+  // O resumo do Ganho de antes da 0064 não traz a chave: sem conversão.
+  const dolares = parte.usd_equivalent ?? null;
+  const convertida = dolares !== null;
+  const total = valorComConversao(parte.total, parte.currency, dolares);
 
   if (parcelas.length <= 1) {
-    return `${inicio} · ${formatarMoeda(parte.total, parte.currency)} · ${datas[0] ?? "—"}`;
+    return `${inicio} · ${total} · ${datas[0] ?? "—"}`;
   }
 
   const primeira = parcelas[0]!.amount;
-  const valor = parcelas.every((p) => emCentavos(p.amount) === emCentavos(primeira))
+  const iguais = parcelas.every((p) => emCentavos(p.amount) === emCentavos(primeira));
+  const porParcela = iguais
     ? `${parcelas.length} × ${formatarMoeda(primeira, parte.currency)}`
-    : `${parcelas.length} parcelas, ${formatarMoeda(parte.total, parte.currency)}`;
+    : convertida
+      ? `${parcelas.length} parcelas`
+      : `${parcelas.length} parcelas, ${total}`;
+  const valor = convertida ? `${total} · ${porParcela}` : porParcela;
   const quando = datas.length <= 4 ? datas.join(", ") : `de ${datas[0]} a ${datas.at(-1)}`;
 
   return `${inicio} · ${valor} · ${quando}`;

@@ -82,6 +82,25 @@ describe("formaSchema", () => {
   });
 });
 
+describe("formaSchema — a conversão (FIC-13)", () => {
+  it("o tipo errado dá a frase de formato", () => {
+    expect(primeiraFrase({ partes: [parte({ usd_equivalent: "abc" })] })).toBe(
+      "A forma de pagamento veio num formato inválido.",
+    );
+  });
+
+  it("sem a chave, é sem conversão", () => {
+    const lido = formaSchema.parse({ partes: [parte()] });
+    expect(lido.partes[0]!.usd_equivalent).toBeNull();
+  });
+
+  it("conversão em parte de dólar é recusada com a frase de erroDaParte", () => {
+    expect(primeiraFrase({ partes: [parte({ usd_equivalent: 9000 })] })).toBe(
+      "Só a parte em reais é convertida de dólar.",
+    );
+  });
+});
+
 describe("observacaoSchema", () => {
   it("vazia vira nulo; até 500 caracteres", () => {
     expect(observacaoSchema.parse("  ")).toBeNull();

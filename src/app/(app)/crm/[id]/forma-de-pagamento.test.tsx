@@ -42,6 +42,7 @@ const DO_CRITERIO: FormaDoNegocio = {
       currency: "BRL",
       total: 10000,
       installments_count: 1,
+      usd_equivalent: null,
       parcelas: [{ number: 1, amount: 10000, due_on: "2026-11-10" }],
     },
     {
@@ -50,6 +51,7 @@ const DO_CRITERIO: FormaDoNegocio = {
       currency: "USD",
       total: 9000,
       installments_count: 3,
+      usd_equivalent: null,
       parcelas: [
         { number: 1, amount: 3000, due_on: "2026-12-10" },
         { number: 2, amount: 3000, due_on: "2027-01-10" },
@@ -192,6 +194,7 @@ describe("CartaoDaFormaDePagamento", () => {
           currency: "USD",
           total: 13000,
           installments_count: 1,
+          usd_equivalent: null,
           parcelas: [{ number: 1, amount: 13000, due_on: "2026-12-10" }],
         },
       ],

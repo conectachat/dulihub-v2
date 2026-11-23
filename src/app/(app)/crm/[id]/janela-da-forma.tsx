@@ -74,6 +74,7 @@ function paraParte(r: Rascunho): ParteDaForma {
     currency: r.currency,
     total: valorDe(r.total),
     installments_count: r.method === "cartao" ? 1 : quantidadeDe(r.quantidade),
+    usd_equivalent: null,
     parcelas: r.parcelas.map((p) => ({ number: p.number, amount: valorDe(p.amount), due_on: p.due_on })),
   };
 }

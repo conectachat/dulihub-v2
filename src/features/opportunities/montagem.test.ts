@@ -82,6 +82,8 @@ describe("formaDoNegocio", () => {
       currency: "BRL",
       total: 10000,
       installments_count: 1,
+      // Linha sem a coluna (antes da 0064): sem conversão.
+      usd_equivalent: null,
       parcelas: [parcela(1, 10000, "2026-11-25")],
     });
   });
