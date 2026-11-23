@@ -480,6 +480,23 @@ describe("a porta do pagamento (0065)", { timeout: 60_000 }, () => {
     expect(await formaDo(negocio)).toBeNull();
   });
 
+  it("motivo só com quebras de linha e tabulação, pela API, também vira nulo", async () => {
+    const { pessoa, plano, token } = await noPagamento();
+    expect((await responder(token, false, "\n\n \t\r\n")).error).toBeNull();
+    expect((await respostasDa(plano))[0]!.reason).toBeNull();
+    expect(await historico(pessoa.id)).toContain(HISTORICO.recusada);
+  });
+
+  it("excluir o negócio com a forma recusada diz que o cliente respondeu", async () => {
+    const { negocio, token } = await noPagamento();
+    expect((await responder(token, false, "Não")).error).toBeNull();
+
+    const recusado = await parceiro.from("opportunities").delete().eq("id", negocio);
+    expect(recusado.error?.message).toBe(
+      "O cliente já respondeu a forma de pagamento; o negócio fica como registro.",
+    );
+  });
+
   it("o cliente do parceiro vê o nome do parceiro, e não Duli", async () => {
     const { token } = await enviada();
     expect((await abrir(token))!.organizacao).toBe(nomeDaOrganizacao);

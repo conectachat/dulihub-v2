@@ -455,6 +455,18 @@ describe("a forma vai pelo link (0064)", { timeout: 60_000 }, () => {
     expect(links.find((l) => l.id === comum.data!.id)!.cancelled_at).not.toBeNull();
   });
 
+  it("dois envios ao mesmo tempo para a mesma pessoa: um passa, o outro recebe a frase com o título", async () => {
+    const pessoa = await novaPessoa();
+    const a = await comForma(`Corrida A ${s}`, pessoa);
+    const b = await comForma(`Corrida B ${s}`, pessoa);
+    const [va, vb] = [await versaoDa(a.negocio), await versaoDa(b.negocio)];
+
+    const [ra, rb] = await Promise.all([enviar(parceiro, a.negocio, va), enviar(staff, b.negocio, vb)]);
+    const erros = [ra.error, rb.error].filter((e) => e !== null);
+    expect(erros).toHaveLength(1);
+    expect(erros[0]!.message).toMatch(/^Há um link da ficha aberto no negócio Corrida [AB] /);
+  });
+
   it("o link com a forma não se mexe pela API; o comum continua como hoje", async () => {
     const { pessoa } = await enviada();
     const [link] = await linksDa(pessoa);
@@ -589,6 +601,25 @@ describe("a forma vai pelo link (0064)", { timeout: 60_000 }, () => {
     expect((await enviar(duli, negocio, new Date().toISOString())).error?.message).toBe(MSG.naoEncontrado);
     expect((await voltar(duli, negocio, "enviada")).error?.message).toBe(MSG.naoEncontrado);
     expect(await linksDa(pessoa, duli)).toHaveLength(0);
+  });
+
+  it("a Duli não descobre o estado do negócio da parceira tentando pôr um visto nele", async () => {
+    // O gatilho dos vistos roda como dono e antes da RLS: sem cuidado, a frase
+    // ("A forma de pagamento foi enviada…", "Negócio ganho…") diria o estado.
+    const { negocio } = await enviada();
+    const { data: membro } = await duli.from("organization_members").select("organization_id").limit(1).single();
+
+    for (const organizacao of [org, membro!.organization_id]) {
+      const intruso = await duli.from("opportunity_items").insert({
+        organization_id: organizacao,
+        opportunity_id: negocio,
+        visa_name: "Intruso",
+        amount: 1,
+        currency: "USD",
+      });
+      expect(intruso.error, organizacao).not.toBeNull();
+      expect(intruso.error?.message ?? "", organizacao).not.toMatch(/forma de pagamento|Negócio ganho/);
+    }
   });
 
   it("a Duli não descobre o título do negócio da parceira tentando gerar link (revisão de segurança)", async () => {
