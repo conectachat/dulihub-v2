@@ -64,12 +64,14 @@ export function AlertasDoDia({ alertas }: { alertas: Alertas }) {
       <p className="flex items-center gap-2 rounded-3xl border p-4 text-sm text-muted-foreground">
         <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
         Nada vencendo: nenhum prazo de RFE nos próximos 30 dias, nenhuma
-        parcela, pasta ou etapa atrasada, e nenhuma ficha de cadastro a conferir.
+        parcela, pasta ou etapa atrasada, nenhuma ficha de cadastro a conferir
+        e nenhuma forma de pagamento esperando a equipe.
       </p>
     );
   }
 
-  const { rfe, parcelas, pastas, etapas, fichas } = alertas;
+  const { rfe, parcelas, pastas, etapas, fichas, formas } = alertas;
+  const temForma = formas.recusadas.length + formas.prontas.length + formas.vencidas.length > 0;
 
   return (
     <section className="space-y-3">
@@ -100,6 +102,43 @@ export function AlertasDoDia({ alertas }: { alertas: Alertas }) {
                     {quando(r.dias)}
                     <span className="block">{formatarDia(r.prazo)}</span>
                   </span>
+                </li>
+              ))}
+            </ul>
+          </Bloco>
+        ) : null}
+
+        {temForma ? (
+          <Bloco titulo="Forma de pagamento" icone={<Wallet className="h-4 w-4" />}>
+            <ul className="divide-y">
+              {formas.recusadas.map((f) => (
+                <li key={`r-${f.negocio_id}`} className="py-2">
+                  <Link href={`/crm/${f.negocio_id}`} className="block min-w-0 hover:underline">
+                    <span className="block truncate text-sm font-medium">
+                      {`Forma de pagamento recusada — ${f.nome}`}
+                    </span>
+                    {f.motivo ? (
+                      <span className="block truncate text-xs text-muted-foreground">{f.motivo}</span>
+                    ) : null}
+                  </Link>
+                </li>
+              ))}
+              {formas.prontas.map((f) => (
+                <li key={`p-${f.negocio_id}`} className="py-2">
+                  <Link href={`/crm/${f.negocio_id}`} className="block min-w-0 hover:underline">
+                    <span className="block truncate text-sm font-medium">
+                      {`Pronto para o contrato — ${f.nome}`}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+              {formas.vencidas.map((f) => (
+                <li key={`v-${f.negocio_id}`} className="py-2">
+                  <Link href={`/crm/${f.negocio_id}`} className="block min-w-0 hover:underline">
+                    <span className="block truncate text-sm font-medium">
+                      {`Forma de pagamento sem resposta, link vencido — ${f.nome}`}
+                    </span>
+                  </Link>
                 </li>
               ))}
             </ul>

@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { alertasDoDia, diasAte } from "./regras";
+import { alertasDoDia, diasAte, type FormaDoPainel } from "./regras";
 
 /**
  * O que a tela Início avisa.
@@ -285,5 +285,90 @@ describe("alertasDoDia — fichas de cadastro", () => {
     );
 
     expect(a.fichas.map((f) => f.nome)).toEqual(["Bruno", "Ana"]);
+  });
+});
+
+describe("alertasDoDia — a forma de pagamento (INI-8)", () => {
+  const AGORA = new Date("2026-11-26T15:00:00Z");
+
+  /** Uma forma de negócio aberto, como a Início lê. */
+  const forma = (extra: Partial<FormaDoPainel> = {}): FormaDoPainel => ({
+    negocio_id: "n1",
+    nome: "Maria Souza",
+    status: "rascunho",
+    charges_created_at: null,
+    respostas: [],
+    links: [],
+    ...extra,
+  });
+
+  const recusa = (reason: string | null, answered_at = "2026-11-24T13:00:00Z") => ({
+    decision: "recusada" as const,
+    reason,
+    answered_at,
+    created_at: answered_at,
+  });
+
+  const link = (expires_at: string) => ({
+    expires_at,
+    closed_at: null,
+    cancelled_at: null,
+    created_at: "2026-11-23T15:00:00Z",
+  });
+
+  const formas = (lista: FormaDoPainel[]) => alertasDoDia({ ...vazio, formas: lista }, HOJE, AGORA).formas;
+
+  it("recusada entra, com o motivo; depois de Ajustar continua", () => {
+    expect(formas([forma({ status: "recusada", respostas: [recusa("Datas erradas")] })]).recusadas).toEqual([
+      { negocio_id: "n1", nome: "Maria Souza", motivo: "Datas erradas" },
+    ]);
+    expect(formas([forma({ status: "rascunho", respostas: [recusa(null)] })]).recusadas).toHaveLength(1);
+  });
+
+  it("enviada de novo, a recusa sai", () => {
+    expect(
+      formas([forma({ status: "enviada", respostas: [recusa("x")], links: [link("2026-11-27T03:00:00Z")] })])
+        .recusadas,
+    ).toEqual([]);
+  });
+
+  it("confirmada pela equipe depois da recusa: sai da recusa e entra em pronto para o contrato", () => {
+    const a = formas([
+      forma({
+        status: "confirmada",
+        respostas: [
+          recusa("x"),
+          {
+            decision: "confirmada_pela_equipe",
+            reason: null,
+            answered_at: "2026-11-25T10:00:00Z",
+            created_at: "2026-11-25T10:00:00Z",
+          },
+        ],
+      }),
+    ]);
+    expect(a.recusadas).toEqual([]);
+    expect(a.prontas).toEqual([{ negocio_id: "n1", nome: "Maria Souza" }]);
+  });
+
+  it("confirmada com as cobranças já criadas não está mais pronta", () => {
+    expect(formas([forma({ status: "confirmada", charges_created_at: "2026-11-25T10:00:00Z" })]).prontas).toEqual([]);
+  });
+
+  it("link vencido um minuto antes de agora avisa; um minuto depois, não", () => {
+    expect(formas([forma({ status: "enviada", links: [link("2026-11-26T14:59:00Z")] })]).vencidas).toEqual([
+      { negocio_id: "n1", nome: "Maria Souza" },
+    ]);
+    expect(formas([forma({ status: "enviada", links: [link("2026-11-26T15:01:00Z")] })]).vencidas).toEqual([]);
+  });
+
+  it("rascunho que nunca foi respondido não avisa", () => {
+    const a = formas([forma()]);
+    expect([...a.recusadas, ...a.prontas, ...a.vencidas]).toEqual([]);
+  });
+
+  it("só um aviso de forma já tira o 'nada vencendo'", () => {
+    const a = alertasDoDia({ ...vazio, formas: [forma({ status: "confirmada" })] }, HOJE, AGORA);
+    expect(a.vazio).toBe(false);
   });
 });

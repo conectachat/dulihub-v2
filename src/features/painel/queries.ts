@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 
+import type { FormaDoPainel } from "./regras";
+
 /**
  * O que a tela Início precisa para avisar — lido no servidor, com a RLS de
  * quem está logado. Nenhuma consulta filtra por organização, e nenhuma
@@ -45,6 +47,8 @@ export type DadosDoPainel = {
     submitted_at: string | null;
     reviewed_at: string | null;
   }[];
+  /** As formas de pagamento de negócios abertos, ainda sem cobranças (INI-8). */
+  formas: FormaDoPainel[];
 };
 
 export async function lerPainel(
@@ -52,7 +56,7 @@ export async function lerPainel(
 ): Promise<{ dados: DadosDoPainel | null; error: string | null }> {
   const supabase = await createClient();
 
-  const [processos, status, parcelas, fichas] = await Promise.all([
+  const [processos, status, parcelas, fichas, formas] = await Promise.all([
     supabase
       .from("projects")
       .select(
@@ -76,9 +80,21 @@ export async function lerPainel(
       .select("person_id, submitted_at, reviewed_at, person:people(full_name, lifecycle_stage)")
       .not("submitted_at", "is", null)
       .is("reviewed_at", null),
+    // A forma de pagamento de negócio aberto que ainda não virou cobrança: os
+    // três avisos da 4b saem daqui (`regras.ts`).
+    supabase
+      .from("payment_plans")
+      .select(
+        `status, charges_created_at,
+         negocio:opportunities!payment_plans_opportunity_same_org!inner(id, status, person:people(full_name)),
+         respostas:payment_plan_responses(decision, reason, answered_at, created_at),
+         links:registration_forms!registration_forms_plan_same_org(expires_at, closed_at, cancelled_at, created_at)`,
+      )
+      .eq("negocio.status", "open")
+      .is("charges_created_at", null),
   ]);
 
-  const falha = processos.error ?? status.error ?? parcelas.error ?? fichas.error;
+  const falha = processos.error ?? status.error ?? parcelas.error ?? fichas.error ?? formas.error;
   if (falha) return { dados: null, error: falha.message };
 
   const concluiEtapa = new Map((status.data ?? []).map((s) => [s.id, s.is_done]));
@@ -126,6 +142,25 @@ export async function lerPainel(
         submitted_at: f.submitted_at,
         reviewed_at: f.reviewed_at,
       })),
+      formas: (formas.data ?? []).flatMap((f) => {
+        const situacao = (["rascunho", "enviada", "recusada", "confirmada"] as const).find((s) => s === f.status);
+        if (!situacao || !f.negocio) return [];
+        return [
+          {
+            negocio_id: f.negocio.id,
+            nome: f.negocio.person?.full_name ?? "Cliente removido",
+            status: situacao,
+            charges_created_at: f.charges_created_at,
+            respostas: f.respostas.flatMap((r) => {
+              const decision = (["confirmada", "recusada", "confirmada_pela_equipe"] as const).find(
+                (d) => d === r.decision,
+              );
+              return decision ? [{ ...r, decision }] : [];
+            }),
+            links: f.links,
+          },
+        ];
+      }),
     },
   };
 }

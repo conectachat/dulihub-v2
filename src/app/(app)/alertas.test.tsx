@@ -142,4 +142,74 @@ describe("AlertasDoDia", () => {
       "/projetos/p1?aba=documentos",
     );
   });
+
+  it("a forma de pagamento: recusada (com o motivo), pronta para o contrato e link vencido, cada uma levando ao negócio", () => {
+    const agora = new Date("2026-11-26T15:00:00Z");
+    render(
+      <AlertasDoDia
+        alertas={alertasDoDia(
+          {
+            ...vazio,
+            formas: [
+              {
+                negocio_id: "n1",
+                nome: "Ana Recusou",
+                status: "recusada",
+                charges_created_at: null,
+                respostas: [
+                  { decision: "recusada", reason: "Datas erradas", answered_at: "2026-11-24T13:00:00Z", created_at: "2026-11-24T13:00:00Z" },
+                ],
+                links: [],
+              },
+              {
+                negocio_id: "n2",
+                nome: "Bia Confirmou",
+                status: "confirmada",
+                charges_created_at: null,
+                respostas: [],
+                links: [],
+              },
+              {
+                negocio_id: "n3",
+                nome: "Caio Sumiu",
+                status: "enviada",
+                charges_created_at: null,
+                respostas: [],
+                links: [{ expires_at: "2026-11-26T03:00:00Z", closed_at: null, cancelled_at: null, created_at: "2026-11-20T12:00:00Z" }],
+              },
+            ],
+          },
+          HOJE,
+          agora,
+        )}
+      />,
+    );
+
+    expect(screen.getByText("Forma de pagamento recusada — Ana Recusou")).toBeTruthy();
+    expect(screen.getByText("Datas erradas")).toBeTruthy();
+    expect(screen.getByText("Pronto para o contrato — Bia Confirmou")).toBeTruthy();
+    expect(screen.getByText("Forma de pagamento sem resposta, link vencido — Caio Sumiu")).toBeTruthy();
+    expect(screen.getByText("Forma de pagamento recusada — Ana Recusou").closest("a")!.getAttribute("href")).toBe("/crm/n1");
+    expect(screen.getByText("Pronto para o contrato — Bia Confirmou").closest("a")!.getAttribute("href")).toBe("/crm/n2");
+    expect(
+      screen.getByText("Forma de pagamento sem resposta, link vencido — Caio Sumiu").closest("a")!.getAttribute("href"),
+    ).toBe("/crm/n3");
+  });
+
+  it("a ficha só do pagamento não vira 'ficha recebida': ela não traz dados pessoais", () => {
+    render(
+      <AlertasDoDia
+        alertas={alertasDoDia(
+          {
+            ...vazio,
+            fichas: [
+              { person_id: "p9", cliente: "Só Pagamento", estagio: "opportunity", submitted_at: null, reviewed_at: null },
+            ],
+          },
+          HOJE,
+        )}
+      />,
+    );
+    expect(screen.queryByText("Só Pagamento")).toBeNull();
+  });
 });
