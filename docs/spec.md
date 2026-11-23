@@ -177,7 +177,7 @@ Dizer o que precisa de atenção hoje.
 | INI-5 | Tarefas minhas, de hoje e atrasadas | P0 | ⬜ (depende de 7.9) |
 | INI-6 | Contas a pagar da semana | P1 | ⬜ (depende de 7.8) |
 | INI-7 | Números do mês: negócios ganhos, entradas, saídas | P2 | ⬜ |
-| INI-8 | Forma de pagamento recusada (some no reenvio), confirmada — pronto para o contrato (some no Ganho) — e link de pagamento vencido sem resposta (some no Editar). *Entrega 4b* | P0 | ⬜ |
+| INI-8 | Forma de pagamento recusada (some no reenvio), confirmada — pronto para o contrato (some no Ganho) — e link da ficha vencido sem resposta (some no Editar). *Entrega 4b* | P0 | ⬜ |
 
 ### 7.2 Contatos
 

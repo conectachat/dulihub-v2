@@ -6,9 +6,9 @@
 
 **Arquitetura:**
 - **Banco primeiro, em duas migrations** com teste de RLS vermelho antes (P1):
-  - 0064, o lado da equipe: a conversão, o link de pagamento, as travas, o envio, Editar/Cancelar/Ajustar e o negócio que fecha;
+  - 0064, o lado da equipe: a conversão, o link com a forma, as travas, o envio, Editar/Cancelar/Ajustar e o negócio que fecha;
   - 0065, a porta do anônimo: abrir, enviar a ficha e responder.
-- As duas são compatíveis com o código no ar: até o deploy não existe link de pagamento, a chamada de hoje de `voltar_forma_para_rascunho` continua valendo pelo padrão do parâmetro novo, e as chaves novas de `forma_do_ganho` passam pelo esquema de hoje, que não é estrito. Por isso há **um push só**, no fim.
+- As duas são compatíveis com o código no ar: até o deploy não existe link com a forma, a chamada de hoje de `voltar_forma_para_rascunho` continua valendo pelo padrão do parâmetro novo, e as chaves novas de `forma_do_ganho` passam pelo esquema de hoje, que não é estrito. Por isso há **um push só**, no fim.
 - **Telas.** O lead continua lendo do servidor. A forma vai e volta por Server Actions, que chamam as funções do banco. A ficha pública chama a função anônima pelo `clienteAnonimo`. A prévia do envio e a ficha desenham a forma com **o mesmo componente**, a partir do mesmo formato que o banco guarda como prova.
 
 **Tecnologia:** Next.js 16 (App Router, Server Actions), Supabase Postgres com RLS, zod 4, vitest com jsdom e @testing-library, bun.
@@ -21,6 +21,7 @@
 ## Restrições globais
 
 - Valem as restrições globais do plano da 4a (`docs/superpowers/plans/2026-11-21-entrega-4a-forma-de-pagamento.md`, "Restrições globais"): `bun`, banco que é produção, migration pelo conector com o arquivo, os tipos e o `docs/banco.md` no mesmo commit, `revoke`/`grant`, marcas, travas, hoje no banco, gestão, CRM-10 e dinheiro.
+- **O nome** (desenho §1, "O nome, para não confundir"): o app não gera link de pagamento — o do C6 o Renato gera à mão. Na tela é sempre "link da ficha"; no código e nos comentários, "link com a forma" (`payment_plan_id` preenchido ou `mode = 'so_pagamento'`). A expressão "link de pagamento" não entra em frase, comentário nem nome.
 - **A porta sem login** (`AGENTS.md`): token de 256 bits gerado no servidor, uso único e prazo, linha travada antes de gravar, lista fechada do que entra, só `anon` executa, e o app chama pelo `clienteAnonimo`, sem cookie. Nenhuma policy `to anon`. Função anônima: `security definer`, `set search_path = ''`, `revoke execute … from public, anon, authenticated` e `grant execute … to anon`.
 - **Marcas novas:** `dulihub.via_ficha`, ligada e conferida como a `via_forma`. Quem liga as duas dentro de gatilho **guarda o valor anterior e o devolve** no fim, em vez de desligar (P15).
 - **A ordem das travas:** negócio, depois forma, depois link. A função anônima começa pelo token só para achar o negócio, sem travar; trava na ordem e confere tudo de novo.
@@ -34,9 +35,9 @@
   | Salvar ou enviar com a forma enviada | "A forma foi enviada ao cliente. Use Editar para mudar." |
   | Salvar, enviar ou confirmar com a forma recusada | "O cliente recusou a forma. Use Ajustar para mudar." |
   | Enviar sem visto ou sem parte | "Acrescente pelo menos um visto e uma parte antes de enviar." |
-  | Outro link de pagamento aberto | "Há um link de pagamento aberto no negócio ‹título›. Cancele-o antes de enviar outro." |
-  | Link novo da ficha com link de pagamento aberto (P7) | "Há um link de pagamento aberto no negócio ‹título›. Cancele-o no negócio antes." |
-  | Excluir negócio com link de pagamento aberto | "Cancele o link de pagamento antes." |
+  | Outro link com a forma aberto | "Há um link da ficha aberto no negócio ‹título›. Cancele-o antes de enviar outro." |
+  | Link novo da ficha com link com a forma aberto (P7) | "Há um link da ficha aberto no negócio ‹título›. Cancele-o no negócio antes." |
+  | Excluir negócio com link com a forma aberto | "Cancele o link da ficha antes." |
   | Parte em outra moeda com conversão | "Só a parte em reais é convertida de dólar." |
   | Conversão zero, negativa ou NaN (P10) | "Informe de quantos dólares ‹rótulo› foi convertida." |
   | Conversão acima do limite, ou com mais de 2 casas (P10) | as frases da 4a: "O valor de ‹rótulo› passa do limite." e "Use no máximo 2 casas decimais em ‹rótulo›." |
@@ -44,13 +45,13 @@
   | Depois de Confirmo | "Obrigado! A ‹organização› vai preparar o seu contrato e enviar para assinatura." |
   | Depois de Há algo errado | "Recebemos. A ‹organização› vai rever a forma de pagamento e enviar um novo link." |
   | A forma mudou entre a tela e o clique | "A forma de pagamento mudou enquanto você olhava. Atualize a página." |
-  | Mexer direto num link de pagamento pela API | "Mude o link de pagamento pela tela do negócio." |
+  | Mexer direto num link com a forma pela API | "Mude o link da ficha pela tela do negócio." |
   | Qualquer recusa de `responder_forma_de_pagamento` por estado do link | "Este link não está mais disponível." |
   | Motivo com mais de 500 caracteres (P9) | "O motivo vai até 500 caracteres." |
   | Link `so_pagamento`, no topo (P9) | "Seus dados já foram recebidos ✓" |
   | Ficha com forma, no topo (P9) | "Passo 1 de 2" e, no pagamento do modo `completa`, "Passo 2 de 2" |
 
-- **Histórico** (tipo `forma_de_pagamento`): "Forma de pagamento enviada ao cliente", "Forma de pagamento confirmada pelo cliente", "Forma de pagamento recusada pelo cliente: ‹motivo›" (sem o ": ‹motivo›" quando vazio), "Forma de pagamento editada; o link enviado foi cancelado", "Forma de pagamento ajustada", "Link de pagamento cancelado: o negócio foi encerrado". "Forma de pagamento refeita" e "… confirmada pela equipe" continuam.
+- **Histórico** (tipo `forma_de_pagamento`): "Forma de pagamento enviada ao cliente", "Forma de pagamento confirmada pelo cliente", "Forma de pagamento recusada pelo cliente: ‹motivo›" (sem o ": ‹motivo›" quando vazio), "Forma de pagamento editada; o link enviado foi cancelado", "Forma de pagamento ajustada", "Link da ficha cancelado: o negócio foi encerrado". "Forma de pagamento refeita" e "… confirmada pela equipe" continuam.
 
 ## Decisões deste plano
 
@@ -64,14 +65,14 @@ Cada uma é um desvio do desenho ou um detalhe que ele deixou com quem constrói
 | P4 | Editar (com a forma enviada) e Cancelar link chamam a mesma função (`p_de => 'enviada'`) e gravam o mesmo histórico. Editar não abre a janela sozinho: a forma volta a rascunho, e a janela fica a um clique | O desenho lhes dá o mesmo efeito e a mesma frase de histórico (§5.10). Abrir a janela depois de uma ação de servidor pediria estado a mais no cartão | Um clique a mais |
 | P5 | Depois de "Confirmar e gerar link", o diálogo fecha e o cartão mostra o link, com Copiar link e WhatsApp | O `FormDialog` fecha no `ok`, e o cartão com a forma enviada já tem os dois botões | Nenhum |
 | P6 | O selo da forma confirmada é só "confirmada". Quem confirmou vai na linha abaixo: "Confirmada pelo cliente em ‹data›" ou "Confirmada pela equipe em ‹data›, por ‹nome›" | O selo com a frase inteira não cabe no cabeçalho do cartão no celular | Nenhum |
-| P7 | O gatilho de `registration_forms` recusa o **insert** de link comum quando a pessoa tem link de pagamento aberto, com a frase e o título. `gerarLink` cancela só links comuns abertos | A frase vale também pela API, sem uma conferência a mais em TypeScript | Nenhum |
-| P8 | No contato, com link de pagamento aberto, "Dados cadastrais" mostra "Link de pagamento enviado no negócio ‹título›", com link para o lead, e **sem** Cancelar. `cancelarLink` passa a filtrar `payment_plan_id is null` | O desenho deixou com quem constrói (§11). Cancelar pela função da forma no contato duplicaria o cartão do lead | Um clique a mais para cancelar |
+| P7 | O gatilho de `registration_forms` recusa o **insert** de link comum quando a pessoa tem link com a forma aberto, com a frase e o título. `gerarLink` cancela só links comuns abertos | A frase vale também pela API, sem uma conferência a mais em TypeScript | Nenhum |
+| P8 | No contato, com link com a forma aberto, "Dados cadastrais" mostra "Link da ficha enviado com a forma do negócio ‹título›", com link para o lead, e **sem** Cancelar. `cancelarLink` passa a filtrar `payment_plan_id is null` | O desenho deixou com quem constrói (§11). Cancelar pela função da forma no contato duplicaria o cartão do lead | Um clique a mais para cancelar |
 | P9 | Frases que o desenho não fixou: as marcadas "(P9)" na tabela acima | São do formulário, e o teste precisa de texto exato | Texto a ajustar |
 | P10 | A conversão é conferida logo depois do total, nesta ordem: moeda (só BRL) → maior que zero → limite → 2 casas. `null` é "sem conversão" | A ordem precisa ser a mesma na tela e no banco | Nenhum |
 | P11 | O teste do portal envia com `p_pedir_dados_de_novo => true`. Na limpeza: Cancelar link, apagar o negócio (o `set null` tira o `payment_plan_id` do link) e apagar o link, que virou link comum | O "Cliente de Teste" nunca é apagado. Com o modo `so_pagamento`, o link ficaria preso nele para sempre | Nenhum |
 | P12 | "Pedir os dados pessoais de novo" só aparece quando a pessoa já mandou alguma ficha (`fichaRecebida` não nula) | É o único caso em que o padrão seria `so_pagamento` | Nenhum |
 | P13 | A tela não conta dias úteis. O último dia sai de `expires_at` (`ultimoDiaDoLink`: o dia de São Paulo de `expires_at` menos 1 ms). O teste de RLS calcula o esperado à parte, como oráculo | A regra fica num lugar só, o banco | Nenhum |
-| P14 | "Este link expirou…" só no link com forma. O link comum vencido continua com a frase de hoje | O desenho só fixou a do link de pagamento | Nenhum |
+| P14 | "Este link expirou…" só no link com forma. O link comum vencido continua com a frase de hoje | O desenho só fixou a do link com a forma | Nenhum |
 | P15 | O gatilho do negócio que fecha guarda as marcas `via_forma` e `via_ficha` e as devolve no fim | Ele roda dentro do `ganhar_negocio`, que liga `via_forma` depois. Desligar à força quebraria quem chamou | Nenhum |
 | P16 | Com Confirmo, o motivo é ignorado (`reason` nulo) | Motivo só faz sentido na recusa | Nenhum |
 | P17 | A versão cobre a forma, não os vistos. Os vistos travam a partir do envio | Pôr os vistos na versão pediria um gatilho a mais em `opportunity_items`. O risco é só entre duas pessoas da equipe, na mesma hora, antes do envio | Um envio com um visto que o remetente não viu na prévia |
@@ -235,12 +236,12 @@ export function formatarDiaDaSemana(dia: string, estilo: "curto" | "longo"): str
   - `update … set closed_at = submitted_at where submitted_at is not null`, **antes** do gatilho;
   - o índice `registration_forms_um_em_aberto` é recriado com `where closed_at is null and cancelled_at is null`;
   - o índice parcial `registration_forms_plan_idx (payment_plan_id)`.
-- **`private.registration_forms_link_de_pagamento()`**, no gatilho `registration_forms_link_de_pagamento` (`before insert or update or delete`). "Link de pagamento" quer dizer `payment_plan_id` preenchido ou `mode = 'so_pagamento'`. Com a marca `via_ficha`, passa, depois de conferir que `person_id` é a pessoa do negócio da forma. Sem a marca:
-  - **insert:** `mode`, `closed_at` e `payment_plan_id` só com os valores padrão. Com um link de pagamento aberto da pessoa, a frase do P7, com o título;
-  - **update de link de pagamento:** a linha inteira congelada (`to_jsonb(new) - 'reviewed_at' - 'reviewed_by' - 'updated_at'` comparado com o `old`), menos a ação da chave estrangeira: profundidade > 1, e só `payment_plan_id` virando nulo;
+- **`private.registration_forms_link_de_pagamento()`**, no gatilho `registration_forms_link_de_pagamento` (`before insert or update or delete`). "Link com a forma" quer dizer `payment_plan_id` preenchido ou `mode = 'so_pagamento'`. Com a marca `via_ficha`, passa, depois de conferir que `person_id` é a pessoa do negócio da forma. Sem a marca:
+  - **insert:** `mode`, `closed_at` e `payment_plan_id` só com os valores padrão. Com um link com a forma aberto da pessoa, a frase do P7, com o título;
+  - **update de link com a forma:** a linha inteira congelada (`to_jsonb(new) - 'reviewed_at' - 'reviewed_by' - 'updated_at'` comparado com o `old`), menos a ação da chave estrangeira: profundidade > 1, e só `payment_plan_id` virando nulo;
   - **update de link comum:** recusa mudar `mode`, `closed_at` e `payment_plan_id`;
-  - **delete de link de pagamento:** recusa, menos com profundidade > 1;
-  - a frase é "Mude o link de pagamento pela tela do negócio.".
+  - **delete de link com a forma:** recusa, menos com profundidade > 1;
+  - a frase é "Mude o link da ficha pela tela do negócio.".
 - **`private.fim_do_prazo_em_dias_uteis(p_de timestamptz, p_dias int) returns timestamptz`**, `stable`, como na §5.3.
 - **`public.enviar_forma_de_pagamento(p_negocio uuid, p_versao timestamptz, p_pedir_dados_de_novo boolean default false) returns text`**, como na §6. A ordem das recusas:
   1. não encontrado;
@@ -250,7 +251,7 @@ export function formatarDiaDaSemana(dia: string, estilo: "curto" | "longo"): str
   5. `updated_at <> p_versao`: "mudou enquanto você olhava";
   6. sem visto ou sem parte;
   7. `private.erro_da_forma(jsonb_build_object('partes', copia->'partes'))`;
-  8. outro link de pagamento aberto.
+  8. outro link com a forma aberto.
 
   Depois: cancela a ficha comum aberta e gera o token com `rtrim(translate(encode(extensions.gen_random_bytes(32), 'base64'), '+/', '-_'), '=')`. Antes de escrever, conferir com `list_extensions` que o `pgcrypto` está em `extensions`.
 - **`voltar_forma_para_rascunho(p_negocio uuid, p_de text default 'confirmada')`**, com `drop` e `create`:
@@ -268,7 +269,7 @@ export function formatarDiaDaSemana(dia: string, estilo: "curto" | "longo"): str
   - com usuário, aceita `rascunho` ou `enviada`;
   - o ramo do cliente (sem usuário) entra já aqui, como na §6, conferindo também que o link é desta forma. Só a 0065 o alcança.
 - **A trava dos vistos** recusa também `enviada`, com a frase dela.
-- **`opportunities_ganho_nao_se_apaga`:** depois da regra das respostas, recusa o negócio com link de pagamento aberto, com a frase.
+- **`opportunities_ganho_nao_se_apaga`:** depois da regra das respostas, recusa o negócio com link com a forma aberto, com a frase.
 - **`private.opportunities_fecha_o_link_de_pagamento()`**, no gatilho `after update of status on opportunities … when (old.status = 'open' and new.status <> 'open')`:
   - trava a forma;
   - se ela está `enviada`: guarda as marcas, cancela o link, põe a forma em `rascunho`, grava o histórico e devolve as marcas (P15).
@@ -313,9 +314,9 @@ export function formatarDiaDaSemana(dia: string, estilo: "curto" | "longo"): str
     7. Um link aberto por pessoa:
        - dois negócios da mesma pessoa: o segundo envio é recusado com a frase e o título do primeiro;
        - um link comum aberto é cancelado pelo envio;
-       - com o link de pagamento aberto, o `insert` de link comum dá a frase do P7.
+       - com o link com a forma aberto, o `insert` de link comum dá a frase do P7.
     8. O link não se mexe pela API:
-       - num link de pagamento, mudar `expires_at`, `token`, `answers`, `mode`, `closed_at`, `payment_plan_id` ou `cancelled_at` dá a frase, e o `delete` também;
+       - num link com a forma, mudar `expires_at`, `token`, `answers`, `mode`, `closed_at`, `payment_plan_id` ou `cancelled_at` dá a frase, e o `delete` também;
        - num link comum, `expires_at` muda, e `mode`, `closed_at` e `payment_plan_id` dão a frase;
        - o `insert` com `payment_plan_id` ou com `mode = 'so_pagamento'` dá a frase.
     9. Negócio encerrado:
@@ -341,7 +342,7 @@ export function formatarDiaDaSemana(dia: string, estilo: "curto" | "longo"): str
   | segunda às 22h de São Paulo, `2026-11-24 01:00+00` (foco 3) | `2026-11-27 00:00-03` |
 
 - [ ] Rodar `bun x vitest run tests/rls/forma-enviada.test.ts`. Esperado: FALHA (coluna ou função inexistente).
-- [ ] Escrever a 0064. O comentário do topo explica: a conversão sem cotação, o link de pagamento congelado, a versão, quem clica diz de onde parte, e o gatilho do negócio que fecha.
+- [ ] Escrever a 0064. O comentário do topo explica: a conversão sem cotação, o link com a forma congelado, a versão, quem clica diz de onde parte, e o gatilho do negócio que fecha.
 - [ ] Aplicar a 0064 e regenerar os tipos. Rodar a prova pelo conector (`execute_sql`). Esperado: os cinco "ok" na mensagem.
 - [ ] Rodar de novo. Esperado: verde.
 - [ ] `tests/rls/ficha-de-cadastro.test.ts` passa a importar `fichaCompleta`, `ACEITE` e `anonimoDeTeste` de `tests/ficha-de-teste.ts`, sem cópia local.
@@ -359,10 +360,10 @@ export function formatarDiaDaSemana(dia: string, estilo: "curto" | "longo"): str
 
 **Interfaces** (produz):
 - **`abrir_ficha_de_cadastro(p_token text)`**, com `drop` e `create`. Devolve `situacao`, `nome`, `email`, `ddi`, `telefone`, `organizacao`, `modo`, `tem_forma` e `forma jsonb`. A `situacao`, nesta precedência:
-  1. `cancelada`: cancelado, pessoa na lixeira, ou link de pagamento com o negócio fora de `open`;
-  2. `respondida` (link de pagamento) ou `enviada` (link comum): `closed_at` preenchido;
+  1. `cancelada`: cancelado, pessoa na lixeira, ou link com a forma com o negócio fora de `open`;
+  2. `respondida` (link com a forma) ou `enviada` (link comum): `closed_at` preenchido;
   3. `expirada`;
-  4. `aguardando_pagamento`: link de pagamento com `submitted_at` preenchido ou `mode = 'so_pagamento'`;
+  4. `aguardando_pagamento`: link com a forma com `submitted_at` preenchido ou `mode = 'so_pagamento'`;
   5. `aberta`.
 
   `forma` vem **só** em `aguardando_pagamento`, de `private.copia_da_forma`. Nome e contato, só em `aberta`, como hoje.
@@ -472,7 +473,7 @@ export async function voltarFormaParaRascunho(anterior: ActionState, formData: F
 - [ ] Rodar, mais `bun x tsc --noEmit`. Esperado: verde (o cartão ainda usa a `refazer` antiga: trocar o import no mesmo passo).
 - [ ] Commit `feat(crm): enviar e voltar a forma, com a versão que a tela viu`.
 
-### Task 6: Dados cadastrais sem o aviso preso (I4, INI-4) e o link de pagamento no contato
+### Task 6: Dados cadastrais sem o aviso preso (I4, INI-4) e o link com a forma no contato
 
 **Arquivos:** mexer em `src/features/cadastro/queries.ts`, `actions.ts` (+ teste), `src/components/perfil/dados-cadastrais.tsx` (+ teste) e `controles-da-ficha.tsx`.
 
@@ -493,12 +494,12 @@ export type CadastroDoContato = {
 - **`DadosCadastrais`:**
   - o selo sai de `situacaoDoCadastro`;
   - **o bloco da ficha** mostra a `fichaRecebida`: sem `reviewed_at`, "O cliente preencheu a ficha em ‹data›…" com o Conferi; com ele, "Ficha preenchida pelo cliente em ‹data› e conferida.";
-  - **o bloco do link** mostra o `linkAtual`. Link comum: aguardando com `LinkAberto`, ou vencido com Gerar novo. Link de pagamento: "Link de pagamento enviado no negócio ‹título›", com link para `/crm/<id>`. Sem link: `GerarLink`, com `novo = fichaRecebida !== null`.
+  - **o bloco do link** mostra o `linkAtual`. Link comum: aguardando com `LinkAberto`, ou vencido com Gerar novo. Link com a forma: "Link da ficha enviado com a forma do negócio ‹título›", com link para `/crm/<id>`. Sem link: `GerarLink`, com `novo = fichaRecebida !== null`.
 
 - [ ] **Testes primeiro.**
   - **Componente (I4):**
     - ficha recebida sem conferir e um link novo aguardando: aparecem o "Conferi" **e** o campo do link;
-    - com um link de pagamento atual: aparece "Link de pagamento enviado no negócio Contrato EB-2" com `href` `/crm/<id>`, e não aparece "Cancelar link";
+    - com um link com a forma atual: aparece "Link da ficha enviado com a forma do negócio Contrato EB-2" com `href` `/crm/<id>`, e não aparece "Cancelar link";
     - só a ficha conferida, sem link: "Gerar novo link".
   - **Ação:**
     - `gerarLink` filtra o cancelamento por `payment_plan_id` nulo e `closed_at` nulo;
@@ -652,7 +653,7 @@ As duas frases de link indisponível saem de `LinkIndisponivel({ organizacao, ex
   - "Confirmada pelo cliente em", e a parte convertida com "convertidos para";
   - `rascunho` com a frase da 4a;
   - o esquema recusa o resumo sem `ultima_decisao`;
-  - `deleteOpportunity` com `{ code: "P0001", message: "Cancele o link de pagamento antes." }` devolve a frase (se já passar, registrar no ledger que o teste fixa o comportamento).
+  - `deleteOpportunity` com `{ code: "P0001", message: "Cancele o link da ficha antes." }` devolve a frase (se já passar, registrar no ledger que o teste fixa o comportamento).
 - [ ] Rodar. Esperado: FALHA.
 - [ ] Implementar.
 - [ ] Rodar `bun x vitest run "src/app/(app)/crm" src/features/opportunities`. Esperado: verde.
@@ -680,7 +681,7 @@ formas: {
 export function alertasDoDia(dados, hoje: string, agora?: Date): Alertas; // P18; `vazio` conta os três
 ```
 
-- **`AlertasDoDia`:** um bloco por lista, com "Forma de pagamento recusada — ‹pessoa›" (e o motivo), "Pronto para o contrato — ‹pessoa›" e "Link de pagamento vencido sem resposta — ‹pessoa›". Cada um com link para `/crm/<negocio_id>`.
+- **`AlertasDoDia`:** um bloco por lista, com "Forma de pagamento recusada — ‹pessoa›" (e o motivo), "Pronto para o contrato — ‹pessoa›" e "Forma de pagamento sem resposta, link vencido — ‹pessoa›". Cada um com link para `/crm/<negocio_id>`.
 
 - [ ] **Testes primeiro.**
   - **`alertasDoDia`:**

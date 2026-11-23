@@ -40,6 +40,14 @@ quantos dólares ela veio**. A cotação e a validade da conversão **não** vã
 a ficha. O Renato manda ao cliente o print da tela do C6. A validade (3 dias úteis
 a partir do envio do contrato) é assunto do contrato, na entrega seguinte.
 
+**O nome, para não confundir** (Renato, 23/nov). O app não cobra nem gera link de
+pagamento: o link do cartão do C6, o Renato gera à mão e envia por fora. O que a
+4b envia é **o link da ficha** de sempre (`/cadastro/<token>`), que passa a levar
+a forma de pagamento para o cliente ler e dar o OK. Nas frases da tela ele é "o
+link da ficha"; neste documento, "o link com a forma", quando é preciso
+distingui-lo do link da ficha comum. "Link de pagamento" não aparece em lugar
+nenhum.
+
 ## 2. Abordagens
 
 | | Como | Troca |
@@ -70,7 +78,7 @@ A conversão:
   expirou. Peça um novo à Duli.", e o lead mostra "link vencido".
 - A parte em reais diz de quantos dólares veio, e o cliente vê os dois valores.
 - A Início avisa da forma recusada, da confirmada (pronta para o contrato) e do
-  link de pagamento vencido sem resposta.
+  link com a forma vencido sem resposta.
 - A equipe confirma também a forma enviada (o cliente respondeu pelo WhatsApp), e
   o link aberto é cancelado.
 - O aviso de "ficha recebida" não fica mais preso quando um link novo é gerado
@@ -120,7 +128,7 @@ mais pesam aqui:
   passa (`pg_trigger_depth() > 1`).
 - **A ordem das travas** continua: negócio, depois forma, depois link.
 - **Hoje** é `(now() at time zone 'America/Sao_Paulo')::date`.
-- **Compatível com o código no ar.** Até o deploy não existe link de pagamento, e
+- **Compatível com o código no ar.** Até o deploy não existe link com a forma, e
   o `gerarLink` de hoje grava os valores padrão. A migration vai antes do código,
   num push só.
 
@@ -201,18 +209,18 @@ refazer, sim, e continuam com o dono do negócio ou a gestão.
 - **Enviar com uma ficha comum aberta** (sem forma, ainda não preenchida): ela é
   cancelada e substituída. A prévia avisa antes: "O link da ficha enviado em
   ‹data› deixa de valer."
-- **Enviar com outro link de pagamento aberto** (outro negócio da mesma pessoa):
-  recusado. "Há um link de pagamento aberto no negócio ‹título›. Cancele-o antes
+- **Enviar com outro link com a forma aberto** (outro negócio da mesma pessoa):
+  recusado. "Há um link da ficha aberto no negócio ‹título›. Cancele-o antes
   de enviar outro."
-- **"Gerar link da ficha" com um link de pagamento aberto:** recusado. "Há um
-  link de pagamento aberto no negócio ‹título›. Cancele-o no negócio antes."
-- **Cancelar um link de pagamento** só passa pela função da forma, para ela não
-  ficar `enviada` sem link. O `update` direto de `cancelled_at` num link de
-  pagamento é recusado pelo gatilho.
+- **"Gerar link da ficha" com um link com a forma aberto:** recusado. "Há um
+  link da ficha aberto no negócio ‹título›. Cancele-o no negócio antes."
+- **Cancelar um link com a forma** só passa pela função da forma, para ela não
+  ficar `enviada` sem link. O `update` direto de `cancelled_at` num link com a
+  forma é recusado pelo gatilho.
 - **O negócio deixa de estar aberto** (Ganho, Perdido, ou qualquer caminho que
-  mude `opportunities.status` de `open`): um gatilho no negócio cancela o link de
-  pagamento aberto e põe a forma `enviada` de volta em `rascunho`, com o
-  histórico "Link de pagamento cancelado: o negócio foi encerrado". A forma
+  mude `opportunities.status` de `open`): um gatilho no negócio cancela o link com a
+  forma aberto e põe a forma `enviada` de volta em `rascunho`, com o
+  histórico "Link da ficha cancelado: o negócio foi encerrado". A forma
   `recusada` ou `confirmada` não muda. *(Minha decisão, depois da revisão do
   desenho: um link deixado aberto num negócio encerrado contaria como "o link
   aberto da pessoa" para sempre e impediria qualquer link novo para ela, inclusive
@@ -281,7 +289,7 @@ leva ao lead.
 |---|---|---|
 | "Forma de pagamento recusada — ‹pessoa›", com o motivo | A última resposta da forma é `recusada` e a forma está em `recusada` ou em `rascunho` | A forma é enviada de novo, é confirmada, ou o negócio é encerrado |
 | "Pronto para o contrato — ‹pessoa›" | A forma está `confirmada` e sem cobranças criadas | Ganho, Refazer ou negócio encerrado |
-| "Link de pagamento vencido sem resposta — ‹pessoa›" | A forma está `enviada` e o link dela venceu | Editar, Cancelar link, Confirmar pela equipe ou negócio encerrado |
+| "Forma de pagamento sem resposta, link vencido — ‹pessoa›" | A forma está `enviada` e o link dela venceu | Editar, Cancelar link, Confirmar pela equipe ou negócio encerrado |
 
 - O aviso de recusada sobrevive ao Ajustar de propósito: quem só clicou em Ajustar
   ainda não reenviou nada.
@@ -318,8 +326,8 @@ na §5.4 da 4a:
 
 ### 5.9 Excluir negócio
 
-- Negócio **aberto com link de pagamento aberto** não se exclui: "Cancele o link de
-  pagamento antes." Fica no gatilho `opportunities_ganho_nao_se_apaga`, que é
+- Negócio **aberto com link com a forma aberto** não se exclui: "Cancele o link da
+  ficha antes." Fica no gatilho `opportunities_ganho_nao_se_apaga`, que é
   ampliado, e no `deleteOpportunity`.
 - A regra da 4a continua: negócio com qualquer resposta registrada não se exclui. A
   recusa do cliente também é resposta.
@@ -344,14 +352,14 @@ Tipo `forma_de_pagamento`, como na 4a:
 | Salvar ou enviar com a forma enviada | "A forma foi enviada ao cliente. Use Editar para mudar." |
 | Salvar ou enviar com a forma recusada | "O cliente recusou a forma. Use Ajustar para mudar." |
 | Enviar sem visto ou sem parte | "Acrescente pelo menos um visto e uma parte antes de enviar." |
-| Outro link de pagamento aberto | "Há um link de pagamento aberto no negócio ‹título›. Cancele-o antes de enviar outro." |
-| Gerar link da ficha com link de pagamento aberto | "Há um link de pagamento aberto no negócio ‹título›. Cancele-o no negócio antes." |
-| Excluir negócio com link de pagamento aberto | "Cancele o link de pagamento antes." |
+| Outro link com a forma aberto | "Há um link da ficha aberto no negócio ‹título›. Cancele-o antes de enviar outro." |
+| Gerar link da ficha com link com a forma aberto | "Há um link da ficha aberto no negócio ‹título›. Cancele-o no negócio antes." |
+| Excluir negócio com link com a forma aberto | "Cancele o link da ficha antes." |
 | Parte em outra moeda com conversão | "Só a parte em reais é convertida de dólar." |
 | Conversão sem valor | "Informe de quantos dólares ‹rótulo› foi convertida." |
 | Link vencido, para o cliente | "Este link expirou. Peça um novo à ‹organização›." |
 | A forma mudou entre a tela e o clique | "A forma de pagamento mudou enquanto você olhava. Atualize a página." |
-| Mexer direto num link de pagamento pela API | "Mude o link de pagamento pela tela do negócio." |
+| Mexer direto num link com a forma pela API | "Mude o link da ficha pela tela do negócio." |
 
 ## 6. Banco
 
@@ -363,10 +371,10 @@ Uma migration, `0064`, compatível com o código no ar (§4).
 | `private.erro_da_forma` | Confere `usd_equivalent` (formato, moeda, valor, 2 casas), na mesma ordem de `erroDaParte` |
 | `salvar_forma_de_pagamento` | Grava `usd_equivalent`. Recusa `enviada` e `recusada` com as frases da §5.11. Passa a tocar `payment_plans.updated_at` a cada gravação: é a versão que a prévia do envio leva (§5.1). Mudar a cotação também a toca; o pior caso é pedir "Atualize a página" sem necessidade |
 | `registration_forms` | Ganha `payment_plan_id` (FK composta com `payment_plans`, `on delete set null (payment_plan_id)`), `mode` (`completa` ou `so_pagamento`, padrão `completa`) e `closed_at`. Backfill `closed_at = submitted_at` **antes** do gatilho. O índice `registration_forms_um_em_aberto` passa a valer onde `closed_at` e `cancelled_at` são nulos |
-| Gatilho de `registration_forms` | Sem a marca `via_ficha`: **no insert**, só os valores padrão (`mode = 'completa'`, `closed_at` e `payment_plan_id` nulos), que é o que `gerarLink` e a fumaça gravam. **No update de um link de pagamento** (`payment_plan_id` preenchido ou `mode = 'so_pagamento'`), a linha inteira fica congelada, menos `reviewed_at`, `reviewed_by` e o `updated_at` que vem junto — comparação da linha inteira, como a 0061 fez em `payment_plans`, para coluna nova nascer protegida; assim ninguém estica `expires_at`, troca o token nem reescreve `answers` pela API. **No update de um link comum**, recusa mudar `mode`, `closed_at` e `payment_plan_id`, e o resto segue como hoje. **No delete de um link de pagamento**, recusa, menos a cascata (`pg_trigger_depth() > 1`). Com a marca, confere que a pessoa do link é a do negócio da forma. Frase: "Mude o link de pagamento pela tela do negócio." |
-| Gatilho novo em `opportunities` (`after update of status`) | Quando o status sai de `open`: com a marca `via_forma` e `via_ficha`, cancela o link de pagamento aberto do negócio e põe a forma `enviada` em `rascunho`, com o histórico (§5.3). Roda dentro da trava do negócio, e a ordem segue negócio, forma, link |
+| Gatilho de `registration_forms` | Sem a marca `via_ficha`: **no insert**, só os valores padrão (`mode = 'completa'`, `closed_at` e `payment_plan_id` nulos), que é o que `gerarLink` e a fumaça gravam. **No update de um link com a forma** (`payment_plan_id` preenchido ou `mode = 'so_pagamento'`), a linha inteira fica congelada, menos `reviewed_at`, `reviewed_by` e o `updated_at` que vem junto — comparação da linha inteira, como a 0061 fez em `payment_plans`, para coluna nova nascer protegida; assim ninguém estica `expires_at`, troca o token nem reescreve `answers` pela API. **No update de um link comum**, recusa mudar `mode`, `closed_at` e `payment_plan_id`, e o resto segue como hoje. **No delete de um link com a forma**, recusa, menos a cascata (`pg_trigger_depth() > 1`). Com a marca, confere que a pessoa do link é a do negócio da forma. Frase: "Mude o link da ficha pela tela do negócio." |
+| Gatilho novo em `opportunities` (`after update of status`) | Quando o status sai de `open`: com a marca `via_forma` e `via_ficha`, cancela o link com a forma aberto do negócio e põe a forma `enviada` em `rascunho`, com o histórico (§5.3). Roda dentro da trava do negócio, e a ordem segue negócio, forma, link |
 | `private.fim_do_prazo_em_dias_uteis(p_de timestamptz, p_dias int) returns timestamptz` | Pura, sem tabela, como na §5.3. Provada com datas fixas (segunda, sexta, sábado, domingo) |
-| `public.enviar_forma_de_pagamento(p_negocio uuid, p_versao timestamptz, p_pedir_dados_de_novo boolean default false) returns text` | `security invoker`, marcas `via_forma` e `via_ficha`. Negócio aberto, forma em `rascunho` com `updated_at = p_versao` (senão, a frase "mudou enquanto você olhava"), pelo menos um visto e uma parte, a forma sem erro. Recusa outro link de pagamento aberto da pessoa; cancela a ficha comum aberta. Escolhe o modo (§5.3), gera o token no banco (32 bytes aleatórios em base64url, o formato que `publico-queries.ts` aceita), grava o link com `payment_plan_id`, o modo e o prazo, põe a forma em `enviada`, registra no histórico e devolve o token |
+| `public.enviar_forma_de_pagamento(p_negocio uuid, p_versao timestamptz, p_pedir_dados_de_novo boolean default false) returns text` | `security invoker`, marcas `via_forma` e `via_ficha`. Negócio aberto, forma em `rascunho` com `updated_at = p_versao` (senão, a frase "mudou enquanto você olhava"), pelo menos um visto e uma parte, a forma sem erro. Recusa outro link com a forma aberto da pessoa; cancela a ficha comum aberta. Escolhe o modo (§5.3), gera o token no banco (32 bytes aleatórios em base64url, o formato que `publico-queries.ts` aceita), grava o link com `payment_plan_id`, o modo e o prazo, põe a forma em `enviada`, registra no histórico e devolve o token |
 | `voltar_forma_para_rascunho(p_negocio uuid, p_de text default 'confirmada')` | `drop` e `create`, com o parâmetro novo. Cobre Editar e Cancelar link (`p_de = 'enviada'`: cancela o link aberto, qualquer membro), Ajustar (`'recusada'`, qualquer membro) e Refazer (`'confirmada'`, CRM-10). Recusa quando o estado atual não é `p_de`, com a frase "mudou enquanto você olhava". O padrão `'confirmada'` mantém a chamada do código no ar (o Refazer da 4a) funcionando entre a migration e o deploy. O histórico conforme a §5.10 |
 | `confirmar_forma_de_pagamento_pela_equipe` | Ganha o ramo de `enviada` (§5.5). A cópia leva `usd_equivalent` |
 | `payment_plan_responses_na_entrada` | Ganha o ramo do cliente: sem usuário (`auth.uid()` nulo), com a marca, a forma em `enviada`, `registration_form_id` preenchido, `decision` em `confirmada` ou `recusada`; grava `answered_by` nulo e `answered_by_name` com o nome da pessoa. Com usuário, continua como na 4a, aceitando `rascunho` ou `enviada` |
@@ -421,7 +429,7 @@ segunda, 23/11: "O link vale até quinta-feira, 26/11." A da ficha comum fica co
 está.
 
 **Dados cadastrais** (contato e lead) seguem a §5.7: a ficha recebida com o
-"Conferi", e o link atual à parte. "Gerar link da ficha" com link de pagamento
+"Conferi", e o link atual à parte. "Gerar link da ficha" com link com a forma
 aberto mostra a frase da §5.11.
 
 **A ficha pública** (`/cadastro/<token>`) segue a §5.4. A resposta chama a ação
@@ -483,15 +491,15 @@ do teste.
   - inserção direta em `payment_plan_responses` pela API, com qualquer `decision`,
     é recusada;
   - `update registration_forms set mode = …`, `closed_at = …` ou
-    `payment_plan_id = …` pela API é recusado; `cancelled_at` num link de
-    pagamento também;
+    `payment_plan_id = …` pela API é recusado; `cancelled_at` num link com a
+    forma também;
   - insert direto em `registration_forms` com `payment_plan_id` ou modo
     `so_pagamento` é recusado;
   - o aviso do Supabase "definer executável por anon" aparece para as três
     funções, e para nenhuma outra.
-- **Um link aberto por pessoa:** enviar a forma com outro link de pagamento aberto
+- **Um link aberto por pessoa:** enviar a forma com outro link com a forma aberto
   é recusado com a frase; com uma ficha comum aberta, ela é cancelada; "Gerar link
-  da ficha" com link de pagamento aberto é recusado.
+  da ficha" com link com a forma aberto é recusado.
 - **I4:** com uma ficha recebida e não conferida, gerar um link novo mantém o
   "Conferi" no contato e o aviso na Início; "Conferi" o tira.
 - **Ganho:** com a forma `enviada` ou `recusada`, nenhuma cobrança, e o resumo diz
@@ -504,12 +512,12 @@ do teste.
   `voltar_forma_para_rascunho(p_de => 'enviada')` não grava nada e devolve a frase
   "mudou enquanto você olhava"; `enviar_forma_de_pagamento` com uma versão
   anterior a um salvar recusa do mesmo jeito.
-- **O link de pagamento não se mexe pela API:** mudar `expires_at`, `token` ou
-  `answers` de um link de pagamento é recusado, e apagá-lo também; marcar
+- **O link com a forma não se mexe pela API:** mudar `expires_at`, `token` ou
+  `answers` de um link com a forma é recusado, e apagá-lo também; marcar
   `reviewed_at` passa. Num link comum, `expires_at` continua mudando como hoje.
 - **A marca do parceiro:** um link da organização de teste mostra o nome dela nas
   frases finais, e não "Duli".
-- **Excluir:** negócio aberto com link de pagamento aberto é recusado com a frase;
+- **Excluir:** negócio aberto com link com a forma aberto é recusado com a frase;
   depois de cancelar o link, se a forma nunca teve resposta, exclui.
 - **Usuário do portal:** continua sem ler a forma, as partes, as parcelas e as
   respostas, também com a forma `enviada`.
@@ -554,7 +562,7 @@ do teste.
 |---|---|---|
 | 1 | Dias úteis de segunda a sexta, sem feriados | Feriado exigiria manter um calendário |
 | 2 | O link sem forma continua com 15 dias | Não tem valor que envelheça |
-| 3 | Aviso de link de pagamento vencido na Início | Com 3 dias, vai acontecer com frequência |
+| 3 | Aviso de link com a forma vencido na Início | Com 3 dias, vai acontecer com frequência |
 | 4 | "Criar as cobranças mesmo assim" sai | "Confirmar pela equipe" cobre o cliente que confirmou por fora |
 | 5 | A ficha recebida continua valendo com um link novo, e o aviso fica até o "Conferi" (Q11) | Sem isso, toda recusa reenviada prenderia o aviso (I4) |
 | 6 | A cotação que já existe no lead continua opcional e só da equipe | Ninguém é obrigado a preenchê-la |
@@ -567,11 +575,11 @@ do teste.
 | 8 | Enviar, Editar, Cancelar link e Ajustar: qualquer membro; Confirmar e Refazer: dono do negócio ou gestão | Os primeiros não fecham nem desfazem acordo |
 | 9 | Link vencido: para reenviar, passa por Editar | O prazo curto existe porque o valor envelhece |
 | 10 | Os vistos travam também com a forma enviada | A forma que o cliente lê não muda por baixo dele |
-| 11 | Ganhar ou perder o negócio cancela o link de pagamento aberto e põe a forma enviada em rascunho | Um link aberto num negócio encerrado impediria qualquer link novo para a pessoa, inclusive em outro negócio (achado da revisão do desenho) |
+| 11 | Ganhar ou perder o negócio cancela o link com a forma aberto e põe a forma enviada em rascunho | Um link aberto num negócio encerrado impediria qualquer link novo para a pessoa, inclusive em outro negócio (achado da revisão do desenho) |
 | 12 | A recusa do cliente também impede excluir o negócio | É resposta registrada, como a confirmação |
 | 13 | O nome do cliente vai em `answered_by_name` na resposta dele | O lead diz "confirmada pelo cliente" sem outra consulta |
 | 14 | Editar, Cancelar link, Ajustar e Refazer dizem de que estado partem, e Enviar ficha leva a versão da prévia; se a forma mudou no meio, nada se grava | Sem isso, Cancelar link chegando junto com o Confirmo do cliente desfaria a confirmação, e um salvar depois da prévia mandaria ao cliente valores que ninguém viu (achado da revisão) |
-| 15 | O link de pagamento fica congelado inteiro fora das funções, menos o "Conferi" | Com a lista de colunas à mão, qualquer membro esticaria o prazo ou apagaria o link pela API (a lição da 0061, achado da revisão) |
+| 15 | O link com a forma fica congelado inteiro fora das funções, menos o "Conferi" | Com a lista de colunas à mão, qualquer membro esticaria o prazo ou apagaria o link pela API (a lição da 0061, achado da revisão) |
 | 16 | As frases ao cliente usam o nome da organização, não "Duli" | O cliente de um parceiro veria a marca errada (achado da revisão) |
 
 ## 11. Fica com quem constrói
