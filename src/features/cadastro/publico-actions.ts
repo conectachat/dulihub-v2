@@ -4,7 +4,7 @@ import { traduzirErro } from "@/lib/erros";
 import { clienteAnonimo } from "@/lib/supabase/anonimo";
 
 import type { EstadoDaFicha } from "./estado";
-import { abrirFicha } from "./publico-queries";
+import { abrirFicha, TOKEN } from "./publico-queries";
 import { declaracao } from "./regras";
 import { fichaDoFormulario } from "./schema";
 
@@ -46,6 +46,43 @@ export async function enviarFicha(
     p_token: token,
     p_dados: ficha.dados,
     p_consentimento: declaracao(aberta.organizacao),
+  });
+  if (error) return { error: traduzirErro(error) };
+
+  return { error: null };
+}
+
+const INDISPONIVEL = "Este link não está mais disponível.";
+
+/** O mesmo limite do banco (`responder_forma_de_pagamento`, 0065). */
+const LIMITE_DO_MOTIVO = 500;
+
+/**
+ * A resposta do cliente à forma de pagamento (entrega 4b, FIC-8): Confirmo ou
+ * Há algo errado, com o motivo. Também sem login, pela terceira função da
+ * porta anônima.
+ *
+ * Do navegador vão só o sim, o não e o motivo: a cópia do combinado, que fica
+ * como prova, é montada dentro do banco — a mesma forma que o cliente leu. O
+ * motivo longo nem sai daqui; o banco confere de novo.
+ */
+export async function responderForma(
+  token: string,
+  aceita: boolean,
+  motivo: string,
+): Promise<{ error: string | null }> {
+  if (!TOKEN.test(token)) return { error: INDISPONIVEL };
+
+  const aparado = motivo.trim();
+  if (!aceita && aparado.length > LIMITE_DO_MOTIVO) {
+    return { error: "O motivo vai até 500 caracteres." };
+  }
+
+  const { error } = await clienteAnonimo().rpc("responder_forma_de_pagamento", {
+    p_token: token,
+    p_aceita: aceita,
+    // Com Confirmo, o motivo não vai: o banco não o guardaria.
+    ...(aceita ? {} : { p_motivo: aparado }),
   });
   if (error) return { error: traduzirErro(error) };
 

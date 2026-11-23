@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { Clock } from "lucide-react";
 
 import { abrirFicha } from "@/features/cadastro/publico-queries";
 import { declaracao } from "@/features/cadastro/regras";
 
-import { FichaPublica, Recebida } from "./ficha-publica";
+import { EtapaDoPagamento } from "./etapa-do-pagamento";
+import { FichaPublica, LinkIndisponivel, Recebida } from "./ficha-publica";
 
 /**
  * A ficha de cadastro que o lead preenche — a única tela do app para quem não
- * tem login.
+ * tem login. Com a forma de pagamento (entrega 4b), depois dos dados vem o
+ * pagamento, com Confirmo ou Há algo errado.
  *
  * Fora do grupo `(app)`: sem barra lateral, sem sincronia, sem nada do
  * sistema. O que autoriza é o token do endereço, conferido no banco (0035).
@@ -86,19 +87,28 @@ export default async function FichaDeCadastroPage({
     );
   }
 
+  // O cliente está no pagamento (entrega 4b): os dados chegaram, ou o link é
+  // só do pagamento. A forma vem montada no banco, sem a cotação.
+  if (ficha.situacao === "aguardando_pagamento" && ficha.forma) {
+    return (
+      <Moldura organizacao={ficha.organizacao}>
+        <EtapaDoPagamento
+          token={token}
+          forma={ficha.forma}
+          organizacao={ficha.organizacao}
+          soPagamento={ficha.modo === "so_pagamento"}
+        />
+      </Moldura>
+    );
+  }
+
   if (ficha.situacao !== "aberta") {
     return (
       <Moldura organizacao={ficha.organizacao}>
-        <div className="space-y-3 py-6 text-center">
-          <Clock className="mx-auto h-10 w-10 text-muted-foreground/60" aria-hidden />
-          <h2 className="font-serif text-xl font-medium">
-            Este link não está mais disponível
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Ele venceu ou foi substituído. Peça um novo link à equipe da{" "}
-            {ficha.organizacao}.
-          </p>
-        </div>
+        <LinkIndisponivel
+          organizacao={ficha.organizacao}
+          expirado={ficha.situacao === "expirada" && ficha.tem_forma}
+        />
       </Moldura>
     );
   }
@@ -113,6 +123,7 @@ export default async function FichaDeCadastroPage({
         telefone={ficha.telefone}
         declaracao={declaracao(ficha.organizacao)}
         organizacao={ficha.organizacao}
+        temForma={ficha.tem_forma}
       />
     </Moldura>
   );
