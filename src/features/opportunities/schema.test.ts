@@ -21,6 +21,8 @@ const EXEMPLO = {
     situacao: "sem_forma",
     confirmada_em: null,
     confirmada_por: null,
+    ultima_decisao: null,
+    enviada_em: null,
     cobrancas_criadas_em: null,
     partes: [],
   },
@@ -35,6 +37,8 @@ const CONFIRMADA = {
     situacao: "confirmada",
     confirmada_em: "2026-11-21T13:00:00.000Z",
     confirmada_por: "Ana Lima",
+    ultima_decisao: "confirmada_pela_equipe",
+    enviada_em: null,
     cobrancas_criadas_em: null,
     partes: [
       {
@@ -85,5 +89,35 @@ describe("resumoDoGanhoSchema", () => {
   it("recusa cobrança em moeda fora de BRL e USD", () => {
     const quebrado = { ...CONFIRMADA, cobrancas: [{ ...CONFIRMADA.cobrancas[0]!, moeda: "EUR" }] };
     expect(resumoDoGanhoSchema.safeParse(quebrado).success).toBe(false);
+  });
+});
+
+describe("resumoDoGanhoSchema — entrega 4b", () => {
+  const base = {
+    negocio: "n1",
+    pessoa: { id: "p1", nome: "Ana", vira_cliente: true },
+    itens: [],
+    processos: [],
+    forma: {
+      situacao: "enviada",
+      confirmada_em: null,
+      confirmada_por: null,
+      ultima_decisao: null,
+      enviada_em: "2026-11-23T15:00:00Z",
+      cobrancas_criadas_em: null,
+      partes: [],
+    },
+    cobrancas: [],
+    avisos: [],
+  };
+
+  it("lê a forma enviada com a data do envio", () => {
+    const lido = resumoDoGanhoSchema.parse(base);
+    expect(lido.forma.enviada_em).toBe("2026-11-23T15:00:00Z");
+  });
+
+  it("sem a decisão da última resposta, recusa", () => {
+    const { ultima_decisao: _fora, ...semDecisao } = base.forma;
+    expect(resumoDoGanhoSchema.safeParse({ ...base, forma: semDecisao }).success).toBe(false);
   });
 });

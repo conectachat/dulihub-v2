@@ -307,6 +307,8 @@ describe("avisosDoResumo (P1, P15)", () => {
       situacao: "confirmada",
       confirmada_em: null,
       confirmada_por: null,
+      ultima_decisao: null,
+      enviada_em: null,
       cobrancas_criadas_em: null,
       partes: [],
       ...forma,

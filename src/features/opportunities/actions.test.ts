@@ -166,6 +166,8 @@ const RESUMO = {
     situacao: "sem_forma",
     confirmada_em: null,
     confirmada_por: null,
+    ultima_decisao: null,
+    enviada_em: null,
     cobrancas_criadas_em: null,
     partes: [],
   },
@@ -293,6 +295,24 @@ describe("deleteOpportunity", () => {
     banco([{ id: NEGOCIO }], null);
     const estado = await deleteOpportunity(comId(NEGOCIO));
     expect(estado.error).toBeNull();
+  });
+
+  it("negócio com o link da ficha aberto: a frase da trava da 0064 volta como está", async () => {
+    const frase = "Cancele o link da ficha antes.";
+    const supabase = {
+      from: vi.fn(() => ({
+        delete: () => ({
+          eq: () => ({
+            neq: () => ({
+              select: async () => ({ data: null, error: { code: "P0001", message: frase } }),
+            }),
+          }),
+        }),
+      })),
+    };
+    vi.mocked(contextoAtual).mockResolvedValue({ supabase, error: null } as never);
+
+    expect((await deleteOpportunity(comId(NEGOCIO))).error).toBe(frase);
   });
 
   it("negócio com a forma confirmada: a frase da trava da 0058 volta como está", async () => {

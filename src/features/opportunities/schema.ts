@@ -63,6 +63,11 @@ export const resumoDoGanhoSchema = z.object({
     situacao: z.enum(["sem_forma", "rascunho", "enviada", "recusada", "confirmada", "cobrancas_criadas"]),
     confirmada_em: z.string().nullable(),
     confirmada_por: z.string().nullable(),
+    // 0064: quem decidiu por último ("confirmada" é o cliente) e quando o link
+    // da ficha com a forma saiu. `confirmada_em` e `confirmada_por` são a data e
+    // o nome da última resposta, também na recusa (P3 do plano da 4b).
+    ultima_decisao: z.enum(["confirmada", "recusada", "confirmada_pela_equipe"]).nullable(),
+    enviada_em: z.string().nullable(),
     cobrancas_criadas_em: z.string().nullable(),
     partes: z.array(
       z.object({

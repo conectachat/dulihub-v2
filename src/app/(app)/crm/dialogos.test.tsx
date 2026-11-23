@@ -41,6 +41,8 @@ const RESUMO = {
     situacao: "sem_forma",
     confirmada_em: null,
     confirmada_por: null,
+    ultima_decisao: null,
+    enviada_em: null,
     cobrancas_criadas_em: null,
     partes: [],
   },
@@ -79,6 +81,8 @@ const CONFIRMADA = {
     situacao: "confirmada",
     confirmada_em: "2026-11-05T15:00:00Z",
     confirmada_por: "Ana Lima",
+    ultima_decisao: "confirmada_pela_equipe",
+    enviada_em: null,
     cobrancas_criadas_em: null,
     partes: [
       parte("pt1", "Entrada", "BRL", 10000, [{ number: 1, amount: 10000, due_on: MES_QUE_VEM }]),
@@ -409,5 +413,61 @@ describe("DialogoDePerda", () => {
     expect(await screen.findByText("Nada foi alterado.")).toBeTruthy();
     expect((screen.getByLabelText("Motivo *") as HTMLSelectElement).value).toBe("preco");
     expect(aoMudar).not.toHaveBeenCalled();
+  });
+
+  describe("entrega 4b: a forma enviada e a recusada (CRM-14)", () => {
+    const texto = () => (document.body.textContent ?? "").replaceAll("\u00a0", " ");
+
+    it("enviada sem resposta: nenhuma cobrança, e o link será cancelado", async () => {
+      acoes.resumoDoGanho.mockResolvedValue({ error: null, resumo: {
+        ...RESUMO,
+        forma: { ...RESUMO.forma, situacao: "enviada", enviada_em: "2026-11-23T15:00:00Z" },
+      } });
+      render(<DialogoDeGanho negocio={negocio} aberto aoMudar={() => {}} />);
+      await screen.findByText("EB-1A");
+      expect(texto()).toContain(
+        "Enviada ao cliente em 23/11/2026, sem resposta: nenhuma cobrança será criada, e o link será cancelado. Para criá-las, confirme pela equipe antes do Ganho.",
+      );
+    });
+
+    it("recusada: nenhuma cobrança, e o caminho é ajustar ou confirmar pela equipe", async () => {
+      acoes.resumoDoGanho.mockResolvedValue({ error: null, resumo: {
+        ...RESUMO,
+        forma: {
+          ...RESUMO.forma,
+          situacao: "recusada",
+          ultima_decisao: "recusada",
+          confirmada_em: "2026-11-24T13:00:00Z",
+          confirmada_por: "Ana de Teste",
+        },
+      } });
+      render(<DialogoDeGanho negocio={negocio} aberto aoMudar={() => {}} />);
+      await screen.findByText("EB-1A");
+      expect(texto()).toContain(
+        "Recusada pelo cliente em 24/11/2026: nenhuma cobrança será criada. Ajuste a forma e envie de novo, ou confirme pela equipe.",
+      );
+    });
+
+    it("confirmada pelo cliente: diz que foi o cliente, e a parte convertida aparece assim", async () => {
+      acoes.resumoDoGanho.mockResolvedValue({ error: null, resumo: {
+        ...CONFIRMADA,
+        forma: {
+          ...CONFIRMADA.forma,
+          ultima_decisao: "confirmada",
+          partes: [
+            {
+              ...parte("pt3", "Cartão", "BRL", 21527.76, [{ number: 1, amount: 21527.76, due_on: MES_QUE_VEM }]),
+              method: "cartao",
+              usd_equivalent: 3900,
+            },
+          ],
+        },
+      } });
+      render(<DialogoDeGanho negocio={negocio} aberto aoMudar={() => {}} />);
+      await screen.findByText("EB-1A");
+      expect(texto()).toContain("Confirmada pelo cliente em 05/11/2026");
+      expect(texto()).not.toContain("Confirmada pela equipe");
+      expect(texto()).toContain("US$ 3.900 convertidos para R$ 21.527,76");
+    });
   });
 });

@@ -143,17 +143,21 @@ export function DialogoDeGanho({
 }
 
 /**
- * O que a forma de pagamento faz no Ganho (entrega 4a; CRM-14, §5.4 do
- * desenho): só a confirmada vira cobrança, uma por parte.
+ * O que a forma de pagamento faz no Ganho (entregas 4a e 4b; CRM-14): só a
+ * confirmada vira cobrança, uma por parte. A enviada sem resposta e a recusada
+ * não criam nada, e o resumo diz por quê e qual é o caminho.
  */
 function FormaNoResumo({ forma }: { forma: ResumoDoGanho["forma"] }) {
   if (forma.situacao === "confirmada") {
     return (
       <>
         <p>
-          {"Confirmada pela equipe" +
-            (forma.confirmada_em ? ` em ${formatarData(forma.confirmada_em)}` : "") +
-            (forma.confirmada_por ? `, por ${forma.confirmada_por}` : "")}
+          {forma.ultima_decisao === "confirmada"
+            ? "Confirmada pelo cliente" +
+              (forma.confirmada_em ? ` em ${formatarData(forma.confirmada_em)}` : "")
+            : "Confirmada pela equipe" +
+              (forma.confirmada_em ? ` em ${formatarData(forma.confirmada_em)}` : "") +
+              (forma.confirmada_por ? `, por ${forma.confirmada_por}` : "")}
         </p>
         <ul className="space-y-1">
           {forma.partes.map((parte) => (
@@ -176,7 +180,27 @@ function FormaNoResumo({ forma }: { forma: ResumoDoGanho["forma"] }) {
 
   if (forma.situacao === "sem_forma") return <p>Não definida: nenhuma cobrança será criada.</p>;
 
-  // Rascunho — e, até a 4b, enviada e recusada (P9).
+  if (forma.situacao === "enviada") {
+    return (
+      <p>
+        {"Enviada ao cliente" +
+          (forma.enviada_em ? ` em ${formatarData(forma.enviada_em)}` : "") +
+          ", sem resposta: nenhuma cobrança será criada, e o link será cancelado. " +
+          "Para criá-las, confirme pela equipe antes do Ganho."}
+      </p>
+    );
+  }
+
+  if (forma.situacao === "recusada") {
+    return (
+      <p>
+        {"Recusada pelo cliente" +
+          (forma.confirmada_em ? ` em ${formatarData(forma.confirmada_em)}` : "") +
+          ": nenhuma cobrança será criada. Ajuste a forma e envie de novo, ou confirme pela equipe."}
+      </p>
+    );
+  }
+
   return (
     <p>
       Em rascunho: nenhuma cobrança será criada. Para criá-las, confirme a forma antes do Ganho.
