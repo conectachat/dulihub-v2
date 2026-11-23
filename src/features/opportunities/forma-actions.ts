@@ -19,7 +19,7 @@ import {
  * A forma de pagamento do negócio, na tela do lead (entrega 4a; FIC-7, FIC-10,
  * FIC-11).
  *
- * Salvar, confirmar e refazer vão pelas funções da 0058, que conferem tudo de
+ * Salvar, confirmar, enviar e voltar para rascunho vão pelas funções da 0058 e da 0064, que conferem tudo de
  * novo e travam a forma: as frases delas voltam como estão. A forma inválida
  * nem sai daqui — a mesma primeira frase que a janela mostra. A cotação é a
  * única coluna gravada direto; a trava da 0058 deixa só ela e a anotação.
@@ -102,22 +102,76 @@ export async function confirmarFormaPelaEquipe(
   return estado;
 }
 
-export async function refazerFormaDePagamento(
+const MUDOU = "A forma de pagamento mudou enquanto você olhava. Atualize a página.";
+
+/** O lead, a pessoa, o quadro (o selo da ficha) e a Início (os avisos da forma). */
+function revalidarLink(negocio: string, formData: FormData) {
+  revalidar(negocio, formData);
+  revalidatePath("/crm");
+  revalidatePath("/");
+}
+
+/**
+ * "Confirmar e gerar link" (entrega 4b, FIC-7): a forma vai no link da ficha.
+ *
+ * A `versao` é o `updated_at` que a prévia mostrou, em texto, como veio do
+ * banco: `enviar_forma_de_pagamento` recusa se alguém salvou depois — o link
+ * nunca sai com valores que ninguém viu.
+ */
+export async function enviarFormaDePagamento(
   _anterior: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
   const negocio = negocioDo(formData);
   if (!negocio) return falhou("Negócio não informado.");
 
+  const versao = formData.get("versao");
+  if (typeof versao !== "string" || !versao) return falhou(MUDOU);
+
   const { supabase, error: erroDoContexto } = await contextoAtual();
   if (erroDoContexto) return falhou(erroDoContexto);
 
   const estado = resultadoSemContagem(
-    await supabase.rpc("voltar_forma_para_rascunho", { p_negocio: negocio }),
+    await supabase.rpc("enviar_forma_de_pagamento", {
+      p_negocio: negocio,
+      p_versao: versao,
+      p_pedir_dados_de_novo: formData.get("pedir_dados_de_novo") === "on",
+    }),
   );
   if (estado.error) return estado;
 
-  revalidar(negocio, formData);
+  revalidarLink(negocio, formData);
+  return estado;
+}
+
+const DE = z.enum(["enviada", "recusada", "confirmada"]);
+
+/**
+ * Volta a forma para rascunho: Editar e Cancelar link (`de = enviada`),
+ * Ajustar (`recusada`) e Refazer (`confirmada`, só o dono ou a gestão).
+ *
+ * Quem clica diz de que estado partiu: se o cliente respondeu no meio, o banco
+ * recusa com "mudou enquanto você olhava" em vez de desfazer a resposta.
+ */
+export async function voltarFormaParaRascunho(
+  _anterior: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const negocio = negocioDo(formData);
+  if (!negocio) return falhou("Negócio não informado.");
+
+  const de = DE.safeParse(formData.get("de"));
+  if (!de.success) return falhou(FORMATO);
+
+  const { supabase, error: erroDoContexto } = await contextoAtual();
+  if (erroDoContexto) return falhou(erroDoContexto);
+
+  const estado = resultadoSemContagem(
+    await supabase.rpc("voltar_forma_para_rascunho", { p_negocio: negocio, p_de: de.data }),
+  );
+  if (estado.error) return estado;
+
+  revalidarLink(negocio, formData);
   return estado;
 }
 

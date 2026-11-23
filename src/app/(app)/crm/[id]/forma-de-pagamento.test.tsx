@@ -16,7 +16,7 @@ const formatarMoeda = (valor: number, m: string) => moeda(valor, m).replace(/\s/
 vi.mock("@/features/opportunities/forma-actions", () => ({
   salvarFormaDePagamento: vi.fn(async () => ({ error: null, ok: true, token: "t" })),
   confirmarFormaPelaEquipe: vi.fn(async () => ({ error: null, ok: true, token: "t" })),
-  refazerFormaDePagamento: vi.fn(async () => ({ error: null, ok: true, token: "t" })),
+  voltarFormaParaRascunho: vi.fn(async () => ({ error: null, ok: true, token: "t" })),
   salvarCotacao: vi.fn(async () => ({ error: null, ok: true, token: "t" })),
 }));
 
@@ -32,6 +32,7 @@ const ITENS = [
 const DO_CRITERIO: FormaDoNegocio = {
   id: "plano-1",
   status: "rascunho",
+  updated_at: "2026-11-23T14:02:11.123456+00:00",
   reference_rate: null,
   reference_rate_note: null,
   charges_created_at: null,
@@ -60,6 +61,7 @@ const DO_CRITERIO: FormaDoNegocio = {
     },
   ],
   ultimaResposta: null,
+  linkAberto: null,
 };
 
 const CONFIRMADA: FormaDoNegocio = {
@@ -69,6 +71,7 @@ const CONFIRMADA: FormaDoNegocio = {
     answered_at: "2026-11-05T15:00:00Z",
     answered_by_name: "Ana Lima",
     reason: "acertado por WhatsApp",
+    decision: "confirmada_pela_equipe",
   },
 };
 

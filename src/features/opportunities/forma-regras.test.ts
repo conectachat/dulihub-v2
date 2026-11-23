@@ -11,6 +11,7 @@ import {
   comParcelasGeradas,
   erroDaForma,
   erroDaParte,
+  estadoDaForma,
   linhaDaParte,
   moedaSugerida,
   parteSugerida,
@@ -404,5 +405,21 @@ describe("linhaDaParte", () => {
     expect(linhaDaParte(parte(12000, 12))).toBe(
       `Parcelas · Transferência · 12 × ${formatarMoeda(1000, "USD")} · de 10/12/2026 a 10/11/2027`,
     );
+  });
+});
+
+describe("estadoDaForma", () => {
+  const AGORA = new Date("2026-11-26T15:00:00Z");
+  const link = (expires_at: string) => ({ id: "l", token: "t", expires_at, created_at: "2026-11-23T12:00:00Z" });
+
+  it("enviada com o link no prazo: enviada; vencido há um minuto: vencida", () => {
+    expect(estadoDaForma({ status: "enviada", linkAberto: link("2026-11-26T15:01:00Z") }, AGORA)).toBe("enviada");
+    expect(estadoDaForma({ status: "enviada", linkAberto: link("2026-11-26T14:59:00Z") }, AGORA)).toBe("vencida");
+  });
+
+  it("os outros estados passam como estão", () => {
+    expect(estadoDaForma({ status: "recusada", linkAberto: null }, AGORA)).toBe("recusada");
+    expect(estadoDaForma({ status: "rascunho", linkAberto: null }, AGORA)).toBe("rascunho");
+    expect(estadoDaForma({ status: "confirmada", linkAberto: null }, AGORA)).toBe("confirmada");
   });
 });

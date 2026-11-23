@@ -295,3 +295,23 @@ export function avisosDoResumo(resumo: ResumoDoGanho, hoje: string): string[] {
   if (coerencia) avisos.push(coerencia);
   return avisos;
 }
+
+export type EstadoDoCartao = "rascunho" | "enviada" | "vencida" | "recusada" | "confirmada";
+
+/**
+ * O estado que o cartão do lead mostra (entrega 4b): o da forma, mais
+ * "vencida" — a forma continua `enviada` no banco, mas o link dela passou do
+ * prazo (ou sumiu) e o cliente não respondeu. Para enviar de novo, Editar.
+ */
+export function estadoDaForma(
+  forma: {
+    status: "rascunho" | "enviada" | "recusada" | "confirmada";
+    linkAberto: { expires_at: string } | null;
+  },
+  agora: Date,
+): EstadoDoCartao {
+  if (forma.status !== "enviada") return forma.status;
+  const link = forma.linkAberto;
+  if (!link || new Date(link.expires_at).getTime() <= agora.getTime()) return "vencida";
+  return "enviada";
+}

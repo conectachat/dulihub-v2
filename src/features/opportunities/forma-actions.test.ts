@@ -9,7 +9,8 @@ import { revalidarPessoa } from "@/lib/revalidar";
 
 import {
   confirmarFormaPelaEquipe,
-  refazerFormaDePagamento,
+  enviarFormaDePagamento,
+  voltarFormaParaRascunho,
   salvarCotacao,
   salvarFormaDePagamento,
 } from "./forma-actions";
@@ -183,28 +184,80 @@ describe("confirmarFormaPelaEquipe", () => {
   });
 });
 
-describe("refazerFormaDePagamento", () => {
-  it("chama voltar_forma_para_rascunho e revalida o lead e a pessoa", async () => {
-    const r = await refazerFormaDePagamento(
+describe("enviarFormaDePagamento", () => {
+  const VERSAO = "2026-11-23T14:02:11.123456+00:00";
+
+  it("leva a versão como texto, igual à lida (foco 1), e revalida o lead, a pessoa e a Início", async () => {
+    usar(bancoFalso({ data: "token-novo", error: null }));
+    const r = await enviarFormaDePagamento(
       ESTADO_INICIAL,
-      formulario({ negocio: NEGOCIO, pessoa: PESSOA }),
+      formulario({ negocio: NEGOCIO, pessoa: PESSOA, versao: VERSAO }),
     );
 
-    expect(banco.rpc).toHaveBeenCalledWith("voltar_forma_para_rascunho", { p_negocio: NEGOCIO });
+    expect(banco.rpc).toHaveBeenCalledWith("enviar_forma_de_pagamento", {
+      p_negocio: NEGOCIO,
+      p_versao: VERSAO,
+      p_pedir_dados_de_novo: false,
+    });
+    expect(r.ok).toBe(true);
+    expect(revalidatePath).toHaveBeenCalledWith(`/crm/${NEGOCIO}`);
+    expect(revalidatePath).toHaveBeenCalledWith("/");
+    expect(revalidarPessoa).toHaveBeenCalledWith(PESSOA);
+  });
+
+  it("com a caixa marcada, pede os dados pessoais de novo", async () => {
+    await enviarFormaDePagamento(
+      ESTADO_INICIAL,
+      formulario({ negocio: NEGOCIO, pessoa: PESSOA, versao: VERSAO, pedir_dados_de_novo: "on" }),
+    );
+    expect(banco.rpc).toHaveBeenCalledWith("enviar_forma_de_pagamento", {
+      p_negocio: NEGOCIO,
+      p_versao: VERSAO,
+      p_pedir_dados_de_novo: true,
+    });
+  });
+
+  it("a frase do banco volta como está", async () => {
+    const mudou = "A forma de pagamento mudou enquanto você olhava. Atualize a página.";
+    usar(bancoFalso({ data: null, error: { code: "P0001", message: mudou } }));
+    const r = await enviarFormaDePagamento(
+      ESTADO_INICIAL,
+      formulario({ negocio: NEGOCIO, pessoa: PESSOA, versao: VERSAO }),
+    );
+    expect(r.error).toBe(mudou);
+  });
+});
+
+describe("voltarFormaParaRascunho", () => {
+  it.each(["enviada", "recusada", "confirmada"])("de %s: diz ao banco de onde parte", async (de) => {
+    const r = await voltarFormaParaRascunho(
+      ESTADO_INICIAL,
+      formulario({ negocio: NEGOCIO, pessoa: PESSOA, de }),
+    );
+
+    expect(banco.rpc).toHaveBeenCalledWith("voltar_forma_para_rascunho", { p_negocio: NEGOCIO, p_de: de });
     expect(r.ok).toBe(true);
     expect(revalidarPessoa).toHaveBeenCalledWith(PESSOA);
     expect(revalidatePath).toHaveBeenCalledWith(`/crm/${NEGOCIO}`);
   });
 
-  it("a frase do banco volta como está", async () => {
-    usar(bancoFalso({ data: null, error: { code: "P0001", message: "A forma não está confirmada." } }));
-
-    const r = await refazerFormaDePagamento(
+  it("estado que não existe não chama o banco", async () => {
+    const r = await voltarFormaParaRascunho(
       ESTADO_INICIAL,
-      formulario({ negocio: NEGOCIO, pessoa: PESSOA }),
+      formulario({ negocio: NEGOCIO, pessoa: PESSOA, de: "rascunho" }),
     );
+    expect(banco.rpc).not.toHaveBeenCalled();
+    expect(r.error).toBe("A forma de pagamento veio num formato inválido.");
+  });
 
-    expect(r.error).toBe("A forma não está confirmada.");
+  it("a frase do banco volta como está", async () => {
+    const mudou = "A forma de pagamento mudou enquanto você olhava. Atualize a página.";
+    usar(bancoFalso({ data: null, error: { code: "P0001", message: mudou } }));
+    const r = await voltarFormaParaRascunho(
+      ESTADO_INICIAL,
+      formulario({ negocio: NEGOCIO, pessoa: PESSOA, de: "enviada" }),
+    );
+    expect(r.error).toBe(mudou);
   });
 });
 

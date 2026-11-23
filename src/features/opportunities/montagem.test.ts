@@ -15,6 +15,8 @@ const parcela = (number: number, amount: number, due_on: string) => ({ number, a
 const linha = {
   id: "plano-1",
   status: "confirmada",
+  // A versão que a prévia do envio leva: texto, com os microssegundos.
+  updated_at: "2026-11-23T14:02:11.123456+00:00",
   reference_rate: 5.425,
   reference_rate_note: "C6, 21/nov",
   charges_created_at: null,
@@ -48,15 +50,62 @@ const linha = {
       created_at: "2026-11-20T12:00:00Z",
       answered_by_name: "Ana",
       reason: null,
+      decision: "confirmada_pela_equipe",
     },
     {
       answered_at: "2026-11-21T15:00:00Z",
       created_at: "2026-11-21T15:00:00Z",
       answered_by_name: "Bruno",
       reason: "Cliente pediu entrada no pix",
+      decision: "confirmada",
     },
   ],
+  links: [],
 };
+
+/** Um link com a forma, como o embutido devolve. */
+const link = (id: string, created_at: string, extra: Record<string, string | null> = {}) => ({
+  id,
+  token: `token-${id}`,
+  expires_at: "2026-11-27T03:00:00+00:00",
+  created_at,
+  closed_at: null,
+  cancelled_at: null,
+  ...extra,
+});
+
+describe("formaDoNegocio — o que a 4b lê", () => {
+  it("a versão passa como veio, com os microssegundos (foco 1)", () => {
+    expect(formaDoNegocio([linha]).forma!.updated_at).toBe("2026-11-23T14:02:11.123456+00:00");
+  });
+
+  it("o link aberto é o mais recente sem fechar nem cancelar", () => {
+    const { forma } = formaDoNegocio([
+      {
+        ...linha,
+        links: [
+          link("velho", "2026-11-20T12:00:00Z", { cancelled_at: "2026-11-21T12:00:00Z" }),
+          link("atual", "2026-11-23T12:00:00Z"),
+          link("respondido", "2026-11-19T12:00:00Z", { closed_at: "2026-11-19T13:00:00Z" }),
+        ],
+      },
+    ]);
+    expect(forma!.linkAberto).toEqual({
+      id: "atual",
+      token: "token-atual",
+      expires_at: "2026-11-27T03:00:00+00:00",
+      created_at: "2026-11-23T12:00:00Z",
+    });
+  });
+
+  it("sem link aberto, nulo", () => {
+    expect(formaDoNegocio([linha]).forma!.linkAberto).toBeNull();
+  });
+
+  it("a última resposta diz quem decidiu", () => {
+    expect(formaDoNegocio([linha]).forma!.ultimaResposta!.decision).toBe("confirmada");
+  });
+});
 
 describe("formaDoNegocio", () => {
   it("lista vazia: o negócio não tem forma", () => {
@@ -95,6 +144,7 @@ describe("formaDoNegocio", () => {
       answered_at: "2026-11-21T15:00:00Z",
       answered_by_name: "Bruno",
       reason: "Cliente pediu entrada no pix",
+      decision: "confirmada",
     });
   });
 

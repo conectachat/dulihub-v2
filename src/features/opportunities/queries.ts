@@ -184,10 +184,12 @@ export async function obterNegocio(id: string) {
          processos:projects!projects_item_same_org(id)),
        person:people(id, full_name, email, phone, phone_country_code, company,
          job_title, lifecycle_stage, person_tags(tag:tags(id, name))),
-       forma:payment_plans(id, status, reference_rate, reference_rate_note, charges_created_at,
-         partes:payment_plan_parts(position, label, method, currency, total, installments_count,
+       forma:payment_plans(id, status, updated_at, reference_rate, reference_rate_note, charges_created_at,
+         partes:payment_plan_parts(position, label, method, currency, total, installments_count, usd_equivalent,
            parcelas:payment_plan_installments(number, amount, due_on)),
-         respostas:payment_plan_responses(answered_at, created_at, answered_by_name, reason))`,
+         respostas:payment_plan_responses(answered_at, created_at, answered_by_name, reason, decision),
+         links:registration_forms!registration_forms_plan_same_org(id, token, expires_at, created_at,
+           closed_at, cancelled_at))`,
     )
     .eq("id", id)
     .maybeSingle();

@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   confirmarFormaPelaEquipe,
-  refazerFormaDePagamento,
+  voltarFormaParaRascunho,
   salvarCotacao,
 } from "@/features/opportunities/forma-actions";
 import {
@@ -260,7 +260,7 @@ function Refazer({
 }) {
   return (
     <FormDialog
-      acao={refazerFormaDePagamento}
+      acao={voltarFormaParaRascunho}
       titulo="Refazer a forma de pagamento"
       salvar="Refazer"
       pendente="Refazendo..."
@@ -271,6 +271,7 @@ function Refazer({
         </Button>
       }
     >
+      <input type="hidden" name="de" value="confirmada" />
       <input type="hidden" name="negocio" value={negocioId} />
       <input type="hidden" name="pessoa" value={pessoaId} />
       <p className="text-sm">
