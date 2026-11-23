@@ -123,7 +123,7 @@ describe("Vistos", () => {
 
   it("travada pela forma confirmada: só leitura, com a frase do Refazer (entrega 4a)", () => {
     render(
-      <Vistos negocioId="n1" itens={ITENS} catalogo={CATALOGO} ganho={false} travadaPelaForma />,
+      <Vistos negocioId="n1" itens={ITENS} catalogo={CATALOGO} ganho={false} travadaPelaForma="confirmada" />,
     );
 
     expect(screen.getByText("EB-1A")).toBeTruthy();
@@ -142,7 +142,7 @@ describe("Vistos", () => {
         itens={ITENS}
         catalogo={CATALOGO}
         ganho={false}
-        travadaPelaForma
+        travadaPelaForma="confirmada"
         negocioAberto={false}
       />,
     );
@@ -162,7 +162,7 @@ describe("Vistos", () => {
         itens={ITENS}
         catalogo={CATALOGO}
         ganho={false}
-        travadaPelaForma={false}
+        travadaPelaForma={null}
       />,
     );
 
@@ -173,5 +173,16 @@ describe("Vistos", () => {
   it("negócio ganho antigo, sem vistos, não pede visto para o Ganho", () => {
     render(<Vistos negocioId="n1" itens={[]} catalogo={CATALOGO} ganho />);
     expect(screen.getByText("Nenhum visto registrado.")).toBeTruthy();
+  });
+
+  it("travada pela forma enviada: só leitura, com a frase do Editar (entrega 4b)", () => {
+    render(
+      <Vistos negocioId="n1" itens={ITENS} catalogo={CATALOGO} ganho={false} travadaPelaForma="enviada" />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Acrescentar visto" })).toBeNull();
+    expect(
+      screen.getByText("A forma de pagamento foi enviada ao cliente. Use Editar para mudar os vistos."),
+    ).toBeTruthy();
   });
 });

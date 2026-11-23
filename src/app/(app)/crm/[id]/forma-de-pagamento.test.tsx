@@ -17,6 +17,7 @@ vi.mock("@/features/opportunities/forma-actions", () => ({
   salvarFormaDePagamento: vi.fn(async () => ({ error: null, ok: true, token: "t" })),
   confirmarFormaPelaEquipe: vi.fn(async () => ({ error: null, ok: true, token: "t" })),
   voltarFormaParaRascunho: vi.fn(async () => ({ error: null, ok: true, token: "t" })),
+  enviarFormaDePagamento: vi.fn(async () => ({ error: null, ok: true, token: "t" })),
   salvarCotacao: vi.fn(async () => ({ error: null, ok: true, token: "t" })),
 }));
 
@@ -75,6 +76,21 @@ const CONFIRMADA: FormaDoNegocio = {
   },
 };
 
+/** Terça, 24/11/2026, meio-dia em São Paulo. */
+const AGORA = new Date("2026-11-24T15:00:00Z");
+
+/** O link enviado na segunda, 23/11: vale até quinta, 26/11 (o banco grava sexta, 00h). */
+const LINK = {
+  id: "link-1",
+  token: "tok-da-forma",
+  expires_at: "2026-11-27T03:00:00+00:00",
+  created_at: "2026-11-23T15:00:00Z",
+};
+
+const ENVIADA: FormaDoNegocio = { ...DO_CRITERIO, status: "enviada", linkAberto: LINK };
+
+const texto = () => (document.body.textContent ?? "").replaceAll("\u00a0", " ");
+
 function desenhar(props: Partial<Parameters<typeof CartaoDaFormaDePagamento>[0]> = {}) {
   return render(
     <CartaoDaFormaDePagamento
@@ -85,6 +101,12 @@ function desenhar(props: Partial<Parameters<typeof CartaoDaFormaDePagamento>[0]>
       forma={DO_CRITERIO}
       aberto
       podeConfirmar
+      origem="https://hub.example"
+      ddi="+55"
+      telefone="98999990000"
+      jaMandouFicha={false}
+      fichaComumAbertaEm={null}
+      agora={AGORA}
       {...props}
     />,
   );
@@ -212,5 +234,132 @@ describe("CartaoDaFormaDePagamento", () => {
       ),
     ).toBeTruthy();
     expect(screen.getByLabelText("Observação (opcional)")).toBeTruthy();
+  });
+
+  describe("entrega 4b: o cartão por estado", () => {
+    it("rascunho: Editar, Enviar ficha e Confirmar pela equipe", () => {
+      desenhar({ podeConfirmar: false });
+      expect(screen.getByRole("button", { name: /Editar/ })).toBeTruthy();
+      // Enviar não fecha acordo: qualquer membro (decisão 8).
+      expect(screen.getByRole("button", { name: "Enviar ficha" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Confirmar pela equipe" })).toBeNull();
+    });
+
+    it("enviada: o selo diz até quando vale, e o WhatsApp leva o link e o prazo", () => {
+      desenhar({ forma: ENVIADA });
+
+      expect(screen.getByText("enviada · vale até qui, 26/11")).toBeTruthy();
+      expect(screen.getByRole("button", { name: /Copiar link/ })).toBeTruthy();
+      const whatsapp = screen.getByRole("link", { name: /WhatsApp/ });
+      const href = whatsapp.getAttribute("href") ?? "";
+      expect(href).toContain("https://wa.me/5598999990000?text=");
+      expect(href).toContain(encodeURIComponent("https://hub.example/cadastro/tok-da-forma"));
+      expect(href).toContain(encodeURIComponent("quinta-feira, 26/11"));
+
+      expect(screen.getByRole("button", { name: /Editar/ })).toBeTruthy();
+      expect(screen.getByRole("button", { name: /Cancelar link/ })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Confirmar pela equipe" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Enviar ficha" })).toBeNull();
+    });
+
+    it("enviada, Editar pergunta antes: o link enviado deixa de valer", () => {
+      desenhar({ forma: ENVIADA });
+      fireEvent.click(screen.getByRole("button", { name: /Editar/ }));
+      expect(texto()).toContain("O link enviado em 23/11/2026 deixa de valer.");
+    });
+
+    it("sem telefone, o WhatsApp não aparece — só o copiar", () => {
+      desenhar({ forma: ENVIADA, telefone: null });
+      expect(screen.queryByRole("link", { name: /WhatsApp/ })).toBeNull();
+      expect(screen.getByRole("button", { name: /Copiar link/ })).toBeTruthy();
+    });
+
+    it("link vencido: o selo diz, e o caminho é Editar", () => {
+      desenhar({ forma: ENVIADA, agora: new Date("2026-11-27T03:01:00Z") });
+
+      expect(screen.getByText("link vencido")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: /Copiar link/ })).toBeNull();
+      expect(screen.getByRole("button", { name: /Editar/ })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Confirmar pela equipe" })).toBeTruthy();
+    });
+
+    it("recusada: o motivo, e Ajustar", () => {
+      desenhar({
+        forma: {
+          ...DO_CRITERIO,
+          status: "recusada",
+          ultimaResposta: {
+            answered_at: "2026-11-24T13:00:00Z",
+            answered_by_name: "Maria Souza",
+            reason: "Datas erradas",
+            decision: "recusada",
+          },
+        },
+      });
+
+      expect(screen.getByText("recusada")).toBeTruthy();
+      expect(screen.getByText("Motivo: Datas erradas")).toBeTruthy();
+      expect(screen.getByRole("button", { name: /Ajustar/ })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: /Editar/ })).toBeNull();
+    });
+
+    it("recusada sem motivo: diz que não houve", () => {
+      desenhar({
+        forma: {
+          ...DO_CRITERIO,
+          status: "recusada",
+          ultimaResposta: { answered_at: "2026-11-24T13:00:00Z", answered_by_name: "Maria", reason: null, decision: "recusada" },
+        },
+      });
+      expect(screen.getByText("Sem motivo informado.")).toBeTruthy();
+    });
+
+    it("rascunho depois de Ajustar: a recusa continua à vista, com o motivo", () => {
+      desenhar({
+        forma: {
+          ...DO_CRITERIO,
+          ultimaResposta: {
+            answered_at: "2026-11-24T13:00:00Z",
+            answered_by_name: "Maria Souza",
+            reason: "Datas erradas",
+            decision: "recusada",
+          },
+        },
+      });
+      expect(texto()).toContain("Recusada pelo cliente em 24/11/2026: Datas erradas");
+      expect(screen.getByRole("button", { name: "Enviar ficha" })).toBeTruthy();
+    });
+
+    it("confirmada pelo cliente: diz que foi o cliente", () => {
+      desenhar({
+        forma: {
+          ...DO_CRITERIO,
+          status: "confirmada",
+          ultimaResposta: { answered_at: "2026-11-24T13:00:00Z", answered_by_name: "Maria", reason: null, decision: "confirmada" },
+        },
+      });
+      expect(texto()).toContain("Confirmada pelo cliente em 24/11/2026");
+      expect(texto()).not.toContain("Confirmada pela equipe");
+    });
+
+    it("a parte em reais diz de quantos dólares veio (FIC-13)", () => {
+      desenhar({
+        forma: {
+          ...DO_CRITERIO,
+          partes: [
+            {
+              label: "Cartão",
+              method: "cartao",
+              currency: "BRL",
+              total: 21527.76,
+              installments_count: 1,
+              usd_equivalent: 3900,
+              parcelas: [{ number: 1, amount: 21527.76, due_on: "2026-12-15" }],
+            },
+          ],
+        },
+      });
+      expect(texto()).toContain("US$ 3.900 convertidos para R$ 21.527,76");
+    });
   });
 });

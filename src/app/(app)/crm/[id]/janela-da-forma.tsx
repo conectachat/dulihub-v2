@@ -55,6 +55,8 @@ type Rascunho = {
   method: Metodo;
   currency: Moeda;
   total: string;
+  /** "Convertido de US$" (FIC-13), só na parte em reais. Vazio: sem conversão. */
+  dolares: string;
   quantidade: string;
   primeiraData: string;
   parcelas: { number: number; amount: string; due_on: string }[];
@@ -74,7 +76,9 @@ function paraParte(r: Rascunho): ParteDaForma {
     currency: r.currency,
     total: valorDe(r.total),
     installments_count: r.method === "cartao" ? 1 : quantidadeDe(r.quantidade),
-    usd_equivalent: null,
+    // Lixo vale zero, e o zero é recusado com a frase do banco ("Informe de
+    // quantos dólares…"); vazio, ou a parte em dólar, é sem conversão.
+    usd_equivalent: r.currency === "BRL" && r.dolares.trim() !== "" ? valorDe(r.dolares) : null,
     parcelas: r.parcelas.map((p) => ({ number: p.number, amount: valorDe(p.amount), due_on: p.due_on })),
   };
 }
@@ -105,6 +109,7 @@ function rascunhoDe(parte: ParteDaForma): Rascunho {
     method: parte.method,
     currency: parte.currency,
     total: comoDigitado(parte.total),
+    dolares: parte.usd_equivalent === null ? "" : comoDigitado(parte.usd_equivalent),
     quantidade: String(parte.installments_count),
     primeiraData: parte.parcelas[0]?.due_on ?? hojeEmSaoPaulo(),
     parcelas: parte.parcelas.map((p) => ({
@@ -337,7 +342,9 @@ function CamposDaParte({
             value={r.currency}
             onChange={(e) => {
               const moeda = MOEDAS.find((m) => m === e.target.value);
-              if (moeda) aoMudar({ currency: moeda }, false);
+              // Em dólar a conversão some, e o valor junto: escondida, ela
+              // recusaria o salvar com uma frase sobre um campo que não se vê.
+              if (moeda) aoMudar(moeda === "BRL" ? { currency: moeda } : { currency: moeda, dolares: "" }, false);
             }}
           >
             {MOEDAS.map((m) => (
@@ -357,6 +364,18 @@ function CamposDaParte({
             onChange={(e) => aoMudar({ total: e.target.value }, true)}
           />
         </label>
+        {r.currency === "BRL" ? (
+          <label className="space-y-1">
+            <span className="text-xs text-muted-foreground">Convertido de US$</span>
+            <Input
+              aria-label={`Convertido de US$ ${daParte}`}
+              inputMode="decimal"
+              placeholder="opcional"
+              value={r.dolares}
+              onChange={(e) => aoMudar({ dolares: e.target.value }, false)}
+            />
+          </label>
+        ) : null}
         {cartao ? null : (
           <label className="space-y-1">
             <span className="text-xs text-muted-foreground">Parcelas</span>

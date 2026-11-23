@@ -244,4 +244,42 @@ describe("JanelaDaForma", () => {
     expect(campo("Total da parte 1").value).toBe("10000");
     expect(campo("1ª data da parte 1").value).toBe("2026-11-10");
   });
+
+  describe("a conversão (FIC-13)", () => {
+    it("Convertido de US$ aparece na parte em reais, e não na parte em dólar", () => {
+      abrir();
+      fireEvent.click(screen.getByRole("button", { name: "Cartão" }));
+      expect(screen.queryByLabelText("Convertido de US$ da parte 1")).toBeNull();
+
+      fireEvent.change(screen.getByLabelText("Moeda da parte 1"), { target: { value: "BRL" } });
+      expect(screen.getByLabelText("Convertido de US$ da parte 1")).toBeTruthy();
+    });
+
+    it("trocar para dólar limpa a conversão (foco 2)", () => {
+      abrir();
+      fireEvent.click(screen.getByRole("button", { name: "Cartão" }));
+      fireEvent.change(screen.getByLabelText("Moeda da parte 1"), { target: { value: "BRL" } });
+      fireEvent.change(campo("Convertido de US$ da parte 1"), { target: { value: "3900" } });
+
+      fireEvent.change(screen.getByLabelText("Moeda da parte 1"), { target: { value: "USD" } });
+      fireEvent.change(screen.getByLabelText("Moeda da parte 1"), { target: { value: "BRL" } });
+      expect(campo("Convertido de US$ da parte 1").value).toBe("");
+    });
+
+    it("Salvar leva a conversão no JSON", async () => {
+      abrir();
+      fireEvent.click(screen.getByRole("button", { name: "Cartão" }));
+      fireEvent.change(screen.getByLabelText("Moeda da parte 1"), { target: { value: "BRL" } });
+      fireEvent.change(campo("Total da parte 1"), { target: { value: "21527,76" } });
+      fireEvent.change(campo("Convertido de US$ da parte 1"), { target: { value: "3900" } });
+      fireEvent.change(campo("1ª data da parte 1"), { target: { value: "2026-12-15" } });
+
+      fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+      await vi.waitFor(() => expect(salvarFormaDePagamento).toHaveBeenCalledTimes(1));
+      const formData = vi.mocked(salvarFormaDePagamento).mock.calls[0]![1] as FormData;
+      const [parte] = JSON.parse(String(formData.get("forma"))).partes;
+      expect(parte).toMatchObject({ currency: "BRL", total: 21527.76, usd_equivalent: 3900 });
+    });
+  });
 });

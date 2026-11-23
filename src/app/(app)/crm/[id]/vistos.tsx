@@ -66,18 +66,22 @@ export function Vistos({
   itens,
   catalogo,
   ganho,
-  travadaPelaForma = false,
+  travadaPelaForma = null,
   negocioAberto = true,
 }: {
   negocioId: string;
   itens: ItemDoNegocio[];
   catalogo: VistoDoCatalogo[];
   ganho: boolean;
-  travadaPelaForma?: boolean;
+  /**
+   * A forma confirmada (4a) ou enviada ao cliente (4b) prende os vistos até o
+   * Ganho criar as cobranças: o cliente lê os vistos na ficha.
+   */
+  travadaPelaForma?: "confirmada" | "enviada" | null;
   /** Encerrado, o Refazer só vem depois de reabrir: a frase diz isso. */
   negocioAberto?: boolean;
 }) {
-  const soLeitura = ganho || travadaPelaForma;
+  const soLeitura = ganho || travadaPelaForma !== null;
   const totais = Object.entries(somarItensPorMoeda(itens)).sort(([a], [b]) => a.localeCompare(b));
 
   return (
@@ -143,7 +147,11 @@ export function Vistos({
         <p className="text-xs text-muted-foreground">
           Negócio ganho: para desistir de um visto, encerre o processo dele.
         </p>
-      ) : travadaPelaForma ? (
+      ) : travadaPelaForma === "enviada" ? (
+        <p className="text-xs text-muted-foreground">
+          A forma de pagamento foi enviada ao cliente. Use Editar para mudar os vistos.
+        </p>
+      ) : travadaPelaForma === "confirmada" ? (
         <p className="text-xs text-muted-foreground">
           {negocioAberto
             ? "A forma de pagamento está confirmada. Use Refazer para mudar os vistos."

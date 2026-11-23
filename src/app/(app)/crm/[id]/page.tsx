@@ -246,7 +246,11 @@ export default async function LeadPage({
                 itens={negocio.itens}
                 catalogo={catalogo}
                 ganho={ganho}
-                travadaPelaForma={forma?.status === "confirmada" && !forma.charges_created_at}
+                travadaPelaForma={
+                  forma && !forma.charges_created_at && (forma.status === "confirmada" || forma.status === "enviada")
+                    ? forma.status
+                    : null
+                }
                 negocioAberto={aberto}
               />
               <dl className="mt-4 space-y-3 text-sm">
@@ -274,6 +278,13 @@ export default async function LeadPage({
             forma={forma}
             aberto={aberto}
             podeConfirmar={podeConfirmar}
+            origem={origemDoPedido(cabecalhos)}
+            ddi={pessoa.phone_country_code}
+            telefone={pessoa.phone}
+            jaMandouFicha={cadastro?.fichaRecebida != null}
+            fichaComumAbertaEm={
+              cadastro?.linkAtual && !cadastro.linkAtual.negocio ? cadastro.linkAtual.created_at : null
+            }
           />
         </div>
 
