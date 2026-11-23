@@ -1,11 +1,8 @@
 // @vitest-environment node
 
-import { createClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import type { Database } from "@/lib/supabase/database.types";
-
-import { obrigatorio } from "../contas";
+import { ACEITE, anonimoDeTeste, fichaCompleta } from "../ficha-de-teste";
 import { entrarComo, type Cliente } from "./clientes";
 
 /**
@@ -23,52 +20,11 @@ import { entrarComo, type Cliente } from "./clientes";
  * Roda contra o banco de verdade, pelo PostgREST, como o app.
  */
 
-const anonimo = () =>
-  createClient<Database>(
-    obrigatorio("NEXT_PUBLIC_SUPABASE_URL"),
-    obrigatorio("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"),
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  );
-
 const novoToken = () =>
   `${crypto.randomUUID()}${crypto.randomUUID()}`.replaceAll("-", "");
 
 const daquiA = (dias: number) =>
   new Date(Date.now() + dias * 24 * 60 * 60 * 1000).toISOString();
-
-/** A ficha inteira, como o formulário público a envia. */
-const fichaCompleta = (nome: string) => ({
-  full_name: nome,
-  birth_date: "1990-05-20",
-  tax_id: "529.982.247-25",
-  national_id: "1234567",
-  national_id_issuer: "SSP/MA",
-  gender: "feminino",
-  marital_status: "casado",
-  birthplace: "São Luís",
-  nationality: "Brasileira",
-  email: "lead-da-ficha@example.com",
-  phone_country_code: "+55",
-  phone: "98999990000",
-  address_street: "Rua da Filosofia",
-  address_number: "10",
-  address_complement: "",
-  address_district: "Cohafuma",
-  address_city: "São Luís",
-  address_state: "MA",
-  address_country: "Brasil",
-  address_postal_code: "65000-000",
-  dependents: [
-    {
-      full_name: "Filho de Teste",
-      relationship: "child",
-      birth_date: "2015-01-10",
-      birth_country: "Brasil",
-    },
-  ],
-});
-
-const ACEITE = "Declaro que as informações acima são verdadeiras.";
 
 describe("ficha de cadastro por link", () => {
   let parceiro: Cliente;
@@ -110,7 +66,7 @@ describe("ficha de cadastro por link", () => {
   beforeAll(async () => {
     parceiro = await entrarComo("parceiro");
     duli = await entrarComo("colaborador");
-    anon = anonimo();
+    anon = anonimoDeTeste();
 
     const { data: membro, error: erroMembro } = await parceiro
       .from("organization_members")

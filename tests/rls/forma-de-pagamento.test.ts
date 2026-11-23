@@ -29,7 +29,8 @@ const MSG = {
   encerrado: "O negócio está encerrado; reabra para mexer na forma de pagamento.",
   semParteOuVisto: "Acrescente pelo menos um visto e uma parte antes de confirmar.",
   semPoder: "Só o dono do negócio ou a gestão confirmam a forma de pagamento.",
-  naoConfirmada: "A forma não está confirmada.",
+  // 0064: quem clica diz de que estado parte; diferente do atual, esta frase.
+  mudou: "A forma de pagamento mudou enquanto você olhava. Atualize a página.",
   soma: "As parcelas de Parcelas não somam o total.",
   casas: "Use no máximo 2 casas decimais em Parcelas.",
   lista: "O número de parcelas de Parcelas não bate com a lista.",
@@ -431,7 +432,7 @@ describe("forma de pagamento no banco (0058)", { timeout: 60_000 }, () => {
       description: "Forma de pagamento refeita",
     });
 
-    expect((await refazer(parceiro, negocio)).error?.message).toBe(MSG.naoConfirmada);
+    expect((await refazer(parceiro, negocio)).error?.message).toBe(MSG.mudou);
 
     expect((await confirmar(parceiro, negocio)).error).toBeNull();
     expect(await respostasDa(forma.id)).toHaveLength(2);

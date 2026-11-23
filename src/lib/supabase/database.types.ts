@@ -846,6 +846,7 @@ export type Database = {
           position: number
           total: number
           updated_at: string
+          usd_equivalent: number | null
         }
         Insert: {
           created_at?: string
@@ -859,6 +860,7 @@ export type Database = {
           position: number
           total: number
           updated_at?: string
+          usd_equivalent?: number | null
         }
         Update: {
           created_at?: string
@@ -872,6 +874,7 @@ export type Database = {
           position?: number
           total?: number
           updated_at?: string
+          usd_equivalent?: number | null
         }
         Relationships: [
           {
@@ -1891,12 +1894,15 @@ export type Database = {
         Row: {
           answers: Json | null
           cancelled_at: string | null
+          closed_at: string | null
           consent_text: string | null
           created_at: string
           created_by: string | null
           expires_at: string
           id: string
+          mode: string
           organization_id: string
+          payment_plan_id: string | null
           person_id: string
           previous: Json | null
           reviewed_at: string | null
@@ -1908,12 +1914,15 @@ export type Database = {
         Insert: {
           answers?: Json | null
           cancelled_at?: string | null
+          closed_at?: string | null
           consent_text?: string | null
           created_at?: string
           created_by?: string | null
           expires_at: string
           id?: string
+          mode?: string
           organization_id: string
+          payment_plan_id?: string | null
           person_id: string
           previous?: Json | null
           reviewed_at?: string | null
@@ -1925,12 +1934,15 @@ export type Database = {
         Update: {
           answers?: Json | null
           cancelled_at?: string | null
+          closed_at?: string | null
           consent_text?: string | null
           created_at?: string
           created_by?: string | null
           expires_at?: string
           id?: string
+          mode?: string
           organization_id?: string
+          payment_plan_id?: string | null
           person_id?: string
           previous?: Json | null
           reviewed_at?: string | null
@@ -1952,6 +1964,13 @@ export type Database = {
             columns: ["person_id", "organization_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "registration_forms_plan_same_org"
+            columns: ["payment_plan_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "payment_plans"
             referencedColumns: ["id", "organization_id"]
           },
           {
@@ -2339,6 +2358,14 @@ export type Database = {
         Args: { p_consentimento: string; p_dados: Json; p_token: string }
         Returns: undefined
       }
+      enviar_forma_de_pagamento: {
+        Args: {
+          p_negocio: string
+          p_pedir_dados_de_novo?: boolean
+          p_versao: string
+        }
+        Returns: string
+      }
       ganhar_negocio: {
         Args: {
           p_cobrancas_sem_confirmacao?: boolean
@@ -2378,7 +2405,7 @@ export type Database = {
         }[]
       }
       voltar_forma_para_rascunho: {
-        Args: { p_negocio: string }
+        Args: { p_de?: string; p_negocio: string }
         Returns: undefined
       }
     }
