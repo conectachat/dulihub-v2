@@ -162,7 +162,15 @@ export async function cancelarLink(formData: FormData): Promise<ActionState> {
   return estado;
 }
 
-/** "Conferi": a ficha recebida sai dos avisos da tela Início. */
+/**
+ * "Conferi": a ficha recebida sai dos avisos da tela Início.
+ *
+ * Confere a escolhida e as que a pessoa mandou antes dela e ninguém conferiu
+ * (revisão final da 4b): o cliente que manda os dados duas vezes antes do
+ * Conferi — "pedir os dados de novo", ou um link novo para corrigir — deixava
+ * a primeira sem conferir, e o aviso da Início preso, sem botão que o tirasse.
+ * A mais recente é a que vale; as anteriores foram substituídas por ela.
+ */
 export async function marcarConferida(formData: FormData): Promise<ActionState> {
   const id = formData.get("id");
   if (typeof id !== "string" || !id) return falhou("Ficha não informada.");
@@ -170,11 +178,22 @@ export async function marcarConferida(formData: FormData): Promise<ActionState> 
   const { supabase, userId, error: erroDoContexto } = await contextoAtual();
   if (erroDoContexto) return falhou(erroDoContexto);
 
+  const { data: escolhida, error: erroDaEscolhida } = await supabase
+    .from("registration_forms")
+    .select("person_id, submitted_at")
+    .eq("id", id)
+    .not("submitted_at", "is", null)
+    .maybeSingle();
+  if (erroDaEscolhida) return falhou(traduzirErro(erroDaEscolhida));
+  if (!escolhida?.submitted_at) return falhou("Ficha não encontrada.");
+
   const { data, error } = await supabase
     .from("registration_forms")
     .update({ reviewed_at: new Date().toISOString(), reviewed_by: userId })
-    .eq("id", id)
+    .eq("person_id", escolhida.person_id)
     .not("submitted_at", "is", null)
+    .is("reviewed_at", null)
+    .lte("submitted_at", escolhida.submitted_at)
     .select("person_id");
   const estado = resultado({ data, error });
   if (estado.error) return estado;

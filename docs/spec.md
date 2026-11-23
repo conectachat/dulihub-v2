@@ -173,11 +173,11 @@ Dizer o que precisa de atenção hoje.
 | INI-1 | Prazo de RFE: 30 dias antes, vermelho nos últimos 7; some quando a resposta é enviada | P0 | ✅ |
 | INI-2 | Parcelas vencidas, total por moeda e por cliente | P0 | ✅ |
 | INI-3 | Pastas e etapas com prazo vencido | P0 | 🟡 — processo encerrado ainda alerta (I5) |
-| INI-4 | Fichas de cadastro recebidas e não conferidas P0 | ✅ — o I4 se fechou na entrega 4b (23/nov): a ficha recebida e o link atual são blocos separados, e um link novo não esconde o Conferi |
+| INI-4 | Fichas de cadastro recebidas e não conferidas | P0 | ✅ — o I4 se fechou na entrega 4b (23/nov): a ficha recebida e o link atual são blocos separados, um link novo não esconde o Conferi, e o Conferi confere também as fichas anteriores da pessoa (a Início mostra uma por pessoa) |
 | INI-5 | Tarefas minhas, de hoje e atrasadas | P0 | ⬜ (depende de 7.9) |
 | INI-6 | Contas a pagar da semana | P1 | ⬜ (depende de 7.8) |
 | INI-7 | Números do mês: negócios ganhos, entradas, saídas | P2 | ⬜ |
-| INI-8 | Forma de pagamento recusada (some no reenvio), confirmada — pronto para o contrato (some no Ganho) — e link da ficha vencido sem resposta (some no Editar). *Entrega 4b* *Entrega 4b (23/nov): os três avisos no bloco "Forma de pagamento" da Início, cada um levando ao negócio* | P0 | ✅ |
+| INI-8 | Forma de pagamento recusada (some no reenvio), confirmada — pronto para o contrato (some no Ganho) — e link da ficha vencido sem resposta (some no Editar). *Entrega 4b (23/nov): os três avisos no bloco "Forma de pagamento" da Início, cada um levando ao negócio* | P0 | ✅ |
 
 ### 7.2 Contatos
 

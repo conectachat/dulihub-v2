@@ -266,6 +266,20 @@ describe("alertasDoDia — fichas de cadastro", () => {
     expect(a.vazio).toBe(true);
   });
 
+  it("duas fichas da mesma pessoa sem conferir: um aviso só, o da mais recente (revisão final)", () => {
+    const a = alertasDoDia(
+      {
+        ...vazio,
+        fichas: [ficha, { ...ficha, submitted_at: "2026-10-15T10:00:00Z" }],
+      },
+      HOJE,
+    );
+
+    expect(a.fichas).toEqual([
+      { person_id: "c1", nome: "Ana", estagio: "opportunity", recebidaEm: "2026-10-15T10:00:00Z" },
+    ]);
+  });
+
   it("link ainda não preenchido não é ficha recebida", () => {
     const a = alertasDoDia({ ...vazio, fichas: [{ ...ficha, submitted_at: null }] }, HOJE);
 

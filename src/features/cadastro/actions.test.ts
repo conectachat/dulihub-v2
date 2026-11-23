@@ -6,7 +6,7 @@ import { buscarParecidos, CAMPO_CONFIRMAR_PARECIDO, type ContatoParecido } from 
 import { contextoAtual } from "@/lib/organizacao";
 import { createClient } from "@/lib/supabase/server";
 
-import { gerarLink, salvarCadastro } from "./actions";
+import { gerarLink, marcarConferida, salvarCadastro } from "./actions";
 
 /**
  * A ficha editada pela equipe, com o aviso de parecidos (CON-4). O banco é
@@ -183,5 +183,56 @@ describe("gerarLink", () => {
     const r = await gerarLink(formulario());
 
     expect(r.error).toBe(frase);
+  });
+});
+
+describe("marcarConferida", () => {
+  /**
+   * O banco falso do Conferi: a ficha escolhida e o update, com os filtros
+   * guardados. Revisão final da 4b: o cliente que manda os dados duas vezes
+   * antes do Conferi deixava a ficha mais antiga sem conferir, e o aviso da
+   * Início preso, sem botão que o tirasse.
+   */
+  function bancoDoConferi() {
+    const filtros: [string, string, unknown][] = [];
+    const update = {
+      eq: vi.fn((c: string, v: unknown) => (filtros.push(["eq", c, v]), update)),
+      not: vi.fn((c: string, op: string, v: unknown) => (filtros.push(["not", c, `${op} ${String(v)}`]), update)),
+      is: vi.fn((c: string, v: unknown) => (filtros.push(["is", c, v]), update)),
+      lte: vi.fn((c: string, v: unknown) => (filtros.push(["lte", c, v]), update)),
+      select: async () => ({ data: [{ person_id: "p1" }, { person_id: "p1" }], error: null }),
+    };
+    const escolhida = {
+      eq: () => escolhida,
+      not: () => escolhida,
+      maybeSingle: async () => ({
+        data: { person_id: "p1", submitted_at: "2026-10-15T10:00:00Z" },
+        error: null,
+      }),
+    };
+    const supabase = {
+      from: vi.fn(() => ({ select: () => escolhida, update: vi.fn(() => update) })),
+    };
+    vi.mocked(contextoAtual).mockResolvedValue({
+      supabase,
+      userId: "u1",
+      organizationId: "org",
+      error: null,
+    } as never);
+    return filtros;
+  }
+
+  it("confere também as fichas recebidas antes dela, da mesma pessoa", async () => {
+    const filtros = bancoDoConferi();
+    const fd = new FormData();
+    fd.set("id", "l2");
+
+    const r = await marcarConferida(fd);
+
+    expect(r.ok).toBe(true);
+    expect(filtros).toContainEqual(["eq", "person_id", "p1"]);
+    expect(filtros).toContainEqual(["is", "reviewed_at", null]);
+    expect(filtros).toContainEqual(["lte", "submitted_at", "2026-10-15T10:00:00Z"]);
+    expect(filtros).not.toContainEqual(["eq", "id", "l2"]);
   });
 });

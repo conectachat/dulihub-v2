@@ -223,15 +223,21 @@ export function alertasDoDia(
   // Ficha recebida fica no aviso até alguém clicar "Conferi" — é o próximo
   // passo do contrato, e sem o aviso ela chegaria sem ninguém saber. A mais
   // antiga primeiro: é a que espera há mais tempo.
-  const fichas = dados.fichas
-    .filter((f) => f.submitted_at && !f.reviewed_at)
-    .map((f) => ({
+  // Uma linha por pessoa, a da ficha mais recente sem conferir: o Conferi
+  // confere ela e as anteriores juntas (revisão final da 4b).
+  const porPessoa = new Map<string, Alertas["fichas"][number]>();
+  for (const f of dados.fichas) {
+    if (!f.submitted_at || f.reviewed_at) continue;
+    const atual = porPessoa.get(f.person_id);
+    if (atual && atual.recebidaEm >= f.submitted_at) continue;
+    porPessoa.set(f.person_id, {
       person_id: f.person_id,
       nome: f.cliente,
       estagio: f.estagio,
-      recebidaEm: f.submitted_at!,
-    }))
-    .sort((a, b) => a.recebidaEm.localeCompare(b.recebidaEm));
+      recebidaEm: f.submitted_at,
+    });
+  }
+  const fichas = [...porPessoa.values()].sort((a, b) => a.recebidaEm.localeCompare(b.recebidaEm));
 
   const formas = alertasDaForma(dados.formas ?? [], agora);
 
