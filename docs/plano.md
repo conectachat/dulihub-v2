@@ -165,8 +165,11 @@ Seis defeitos observados no código dele, cada um virou uma decisão:
 ### O que falta para fechar a fase
 
 Contas a pagar, despesas, fornecedores e fluxo de caixa. Depois: contrato no
-ZapSign, boleto do Itaú, link do C6 e nota fiscal — estas quatro dependem das
-credenciais que ainda estão com o Renato.
+ZapSign e nota fiscal (esta depende do provedor).
+
+Boleto do Itaú e link do C6 **saíram do roadmap** em 23/nov: as credenciais
+não vêm tão cedo. O boleto sobe à mão na parcela e a baixa é à mão. O Renato
+retoma o tema se um dia conseguir as credenciais.
 
 ### Ficha de cadastro por link (3/out) — o primeiro passo do contrato
 
@@ -316,8 +319,21 @@ Cartão é um pagamento só, numa data: a Duli recebe tudo antecipado (Renato,
 forma.
 
 Fica para a **4b**: o link para o cliente ver a forma e dar o OK, a resposta
-dele (aceita ou recusada), reenviar só o pagamento, os alertas do Início e o
-"criar as cobranças mesmo assim" com a forma enviada ou recusada.
+dele (aceita ou recusada), reenviar só o pagamento e os alertas do Início.
+
+### Entrega 4b — o link da forma e a resposta do cliente (desenho em 23/nov)
+
+Desenho: `docs/superpowers/specs/2026-11-23-entrega-4b-link-da-forma-design.md`,
+aprovado pelo Renato em 23/nov, com as decisões 8 a 16. O que mudou em relação
+ao combinado na 4a:
+
+- A parte em reais diz de quantos dólares veio (FIC-13, novo): o que o cliente
+  vê na ficha é o que vai no contrato.
+- O link com forma vale 3 dias úteis; o da ficha comum continua com 15 dias.
+- "Criar as cobranças mesmo assim" saiu: quem confirmou por fora passa por
+  "Confirmar pela equipe".
+- Q11 decidida: um link novo não apaga a ficha recebida, e o aviso fica até o
+  "Conferi" (fecha o I4).
 
 ---
 
@@ -327,8 +343,6 @@ Coisas que dependem dele, fora do código.
 
 | O quê | Por quê |
 |---|---|
-| **Itaú** — credenciais via gerente de conta | Processo de semanas; vira gargalo da Fase 3 se começar tarde |
-| **C6** — cadastro no portal do desenvolvedor | Idem |
 | **Provedor de nota fiscal** — e confirmar com o contador como fatura em dólar | NFS-e ou invoice muda o desenho da Fase 3 |
 | **Tamanho dos arquivos no app antigo** (soma dos 4 buckets) | Decide se os documentos cabem no plano gratuito |
 
@@ -388,7 +402,7 @@ leitor de tela; numa árvore, soltar entre dois níveis é ambíguo.
 
 | Fase | Objetivo | Portão |
 |---|---|---|
-| 3 — Financeiro | **A receber: feito.** Falta contas a pagar, despesas, fornecedores e fluxo de caixa; depois contrato no ZapSign, cobrança C6/Itaú e nota fiscal | Fechar um mês inteiro no app, sem planilha |
+| 3 — Financeiro | **A receber: feito.** Falta contas a pagar, despesas, fornecedores e fluxo de caixa; depois contrato no ZapSign e nota fiscal | Fechar um mês inteiro no app, sem planilha |
 | 4 — Tarefas e integrações | Tarefas da equipe, usuários e permissões, notificações; porta Calendly, Gmail e n8n do app antigo | Equipe trabalha sem abrir o app antigo para essas coisas |
 | 5 — Virada | Dados finais migrados, domínio `login.duliconsulting.com` aponta para a VPS, 25 usuários redefinem senha. App antigo intacto por 30 dias | Equipe trabalha um dia inteiro no app novo |
 | 6 — Portal do cliente | Acompanhar etapas, subir documentos, ver financeiro, contratar tradução | — |

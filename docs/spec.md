@@ -89,6 +89,7 @@ cliente) estão nas perguntas em aberto (§10): o app ainda não mede nada disso
 | App nativo de loja | O app é instalável (PWA) no celular e no computador; não precisa de loja |
 | Converter moeda sem cotação | Regra de dinheiro (§6). Valor em dólar só vira real com a cotação do dia em que entrou |
 | Montar a peça jurídica do caso | Petição e cartas são feitas fora; o app guarda, organiza e acompanha |
+| Boleto do Itaú e link de cartão do C6 emitidos pelo app (era o REC-7) | Sem as credenciais dos bancos. O boleto sobe à mão na parcela (CLI-6), e a baixa é à mão. O Renato retoma o tema se um dia as credenciais saírem (23/nov) |
 
 ---
 
@@ -172,11 +173,11 @@ Dizer o que precisa de atenção hoje.
 | INI-1 | Prazo de RFE: 30 dias antes, vermelho nos últimos 7; some quando a resposta é enviada | P0 | ✅ |
 | INI-2 | Parcelas vencidas, total por moeda e por cliente | P0 | ✅ |
 | INI-3 | Pastas e etapas com prazo vencido | P0 | 🟡 — processo encerrado ainda alerta (I5) |
-| INI-4 | Fichas de cadastro recebidas e não conferidas | P0 | 🟡 — o aviso pode ficar preso (I4, depende de Q11) |
+| INI-4 | Fichas de cadastro recebidas e não conferidas | P0 | 🟡 — o aviso pode ficar preso (I4). Q11 decidida em 23/nov: o conserto vem na entrega 4b |
 | INI-5 | Tarefas minhas, de hoje e atrasadas | P0 | ⬜ (depende de 7.9) |
 | INI-6 | Contas a pagar da semana | P1 | ⬜ (depende de 7.8) |
 | INI-7 | Números do mês: negócios ganhos, entradas, saídas | P2 | ⬜ |
-| INI-8 | Forma de pagamento recusada (some no reenvio) e confirmada — pronto para o contrato (some no Ganho). *Entrega 4b* | P0 | ⬜ |
+| INI-8 | Forma de pagamento recusada (some no reenvio), confirmada — pronto para o contrato (some no Ganho) — e link de pagamento vencido sem resposta (some no Editar). *Entrega 4b* | P0 | ⬜ |
 
 ### 7.2 Contatos
 
@@ -250,7 +251,7 @@ Dizer o que precisa de atenção hoje.
 
 | ID | Requisito | Pri. | Estado |
 |---|---|---|---|
-| FIC-1 | Link de uso único, 15 dias, um aberto por contato | P0 | ✅ |
+| FIC-1 | Link de uso único, 15 dias, um aberto por contato. *Entrega 4b: o link com a forma de pagamento vale 3 dias úteis, de segunda a sexta, sem feriados* | P0 | ✅ |
 | FIC-2 | Campos do PDF: dados pessoais, documentos, endereço, dependentes; CPF conferido | P0 | ✅ |
 | FIC-3 | Ao enviar, atualiza o contato, guarda o declarado e o anterior, avisa na Início | P0 | ✅ |
 | FIC-4 | Enviar pelo WhatsApp com a mensagem pronta | P0 | ✅ |
@@ -260,10 +261,11 @@ Dizer o que precisa de atenção hoje.
 | FIC-8 | O cliente, depois dos dados pessoais, **confirma** a forma de pagamento ou diz **o que está errado**. *Entrega 4b* | P0 | ⬜ |
 | FIC-9 | Recusada: o dono ajusta e reenvia; o link novo abre direto no pagamento, sem mostrar de novo os dados pessoais, e não aceita dados pessoais. *Entrega 4b* | P0 | ⬜ |
 | FIC-10 | Confirmação da forma de pagamento pela equipe (dono do negócio ou gestão), também sem link enviado, registrando quem, quando e, se houver, uma observação; desfazer ("Refazer") também é do dono ou da gestão, e é recusado depois que o Ganho criou as cobranças. *Entrega 4a (22/nov): a partir de `rascunho`, no cartão do lead, por `confirmar_forma_de_pagamento_pela_equipe` e `voltar_forma_para_rascunho` (0058), com o histórico na linha do tempo; a partir de `enviada`, na 4b* | P0 | 🟡 |
-| FIC-11 | Cotação usada (C6) anotada na forma de pagamento, em qualquer estado; só a equipe vê. *Entrega 4a (22/nov): `payment_plans.reference_rate` e `reference_rate_note`, no cartão do lead; a única coluna da forma gravada direto (0058)* | P1 | ✅ |
+| FIC-11 | Cotação usada (C6) anotada na forma de pagamento, em qualquer estado; só a equipe vê. O cliente vê os valores convertidos (FIC-13), nunca a cotação. *Entrega 4a (22/nov): `payment_plans.reference_rate` e `reference_rate_note`, no cartão do lead; a única coluna da forma gravada direto (0058)* | P1 | ✅ |
 | FIC-12 | **Vistos travados com a forma confirmada**: não se acrescenta, muda nem retira visto do negócio enquanto a forma estiver confirmada e o Ganho ainda não tiver criado as cobranças ("A forma de pagamento está confirmada. Use Refazer para mudar os vistos."), garantido no banco; a forma só muda com o negócio aberto, e a cotação, sempre. Depois que o Ganho cria as cobranças, a forma vira registro: nada nela muda, só a cotação, e os vistos do negócio reaberto voltam a mudar (CRM-15). *21/nov. Entrega 4a (22/nov): a trava dos vistos e as da forma no banco (0058), e a lista Vistos só para leitura no lead; na 4b vale também para a forma `enviada`* | P0 | ✅ |
+| FIC-13 | A parte em reais diz **de quantos dólares veio** ("US$ 3.900,00 convertidos para R$ 21.527,76"), e o cliente vê os dois valores. O Renato digita os dois; o app não calcula, e a cotação não vai para a ficha. *23/nov: o que o cliente vê na ficha é o que vai no contrato. Entrega 4b* | P0 | ⬜ |
 
-Critério de aceite de FIC-7 a FIC-12: `docs/superpowers/specs/2026-11-17-contato-oportunidade-cliente-design.md` §6.4, com o recorte e as mudanças da entrega 4a em `docs/superpowers/specs/2026-11-21-entrega-4a-forma-de-pagamento-design.md` §8. Os da entrega 4a, resumidos:
+Critério de aceite de FIC-7 a FIC-13: `docs/superpowers/specs/2026-11-17-contato-oportunidade-cliente-design.md` §6.4, com o recorte e as mudanças da entrega 4a em `docs/superpowers/specs/2026-11-21-entrega-4a-forma-de-pagamento-design.md` §8 e da entrega 4b em `docs/superpowers/specs/2026-11-23-entrega-4b-link-da-forma-design.md` §8. Os da entrega 4a, resumidos:
 
 - Entrada de R$ 10.000 no pix daqui a 10 dias e 3 × US$ 3.000 por
   transferência a partir de daqui a 1 mês: o lead mostra "R$ 10.000 +
@@ -356,8 +358,7 @@ Dúvidas que bloqueiam este módulo estão em §10 (Q1, Q2, Q4 e Q14; a Q3 foi d
 | REC-3 | Lista com filtros (vencidas, a vencer, pagas) e números do mês | P0 | ✅ |
 | REC-4 | Funciona sem internet | P0 | 🟡 — sem o prazo de 14 dias (I19), "Nenhuma cobrança" antes de baixar (I26), e os defeitos da fila (I17, I21, I23) |
 | REC-5 | Anexar boleto e nota fiscal à parcela — virou o CLI-6 (entregue em 19/nov) | P1 | ✅ |
-| REC-6 | Cobranças criadas no Ganho a partir da forma de pagamento confirmada, uma por parte, sem duplicar (17/nov; antes dependia do contrato, CTR-2). Nascem no banco, na mesma gravação do Ganho, com a organização **da pessoa** — esse caminho não passa pelos defeitos I20 e I24 da cobrança manual. *Entrega 4a (22/nov): o passo (7) de `ganhar_negocio` (0059), que grava `charges_created_at`; "criar as cobranças mesmo assim" com a forma enviada ou recusada, na 4b* | P0 | 🟡 |
-| REC-7 | Boleto do Itaú e link do C6 emitidos pelo app | P2 | ⬜ — depende das credenciais |
+| REC-6 | Cobranças criadas no Ganho a partir da forma de pagamento confirmada, uma por parte, sem duplicar (17/nov; antes dependia do contrato, CTR-2). Nascem no banco, na mesma gravação do Ganho, com a organização **da pessoa** — esse caminho não passa pelos defeitos I20 e I24 da cobrança manual. *Entrega 4a (22/nov): o passo (7) de `ganhar_negocio` (0059), que grava `charges_created_at`. 23/nov: sem "criar as cobranças mesmo assim" — com a forma enviada ou recusada, nenhuma cobrança nasce; o cliente que confirmou por fora passa por "Confirmar pela equipe". O resumo dessas duas situações, na 4b* | P0 | 🟡 |
 | REC-8 | Nota fiscal emitida pelo app | P2 | ⬜ — depende do provedor |
 | REC-9 | Cotação do dólar sugerida automaticamente (Banco Central), sempre corrigível | P2 | ⬜ |
 
@@ -593,9 +594,7 @@ e cada pessoa da equipe define a sua senha.
 | Q6 | Quantas pessoas da equipe usam o app, e com que papel? | Renato | 7.10 |
 | Q7 | Metas: em quanto tempo, do "sim" do lead ao contrato assinado, queremos chegar? Hoje leva quanto? | Renato | §3 |
 | Q8 | Provedor de nota fiscal; como faturar em dólar (NFS-e ou invoice) | Renato + contador | REC-8 |
-| Q9 | Credenciais do Itaú e do C6 | Renato | REC-7 |
 | Q10 | "Linha ascendente" do dono do negócio: quem é? O app só conhece os papéis `owner`, `admin` e `staff` por organização — não há "chefe de" | Renato | CRM-10 |
-| Q11 | Link novo de ficha com uma ficha recebida ainda não conferida: substitui a antiga ou ela continua valendo? | Renato | I4 (aviso preso do INI-4) |
 | Q12 | Outra pessoa entra no mesmo aparelho com alterações da anterior ainda por subir: apagar, segurar até ela voltar, ou avisar? | Renato | 7.13 |
 | Q13 | Banco de teste e cópia: liberar uma das vagas gratuitas do Supabase, ou passar ao plano pago? O pago traz cópia diária **só do banco**, guardada 7 dias; os arquivos continuam precisando do OPS-1 | Renato | §12.6, OPS-1 |
 | Q14 | Como o aviso do ZapSign entra no banco sem login: função estreita conferida por segredo (como a ficha) ou chave de servidor? Onde fica o token da API do ZapSign? | Engenharia, com o Renato | 7.5, §12 |
@@ -629,6 +628,12 @@ e cada pessoa da equipe define a sua senha.
 | 20/nov | A entrega 4 vai em duas metades: 4a — a equipe define e confirma a forma de pagamento, e o Ganho cria as cobranças; 4b — o link com a forma, a resposta do cliente e os avisos da Início |
 | 21/nov | Cartão é um pagamento só, sem número de vezes nem juros: a Duli recebe tudo antecipado. Entrada e parcelas viram parcelas no Financeiro, pela programação da forma (FIC-7) |
 | 21/nov | Com a forma de pagamento confirmada, os vistos do negócio não mudam; para mudar, "Refazer" a forma antes (FIC-12). Depois que o Ganho cria as cobranças, a forma vira registro e a trava acaba, para o negócio reaberto aceitar visto novo (CRM-15); a cobrança dele se cria à mão |
+| 23/nov | O que o cliente vê na ficha é o que vai no contrato. A parte em reais diz de quantos dólares veio, com os dois valores digitados pelo Renato e sem a cotação; a validade da conversão vai só no contrato (FIC-13) |
+| 23/nov | O link com a forma de pagamento vale 3 dias úteis (segunda a sexta, sem feriados); vencido, o cliente pede outro. O da ficha comum continua com 15 dias (FIC-1) |
+| 23/nov | Sem "criar as cobranças mesmo assim": forma enviada ou recusada não gera cobrança no Ganho; o cliente que confirmou por fora passa por "Confirmar pela equipe" (REC-6) |
+| 23/nov | Q11: um link novo não invalida a ficha recebida e ainda não conferida; o aviso da Início fica até o "Conferi" (I4, INI-4) |
+| 23/nov | Itaú e C6 saem do roadmap (eram o REC-7 e a Q9): boleto e baixa à mão. O Renato retoma se um dia as credenciais saírem |
+| 23/nov | A cópia de segurança e o monitor (OPS-1, OPS-2) ficam para quando os clientes tiverem acesso ao app; o plano pago do Supabase ainda não compensa (Q13) |
 
 ## 11. Ordem proposta
 
@@ -637,6 +642,7 @@ caminho até o uso diário (§9):
 
 0. **Cópia de segurança e monitor (OPS-1, OPS-2)**: hoje não existe cópia, e
    tudo — testes, desenvolvimento, migrations — bate no banco de produção.
+   Adiados pelo Renato em 23/nov para quando os clientes tiverem acesso ao app.
 1. **Contato → oportunidade → cliente (17/nov)**: contato completo, Clientes,
    vistos e Ganho com resumo, forma de pagamento na ficha — entregas 0 a 4 (a 4
    em duas metades, 4a e 4b) de
@@ -722,7 +728,7 @@ tabela — quem lê, quem grava — está em `docs/banco.md`.
 |---|---|---|
 | **Fila** | A fila do aparelho: gravação offline sobe em ordem quando a rede volta; queda de rede espera, recusa vira conflito visível (`src/lib/local/fila.ts`). No servidor não há fila | — |
 | **Tarefas agendadas** | Uma, no banco: `limpar-lapides` (pg_cron, todo dia às 04:17 UTC, migration 0031) apaga lápides com mais de 90 dias. No aparelho, a sincronia tenta subir a fila a cada minuto enquanto o app está aberto (não é tarefa do servidor). Na VPS, nenhuma | Cópia de segurança diária (OPS-1) e monitor de queda (OPS-2). Toda tarefa nova entra aqui com: onde roda, horário em UTC e quem fica sabendo se falhar |
-| **Sistemas de fora** | Só o Supabase | ZapSign (7.5, Q14), Itaú e C6 (REC-7), nota fiscal (REC-8), agenda, n8n e e-mail (7.12); **um servidor de e-mail próprio (SMTP)**, com SPF/DKIM no DNS da HostGator, para convite e "esqueci a senha" (USU-1, USU-3) — o e-mail padrão do Supabase não serve para isso. Cada um entra aqui quando for desenhado |
+| **Sistemas de fora** | Só o Supabase | ZapSign (7.5, Q14), nota fiscal (REC-8), agenda, n8n e e-mail (7.12); **um servidor de e-mail próprio (SMTP)**, com SPF/DKIM no DNS da HostGator, para convite e "esqueci a senha" (USU-1, USU-3) — o e-mail padrão do Supabase não serve para isso. Cada um entra aqui quando for desenhado |
 
 ### 12.6 Ambientes
 
