@@ -117,7 +117,9 @@ describe("resumoDoGanhoSchema — entrega 4b", () => {
   });
 
   it("sem a decisão da última resposta, recusa", () => {
-    const { ultima_decisao: _fora, ...semDecisao } = base.forma;
+    const semDecisao = Object.fromEntries(
+      Object.entries(base.forma).filter(([chave]) => chave !== "ultima_decisao"),
+    );
     expect(resumoDoGanhoSchema.safeParse({ ...base, forma: semDecisao }).success).toBe(false);
   });
 });
