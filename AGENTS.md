@@ -200,6 +200,7 @@ telas incomoda; em trinta, ninguém consegue mais mudar nada.
 | Abrir o perfil do cliente com o processo a criar | `enderecoDoNovoCliente` (`@/lib/pessoa`) — `?aba=projetos&novo-processo=novo` |
 | Parcelas mês a mês sem perder centavo; métodos de pagamento | `gerarParcelas`, `somarMeses`, `METODOS`, `ROTULO_DO_METODO` (`@/lib/parcelas`) — o Financeiro e a forma de pagamento do negócio usam as mesmas |
 | Somar vistos por moeda | `somarItensPorMoeda`, `emCentavos`, `emMoeda` (`@/lib/totals`) — em centavos, e nunca uma moeda na outra. As parcelas do Financeiro somam em `totaisPorMoeda` (`features/financeiro/regras.ts`) |
+| A forma de pagamento como o cliente vê (a prévia do envio e a ficha pública) | `FormaDePagamentoDoCliente` (`@/components/forma-de-pagamento-do-cliente`), com `formaParaOCliente` e `valorComConversao` (`@/lib/forma-do-cliente`) — o mesmo formato de `private.copia_da_forma`; a prévia e a ficha não podem divergir |
 | Enviar arquivo do navegador ao depósito e registrar | `enviarERegistrar`, `arquivoAceito`, `limparNome` (`@/lib/arquivos`) — registro recusado remove o objeto |
 | Abrir ou baixar por URL assinada | `abrirEmNovaAba` / `baixar` (`@/lib/abrir`) — a aba abre no clique; `window.open` depois de um `await` o Safari do iPhone bloqueia |
 

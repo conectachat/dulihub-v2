@@ -11,7 +11,7 @@ no `docs/spec.md`, que vem antes de qualquer funcionalidade nova.
 
 ---
 
-## 1. Estado atual (3/out/2026; hospedagem em 16/nov; Clientes em 19/nov; Ganho com resumo em 20/nov)
+## 1. Estado atual (3/out/2026; hospedagem em 16/nov; Clientes em 19/nov; Ganho com resumo em 20/nov; forma de pagamento pelo link em 23/nov)
 
 ### No ar
 
@@ -21,13 +21,13 @@ se encaixam: `docs/spec.md` §12.
 
 | Tela | O que faz |
 |---|---|
-| Início | **O que precisa de atenção hoje**: prazo de RFE (30 dias antes, vermelho nos últimos 7), fichas de cadastro recebidas e ainda não conferidas, parcelas vencidas, pastas e etapas atrasadas — cada um leva ao lugar certo. Depois, as contagens |
+| Início | **O que precisa de atenção hoje**: prazo de RFE (30 dias antes, vermelho nos últimos 7), fichas de cadastro recebidas e ainda não conferidas, parcelas vencidas, pastas e etapas atrasadas, forma de pagamento recusada pelo cliente, pronta para o contrato ou com o link da ficha vencido sem resposta — cada um leva ao lugar certo. Depois, as contagens |
 | Contatos | Lista, busca, filtro por tag, criar, editar, excluir e restaurar (lixeira) |
 | Ficha do contato | Perfil enxuto de quem ainda não é cliente: dados, tags, oportunidades, linha do tempo; **Dados cadastrais** (o que vai para o contrato: CPF, RG, estado civil, endereço, dependentes) e o **link da ficha** para o cliente preencher. "Marcar como cliente" para a gestão. Cliente abre em `/clientes/<id>` (o endereço antigo redireciona) |
 | Clientes | **Lista** com busca por nome, e-mail ou telefone, 50 por página com o total. **Perfil em abas**: Dados cadastrais, Financeiro (totais por moeda, cobranças, baixa, anexos da parcela), Projetos, Documentos (passaporte, identidade, comprovante, contrato) e Notas; cabeçalho com copiar telefone e e-mail, dono, cliente desde, tags e Editar (dono e participantes). **Novo cliente**, para a gestão: o cliente antigo que não passou pelo funil, escolhido entre os contatos ou criado ali mesmo, abre já em Projetos para criar o processo |
-| Ficha de cadastro (pública) | `/cadastro/<token>`: o cliente preenche no celular, **sem login**; ao enviar, a ficha do contato se atualiza e o link morre |
+| Ficha de cadastro (pública) | `/cadastro/<token>`: o cliente preenche no celular, **sem login**; ao enviar, a ficha do contato se atualiza e o link morre. **Com a forma de pagamento** (4b): depois dos dados, o cliente vê a forma — os vistos, cada parte com o método, o valor (com o dólar de onde veio a parte em reais) e as datas, nunca a cotação — e responde **Confirmo** ou **Há algo errado**; o link vale 3 dias úteis |
 | CRM | Quadro do funil, com **cartões que se arrastam** entre as colunas (o seletor de etapa continua, para o celular) e o total de cada coluna por moeda; soltar em Ganho abre o **resumo**, e o cartão ganho leva aos processos; ganhos e perdidos ficam no quadro 30 dias e depois em **CRM › Encerradas** (busca por título ou contato); cada cartão mostra em que pé está a ficha de cadastro |
-| Lead (`/crm/[id]`) | O negócio enquanto está no funil: trilha das etapas, **Ganho com resumo** (numa gravação só: cliente, dono, participantes e um processo por visto), **Reabrir** um ganho e **Perdido** (com motivo); contato, **Vistos** (valor e moeda de cada um, total por moeda), origem, dono e participantes, dados cadastrais com o link da ficha, histórico. Sem processos e sem financeiro. No negócio ganho, a gestão **ajusta a data do ganho** (o cliente antigo ganho agora conta no mês certo) |
+| Lead (`/crm/[id]`) | O negócio enquanto está no funil: trilha das etapas, **Ganho com resumo** (numa gravação só: cliente, dono, participantes e um processo por visto), **Reabrir** um ganho e **Perdido** (com motivo); contato, **Vistos** (valor e moeda de cada um, total por moeda), origem, dono e participantes, dados cadastrais com o link da ficha, histórico. Sem processos e sem financeiro. No negócio ganho, a gestão **ajusta a data do ganho** (o cliente antigo ganho agora conta no mês certo). **Forma de pagamento**: definir, **Enviar ficha** com a prévia do que o cliente vai ver, o link da ficha com Copiar e WhatsApp, Editar e Cancelar link, Ajustar depois da recusa, Confirmar pela equipe e Refazer |
 | Projetos | Lista de processos: cliente, visto, status, progresso (etapas concluídas, em %), próximo prazo |
 | Processo | Status e campos do USCIS, inclusive quando a resposta da RFE foi enviada; abas **Etapas** (tabela com status, data prevista e de conclusão, sub-etapas em grupo), **Documentos** (pastas, envio, visualizar, aprovar, recusar com motivo, resolver) e **Observações** (editor estilo Notion, várias pessoas ao mesmo tempo) |
 | Configurações | Etapas do funil, tags, catálogo de pastas, tipos de visto, status de etapa — **abre e grava sem internet**, e sincroniza sozinha |
@@ -40,7 +40,7 @@ se encaixam: `docs/spec.md` §12.
 |---|---|
 | Contatos | 76, importados do app antigo sem duplicata |
 | Organizações | Duli (raiz) e "Parceiro de Teste" (só para a suíte de testes) |
-| Banco | Supabase `xigmtofpmfqeehhcdasf`, migrations `0001` a `0036` em `supabase/migrations/` |
+| Banco | Supabase `xigmtofpmfqeehhcdasf`, migrations `0001` a `0066` em `supabase/migrations/` |
 | Arquivos | Buckets privados `documentos` (pastas do processo) e `observacoes` (colados no editor), 20 MB |
 | No aparelho | Cópia das tabelas de configuração e do que ela usa, por usuário (IndexedDB), mais a fila do que ainda não subiu |
 
@@ -51,9 +51,9 @@ Tudo roda sozinho em cada push.
 | Camada | O que pega |
 |---|---|
 | Trava de commit (`.githooks/pre-commit`) | Erro de tipo e de lint — o commit nem acontece |
-| 493 testes de unidade e componente | Regras, formatação, telas de etapas e documentos, sincronização em tempo real, editor montado sobre Supabase falso, fila de gravações offline, as contas do a receber — arredondamento de parcela, vencimento que não pula de mês, conversão que exige cotação — e a ficha de cadastro: CPF conferido pelos dígitos, erro apontado no campo, recusa que não apaga o que foi digitado |
-| 114 testes de RLS | Uma organização não enxerga nem altera dado da outra — tabelas, arquivos e o canal em tempo real; regras de negócio no banco (pasta só resolve com tudo aprovado, processo só se liga a negócio do mesmo contato); e que a fila, ao subir, passa pela mesma RLS; cobrança e parcela isoladas por organização; e a porta do anônimo: sem token não lê nada, com token altera só uma pessoa, só os campos da ficha, uma vez |
-| 44 testes de fumaça | Cada tela abre com login de verdade, inclusive com um processo real; a Início e o quadro do CRM carregam sem falhar — o 200 sozinho não provaria, porque a falha aparece como aviso dentro da página; e a ficha de cadastro abre **sem** login pelo link, e dá 404 sem ele |
+| 1043 testes de unidade e componente | Regras, formatação, telas de etapas e documentos, sincronização em tempo real, editor montado sobre Supabase falso, fila de gravações offline, as contas do a receber — arredondamento de parcela, vencimento que não pula de mês, conversão que exige cotação — e a ficha de cadastro: CPF conferido pelos dígitos, erro apontado no campo, recusa que não apaga o que foi digitado |
+| 353 testes de RLS | Uma organização não enxerga nem altera dado da outra — tabelas, arquivos e o canal em tempo real; regras de negócio no banco (pasta só resolve com tudo aprovado, processo só se liga a negócio do mesmo contato); e que a fila, ao subir, passa pela mesma RLS; cobrança e parcela isoladas por organização; e a porta do anônimo: sem token não lê nada, com token altera só uma pessoa, só os campos da ficha, uma vez |
+| 56 testes de fumaça | Cada tela abre com login de verdade, inclusive com um processo real; a Início e o quadro do CRM carregam sem falhar — o 200 sozinho não provaria, porque a falha aparece como aviso dentro da página; e a ficha de cadastro abre **sem** login pelo link, e dá 404 sem ele |
 
 ---
 
@@ -321,7 +321,7 @@ forma.
 Fica para a **4b**: o link para o cliente ver a forma e dar o OK, a resposta
 dele (aceita ou recusada), reenviar só o pagamento e os alertas do Início.
 
-### Entrega 4b — o link da forma e a resposta do cliente (desenho em 23/nov)
+### Entrega 4b — o link da forma e a resposta do cliente (23/nov)
 
 Desenho: `docs/superpowers/specs/2026-11-23-entrega-4b-link-da-forma-design.md`,
 aprovado pelo Renato em 23/nov, com as decisões 8 a 16. O que mudou em relação
@@ -334,6 +334,18 @@ ao combinado na 4a:
   "Confirmar pela equipe".
 - Q11 decidida: um link novo não apaga a ficha recebida, e o aviso fica até o
   "Conferi" (fecha o I4).
+
+Plano: `docs/superpowers/plans/2026-11-23-entrega-4b-link-da-forma.md`. Um push
+só, no fim: as três migrations são compatíveis com o código no ar.
+
+| Parte | O que ficou pronto |
+|---|---|
+| Banco | A conversão (`usd_equivalent`), o link com a forma em `registration_forms` (congelado fora das funções, um aberto por pessoa), `enviar_forma_de_pagamento` com a versão, `voltar_forma_para_rascunho` com `p_de`, o prazo de 3 dias úteis e o negócio que fecha cancelando o link (0064); a porta do pagamento, `responder_forma_de_pagamento`, a terceira função sem login, e a correção do gatilho que dizia o título de outra organização (0065); a resposta do cliente cai com o link quando a pessoa é apagada (0066) |
+| Telas | O cartão da forma por estado, a prévia do envio (o mesmo componente da ficha pública), "Convertido de US$" na janela, a ficha pública com o pagamento, o resumo do Ganho com a forma enviada e a recusada, os três avisos da Início, e os dados cadastrais com a ficha recebida separada do link atual |
+| Provas | A suíte de RLS de cada migration, e `supabase/provas/link-com-a-forma.sql` (os dias úteis com datas fixas e o link vencido, que a API não alcança) |
+
+Na tela é sempre "link da ficha": o app não gera link de pagamento — o do
+cartão no C6, o Renato gera à mão.
 
 ---
 

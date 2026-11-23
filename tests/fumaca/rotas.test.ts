@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ALL_SECTIONS } from "@/features/settings/sections";
 
 import { EMAILS, obrigatorio, SENHAS } from "../contas";
+import { ACEITE, anonimoDeTeste, fichaCompleta } from "../ficha-de-teste";
 
 /**
  * Cada tela principal abre, com sessão de verdade.
@@ -511,5 +512,80 @@ describe("com um lead de verdade", () => {
     const html = await (await pedir("/crm", sessao.cookie)).text();
 
     expect(html).toContain(`/crm/${negocioId}`);
+  }, 60_000);
+
+  // Por último: muda o lead (a forma vai pelo link, e os dados chegam).
+  it("a forma vai pelo link da ficha: o cliente abre sem login, manda os dados e chega ao pagamento", async () => {
+    const { supabase } = sessao;
+    const { data: negocio } = await supabase
+      .from("opportunities")
+      .select("organization_id")
+      .eq("id", negocioId)
+      .single();
+    const item = await supabase.from("opportunity_items").insert({
+      organization_id: negocio!.organization_id,
+      opportunity_id: negocioId,
+      visa_name: "EB-2 NIW",
+      amount: 6000,
+      currency: "USD",
+    });
+    if (item.error) throw new Error(`Visto da fumaça não criado: ${item.error.message}`);
+
+    const dia = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(
+      new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+    );
+    const salvo = await supabase.rpc("salvar_forma_de_pagamento", {
+      p_negocio: negocioId,
+      p_forma: {
+        partes: [
+          {
+            label: "Cartão",
+            method: "cartao",
+            currency: "BRL",
+            total: 21527.76,
+            installments_count: 1,
+            usd_equivalent: 3900,
+            parcelas: [{ number: 1, amount: 21527.76, due_on: dia }],
+          },
+        ],
+      },
+    });
+    if (salvo.error) throw new Error(`Forma da fumaça não salva: ${salvo.error.message}`);
+    const { data: forma } = await supabase
+      .from("payment_plans")
+      .select("updated_at")
+      .eq("opportunity_id", negocioId)
+      .single();
+    const enviado = await supabase.rpc("enviar_forma_de_pagamento", {
+      p_negocio: negocioId,
+      p_versao: forma!.updated_at,
+    });
+    if (enviado.error) throw new Error(`Forma da fumaça não enviada: ${enviado.error.message}`);
+    const token = enviado.data as string;
+
+    // O lead: o cartão com a forma enviada e o link.
+    const lead = await (await pedir(`/crm/${negocioId}`, sessao.cookie)).text();
+    expect(lead).toContain("enviada");
+    expect(lead).toContain("Copiar link");
+
+    // Sem login: o passo 1, os dados pessoais.
+    const passo1 = await pedir(`/cadastro/${token}`, false);
+    expect(passo1.status).toBe(200);
+    expect(await passo1.text()).toContain("Passo 1 de 2");
+
+    const dados = await anonimoDeTeste().rpc("enviar_ficha_de_cadastro", {
+      p_token: token,
+      p_dados: fichaCompleta(NOME),
+      p_consentimento: ACEITE,
+    });
+    if (dados.error) throw new Error(`Dados da fumaça não enviados: ${dados.error.message}`);
+
+    // De novo, sem login: o pagamento, com a conversão.
+    const passo2 = await pedir(`/cadastro/${token}`, false);
+    expect(passo2.status).toBe(200);
+    const html = (await passo2.text()).replaceAll("&nbsp;", " ").replaceAll(" ", " ");
+    expect(html).toContain("Confirmo");
+    expect(html).toContain("Há algo errado");
+    expect(html).toContain("convertidos para");
   }, 60_000);
 });
