@@ -183,6 +183,28 @@ describe("vistos do negócio e processo que não se apaga (0051)", () => {
       const { error } = await item(n, { amount: -1 });
       expect(error?.code).toBe("23514");
     });
+
+    it("valor NaN é recusado, no item e no preço do visto (0063)", async () => {
+      // NaN passava no `>= 0` (o Postgres o ordena acima de todo número), e o
+      // preço do visto não tinha `check` nenhum.
+      const n = await negocio(await pessoa());
+      expect((await item(n, { amount: "NaN" })).error?.code).toBe("23514");
+
+      const { data: antes } = await parceiro
+        .from("visa_types")
+        .select("base_price")
+        .eq("id", vistoId)
+        .single();
+      try {
+        const { error } = await parceiro
+          .from("visa_types")
+          .update({ base_price: "NaN" as never })
+          .eq("id", vistoId);
+        expect(error?.code).toBe("23514");
+      } finally {
+        await parceiro.from("visa_types").update({ base_price: antes!.base_price }).eq("id", vistoId);
+      }
+    });
   });
 
   it("mudar o preço do visto não muda o item", async () => {

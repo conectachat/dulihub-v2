@@ -2,6 +2,8 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import type { TablesUpdate } from "@/lib/supabase/database.types";
+
 import { entrarComo, fixture, type Cliente } from "./clientes";
 
 /**
@@ -215,6 +217,55 @@ describe("a receber", () => {
       .in("id", [nova!.id, parcela!.id]);
 
     expect(lapides?.map((l) => l.tabela).sort()).toEqual(["installments", "receivables"]);
+  }, 60_000);
+
+  it("valor e cotação NaN são recusados (0063)", async () => {
+    // Em `numeric`, o Postgres ordena NaN acima de todo número: `>= 0` e
+    // `> 0` passavam, e o PostgREST aceita o texto "NaN". A soma por moeda e
+    // o `emReais` virariam NaN na tela. A tela nunca produz NaN.
+    const { data: nova, error: erroNova } = await parceiro
+      .from("receivables")
+      .insert({
+        organization_id: orgParceiro,
+        person_id: pessoaId,
+        title: "Cobrança do NaN",
+        amount: 100,
+        currency: "USD",
+      })
+      .select("id")
+      .single();
+    if (erroNova) throw new Error(`Cobrança não criada: ${erroNova.message}`);
+    try {
+      const { data: parcela, error: erroParcela } = await parceiro
+        .from("installments")
+        .insert({
+          organization_id: orgParceiro,
+          receivable_id: nova.id,
+          number: 1,
+          amount: 100,
+          due_on: "2026-10-10",
+          method: "pix",
+        })
+        .select("id")
+        .single();
+      if (erroParcela) throw new Error(`Parcela não criada: ${erroParcela.message}`);
+
+      const nan = "NaN" as never;
+      const cobranca = (campos: TablesUpdate<"receivables">) =>
+        parceiro.from("receivables").update(campos).eq("id", nova.id).select("id");
+      const naParcela = (campos: TablesUpdate<"installments">) =>
+        parceiro.from("installments").update(campos).eq("id", parcela.id).select("id");
+
+      expect((await cobranca({ amount: nan })).error?.code).toBe("23514");
+      expect((await cobranca({ list_amount: nan })).error?.code).toBe("23514");
+      expect((await naParcela({ amount: nan })).error?.code).toBe("23514");
+      expect((await naParcela({ paid_on: "2026-10-10", paid_rate: nan })).error?.code).toBe("23514");
+
+      // O caminho certo continua passando.
+      expect((await naParcela({ paid_on: "2026-10-10", paid_rate: 5.4321 })).error).toBeNull();
+    } finally {
+      await parceiro.from("receivables").delete().eq("id", nova.id);
+    }
   }, 60_000);
 
   it("o manifesto conta as duas tabelas novas", async () => {
