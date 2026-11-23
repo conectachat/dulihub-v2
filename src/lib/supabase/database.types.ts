@@ -2242,10 +2242,13 @@ export type Database = {
         Returns: {
           ddi: string
           email: string
+          forma: Json
+          modo: string
           nome: string
           organizacao: string
           situacao: string
           telefone: string
+          tem_forma: boolean
         }[]
       }
       ajustar_data_do_ganho: {
@@ -2381,6 +2384,10 @@ export type Database = {
       reabrir_negocio: { Args: { p_negocio: string }; Returns: undefined }
       reordenar_irmaos: {
         Args: { p_ids: string[]; p_tabela: string }
+        Returns: undefined
+      }
+      responder_forma_de_pagamento: {
+        Args: { p_aceita: boolean; p_motivo?: string; p_token: string }
         Returns: undefined
       }
       salvar_cadastro: {

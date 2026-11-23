@@ -162,8 +162,10 @@ describe("ficha de cadastro por link", () => {
     expect(data![0].email).toBe("antes@example.com");
     // A lista fechada do que a página pública pode saber.
     expect(Object.keys(data![0]).sort()).toEqual(
-      ["ddi", "email", "nome", "organizacao", "situacao", "telefone"].sort(),
+      // 0065: o modo e a forma de pagamento — a forma só vem no pagamento.
+      ["ddi", "email", "forma", "modo", "nome", "organizacao", "situacao", "tem_forma", "telefone"].sort(),
     );
+    expect(data![0]).toMatchObject({ modo: "completa", tem_forma: false, forma: null });
 
     await cancelar(link.id);
   });

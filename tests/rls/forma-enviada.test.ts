@@ -286,7 +286,9 @@ describe("a forma vai pelo link (0064)", { timeout: 60_000 }, () => {
   }, 60_000);
 
   afterAll(async () => {
-    if (criadas.length) await parceiro.from("people").delete().in("id", criadas);
+    if (!criadas.length) return;
+    const { error } = await parceiro.from("people").delete().in("id", criadas);
+    if (error) throw new Error(`Pessoas descartáveis não apagadas: ${error.message}`);
   });
 
   it("a parte em reais diz de quantos dólares veio, e a cópia guarda (FIC-13)", async () => {
@@ -587,5 +589,24 @@ describe("a forma vai pelo link (0064)", { timeout: 60_000 }, () => {
     expect((await enviar(duli, negocio, new Date().toISOString())).error?.message).toBe(MSG.naoEncontrado);
     expect((await voltar(duli, negocio, "enviada")).error?.message).toBe(MSG.naoEncontrado);
     expect(await linksDa(pessoa, duli)).toHaveLength(0);
+  });
+
+  it("a Duli não descobre o título do negócio da parceira tentando gerar link (revisão de segurança)", async () => {
+    // O gatilho do insert roda como dono e antes da RLS: sem cuidado, a frase
+    // "Há um link da ficha aberto no negócio ‹título›" diria o título alheio.
+    const segredo = `Segredo ${s}`;
+    const { pessoa } = await enviada(segredo);
+    const { data: membro } = await duli.from("organization_members").select("organization_id").limit(1).single();
+
+    for (const organizacao of [org, membro!.organization_id]) {
+      const intruso = await duli.from("registration_forms").insert({
+        organization_id: organizacao,
+        person_id: pessoa,
+        token: `${crypto.randomUUID()}${crypto.randomUUID()}`.replaceAll("-", ""),
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      });
+      expect(intruso.error, organizacao).not.toBeNull();
+      expect(intruso.error?.message ?? "", organizacao).not.toContain(segredo);
+    }
   });
 });

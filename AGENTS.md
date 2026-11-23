@@ -76,23 +76,29 @@ migration.
 
 **Uma porta para quem não tem login, e só uma.** A ficha de cadastro
 (`/cadastro/<token>`, migration 0035) é o único caminho do app para o
-anônimo. Ela existe em duas funções — `abrir_ficha_de_cadastro` e
-`enviar_ficha_de_cadastro` — que são `security definer` em `public`,
-executáveis por `anon`: exatamente o que a 0003 proibiu, e a única exceção.
+anônimo. Ela existe em três funções — `abrir_ficha_de_cadastro`,
+`enviar_ficha_de_cadastro` e, desde a entrega 4b (0065),
+`responder_forma_de_pagamento`, o OK do cliente na forma de pagamento —
+que são `security definer` em `public`, executáveis por `anon`:
+exatamente o que a 0003 proibiu, e a única exceção.
 O que a mantém estreita, e que qualquer porta nova teria de repetir:
 
 - o token de 256 bits é a única chave, gerado no servidor, de uso único e
   com prazo; a função trava a linha antes de gravar;
 - lista fechada de campos (`private.campos_da_ficha`) — o `jsonb` não
   alcança `organization_id`, `lifecycle_stage` nem `user_id`;
-- a leitura devolve só nome e contato, nunca documento ou endereço;
+- a leitura devolve só nome e contato, nunca documento ou endereço; e,
+  quando o cliente está no pagamento, a forma montada no banco
+  (`private.copia_da_forma`), nunca a cotação;
+- na resposta do pagamento, do navegador chegam só sim, não e o motivo: a
+  cópia que fica como prova é a mesma `copia_da_forma` que o cliente leu;
 - só `anon` executa: o app chama por `lib/supabase/anonimo.ts`, sem cookie,
   para que ninguém entre por ela com sessão (o gatilho da 0013 congelaria o
   CPF em silêncio);
 - quem grava é `salvar_cadastro`, `security invoker` — a mesma função que a
   equipe usa, onde a RLS decide.
 
-O aviso do Supabase "definer executável por anon" é esperado para essas duas
+O aviso do Supabase "definer executável por anon" é esperado para essas três
 funções. Aparecendo para qualquer outra, é defeito. Nenhuma policy é
 `to anon`, e não é para passar a ser.
 
