@@ -5,6 +5,7 @@ import {
   formatarData,
   formatarDataHora,
   formatarDia,
+  formatarDiaDaSemana,
   hojeEmSaoPaulo,
   iniciais,
   telefoneCompleto,
@@ -77,5 +78,13 @@ describe("diaEmSaoPaulo", () => {
 
   it("o início do dia em São Paulo aparece como esse dia", () => {
     expect(formatarData("2026-11-01T03:00:00+00:00")).toBe("01/11/2026");
+  });
+});
+
+describe("formatarDiaDaSemana", () => {
+  it("o dia com a semana, curto e longo, sem voltar um dia", () => {
+    expect(formatarDiaDaSemana("2026-11-26", "longo")).toBe("quinta-feira, 26/11");
+    expect(formatarDiaDaSemana("2026-11-26", "curto")).toBe("qui, 26/11");
+    expect(formatarDiaDaSemana("2026-12-02", "longo")).toBe("quarta-feira, 02/12");
   });
 });

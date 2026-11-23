@@ -42,6 +42,22 @@ export function formatarDia(valor: string): string {
   return `${dia}/${mes}/${ano}`;
 }
 
+const SEMANA = {
+  longo: ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"],
+  curto: ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"],
+} as const;
+
+/**
+ * Um dia (`AAAA-MM-DD`) com o dia da semana: "quinta-feira, 26/11" ou
+ * "qui, 26/11". Pela data em UTC ao meio-dia, para o fuso de quem formata não
+ * mudar o dia — como `formatarDia`, é um dia, não um instante.
+ */
+export function formatarDiaDaSemana(dia: string, estilo: "curto" | "longo"): string {
+  const [ano, mes, d] = dia.slice(0, 10).split("-").map(Number) as [number, number, number];
+  const semana = new Date(Date.UTC(ano, mes - 1, d, 12)).getUTCDay();
+  return `${SEMANA[estilo][semana]}, ${String(d).padStart(2, "0")}/${String(mes).padStart(2, "0")}`;
+}
+
 /**
  * Hoje em São Paulo, como `AAAA-MM-DD` — o formato das colunas `date`.
  *
