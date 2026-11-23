@@ -184,7 +184,6 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         phase: "Fases 3 e 4",
         planned: [
           "ZapSign — geração e assinatura de contrato",
-          "Itaú e C6 — boleto e link de pagamento",
           "Provedor de nota fiscal",
           "Google — agenda e email",
           "Calendly — agendamento",

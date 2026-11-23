@@ -189,7 +189,7 @@ export async function obterNegocio(id: string) {
          partes:payment_plan_parts(position, label, method, currency, total, installments_count, usd_equivalent,
            parcelas:payment_plan_installments(number, amount, due_on)),
          respostas:payment_plan_responses(answered_at, created_at, answered_by_name, reason, decision),
-         links:registration_forms!registration_forms_plan_same_org(id, token, expires_at, created_at,
+         links:registration_forms!registration_forms_plan_same_org(id, token, mode, expires_at, created_at,
            closed_at, cancelled_at))`,
     )
     .eq("id", id)

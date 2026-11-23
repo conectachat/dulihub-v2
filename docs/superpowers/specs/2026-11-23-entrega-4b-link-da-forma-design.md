@@ -265,8 +265,12 @@ Cartão · Cartão de crédito
   - depois de Há algo errado: "Recebemos. A ‹organização› vai rever a forma de
     pagamento e enviar um novo link.";
   - link vencido: "Este link expirou. Peça um novo à ‹organização›.";
-  - cancelado ou já respondido: a frase de hoje ("Ele venceu ou foi substituído.
-    Peça um novo link…").
+  - já respondido: "Você já respondeu" e "A ‹organização› recebeu a sua resposta
+    sobre a forma de pagamento e vai seguir com os próximos passos." *(Renato,
+    23/nov, depois da entrega: com a frase de antes, quem confirmou podia achar
+    que a confirmação não valeu e pedir outro link.)*
+  - cancelado: a frase de hoje ("Ele venceu ou foi substituído. Peça um novo
+    link…").
 - **No celular de 375 px:** uma coluna, sem rolagem horizontal; cada parcela é uma
   linha com data e valor.
 

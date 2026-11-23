@@ -131,6 +131,16 @@ describe("ultimoDiaDoLink", () => {
   });
 });
 
+describe("mensagemDaFormaNoWhatsApp — o link só do pagamento", () => {
+  it("não pede para preencher a ficha: os dados já chegaram", () => {
+    const texto = mensagemDaFormaNoWhatsApp("Ricardo Wiest", "https://x/cadastro/abc", "2026-11-26", true);
+
+    expect(texto).toContain("Para fecharmos o seu contrato, confira a forma de pagamento neste link:");
+    expect(texto).not.toContain("preencha a ficha");
+    expect(texto.endsWith("O link é só seu e vale até quinta-feira, 26/11.")).toBe(true);
+  });
+});
+
 describe("mensagemDaFormaNoWhatsApp", () => {
   it("chama pelo primeiro nome, leva o link e diz até quando vale", () => {
     const texto = mensagemDaFormaNoWhatsApp("Ricardo Wiest", "https://x/cadastro/abc", "2026-11-26");

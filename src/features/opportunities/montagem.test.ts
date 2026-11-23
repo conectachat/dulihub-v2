@@ -67,6 +67,7 @@ const linha = {
 const link = (id: string, created_at: string, extra: Record<string, string | null> = {}) => ({
   id,
   token: `token-${id}`,
+  mode: "completa",
   expires_at: "2026-11-27T03:00:00+00:00",
   created_at,
   closed_at: null,
@@ -93,6 +94,7 @@ describe("formaDoNegocio — o que a 4b lê", () => {
     expect(forma!.linkAberto).toEqual({
       id: "atual",
       token: "token-atual",
+      mode: "completa",
       expires_at: "2026-11-27T03:00:00+00:00",
       created_at: "2026-11-23T12:00:00Z",
     });

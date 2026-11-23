@@ -74,6 +74,7 @@ export function FormDialog<E extends ActionState = ActionState>({
   descricao,
   salvar = "Salvar",
   pendente = "Salvando...",
+  rotuloDeFechar = "Cancelar",
   abertoDeInicio = false,
   aviso,
   aoAbrir,
@@ -86,6 +87,8 @@ export function FormDialog<E extends ActionState = ActionState>({
   descricao?: string;
   salvar?: string;
   pendente?: string;
+  /** O botão que fecha sem gravar. "Voltar" quando "Cancelar" confundiria com a ação. */
+  rotuloDeFechar?: string;
   /**
    * Abre já na primeira pintura — para links que levam direto ao formulário,
    * como o atalho do CRM para "Novo processo".
@@ -131,6 +134,7 @@ export function FormDialog<E extends ActionState = ActionState>({
           aviso={aviso}
           salvar={salvar}
           pendente={pendente}
+          rotuloDeFechar={rotuloDeFechar}
         >
           {children}
         </CorpoDoFormulario>
@@ -145,6 +149,7 @@ function CorpoDoFormulario<E extends ActionState>({
   aviso,
   salvar,
   pendente,
+  rotuloDeFechar,
   children,
 }: {
   acao: Acao<E>;
@@ -152,6 +157,7 @@ function CorpoDoFormulario<E extends ActionState>({
   aviso?: (estado: E, acoes: AcoesDoAviso) => React.ReactNode;
   salvar: string;
   pendente: string;
+  rotuloDeFechar: string;
   children: React.ReactNode;
 }) {
   // Estado, não `ref`: o aviso é desenhado com `reenviarCom`, e ler `ref`
@@ -211,7 +217,7 @@ function CorpoDoFormulario<E extends ActionState>({
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={fechar}>
-          Cancelar
+          {rotuloDeFechar}
         </Button>
         <SubmitButton pendente={pendente} enviando={enviando}>
           {salvar}

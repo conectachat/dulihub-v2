@@ -178,6 +178,7 @@ export function CartaoDaFormaDePagamento({
                     nomeDaPessoa,
                     urlDaFicha(origem, forma.linkAberto.token),
                     ultimoDiaDoLink(forma.linkAberto.expires_at),
+                    forma.linkAberto.mode === "so_pagamento",
                   ),
                 )}
               />
@@ -405,6 +406,8 @@ function VoltarParaRascunho({
       titulo={editar ? "Editar a forma enviada" : "Cancelar o link da ficha"}
       salvar={editar ? "Editar" : "Cancelar link"}
       pendente={editar ? "Abrindo..." : "Cancelando..."}
+      // "Cancelar" ao lado de "Cancelar link" pareceria cancelar o link.
+      rotuloDeFechar={editar ? undefined : "Voltar"}
       gatilho={
         <Button variant="outline" size="sm" className="rounded-xl">
           {editar ? (

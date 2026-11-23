@@ -102,13 +102,24 @@ describe("FichaPublica", () => {
 
 describe("LinkIndisponivel", () => {
   it("link com a forma vencido: pede um novo à organização dona (P14)", () => {
-    render(<LinkIndisponivel organizacao="Parceiro de Teste" expirado />);
+    render(<LinkIndisponivel organizacao="Parceiro de Teste" motivo="expirado" />);
     expect(screen.getByText("Este link expirou. Peça um novo à Parceiro de Teste.")).toBeTruthy();
   });
 
   it("os outros casos: a frase de antes", () => {
-    render(<LinkIndisponivel organizacao="Parceiro de Teste" expirado={false} />);
+    render(<LinkIndisponivel organizacao="Parceiro de Teste" motivo="indisponivel" />);
     expect(screen.getByText("Este link não está mais disponível")).toBeTruthy();
     expect(screen.getByText(/Ele venceu ou foi substituído/)).toBeTruthy();
+  });
+
+  it("quem já respondeu e abre o link de novo: sabe que a resposta valeu (Renato, 23/nov)", () => {
+    render(<LinkIndisponivel organizacao="Parceiro de Teste" motivo="respondido" />);
+    expect(screen.getByText("Você já respondeu")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "A Parceiro de Teste recebeu a sua resposta sobre a forma de pagamento e vai seguir com os próximos passos. Você já pode fechar esta página.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Peça um novo link/)).toBeNull();
   });
 });

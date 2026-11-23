@@ -55,6 +55,7 @@ const linhaSchema = z.object({
       z.object({
         id: z.string(),
         token: z.string(),
+        mode: z.enum(["completa", "so_pagamento"]),
         expires_at: z.string(),
         created_at: z.string(),
         closed_at: z.string().nullable(),
@@ -85,7 +86,13 @@ export type FormaDoNegocio = {
     decision: "confirmada" | "recusada" | "confirmada_pela_equipe";
   } | null;
   /** O link da ficha com esta forma ainda aberto (vencido ou não): o mais recente. */
-  linkAberto: { id: string; token: string; expires_at: string; created_at: string } | null;
+  linkAberto: {
+    id: string;
+    token: string;
+    mode: "completa" | "so_pagamento";
+    expires_at: string;
+    created_at: string;
+  } | null;
 };
 
 type LinkLido = z.infer<typeof linhaSchema>["links"][number];
@@ -95,7 +102,13 @@ function abertoMaisRecente(links: LinkLido[]): FormaDoNegocio["linkAberto"] {
     .filter((l) => l.closed_at === null && l.cancelled_at === null)
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
   return aberto
-    ? { id: aberto.id, token: aberto.token, expires_at: aberto.expires_at, created_at: aberto.created_at }
+    ? {
+        id: aberto.id,
+        token: aberto.token,
+        mode: aberto.mode,
+        expires_at: aberto.expires_at,
+        created_at: aberto.created_at,
+      }
     : null;
 }
 

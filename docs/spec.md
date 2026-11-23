@@ -657,6 +657,7 @@ e cada pessoa da equipe define a sua senha.
 | 23/nov | Sem "criar as cobranças mesmo assim": forma enviada ou recusada não gera cobrança no Ganho; o cliente que confirmou por fora passa por "Confirmar pela equipe" (REC-6) |
 | 23/nov | Q11: um link novo não invalida a ficha recebida e ainda não conferida; o aviso da Início fica até o "Conferi" (I4, INI-4) |
 | 23/nov | Itaú e C6 saem do roadmap (eram o REC-7 e a Q9): boleto e baixa à mão. O Renato retoma se um dia as credenciais saírem |
+| 23/nov | O cliente que já respondeu a forma de pagamento e abre o link de novo lê "Você já respondeu", e não "peça um novo link" (FIC-8). Itaú e C6 saem também da lista de integrações da Configuração |
 | 23/nov | A cópia de segurança e o monitor (OPS-1, OPS-2) ficam para quando os clientes tiverem acesso ao app; o plano pago do Supabase ainda não compensa (Q13) |
 
 ## 11. Ordem proposta

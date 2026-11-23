@@ -83,6 +83,7 @@ const AGORA = new Date("2026-11-24T15:00:00Z");
 const LINK = {
   id: "link-1",
   token: "tok-da-forma",
+  mode: "completa" as const,
   expires_at: "2026-11-27T03:00:00+00:00",
   created_at: "2026-11-23T15:00:00Z",
 };
@@ -266,6 +267,20 @@ describe("CartaoDaFormaDePagamento", () => {
       desenhar({ forma: ENVIADA });
       fireEvent.click(screen.getByRole("button", { name: /Editar/ }));
       expect(texto()).toContain("O link enviado em 23/11/2026 deixa de valer.");
+    });
+
+    it("Cancelar link: o botão de fechar diz Voltar, para não parecer que cancela", () => {
+      desenhar({ forma: ENVIADA });
+      fireEvent.click(screen.getByRole("button", { name: /Cancelar link/ }));
+      expect(screen.getByRole("button", { name: "Voltar" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Cancelar" })).toBeNull();
+    });
+
+    it("link só do pagamento: o WhatsApp não pede para preencher a ficha", () => {
+      desenhar({ forma: { ...ENVIADA, linkAberto: { ...LINK, mode: "so_pagamento" } } });
+      const href = screen.getByRole("link", { name: /WhatsApp/ }).getAttribute("href") ?? "";
+      expect(href).toContain(encodeURIComponent("confira a forma de pagamento neste link"));
+      expect(href).not.toContain(encodeURIComponent("preencha a ficha"));
     });
 
     it("sem telefone, o WhatsApp não aparece — só o copiar", () => {

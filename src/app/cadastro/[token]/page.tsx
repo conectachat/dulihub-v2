@@ -107,7 +107,13 @@ export default async function FichaDeCadastroPage({
       <Moldura organizacao={ficha.organizacao}>
         <LinkIndisponivel
           organizacao={ficha.organizacao}
-          expirado={ficha.situacao === "expirada" && ficha.tem_forma}
+          motivo={
+            ficha.situacao === "respondida"
+              ? "respondido"
+              : ficha.situacao === "expirada" && ficha.tem_forma
+                ? "expirado"
+                : "indisponivel"
+          }
         />
       </Moldura>
     );

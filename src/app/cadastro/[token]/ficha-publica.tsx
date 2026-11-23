@@ -88,20 +88,35 @@ export function Recebida({ organizacao }: { organizacao: string }) {
 }
 
 /**
- * O link que não vale mais. O link com a forma vencido tem frase própria
- * (P14): são só 3 dias úteis, e o cliente precisa saber que é pedir outro.
+ * O link que não vale mais, com a frase de cada caso:
+ * - `expirado`: o link com a forma passou dos 3 dias úteis (P14);
+ * - `respondido`: o cliente já respondeu a forma — ele precisa saber que a
+ *   resposta valeu, e não pedir outro link (Renato, 23/nov);
+ * - `indisponivel`: o resto (cancelado, substituído, ficha comum vencida).
  */
 export function LinkIndisponivel({
   organizacao,
-  expirado,
+  motivo,
 }: {
   organizacao: string;
-  expirado: boolean;
+  motivo: "expirado" | "respondido" | "indisponivel";
 }) {
+  if (motivo === "respondido") {
+    return (
+      <div className="space-y-3 py-6 text-center" role="status">
+        <CheckCircle2 className="mx-auto h-10 w-10 text-success" aria-hidden />
+        <h2 className="font-serif text-xl font-medium">Você já respondeu</h2>
+        <p className="text-sm text-muted-foreground">
+          {`A ${organizacao} recebeu a sua resposta sobre a forma de pagamento e vai seguir com os próximos passos. Você já pode fechar esta página.`}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3 py-6 text-center">
       <Clock className="mx-auto h-10 w-10 text-muted-foreground/60" aria-hidden />
-      {expirado ? (
+      {motivo === "expirado" ? (
         <h2 className="font-serif text-xl font-medium">
           {`Este link expirou. Peça um novo à ${organizacao}.`}
         </h2>

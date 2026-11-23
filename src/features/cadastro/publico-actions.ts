@@ -38,6 +38,11 @@ export async function enviarFicha(
   if (erroAoAbrir) {
     return { error: "Não foi possível enviar agora. Tente de novo em instantes." };
   }
+  // Os dados já chegaram, de outro aparelho: o link continua aberto para o
+  // pagamento, e atualizar a página leva até ele.
+  if (aberta?.situacao === "aguardando_pagamento") {
+    return { error: "Seus dados já foram recebidos. Atualize a página para ver a forma de pagamento." };
+  }
   if (!aberta || aberta.situacao !== "aberta") {
     return { error: "Este link não está mais disponível. Peça um novo a quem te enviou." };
   }
@@ -84,7 +89,17 @@ export async function responderForma(
     // Com Confirmo, o motivo não vai: o banco não o guardaria.
     ...(aceita ? {} : { p_motivo: aparado }),
   });
-  if (error) return { error: traduzirErro(error) };
+  if (error) {
+    // O banco recusa sem dizer por quê ("não está mais disponível"). Com a
+    // página aberta, o prazo pode ter vencido, ou o cliente já respondeu de
+    // outro aparelho: a ficha diz qual, e a frase diz o que fazer.
+    const { ficha } = await abrirFicha(token);
+    if (ficha?.situacao === "expirada") {
+      return { error: `Este link expirou. Peça um novo à ${ficha.organizacao}.` };
+    }
+    if (ficha?.situacao === "respondida") return { error: "Você já respondeu a forma de pagamento." };
+    return { error: traduzirErro(error) };
+  }
 
   return { error: null };
 }

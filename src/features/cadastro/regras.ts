@@ -118,14 +118,22 @@ export function mensagemDoWhatsApp(nome: string, url: string): string {
 
 /**
  * A mensagem do link com a forma de pagamento (entrega 4b): diz até quando ele
- * vale, porque são só 3 dias úteis e o valor envelhece.
+ * vale, porque são só 3 dias úteis e o valor envelhece. No link só do
+ * pagamento os dados já chegaram, e a mensagem não pede para preencher nada.
  */
-export function mensagemDaFormaNoWhatsApp(nome: string, url: string, ultimoDia: string): string {
+export function mensagemDaFormaNoWhatsApp(
+  nome: string,
+  url: string,
+  ultimoDia: string,
+  soPagamento = false,
+): string {
   const primeiro = nome.trim().split(/\s+/)[0] ?? "";
   return [
     `Olá, ${primeiro}!`,
     "",
-    "Para fecharmos o seu contrato, preencha a ficha e confira a forma de pagamento neste link:",
+    soPagamento
+      ? "Para fecharmos o seu contrato, confira a forma de pagamento neste link:"
+      : "Para fecharmos o seu contrato, preencha a ficha e confira a forma de pagamento neste link:",
     url,
     "",
     `O link é só seu e vale até ${formatarDiaDaSemana(ultimoDia, "longo")}.`,

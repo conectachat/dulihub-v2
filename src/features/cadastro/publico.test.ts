@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const rpc = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/supabase/anonimo", () => ({ clienteAnonimo: () => ({ rpc }) }));
 
-const { responderForma } = await import("./publico-actions");
+const { enviarFicha, responderForma } = await import("./publico-actions");
 const { abrirFicha } = await import("./publico-queries");
 
 /**
@@ -16,7 +16,36 @@ const { abrirFicha } = await import("./publico-queries");
 
 const TOKEN = "a".repeat(43);
 
-beforeEach(() => vi.clearAllMocks());
+/** Uma ficha que passa na validação da tela (os campos do formulário público). */
+const FICHA_VALIDA: Record<string, string> = {
+  full_name: "Ana de Teste",
+  birth_date: "1990-05-20",
+  tax_id: "529.982.247-25",
+  national_id: "1234567",
+  national_id_issuer: "SSP/MA",
+  gender: "feminino",
+  marital_status: "casado",
+  birthplace: "São Luís",
+  nationality: "Brasileira",
+  email: "ana@example.com",
+  phone_country_code: "+55",
+  phone: "98999990000",
+  address_postal_code: "65000-000",
+  address_street: "Rua da Filosofia",
+  address_number: "10",
+  address_district: "Cohafuma",
+  address_city: "São Luís",
+  address_state: "MA",
+  address_country: "Brasil",
+};
+
+// `mockReset`, e não só `clearAllMocks`: a fila de `mockResolvedValueOnce`
+// que sobra de um caso não pode responder pelo seguinte.
+beforeEach(() => {
+  vi.clearAllMocks();
+  rpc.mockReset();
+  rpc.mockResolvedValue({ data: [], error: null });
+});
 
 describe("responderForma", () => {
   it("motivo com mais de 500 caracteres nem sai daqui (foco 5)", async () => {
@@ -104,5 +133,49 @@ describe("abrirFicha", () => {
     });
     const { ficha } = await abrirFicha(TOKEN);
     expect(ficha!.forma).toBeNull();
+  });
+});
+
+describe("a ficha pública em dois aparelhos, ou com o prazo vencendo na tela", () => {
+  const abertura = (situacao: string) => ({
+    data: [
+      {
+        situacao,
+        nome: null,
+        email: null,
+        ddi: null,
+        telefone: null,
+        organizacao: "Parceiro de Teste",
+        modo: "completa",
+        tem_forma: true,
+        forma: null,
+      },
+    ],
+    error: null,
+  });
+
+  it("Confirmo com o link já vencido diz que expirou, com a organização", async () => {
+    rpc
+      .mockResolvedValueOnce({ data: null, error: { code: "P0001", message: "Este link não está mais disponível." } })
+      .mockResolvedValueOnce(abertura("expirada"));
+    const r = await responderForma(TOKEN, true, "");
+    expect(r.error).toBe("Este link expirou. Peça um novo à Parceiro de Teste.");
+  });
+
+  it("Confirmo já respondido no outro aparelho diz que a resposta chegou", async () => {
+    rpc
+      .mockResolvedValueOnce({ data: null, error: { code: "P0001", message: "Este link não está mais disponível." } })
+      .mockResolvedValueOnce(abertura("respondida"));
+    const r = await responderForma(TOKEN, true, "");
+    expect(r.error).toBe("Você já respondeu a forma de pagamento.");
+  });
+
+  it("os dados já mandados no outro aparelho: atualizar a página leva ao pagamento", async () => {
+    rpc.mockResolvedValueOnce(abertura("aguardando_pagamento"));
+    const fd = new FormData();
+    for (const [k, v] of Object.entries(FICHA_VALIDA)) fd.set(k, v);
+    fd.set("aceite", "on");
+    const r = await enviarFicha(TOKEN, fd);
+    expect(r.error).toBe("Seus dados já foram recebidos. Atualize a página para ver a forma de pagamento.");
   });
 });

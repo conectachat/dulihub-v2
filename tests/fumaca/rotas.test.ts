@@ -457,7 +457,10 @@ describe("com um lead de verdade", () => {
   }, 60_000);
 
   afterAll(async () => {
-    if (leadId) await sessao.supabase.from("people").delete().eq("id", leadId);
+    if (!leadId) return;
+    // A limpeza não falha calada: foi assim que pessoas de teste sobraram na 4b.
+    const { error } = await sessao.supabase.from("people").delete().eq("id", leadId);
+    if (error) throw new Error(`Lead da fumaça não apagado: ${error.message}`);
   });
 
   it("a tela do lead abre com o negócio, a trilha e as saídas", async () => {
