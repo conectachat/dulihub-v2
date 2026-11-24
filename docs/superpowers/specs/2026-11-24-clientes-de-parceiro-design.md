@@ -153,17 +153,27 @@ N3), de propósito, e com o teste de RLS vermelho antes.
 - E-mail, DDI e telefone passam por `private.contato_valido`, com as mesmas
   frases do contato. O DDI é gravado com `normalizar_ddi` ("+1").
 - **O banco confere**, no `insert` e no `update` de organização `partner`:
-  nome, país e contato. A regra não vale para a raiz (nossa). A organização
-  `parceiro-teste`, que já existe, é preenchida pela migration para passar.
+  nome, país e contato. A regra não vale para a raiz (nossa). **A conferência
+  dos dados vale sempre, com ou sem usuário**, porque é integridade e não
+  permissão. A do dono da raiz, abaixo, só vale com usuário. Por isso as
+  organizações `partner` de teste, a `parceiro-teste` que já existe e as da
+  fixture, nascem ou são preenchidas pela migration com país e contato válidos
+  (segunda revisão, N2).
 - **A ordem do gatilho** (revisão, I4): o gatilho roda antes da RLS. No
   `insert` com usuário, a **primeira** conferência é o dono da raiz
   (`current_user_is_root_owner()`), com "Só o dono da Duli cadastra parceiro."
-  Só depois vêm nome, país e contato. Sem isso, quem não é dono e manda dado
+  e `errcode` `42501`, o mesmo da RLS da 0036. Assim a fila e `traduzirErro`
+  a tratam como recusa de permissão, como `papeis.test.ts` já espera do
+  `insert` em `organizations` (segunda revisão, N5). Só depois vêm nome, país
+  e contato. Sem isso, quem não é dono e manda dado
   inválido leria "Informe o país." em vez da recusa de verdade. Inclusive na
   Sincronização, quando a gravação veio da fila.
 - O `slug` é gerado **no banco**, num gatilho `before insert`, a partir do nome,
   com sufixo quando já existe. Não aparece na tela (revisão, M2). Gerado no
-  aparelho, um choque de `slug` voltaria da fila como um conflito enganoso.
+  aparelho, um choque de `slug` voltaria da fila como um conflito enganoso. A
+  coluna é `not null` sem padrão (0001), então ganha um padrão provisório, que o
+  gatilho troca pelo do nome. Assim o tipo gerado deixa de exigir `slug` no
+  `insert`, e nem a fila nem o diálogo mandam um (segunda revisão, N3).
 - **Quem:** todo membro da Duli lê, porque precisa ver o contato. Só o dono da
   Duli cria (proposta; o banco já exige, 0036). Para **editar**, a policy da
   0036 fica como está: editam o dono da raiz e a gestão da própria organização
@@ -310,7 +320,9 @@ A seção já existe no menu como "Fase 7", com a lista do que vai ter
 - "Novo parceiro" no topo (criar vem antes da lista), num `FormDialog`. Editar
   é o mesmo diálogo, preenchido.
 - Lista: nome, país, e-mail e telefone (com copiar) e o número de clientes. Sem
-  excluir.
+  excluir. Só organizações `partner`, **nunca a atual**, como no seletor. Para
+  quem está numa organização de teste do tipo `partner`, ela não aparece como
+  parceira dela mesma (segunda revisão, N4).
 - Sem parceiro: `EmptyState` com "Nenhum parceiro ainda. Cadastre aqui quem vende
   e contrata a Duli para montar o processo."
 - A organização de teste **só aparece quando a organização atual é de
