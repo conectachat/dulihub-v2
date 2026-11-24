@@ -64,14 +64,20 @@ export function contatoExibido(
  * Os parceiros que se oferecem e se listam: só organizações `partner`, nunca
  * a atual, e só as de teste quando a atual é de teste. Assim o Renato, na
  * Duli, nunca vê a `parceiro-teste`, e a conta de teste nunca vê a Thais.
+ *
+ * A marca de teste ausente vale como "não é teste": é o parceiro recém-
+ * cadastrado, ainda na fila do aparelho (a linha sobe sem `is_test`, e pela
+ * API só nasce parceiro real). Sem isso ele sumia da lista até voltar do
+ * servidor — sem internet, nunca aparecia.
  */
 export function parceirosVisiveis<
-  T extends { id: string; name: string; type: string; is_test: boolean },
+  T extends { id: string; name: string; type: string; is_test?: boolean | null },
 >(orgs: T[], atualId: string | null): T[] {
-  const atualDeTeste = orgs.find((o) => o.id === atualId)?.is_test ?? false;
+  const deTeste = (o: T | undefined) => o?.is_test ?? false;
+  const atualDeTeste = deTeste(orgs.find((o) => o.id === atualId));
 
   return orgs
-    .filter((o) => o.type === "partner" && o.id !== atualId && o.is_test === atualDeTeste)
+    .filter((o) => o.type === "partner" && o.id !== atualId && deTeste(o) === atualDeTeste)
     .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
 }
 

@@ -31,6 +31,7 @@ vi.mock("@/lib/local/sincronizador", async (original) => ({
 }));
 
 const { MARCA_DA_SINCRONIA } = await import("@/lib/local/sessao");
+const { parceirosLocais } = await import("./consultas-locais");
 
 const {
   createDocumentType,
@@ -555,6 +556,20 @@ describe("saveParceiro no aparelho", () => {
 
     expect(estado.error).toBe("Já existe um parceiro com esse nome.");
     expect(await fila.fila.count()).toBe(0);
+  });
+
+  it("o parceiro cadastrado aparece na hora, pendente, e o mesmo nome de novo é recusado", async () => {
+    // Revisão final, Importante 1: a linha da fila não traz `is_test`, e a
+    // lista a descartava — sem internet, o parceiro novo nunca aparecia, e um
+    // segundo cadastro com o mesmo nome passava e voltava como conflito.
+    await saveParceiro({ error: null }, formulario(THAIS));
+
+    const { parceiros } = await parceirosLocais(banco, fila, USUARIO);
+    expect(parceiros.map((p) => [p.name, p.pendente])).toEqual([["Thais Fabrini", true]]);
+
+    const segundo = await saveParceiro({ error: null }, formulario(THAIS));
+    expect(segundo.error).toBe("Já existe um parceiro com esse nome.");
+    expect(await fila.fila.count()).toBe(1);
   });
 
   it("dado inválido não entra na fila", async () => {

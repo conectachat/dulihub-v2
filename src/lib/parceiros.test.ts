@@ -68,6 +68,11 @@ describe("parceirosVisiveis", () => {
     expect(parceirosVisiveis(todas, "executora-teste").map((o) => o.id)).toEqual(["parceiro-teste"]);
   });
 
+  it("a linha da fila, sem is_test, conta como parceiro real", () => {
+    const pendente = { id: "nova", name: "Nova Parceira", type: "partner" };
+    expect(parceirosVisiveis([DULI, pendente], "duli").map((o) => o.id)).toEqual(["nova"]);
+  });
+
   it("sem organização atual, só os reais", () => {
     expect(parceirosVisiveis(todas, null).map((o) => o.id)).toEqual(["ana", "thais"]);
   });

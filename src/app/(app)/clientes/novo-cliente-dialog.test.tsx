@@ -284,6 +284,25 @@ describe("NovoClienteDialog › Parceiro (PAR-5)", () => {
     expect(chamada(1).get("modo_contato")).toBe("parceiro");
   });
 
+  it("trocar de modo tira o aviso de nome repetido", async () => {
+    vi.mocked(criarCliente).mockResolvedValueOnce({
+      error: null,
+      token: "t1",
+      homonimos: [{ id: "c1", nome: "Fulano de Tal" }],
+      parceiro: "Thais Fabrini",
+    });
+    await abrirNoParceiro();
+    preencher("fulano de tal");
+    fireEvent.click(screen.getByRole("button", { name: "Criar cliente" }));
+    expect(
+      await screen.findByText("Já existe um cliente com esse nome vindo de Thais Fabrini."),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Novo contato" }));
+
+    expect(screen.queryByText("Já existe um cliente com esse nome vindo de Thais Fabrini.")).toBeNull();
+  });
+
   it("sem parceiro cadastrado, diz onde cadastrar, com o link para quem pode", async () => {
     await abrirNoParceiro([], true);
     expect(screen.getByText(/Nenhum parceiro cadastrado\. Cadastre em/)).toBeInTheDocument();
