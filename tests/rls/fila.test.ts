@@ -103,6 +103,38 @@ describe("fila contra o banco", () => {
     if (doParceiro) await parceiro.from("tags").delete().eq("id", doParceiro);
   });
 
+  it("parceiro cadastrado por quem não é dono da Duli vira conflito, com o motivo", async () => {
+    // Critério 14 do PAR-4: offline o botão nem aparece para quem não é dono,
+    // mas a fila de outro aparelho pode trazer a gravação. O banco recusa
+    // (0036 e 0068, código 42501), e a Sincronização mostra o motivo.
+    const id = crypto.randomUUID();
+    const fila = armazem([
+      item("parceiro", id, [
+        {
+          tipo: "insert",
+          tabela: "organizations",
+          linha: {
+            id,
+            type: "partner",
+            name: `Parceiro pela fila ${Date.now()}`,
+            address_country: "Brasil",
+            email: "fila@exemplo.com",
+            phone_country_code: "+55",
+            phone: "11999990005",
+          },
+        },
+      ]),
+    ]);
+
+    const resultado = await drenar(transporteDaFila(parceiro), fila);
+
+    expect(resultado.subiram).toBe(0);
+    expect(fila.itens[0].estado).toBe("conflito");
+    expect(fila.itens[0].motivo).toBe("Você não tem permissão para isto.");
+    const { data } = await duli.from("organizations").select("id").eq("id", id);
+    expect(data).toEqual([]);
+  });
+
   it("o que a RLS esconde vira conflito, não silêncio", async () => {
     // O update da Duli sobre a tag do parceiro não casa linha nenhuma, e o
     // PostgREST não devolve erro — exatamente o caso que a fila precisa

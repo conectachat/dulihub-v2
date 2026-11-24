@@ -7,11 +7,13 @@ import {
   ChevronRight,
   CloudOff,
   FileStack,
+  Handshake,
   Loader2,
   TriangleAlert,
 } from "lucide-react";
 
 import { ConfirmAction } from "@/components/confirm-action";
+import { CopiarTexto } from "@/components/copiar-texto";
 import { EmptyState } from "@/components/empty-state";
 import { SeloPendente } from "@/components/selo-pendente";
 import { Badge } from "@/components/ui/badge";
@@ -22,17 +24,20 @@ import { deleteVisaType } from "@/features/settings/escritas-locais";
 import {
   catalogoLocal,
   etapasDoFunilLocal,
+  parceirosLocais,
   statusDeEtapaLocal,
   tagsLocais,
   tiposDeVistoLocais,
   tipoDeVistoLocal,
 } from "@/features/settings/consultas-locais";
+import { telefoneCompleto } from "@/lib/formatar";
 import { useSincronia } from "@/lib/local/estado";
 import { bancoDoUsuario, filaDoUsuario } from "@/lib/local/sincronizador";
 import { motivoDoPrazo, validadeDoEspelho } from "@/lib/local/sessao";
 import { useUsuarioLocal } from "@/lib/local/usuario";
 
 import { DocumentTypesEditor } from "./document-types-editor";
+import { ParceiroDialog } from "./parceiro-dialog";
 import { StageStatusesEditor } from "./stage-statuses-editor";
 import { StagesEditor } from "./stages-editor";
 import { TagsEditor } from "./tags-editor";
@@ -101,6 +106,7 @@ export function SecoesDoAparelho({ slug, visa }: { slug: string; visa?: string }
   if (slug === "tags") return <SecaoTags userId={userId} />;
   if (slug === "categorias-de-documento") return <SecaoCatalogo userId={userId} />;
   if (slug === "status-de-etapas") return <SecaoStatusDeEtapa userId={userId} />;
+  if (slug === "parceiros") return <SecaoParceiros userId={userId} />;
   if (slug === "tipos-de-visto") {
     return visa ? (
       <SecaoTipoDeVisto userId={userId} visaId={visa} />
@@ -362,6 +368,80 @@ export function SecaoTipoDeVisto({ userId, visaId }: { userId: string; visaId: s
           />
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+/**
+ * Configuração › Parceiros (PAR-4): quem vende e contrata a Duli para montar
+ * o processo. Só o dono da Duli vê os botões; os outros leem a lista, porque
+ * precisam do contato. Parceiro não se exclui.
+ */
+export function SecaoParceiros({ userId }: { userId: string }) {
+  const dados = useEspelho(userId, (banco, fila) => parceirosLocais(banco, fila, userId));
+
+  if (!dados) return <Esperando />;
+  const { parceiros, podeCadastrar } = dados;
+
+  return (
+    <div className="space-y-4">
+      {podeCadastrar ? (
+        <div className="flex justify-end">
+          <ParceiroDialog />
+        </div>
+      ) : null}
+
+      {parceiros.length === 0 ? (
+        <>
+          <Esperando />
+          <EmptyState
+            icon={Handshake}
+            title="Nenhum parceiro ainda"
+            hint="Cadastre aqui quem vende e contrata a Duli para montar o processo."
+          />
+        </>
+      ) : (
+        <ul className="space-y-2">
+          {parceiros.map((p) => {
+            const telefone = telefoneCompleto(p.phone_country_code, p.phone);
+            return (
+              <li
+                key={p.id}
+                className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border p-3"
+              >
+                <div className="min-w-0 flex-1 basis-48">
+                  <p className="truncate font-medium">{p.name}</p>
+                  {p.address_country ? (
+                    <p className="text-xs text-muted-foreground">{p.address_country}</p>
+                  ) : null}
+                </div>
+
+                {p.email ? (
+                  <span className="flex min-w-0 items-center gap-1 text-sm">
+                    <span className="truncate">{p.email}</span>
+                    <CopiarTexto texto={p.email} rotulo="e-mail" />
+                  </span>
+                ) : null}
+
+                {telefone ? (
+                  <span className="flex items-center gap-1 text-sm">
+                    {telefone}
+                    <CopiarTexto texto={telefone} rotulo="telefone" />
+                  </span>
+                ) : null}
+
+                <span className="text-sm text-brand">
+                  {p.clientes === 1 ? "1 cliente" : `${p.clientes} clientes`}
+                </span>
+
+                <SeloPendente pendente={p.pendente} conflito={p.conflito} />
+
+                {podeCadastrar ? <ParceiroDialog parceiro={p} /> : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import type { Pendencia } from "@/lib/local/sobreposicao";
+import { parceirosVisiveis } from "@/lib/parceiros";
 import type { Tables } from "@/lib/supabase/database.types";
 
 /**
@@ -89,4 +90,33 @@ export function usosDoCatalogo(
 
 export function contagemPorVisto(linhas: { visa_type_id: string }[]): Record<string, number> {
   return Object.fromEntries(contarPor(linhas, (l) => l.visa_type_id));
+}
+
+/** Uma linha de Configuração › Parceiros: a organização e quantos clientes ela trouxe. */
+export type ParceiroNaLista = Tables<"organizations"> & Pendencia & { clientes: number };
+
+/**
+ * Os parceiros da organização atual (`parceirosVisiveis`: nunca ela mesma, e
+ * teste só com teste), com a contagem de clientes de cada um — cliente fora
+ * da lixeira com o vínculo.
+ *
+ * A linha de `people` que estava no aparelho antes da 0070 não tem a chave do
+ * vínculo: ela vale como nula e não conta.
+ */
+export function montarParceiros<T extends Tables<"organizations"> & Pendencia>(
+  orgs: T[],
+  pessoas: {
+    partner_organization_id?: string | null;
+    lifecycle_stage: string;
+    deleted_at: string | null;
+  }[],
+  atualId: string | null,
+): (T & { clientes: number })[] {
+  const clientes = new Map<string, number>();
+  for (const p of pessoas) {
+    if (!p.partner_organization_id || p.lifecycle_stage !== "client" || p.deleted_at) continue;
+    clientes.set(p.partner_organization_id, (clientes.get(p.partner_organization_id) ?? 0) + 1);
+  }
+
+  return parceirosVisiveis(orgs, atualId).map((o) => ({ ...o, clientes: clientes.get(o.id) ?? 0 }));
 }

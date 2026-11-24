@@ -22,6 +22,7 @@ const ESPELHADAS = [
   "categorias-de-documento",
   "tipos-de-visto",
   "status-de-etapas",
+  "parceiros",
 ];
 
 export function generateStaticParams() {

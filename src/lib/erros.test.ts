@@ -34,6 +34,7 @@ describe("traduzirErro", () => {
       // Estes dois faltavam nas TRÊS cópias antigas.
       ["pipeline_stages_one_won", "O funil já tem uma etapa de ganho."],
       ["pipeline_stages_one_lost", "O funil já tem uma etapa de perda."],
+      ["organizations_nome_do_parceiro", "Já existe um parceiro com esse nome."],
     ];
 
     for (const [constraint, esperado] of casos) {

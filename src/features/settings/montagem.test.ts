@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   contagemPorVisto,
   etapasComContagem,
+  montarParceiros,
   tagsComContagem,
   usosDoCatalogo,
 } from "./montagem";
@@ -90,5 +91,51 @@ describe("contagemPorVisto", () => {
 
   it("nada a contar devolve vazio, e a tela mostra zero", () => {
     expect(contagemPorVisto([])).toEqual({});
+  });
+});
+
+describe("montarParceiros", () => {
+  type Org = Parameters<typeof montarParceiros>[0][number];
+  const org = (id: string, name: string, type: "root" | "partner", is_test = false) =>
+    ({ id, name, type, is_test, slug: id, pendente: false, conflito: null }) as unknown as Org;
+  const DULI = org("duli", "Duli", "root");
+  const THAIS = org("thais", "Thais Fabrini", "partner");
+  const ANA = org("ana", "Ana Parceira", "partner");
+  const TESTE = org("parceiro-teste", "Parceiro de Teste", "partner", true);
+
+  const pessoa = (partner_organization_id: string | null | undefined, extra = {}) => ({
+    partner_organization_id,
+    lifecycle_stage: "client",
+    deleted_at: null as string | null,
+    ...extra,
+  });
+
+  it("lista os parceiros da organização atual, em ordem, com a contagem de clientes", () => {
+    const lista = montarParceiros(
+      [THAIS, DULI, TESTE, ANA],
+      [
+        pessoa("thais"),
+        pessoa("thais"),
+        pessoa("thais"),
+        pessoa("thais", { deleted_at: "2026-11-01T00:00:00Z" }),
+        pessoa("thais", { lifecycle_stage: "contact" }),
+        pessoa("ana"),
+        pessoa(null),
+        pessoa(undefined),
+      ],
+      "duli",
+    );
+
+    expect(lista.map((p) => [p.id, p.clientes])).toEqual([
+      ["ana", 1],
+      ["thais", 3],
+    ]);
+  });
+
+  it("a linha antiga do espelho, sem as colunas novas, não quebra", () => {
+    const antiga = { id: "velha", name: "Velha", type: "partner", is_test: false } as unknown as Org;
+    expect(montarParceiros([antiga], [], "duli")).toEqual([
+      expect.objectContaining({ id: "velha", clientes: 0 }),
+    ]);
   });
 });

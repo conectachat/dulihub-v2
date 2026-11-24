@@ -14,4 +14,11 @@ describe("seções da Configuração", () => {
     const planejado = ALL_SECTIONS.flatMap((secao) => secao.planned ?? []).join(" | ");
     expect(planejado).not.toMatch(/Itaú|Itau|C6/i);
   });
+
+  // Desde 24/nov Parceiros tem tela (PAR-4): não é mais "Fase 7".
+  it("Parceiros deixou de ser planejada", () => {
+    const parceiros = ALL_SECTIONS.find((secao) => secao.slug === "parceiros");
+    expect(parceiros?.phase).toBeUndefined();
+    expect(parceiros?.planned).toBeUndefined();
+  });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { stageStatusColorSchema, tagSchema, toCode, visaTypeSchema } from "./schema";
+import { parceiroSchema, stageStatusColorSchema, tagSchema, toCode, visaTypeSchema } from "./schema";
 
 /**
  * As regras de entrada da Configuração.
@@ -53,5 +53,54 @@ describe("visaTypeSchema", () => {
       .toBe(1500.5);
     expect(visaTypeSchema.safeParse({ name: "EB-1A", base_price: "" }).data?.base_price)
       .toBeNull();
+  });
+});
+
+describe("parceiroSchema", () => {
+  // As mesmas regras do gatilho `organizations_regra_do_parceiro` (0068), no
+  // navegador, antes de a gravação entrar na fila.
+  const VALIDO = {
+    name: " Thais Fabrini ",
+    legal_name: "",
+    address_country: "Estados Unidos",
+    tax_id: "",
+    address_street: "",
+    address_number: "",
+    address_complement: "",
+    address_district: "",
+    address_city: "Miami",
+    address_state: "",
+    address_postal_code: "",
+    email: "thais@exemplo.com",
+    phone_country_code: "1",
+    phone: "3055550100",
+  };
+  const erro = (campos: Partial<typeof VALIDO>) => {
+    const r = parceiroSchema.safeParse({ ...VALIDO, ...campos });
+    return r.success ? null : r.error.issues[0];
+  };
+
+  it("apara, grava o DDI com o + e manda vazio como nulo", () => {
+    const r = parceiroSchema.parse(VALIDO);
+    expect(r.name).toBe("Thais Fabrini");
+    expect(r.phone_country_code).toBe("+1");
+    expect(r.legal_name).toBeNull();
+    expect(r.address_city).toBe("Miami");
+  });
+
+  it("exige o nome e o país", () => {
+    expect(erro({ name: "  " })?.message).toBe("Informe o nome do parceiro.");
+    expect(erro({ address_country: "" })?.message).toBe("Informe o país.");
+  });
+
+  it("aponta o erro de contato no campo dele", () => {
+    const e = erro({ email: "x" });
+    expect(e?.message).toBe("E-mail inválido");
+    expect(e?.path).toEqual(["email"]);
+  });
+
+  it("documento fiscal até 50", () => {
+    expect(erro({ tax_id: "x".repeat(51) })?.message).toBe("Texto longo demais em um dos campos.");
+    expect(erro({ tax_id: "x".repeat(50) })).toBeNull();
   });
 });

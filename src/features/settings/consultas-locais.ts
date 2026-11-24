@@ -4,17 +4,21 @@ import type { BancoDaFila } from "@/lib/local/banco-da-fila";
 import type { BancoLocal } from "@/lib/local/banco";
 import type { ItemDaFila } from "@/lib/local/fila";
 import { lerTabela, pendentesDaFila } from "@/lib/local/leitura";
+import { vinculoLocal } from "@/lib/local/organizacao-local";
+import { ehDonoDaRaiz } from "@/lib/parceiros";
 import type { Pendencia } from "@/lib/local/sobreposicao";
 import type { Tables } from "@/lib/supabase/database.types";
 
 import {
   contagemPorVisto,
   etapasComContagem,
+  montarParceiros,
   tagsComContagem,
   usosDoCatalogo,
   type EtapaDoFunil,
   type EtapaDoVisto,
   type ExigenciaDoVisto,
+  type ParceiroNaLista,
   type PastaDoCatalogo,
   type StatusDeEtapa,
   type TagComContagem,
@@ -299,5 +303,33 @@ export async function tipoDeVistoLocal(
           conflito,
         }),
       ),
+  };
+}
+
+/**
+ * Configuração › Parceiros (PAR-4): os parceiros que esta organização vê, com
+ * os clientes de cada um, e se quem está no aparelho pode cadastrar (só o
+ * dono da Duli). `podeCadastrar` decide só o que a tela mostra; quem recusa
+ * é o banco, quando a gravação sobe.
+ */
+export async function parceirosLocais(
+  banco: BancoLocal,
+  fila: BancoDaFila,
+  userId: string,
+): Promise<{ parceiros: ParceiroNaLista[]; podeCadastrar: boolean }> {
+  const itens = await pendentes(fila);
+  const [orgs, pessoas, vinculo] = await Promise.all([
+    ler(banco, "organizations", itens),
+    ler(banco, "people", itens),
+    vinculoLocal(banco, userId),
+  ]);
+
+  return {
+    parceiros: montarParceiros(
+      orgs as Com<Tables<"organizations">>[],
+      pessoas as Com<Tables<"people">>[],
+      vinculo?.organizationId ?? null,
+    ),
+    podeCadastrar: ehDonoDaRaiz(vinculo?.papel, vinculo?.tipo),
   };
 }

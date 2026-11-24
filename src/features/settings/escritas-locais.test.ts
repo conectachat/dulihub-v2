@@ -44,6 +44,7 @@ const {
   moveDocumentType,
   moveStage,
   moveStageStatus,
+  saveParceiro,
   setDefaultStageStatus,
   toggleVisaDocument,
   updateTag,
@@ -502,5 +503,86 @@ describe("aparelho parado demais", () => {
 
     expect(estado.error).toBeNull();
     expect(await fila.fila.count()).toBe(1);
+  });
+});
+
+describe("saveParceiro no aparelho", () => {
+  // O parceiro é uma organização: a linha não tem `organization_id`, e o
+  // `slug` nasce no banco (0068) — gerado aqui, um choque voltaria da fila
+  // como conflito enganoso.
+  const THAIS = {
+    name: "Thais Fabrini",
+    address_country: "Estados Unidos",
+    email: "thais@exemplo.com",
+    phone_country_code: "1",
+    phone: "3055550100",
+  };
+
+  it("cadastra pela fila, sem organização na linha e sem slug", async () => {
+    const estado = await saveParceiro({ error: null }, formulario(THAIS));
+
+    expect(estado.error).toBeNull();
+    const [item] = await fila.fila.toArray();
+    expect(item.rotulo).toBe("Cadastrar o parceiro Thais Fabrini");
+    expect(item.passos[0]).toMatchObject({
+      tipo: "insert",
+      tabela: "organizations",
+      linha: {
+        type: "partner",
+        name: "Thais Fabrini",
+        address_country: "Estados Unidos",
+        phone_country_code: "+1",
+        legal_name: null,
+      },
+    });
+    const passo = item.passos[0] as { linha: Record<string, unknown> };
+    expect(passo.linha).not.toHaveProperty("organization_id");
+    expect(passo.linha).not.toHaveProperty("slug");
+    expect(item.alvo).toBe(passo.linha.id);
+  });
+
+  it("nome repetido é recusado na hora, sem caixa", async () => {
+    await banco.tabela("organizations").put({
+      id: "p1",
+      name: "Thais Fabrini",
+      slug: "thais-fabrini",
+      type: "partner",
+      is_test: false,
+      updated_at: "2026-09-21T10:00:00Z",
+    });
+
+    const estado = await saveParceiro({ error: null }, formulario({ ...THAIS, name: "thais fabrini" }));
+
+    expect(estado.error).toBe("Já existe um parceiro com esse nome.");
+    expect(await fila.fila.count()).toBe(0);
+  });
+
+  it("dado inválido não entra na fila", async () => {
+    const estado = await saveParceiro({ error: null }, formulario({ ...THAIS, address_country: " " }));
+    expect(estado.error).toBe("Informe o país.");
+    expect(await fila.fila.count()).toBe(0);
+  });
+
+  it("com id, altera o próprio parceiro — o nome dele não conta como repetido", async () => {
+    await banco.tabela("organizations").put({
+      id: "p1",
+      name: "Thais Fabrini",
+      slug: "thais-fabrini",
+      type: "partner",
+      is_test: false,
+      updated_at: "2026-09-21T10:00:00Z",
+    });
+
+    const estado = await saveParceiro({ error: null }, formulario({ ...THAIS, id: "p1", phone: "3055550199" }));
+
+    expect(estado.error).toBeNull();
+    const [item] = await fila.fila.toArray();
+    expect(item.rotulo).toBe("Alterar o parceiro Thais Fabrini");
+    expect(item.passos[0]).toMatchObject({
+      tipo: "update",
+      tabela: "organizations",
+      id: "p1",
+      patch: { name: "Thais Fabrini", phone: "3055550199" },
+    });
   });
 });

@@ -41,6 +41,7 @@ const POR_CONSTRAINT: Record<string, string> = {
   people_legacy_id_unique: "Este registro já foi importado antes.",
   files_bucket_path_unique: "Já existe um arquivo com esse caminho.",
   organizations_single_root: "Já existe uma organização raiz.",
+  organizations_nome_do_parceiro: "Já existe um parceiro com esse nome.",
 };
 
 const POR_CODIGO: Record<string, string> = {

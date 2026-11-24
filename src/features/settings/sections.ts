@@ -74,13 +74,6 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         icon: Handshake,
         description:
           "Empresas que vendem e contratam a Duli para executar o processo.",
-        phase: "Fase 7",
-        planned: [
-          "Cadastro do parceiro como organização própria",
-          "Marca do parceiro — logo e cores que o cliente dele enxerga",
-          "Alocação: parceiro marca a Duli para trabalhar num cliente",
-          "Financeiro de dois lados: o que ele cobra do cliente é privado dele",
-        ],
       },
     ],
   },

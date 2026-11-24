@@ -23,6 +23,7 @@ import {
   catalogoLocal,
   etapasDoFunilLocal,
   linhaLocal,
+  parceirosLocais,
   statusDeEtapaLocal,
   tagsLocais,
   tipoDeVistoLocal,
@@ -30,6 +31,7 @@ import {
 } from "./consultas-locais";
 import {
   documentTypeNameSchema,
+  parceiroSchema,
   pipelineStageNameSchema,
   stageStatusColorSchema,
   stageStatusLabelSchema,
@@ -1084,5 +1086,77 @@ export async function updateVisaDocument(formData: FormData): Promise<ActionStat
     depende: dependeDe(await naFila(ctx), id),
     rotulo: "Alterar uma exigência do visto",
     passos: [{ tipo: "update", tabela: "visa_type_documents", id, patch }],
+  });
+}
+
+// ---------------------------------------------------------- parceiros
+
+const CAMPOS_DO_PARCEIRO = [
+  "name",
+  "legal_name",
+  "address_country",
+  "tax_id",
+  "address_street",
+  "address_number",
+  "address_complement",
+  "address_district",
+  "address_city",
+  "address_state",
+  "address_postal_code",
+  "email",
+  "phone_country_code",
+  "phone",
+] as const;
+
+/**
+ * Cadastra ou altera um parceiro (PAR-4).
+ *
+ * O parceiro é uma organização: a linha não leva `organization_id`, e o
+ * `slug` nasce no banco (0068). O nome repetido se confere aqui com a mesma
+ * comparação do banco (aparado e sem caixa), para não esperar a subida.
+ * Quem não é dono da Duli é recusado pelo banco e vê o motivo na
+ * Sincronização; a tela nem mostra o botão.
+ */
+export async function saveParceiro(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = parceiroSchema.safeParse(
+    Object.fromEntries(CAMPOS_DO_PARCEIRO.map((c) => [c, formData.get(c)])),
+  );
+  if (!parsed.success) return falhou(parsed.error.issues[0].message);
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  const rawId = formData.get("id");
+  const id = typeof rawId === "string" && rawId ? rawId : null;
+
+  const { parceiros } = await parceirosLocais(ctx.banco, ctx.fila, ctx.userId);
+  const nome = parsed.data.name.toLowerCase();
+  if (parceiros.some((p) => p.id !== id && (p.name ?? "").trim().toLowerCase() === nome)) {
+    return falhou("Já existe um parceiro com esse nome.");
+  }
+
+  if (id) {
+    return gravarLocal(ctx, {
+      alvo: id,
+      depende: dependeDe(await naFila(ctx), id),
+      rotulo: `Alterar o parceiro ${parsed.data.name}`,
+      passos: [{ tipo: "update", tabela: "organizations", id, patch: parsed.data }],
+    });
+  }
+
+  const novo = novoId();
+  return gravarLocal(ctx, {
+    alvo: novo,
+    rotulo: `Cadastrar o parceiro ${parsed.data.name}`,
+    passos: [
+      {
+        tipo: "insert",
+        tabela: "organizations",
+        linha: { id: novo, type: "partner", ...parsed.data },
+      },
+    ],
   });
 }

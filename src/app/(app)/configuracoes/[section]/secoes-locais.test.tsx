@@ -29,9 +29,10 @@ vi.mock("@/features/settings/escritas-locais", () => ({
   createTag: vi.fn(),
   updateTag: vi.fn(),
   deleteTag: vi.fn(),
+  saveParceiro: vi.fn(),
 }));
 
-const { SecaoTags } = await import("./secoes-locais");
+const { SecaoParceiros, SecaoTags } = await import("./secoes-locais");
 
 let banco: BancoLocal;
 let fila: BancoDaFila;
@@ -154,5 +155,83 @@ describe("Configuração lendo do espelho", () => {
       expect(screen.queryByText("Só neste aparelho")).toBeNull(),
     );
     expect(screen.getAllByDisplayValue("Feita no avião")).toHaveLength(naFila);
+  });
+});
+
+describe("Configuração › Parceiros", () => {
+  // Só o dono da Duli cadastra parceiro (0068). A tela decide só o que
+  // aparece; quem recusa é o banco.
+  async function semearParceiros(papel: "owner" | "staff", comThais = true) {
+    await banco.tabela("organizations").bulkPut([
+      { id: ORG, name: "Duli", slug: "duli", type: "root", is_test: false, updated_at: "2026-09-21T10:00:00Z" },
+      ...(comThais
+        ? [
+            {
+              id: "thais",
+              name: "Thais Fabrini",
+              slug: "thais-fabrini",
+              type: "partner",
+              is_test: false,
+              address_country: "Estados Unidos",
+              email: "thais@exemplo.com",
+              phone_country_code: "+1",
+              phone: "3055550100",
+              updated_at: "2026-09-21T10:00:00Z",
+            },
+          ]
+        : []),
+    ]);
+    await banco.tabela("organization_members").put({
+      id: "m1",
+      user_id: USUARIO,
+      organization_id: ORG,
+      role: papel,
+      created_at: "2024-01-01T00:00:00Z",
+      updated_at: "2026-09-21T10:00:00Z",
+    });
+    await banco.tabela("people").bulkPut(
+      [1, 2, 3].map((n) => ({
+        id: `c${n}`,
+        organization_id: ORG,
+        full_name: `Cliente ${n}`,
+        lifecycle_stage: "client",
+        deleted_at: null,
+        partner_organization_id: "thais",
+        updated_at: "2026-09-21T10:00:00Z",
+      })),
+    );
+    definirEstado({ em: "2026-09-21T10:05:00Z", sincronizando: false });
+  }
+
+  it("o dono da Duli vê o parceiro com país, contato e clientes, e os botões", async () => {
+    await semearParceiros("owner");
+    render(<SecaoParceiros userId={USUARIO} />);
+
+    expect((await screen.findAllByText("Thais Fabrini")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Estados Unidos").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("thais@exemplo.com").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("+1 3055550100").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("3 clientes").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /Novo parceiro/ })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Editar Thais Fabrini" }).length).toBeGreaterThan(0);
+  });
+
+  it("quem não é dono da Duli lê a lista sem os botões", async () => {
+    await semearParceiros("staff");
+    render(<SecaoParceiros userId={USUARIO} />);
+
+    expect((await screen.findAllByText("Thais Fabrini")).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: /Novo parceiro/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Editar Thais Fabrini" })).toBeNull();
+  });
+
+  it("sem parceiro, diz o que é a tela", async () => {
+    await semearParceiros("owner", false);
+    render(<SecaoParceiros userId={USUARIO} />);
+
+    expect(await screen.findByText("Nenhum parceiro ainda")).toBeTruthy();
+    expect(
+      screen.getByText("Cadastre aqui quem vende e contrata a Duli para montar o processo."),
+    ).toBeTruthy();
   });
 });
