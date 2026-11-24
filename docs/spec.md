@@ -61,7 +61,7 @@ dinheiro e os prazos à vista, e cada pessoa vendo só o que é dela.
 | **Equipe da Duli** | `admin` ou `staff` | Tocar os processos: etapas, documentos, prazos, tarefas, conversa com o cliente | Hoje |
 | **Lead** | Sem login | Preencher a ficha e assinar o contrato pelo celular, sem criar conta | Hoje (ficha) |
 | **Cliente** | Login próprio, ligado à sua ficha (`people.user_id`) | Ver em que pé está o processo, enviar documentos, ver as parcelas | Fase 6 |
-| **Parceiro** (ex.: Thais Fabrini) | Organização própria, com seus `owner`/`staff` | Vender com a marca dela; a Duli executa. O que ela cobra do cliente é dela; o que a Duli cobra dela é da Duli | Fase 7 |
+| **Parceiro** (ex.: Thais Fabrini) | Organização própria, com seus `owner`/`staff` | Vender com a marca dela; a Duli executa. O que ela cobra do cliente é dela; o que a Duli cobra dela é da Duli | Cadastro e clientes marcados: agora (7.17). Login: Fase 7 |
 
 Regra de visibilidade, válida para todos: **cada um vê só o que é da sua
 organização**, e o cliente vê só o que é dele. Isso é garantido no banco, não
@@ -570,6 +570,49 @@ aqui mesmo, abaixo da tabela.
 - No celular, o botão fica no topo e o diálogo rola por inteiro (conferência à
   mão). Sem internet não abre, como o resto de Clientes.
 
+### 7.17 Parceiros e clientes de parceiro (desenhado em 24/nov)
+
+Alguns clientes vêm de um parceiro (hoje, a Thais Fabrini, dos EUA), que vende e
+contrata a Duli para montar o processo. Toda a comunicação do Renato é com o
+parceiro. O cliente não passa pelo CRM, e a Duli cobra o parceiro, uma cobrança
+por cliente. O parceiro é uma **organização** `partner` (§12.4), e o cliente é
+**da Duli**, marcado com `people.partner_organization_id`. A marca **não dá
+acesso a nada** até o portal (7.15). Desenho, regras, telas e o critério de cada
+requisito: `docs/superpowers/specs/2026-11-24-clientes-de-parceiro-design.md`
+(§5 a §8).
+
+| ID | Requisito | Pri. | Estado |
+|---|---|---|---|
+| PAR-4 | **Cadastro do parceiro** em Configuração › Parceiros: nome, razão social, país, documento fiscal, endereço, e-mail e telefone (os dados da invoice, inclusive de fora do Brasil). Só o dono da Duli cria e edita; não se apaga. Tela migrada (espelho e fila) | P0 | ⬜ |
+| PAR-5 | **Novo cliente › Parceiro**: terceiro modo ao lado de "Contato existente" e "Novo contato"; escolhe o parceiro e digita só o nome; numa gravação só, como o CLI-15; nome repetido no mesmo parceiro pergunta antes | P0 | ⬜ |
+| PAR-6 | O **contato do cliente de parceiro é o do parceiro**, mostrado (nunca copiado) com "via ‹parceiro›" no perfil, em Clientes e em Contatos; copiar copia o do parceiro; a busca de Clientes acha pelo nome do parceiro; sem aviso de contato parecido | P0 | ⬜ |
+| PAR-7 | **Dados cadastrais à mão**, sem e-mail e telefone do cliente; **sem link da ficha** (recusado no banco) | P0 | ⬜ |
+| PAR-8 | Cliente de parceiro **fora do funil**: negócio recusado no banco; processo pelo "+ Novo processo" | P0 | ⬜ |
+| PAR-9 | O vínculo é **fixo**: só nasce no Novo cliente, não muda, aponta só para organização `partner` diferente da do cliente, e teste só com teste | P0 | ⬜ |
+| PAR-10 | O vínculo **não concede acesso**: nenhuma policy o lê; membro da organização-parceira não enxerga o cliente, as notas, os processos nem as cobranças | P0 | ⬜ |
+| PAR-11 | "Nota fiscal / invoice" no tipo do anexo da parcela; "via ‹parceiro›" na tela Financeiro | P1 | ⬜ |
+
+**Fora:** login, portal e marca do parceiro (PAR-1 a PAR-3); gerar a invoice
+pelo app (REC-8); marcar como de parceiro um cliente que já existe, ou trocar o
+parceiro (engano vai para a lixeira); apagar parceiro; totais por parceiro.
+
+**Critério de aceite:** §8 do desenho, critérios 1 a 15. Os principais:
+
+- O dono da Duli cria "Thais Fabrini" (Estados Unidos, e-mail, "+1 (305)
+  555-0100"). Sem país, ou com contato inválido, nada grava, com a frase. Nome
+  repetido: "Já existe um parceiro com esse nome.". Quem não é dono da Duli não
+  cria, nem pela API.
+- A gestão cria "Fulano de Tal" pelo Novo cliente › Parceiro. Nasce cliente da
+  Duli, com o contato nulo, o vínculo, o "cliente desde" de hoje, quem criou como
+  dono e o histórico com o nome do parceiro. Abre na aba Projetos.
+- O perfil, a lista de Clientes, Contatos e Financeiro mostram o contato da Thais
+  com "via Thais Fabrini". Trocar o telefone dela muda em todos. Dez clientes
+  dela não disparam aviso de duplicado.
+- Negócio, link da ficha e qualquer mudança do vínculo pela API são recusados
+  com frase.
+- Um membro da organização-parceira não enxerga nada do cliente marcado com ela.
+- A organização de teste nunca aparece para a conta do Renato.
+
 ---
 
 ## 8. Requisitos não funcionais
@@ -625,6 +668,7 @@ e cada pessoa da equipe define a sua senha.
 | Q15 | Inventário de contas: quem é dono e quem tem acesso (e se com verificação em duas etapas) a Supabase, Hostinger, Easypanel, GitHub `conectachat`, HostGator, os segredos do CI e o Supabase do app antigo (conta da Lovable)? O repositório deve ser privado? | Renato | §8 "Dono dos dados" |
 | Q16 | O que a organização **atribuída** a um contato pode fazer: hoje edita o contato, lê o histórico mas não escreve nele, e não vê processos, cobranças nem fichas (N3) | Renato | PAR-1 |
 | Q17 | LGPD: por quanto tempo guardar lead perdido antes de anonimizar; o que fazer com notas e Observações em texto livre, com a cópia offline e com as cópias de segurança | Renato, com advogado | CON-7 |
+| Q18 | O cliente de parceiro que depois quer fechar direto com a Duli: o vínculo sai e ele vira cliente direto, ou nasce outro cadastro? Hoje o vínculo é fixo (PAR-9) e não há caminho | Renato | — |
 
 ### Decididas
 
@@ -659,6 +703,7 @@ e cada pessoa da equipe define a sua senha.
 | 23/nov | Itaú e C6 saem do roadmap (eram o REC-7 e a Q9): boleto e baixa à mão. O Renato retoma se um dia as credenciais saírem |
 | 23/nov | O cliente que já respondeu a forma de pagamento e abre o link de novo lê "Você já respondeu", e não "peça um novo link" (FIC-8). Itaú e C6 saem também da lista de integrações da Configuração |
 | 23/nov | A cópia de segurança e o monitor (OPS-1, OPS-2) ficam para quando os clientes tiverem acesso ao app; o plano pago do Supabase ainda não compensa (Q13) |
+| 24/nov | Parceiros e clientes de parceiro antes da Fase 7 (7.17): o parceiro é organização `partner`, e o cliente é da Duli, marcado com o parceiro, sem acesso novo. O cliente de parceiro tem só o nome; o contato mostrado é o do parceiro. Não passa pelo CRM: ficha, processo e cobrança à mão no perfil, uma cobrança por cliente. O parceiro tem dados cadastrais completos para a invoice. Sem conversão de cliente existente |
 
 ## 11. Ordem proposta
 
