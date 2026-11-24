@@ -583,14 +583,14 @@ requisito: `docs/superpowers/specs/2026-11-24-clientes-de-parceiro-design.md`
 
 | ID | Requisito | Pri. | Estado |
 |---|---|---|---|
-| PAR-4 | **Cadastro do parceiro** em Configuração › Parceiros: nome, razão social, país, documento fiscal, endereço, e-mail e telefone (os dados da invoice, inclusive de fora do Brasil). Só o dono da Duli cria; edita o dono da Duli (a 0036 também deixa a gestão do próprio parceiro, que hoje não tem membro); não se apaga. Tela migrada (espelho e fila) | P0 | ⬜ |
-| PAR-5 | **Novo cliente › Parceiro**: terceiro modo ao lado de "Contato existente" e "Novo contato"; escolhe o parceiro e digita só o nome; numa gravação só, como o CLI-15; nome repetido no mesmo parceiro pergunta antes | P0 | ⬜ |
-| PAR-6 | O **contato do cliente de parceiro é o do parceiro**, mostrado (nunca copiado) com "via ‹parceiro›" no perfil, em Clientes e em Contatos; copiar copia o do parceiro; a busca de Clientes acha pelo nome do parceiro; sem aviso de contato parecido | P0 | ⬜ |
-| PAR-7 | **Dados cadastrais e Editar cliente à mão**, sem e-mail e telefone do cliente; **sem link da ficha** (recusado no banco, também por `update` do `person_id`) | P0 | ⬜ |
-| PAR-8 | Cliente de parceiro **fora do funil**: negócio recusado no banco, também por `update` do `person_id`; processo pelo "+ Novo processo" | P0 | ⬜ |
-| PAR-9 | O vínculo é **fixo**: só nasce no Novo cliente, não muda, aponta só para organização `partner` diferente da do cliente, e teste só com teste | P0 | ⬜ |
-| PAR-10 | O vínculo **não concede acesso**: nenhuma policy o lê; membro da organização-parceira não enxerga o cliente, as notas, os processos nem as cobranças | P0 | ⬜ |
-| PAR-11 | "Nota fiscal / invoice" no tipo do anexo da parcela; "via ‹parceiro›" na tela Financeiro | P1 | ⬜ |
+| PAR-4 | **Cadastro do parceiro** em Configuração › Parceiros: nome, razão social, país, documento fiscal, endereço, e-mail e telefone (os dados da invoice, inclusive de fora do Brasil). Só o dono da Duli cria; edita o dono da Duli (a 0036 também deixa a gestão do próprio parceiro, que hoje não tem membro); não se apaga. Tela migrada (espelho e fila) | P0 | ✅ |
+| PAR-5 | **Novo cliente › Parceiro**: terceiro modo ao lado de "Contato existente" e "Novo contato"; escolhe o parceiro e digita só o nome; numa gravação só, como o CLI-15; nome repetido no mesmo parceiro pergunta antes | P0 | ✅ |
+| PAR-6 | O **contato do cliente de parceiro é o do parceiro**, mostrado (nunca copiado) com "via ‹parceiro›" no perfil, em Clientes e em Contatos; copiar copia o do parceiro; a busca de Clientes acha pelo nome do parceiro; sem aviso de contato parecido | P0 | ✅ |
+| PAR-7 | **Dados cadastrais e Editar cliente à mão**, sem e-mail e telefone do cliente; **sem link da ficha** (recusado no banco, também por `update` do `person_id`) | P0 | ✅ |
+| PAR-8 | Cliente de parceiro **fora do funil**: negócio recusado no banco, também por `update` do `person_id`; processo pelo "+ Novo processo" | P0 | ✅ |
+| PAR-9 | O vínculo é **fixo**: só nasce no Novo cliente, não muda, aponta só para organização `partner` diferente da do cliente, e teste só com teste | P0 | ✅ |
+| PAR-10 | O vínculo **não concede acesso**: nenhuma policy o lê; membro da organização-parceira não enxerga o cliente, as notas, os processos nem as cobranças | P0 | ✅ |
+| PAR-11 | "Nota fiscal / invoice" no tipo do anexo da parcela; "via ‹parceiro›" na tela Financeiro | P1 | ✅ |
 
 **Fora:** login, portal e marca do parceiro (PAR-1 a PAR-3); gerar a invoice
 pelo app (REC-8); marcar como de parceiro um cliente que já existe, ou trocar o

@@ -126,6 +126,16 @@ decidir permissão, não para carimbar linha.
 A não vira filha de pasta de B. Tabela nova segue o mesmo desenho: `with check`
 valida só a linha gravada, nunca o que ela referencia.
 
+**Exceção registrada: o vínculo do cliente de parceiro** (`people.partner_organization_id`,
+0070). É a única chave que aponta para **outra** organização de propósito: o
+cliente é da Duli, e o vínculo diz qual parceiro o trouxe. No lugar da chave
+composta, guardas no banco: só nasce pelo `criar_cliente` (marca
+`dulihub.via_parceiro`), não muda nem se apaga, aponta só para `partner`
+diferente da organização do cliente e com a mesma marca de teste. **Nenhuma
+policy lê o vínculo** — ele não dá acesso nenhum ao parceiro; o que o parceiro
+enxerga se decide no portal (Fase 7). Coluna nova que aponte para outra
+organização não entra sem registro aqui.
+
 ## Estrutura
 
 ```
@@ -195,7 +205,9 @@ telas incomoda; em trinta, ninguém consegue mais mudar nada.
 | Busca de lista guardada na URL (`?q=`) | `BuscaNaUrl` — buscar de novo volta para a primeira página |
 | Lista paginada com o total ("Mostrando 51–72 de 72") | `POR_PAGINA`, `paginaPedida`, `contagemDaLista` (`@/lib/paginacao`) — nunca cortar em silêncio |
 | Dono e participantes (cliente, negócio) | `CampoDoDono` / `CampoDosParticipantes` (`@/components/dono-e-participantes`) e `diferencaDeParticipantes` (`@/lib/participantes`) — o dono atual fica na lista mesmo fora da equipe visível |
-| Contato existente ou novo num diálogo (Nova oportunidade, Novo cliente) | `ModosDoContato` / `BotaoQueDispensa` (`@/components/modos-do-contato`) e `CamposDoContatoNovo`; no servidor, `contatoNovoDoFormulario` (`@/lib/contato`) |
+| Contato existente ou novo num diálogo (Nova oportunidade, Novo cliente) | `ModosDoContato` / `BotaoQueDispensa` (`@/components/modos-do-contato`) e `CamposDoContatoNovo`; no servidor, `contatoNovoDoFormulario` (`@/lib/contato`). O modo "Parceiro" só com `comParceiro` (Novo cliente) |
+| O contato que aparece de uma pessoa (o do parceiro no cliente de parceiro) | `contatoExibido` (`@/lib/parceiros`) e `ViaDoParceiro` (`@/components/via-do-parceiro`) — nunca `person.email` direto onde o cliente pode ser de parceiro |
+| Quais parceiros oferecer ou listar; quem cadastra parceiro | `parceirosVisiveis` e `ehDonoDaRaiz` (`@/lib/parceiros`); offline, o papel e o tipo vêm de `vinculoLocal` (`@/lib/local/organizacao-local`) |
 | "É da gestão?" (owner ou admin) | `ehDaGestao(papel)` e, para a organização de um registro, `daGestaoDe(supabase, organizationId, userId)` (`@/lib/organizacao`) — na tela decide só o que aparece; quem decide é o banco |
 | Abrir o perfil do cliente com o processo a criar | `enderecoDoNovoCliente` (`@/lib/pessoa`) — `?aba=projetos&novo-processo=novo` |
 | Parcelas mês a mês sem perder centavo; métodos de pagamento | `gerarParcelas`, `somarMeses`, `METODOS`, `ROTULO_DO_METODO` (`@/lib/parcelas`) — o Financeiro e a forma de pagamento do negócio usam as mesmas |

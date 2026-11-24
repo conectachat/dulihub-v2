@@ -11,7 +11,7 @@ no `docs/spec.md`, que vem antes de qualquer funcionalidade nova.
 
 ---
 
-## 1. Estado atual (3/out/2026; hospedagem em 16/nov; Clientes em 19/nov; Ganho com resumo em 20/nov; forma de pagamento pelo link em 23/nov)
+## 1. Estado atual (3/out/2026; hospedagem em 16/nov; Clientes em 19/nov; Ganho com resumo em 20/nov; forma de pagamento pelo link em 23/nov; parceiros e clientes de parceiro em 24/nov)
 
 ### No ar
 
@@ -24,13 +24,13 @@ se encaixam: `docs/spec.md` §12.
 | Início | **O que precisa de atenção hoje**: prazo de RFE (30 dias antes, vermelho nos últimos 7), fichas de cadastro recebidas e ainda não conferidas, parcelas vencidas, pastas e etapas atrasadas, forma de pagamento recusada pelo cliente, pronta para o contrato ou com o link da ficha vencido sem resposta — cada um leva ao lugar certo. Depois, as contagens |
 | Contatos | Lista, busca, filtro por tag, criar, editar, excluir e restaurar (lixeira) |
 | Ficha do contato | Perfil enxuto de quem ainda não é cliente: dados, tags, oportunidades, linha do tempo; **Dados cadastrais** (o que vai para o contrato: CPF, RG, estado civil, endereço, dependentes) e o **link da ficha** para o cliente preencher. "Marcar como cliente" para a gestão. Cliente abre em `/clientes/<id>` (o endereço antigo redireciona) |
-| Clientes | **Lista** com busca por nome, e-mail ou telefone, 50 por página com o total. **Perfil em abas**: Dados cadastrais, Financeiro (totais por moeda, cobranças, baixa, anexos da parcela), Projetos, Documentos (passaporte, identidade, comprovante, contrato) e Notas; cabeçalho com copiar telefone e e-mail, dono, cliente desde, tags e Editar (dono e participantes). **Novo cliente**, para a gestão: o cliente antigo que não passou pelo funil, escolhido entre os contatos ou criado ali mesmo, abre já em Projetos para criar o processo |
+| Clientes | **Lista** com busca por nome, e-mail ou telefone, 50 por página com o total. **Perfil em abas**: Dados cadastrais, Financeiro (totais por moeda, cobranças, baixa, anexos da parcela), Projetos, Documentos (passaporte, identidade, comprovante, contrato) e Notas; cabeçalho com copiar telefone e e-mail, dono, cliente desde, tags e Editar (dono e participantes). **Novo cliente**, para a gestão: o cliente antigo que não passou pelo funil, escolhido entre os contatos ou criado ali mesmo, abre já em Projetos para criar o processo. **Novo cliente › Parceiro**: escolhe o parceiro e digita só o nome; o cliente de parceiro mostra o contato do parceiro com "via ‹parceiro›" (no perfil, na lista, em Contatos e no Financeiro), não tem link da ficha nem entra no funil, e é cobrado à mão no perfil |
 | Ficha de cadastro (pública) | `/cadastro/<token>`: o cliente preenche no celular, **sem login**; ao enviar, a ficha do contato se atualiza e o link morre. **Com a forma de pagamento** (4b): depois dos dados, o cliente vê a forma — os vistos, cada parte com o método, o valor (com o dólar de onde veio a parte em reais) e as datas, nunca a cotação — e responde **Confirmo** ou **Há algo errado**; o link vale 3 dias úteis |
 | CRM | Quadro do funil, com **cartões que se arrastam** entre as colunas (o seletor de etapa continua, para o celular) e o total de cada coluna por moeda; soltar em Ganho abre o **resumo**, e o cartão ganho leva aos processos; ganhos e perdidos ficam no quadro 30 dias e depois em **CRM › Encerradas** (busca por título ou contato); cada cartão mostra em que pé está a ficha de cadastro |
 | Lead (`/crm/[id]`) | O negócio enquanto está no funil: trilha das etapas, **Ganho com resumo** (numa gravação só: cliente, dono, participantes e um processo por visto), **Reabrir** um ganho e **Perdido** (com motivo); contato, **Vistos** (valor e moeda de cada um, total por moeda), origem, dono e participantes, dados cadastrais com o link da ficha, histórico. Sem processos e sem financeiro. No negócio ganho, a gestão **ajusta a data do ganho** (o cliente antigo ganho agora conta no mês certo). **Forma de pagamento**: definir, **Enviar ficha** com a prévia do que o cliente vai ver, o link da ficha com Copiar e WhatsApp, Editar e Cancelar link, Ajustar depois da recusa, Confirmar pela equipe e Refazer |
 | Projetos | Lista de processos: cliente, visto, status, progresso (etapas concluídas, em %), próximo prazo |
 | Processo | Status e campos do USCIS, inclusive quando a resposta da RFE foi enviada; abas **Etapas** (tabela com status, data prevista e de conclusão, sub-etapas em grupo), **Documentos** (pastas, envio, visualizar, aprovar, recusar com motivo, resolver) e **Observações** (editor estilo Notion, várias pessoas ao mesmo tempo) |
-| Configurações | Etapas do funil, tags, catálogo de pastas, tipos de visto, status de etapa — **abre e grava sem internet**, e sincroniza sozinha |
+| Configurações | Etapas do funil, tags, catálogo de pastas, tipos de visto, status de etapa e **Parceiros** (nome, país, documento fiscal, endereço, e-mail e telefone — os dados da invoice; só o dono da Duli cadastra) — **abre e grava sem internet**, e sincroniza sozinha |
 | Sincronização | O que este aparelho gravou e o servidor ainda não recebeu; o que ele recusou, com o motivo |
 | Financeiro | **A receber**: cobrança por cliente, parcelas com vencimento, baixa com a cotação do dia, e o que venceu. Abre e grava sem internet |
 
@@ -346,6 +346,41 @@ só, no fim: as três migrations são compatíveis com o código no ar.
 
 Na tela é sempre "link da ficha": o app não gera link de pagamento — o do
 cartão no C6, o Renato gera à mão.
+
+### Parceiros e clientes de parceiro (24/nov, antes da Fase 7)
+
+A Thais Fabrini (EUA) vende e contrata a Duli para montar o processo. O
+Renato fala só com ela, nunca com o cliente, e cobra dela por cliente, em datas
+diferentes. Antecipado porque ele está subindo todos os clientes agora.
+
+Desenho: `docs/superpowers/specs/2026-11-24-clientes-de-parceiro-design.md`
+(abordagem A: o parceiro é uma organização `partner`; o cliente é da Duli, com
+o vínculo `people.partner_organization_id`), revisto em duas rodadas. Plano:
+`docs/superpowers/plans/2026-11-24-clientes-de-parceiro.md`. Spec §7.17
+(PAR-4 a PAR-11). Um push só, no fim: as quatro migrations são compatíveis com
+o código no ar.
+
+| Parte | O que ficou pronto |
+|---|---|
+| Banco | A regra do parceiro (só o dono da Duli cria; nome, país e contato válidos; nome único; `slug` do nome), `organizations` no manifesto e **a semente das organizações novas consertada** (0068); a fixture da `executora-teste` (0069); o vínculo fixo, `criar_cliente` com o parceiro, o histórico e `buscar_clientes` com o contato do parceiro (0070); cliente de parceiro fora do funil e do link da ficha (0071) |
+| Telas | Configuração › Parceiros (migrada), Novo cliente › Parceiro, o contato do parceiro com "via" no perfil, em Clientes, em Contatos e no Financeiro, Editar cliente, Editar de Contatos e Dados cadastrais sem contato próprio, e "Nota fiscal / invoice" no anexo |
+| Provas | A suíte de RLS (`parceiros`, `cliente-de-parceiro`, `parceiro-fora-do-funil`), e `supabase/provas/parceiro-pelo-dono.sql` e `vinculo-do-parceiro.sql` (o que nenhuma conta de teste alcança: o `insert` pelo dono e o vínculo real ↔ teste) |
+
+- **A semente estava quebrada desde a 0027**: ela gravava as etapas do funil
+  sem `organization_id`, e nenhuma organização nova nascia. Ninguém viu porque
+  só existiam a Duli e a `parceiro-teste`. Achado ao desenhar o cadastro de
+  parceiro, provado num bloco desfeito e consertado na 0068.
+- **Conta de teste nova**, a `teste-executora` (`admin` da `executora-teste`,
+  `staff` da `parceiro-teste`): é quem faz o papel da Duli nos testes de
+  cliente de parceiro. O CRM dela não serve para conferir nada (ver a pendência
+  abaixo).
+- **Pendência da Fase 7** (segunda revisão do desenho, N1): `getBoard`
+  (`features/opportunities/queries.ts`) e `etapasDoFunilLocal`
+  (`features/settings/consultas-locais.ts`) procuram o funil padrão **sem
+  filtrar pela organização atual**. Hoje não morde em produção, porque
+  ninguém de verdade é membro de duas organizações; morde no dia em que
+  alguém da Duli entrar num parceiro (o portal). A `teste-executora`, membro
+  de duas organizações de teste, já vê o problema.
 
 ---
 
