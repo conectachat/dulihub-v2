@@ -257,7 +257,16 @@ grava**. São dois lugares que hoje exigem contato:
   e-mail, DDI e telefone, não valida contato, não procura parecido, e a ação
   **não escreve** essas três colunas (revisão, I1). Sem isso, para trocar o dono
   seria preciso inventar um contato ou digitar o do parceiro, e o contato do
-  parceiro acabaria copiado no cliente.
+  parceiro acabaria copiado no cliente. É ali também que se corrige o "cliente
+  desde" dos clientes antigos que o Renato está subindo (CLI-11).
+- **Editar da lista de Contatos** (`PersonDialog` → `updatePerson`, a mesma
+  `personSchema`): o cliente de parceiro aparece nessa lista, então o mesmo
+  vale (construtor, Q2). Esconde os três campos, não valida, não procura
+  parecido, e não escreve as colunas.
+- **A regra é uma só: o cliente de parceiro não tem contato próprio em tela
+  nenhuma** (nossa; o Renato disse que tanto faz ter ou não). "O do parceiro
+  vence sempre" (§5.3) fica como defesa, para o caso de alguma linha chegar com
+  contato por fora das telas, como numa importação.
 - **Sem link da ficha.** No lugar do bloco do link, a frase "Cliente de
   ‹parceiro›: os dados cadastrais são lançados aqui, em Editar." O banco recusa
   link da ficha para cliente de parceiro: "Cliente de parceiro não recebe o link
@@ -304,9 +313,11 @@ A seção já existe no menu como "Fase 7", com a lista do que vai ter
   excluir.
 - Sem parceiro: `EmptyState` com "Nenhum parceiro ainda. Cadastre aqui quem vende
   e contrata a Duli para montar o processo."
-- A organização de teste **não aparece** para quem não está numa organização de
-  teste. Isso vale aqui e no seletor do Novo cliente. O seletor também nunca
-  oferece a organização atual.
+- A organização de teste **só aparece quando a organização atual é de
+  teste**. Isso vale aqui e no seletor do Novo cliente, e a regra olha a
+  organização atual, não as associações. Por isso, para o Renato e para a
+  `teste-colaborador`, cuja atual é a Duli, ela nunca aparece. O seletor também
+  nunca oferece a organização atual.
 
 ### 5.8 Frases fixas novas
 
@@ -336,7 +347,7 @@ Uma migration nova, `0068`, e a de fixture, se o construtor preferir separar.
 | `buscar_clientes` | Devolve o nome e o contato do parceiro e acha pelo nome dele |
 | Funil | Recusa de negócio para cliente de parceiro, em `criar_oportunidade` e num gatilho `before insert or update of person_id` em `opportunities`, que roda antes da RLS (§5.5) |
 | Link da ficha | Gatilho `before insert or update of person_id` em `registration_forms`, que recusa para cliente de parceiro, também antes da RLS (§5.5) |
-| Fixture (revisão, C1) | A conta `teste-parceiro` só enxerga a própria organização (`organizations_select`, 0003: membro dela ou da raiz), e por isso não veria um parceiro de teste. A fixture resolve **sem mudar policy nenhuma**. (1) Cria a "Indicador de Teste", `partner` e `is_test`, com contato válido. (2) Associa a `teste-parceiro` a ela como `staff`. A associação é mais nova que a da `parceiro-teste`, então `escolherOrganizacao` continua escolhendo a `parceiro-teste` (sem raiz, vale a mais antiga), e o seletor do Novo cliente tira a organização atual. (3) Para o critério 11, grava pela própria migration (sem usuário, as guardas deixam passar) **um cliente na Indicador de Teste que aponta para a `parceiro-teste`**. Quem prova o isolamento é a `teste-staff`, membro só da `parceiro-teste`, que faz o papel de "membro do parceiro" e não enxerga nada desse cliente. A `teste-parceiro` enxerga esse cliente por ser membro da Indicador. Os testes que contam o que ela vê (pessoas, clientes, organizações) precisam ser conferidos (revisão, M4) |
+| Fixture (revisões, C1 e Q1 do construtor) | A `teste-parceiro` só enxerga a própria organização (`organizations_select`, 0003: membro dela ou da raiz), e `tests/rls/espelho.test.ts` exige isso ("o vínculo que o aparelho guarda…": o espelho dela traz só a `parceiro-teste`). Por isso ela **não** ganha associação nova. O arranjo é o inverso, e **nenhuma policy muda nem conta nova é necessária**. (1) Cria a "Executora de Teste" (`executora-teste`, `partner` e `is_test`), que faz nos testes o papel da Duli: é onde moram os clientes de parceiro. (2) Associa a `teste-colaborador` a ela como `admin`. Ela é membro da raiz, então já lê todas as organizações, inclusive a `parceiro-teste`, e a raiz continua vencendo em `escolherOrganizacao`: a tela dela segue sendo a da Duli. (3) **O parceiro dos clientes de teste é a `parceiro-teste`**, que já existe. Os testes do PAR-5 chamam `criar_cliente(p_organizacao = executora-teste, parceiro = parceiro-teste)` como `teste-colaborador`. O critério 11 sai naturalmente: `teste-parceiro` e `teste-staff`, membros do parceiro, não enxergam nada desses clientes. A `teste-colaborador` continua sem gravar na Duli e grava só na organização de teste. Os testes que contam o que ela vê precisam ser conferidos, porque ela passa a ver as pessoas da `executora-teste` (revisão, M4) |
 | RLS | **Nenhuma policy nova nem alterada** além do necessário para as colunas. Nenhuma policy lê o vínculo |
 
 O espelho: `people` ganha uma coluna e `organizations` ganha várias. Os índices do
@@ -445,23 +456,26 @@ Fulano de Tal   thais@… (via Thais Fabrini)    +1 (305) 555-0100       Renato
    são recusados com a frase do §5.5. Para quem não enxerga a pessoa, a guarda
    não fala: quem recusa é a RLS ou a chave. A Nova oportunidade não o lista.
    "+ Novo processo" no perfil funciona.
-9a. **Editar cliente.** No Fulano, o Editar cliente não mostra e-mail, DDI nem
-    telefone. Trocar o dono ou o "cliente desde" grava sem pedir contato e sem
-    aviso de parecido, e a linha da pessoa continua com o contato nulo.
+9a. **Editar cliente e Editar de Contatos.** No Fulano, nenhum dos dois mostra
+    e-mail, DDI nem telefone. Trocar o nome, o dono ou o "cliente desde" grava
+    sem pedir contato e sem aviso de parecido, e a linha da pessoa continua com
+    o contato nulo.
 10. **O vínculo é fixo.** Pela API, nenhum membro (nem a gestão) preenche, troca
     ou apaga `partner_organization_id`. Inserir pessoa já com o vínculo, fora do
     `criar_cliente`, é recusado. O vínculo para a raiz, para a própria
     organização, para organização de teste a partir de cliente real, ou o
     contrário, é recusado, sempre com "Parceiro não encontrado.".
 11. **Nada de acesso novo.** Depois desta entrega, os testes de isolamento de hoje
-    passam iguais (conferidas as contagens da `teste-parceiro`, §6). A
-    `teste-staff`, membro só da `parceiro-teste`, não enxerga o cliente da
-    Indicador de Teste que aponta para a `parceiro-teste`: nem a pessoa, nem as
-    notas, os processos ou as cobranças.
+    passam **sem mudança**, inclusive o do espelho da `teste-parceiro` (conferidas
+    as contagens da `teste-colaborador`, §6). `teste-parceiro` e `teste-staff`,
+    membros da `parceiro-teste`, não enxergam o cliente da `executora-teste` que
+    aponta para ela: nem a pessoa, nem as notas, os processos ou as cobranças.
 12. **Financeiro.** A cobrança à mão do Fulano em US$, com 2 parcelas, nasce e
     soma como qualquer outra. O anexo aparece como "Nota fiscal / invoice".
-13. **Teste fora da tela real.** Para a conta do Renato, a organização de teste
-    não aparece em Parceiros nem no seletor do Novo cliente.
+13. **Teste fora da tela real.** Com a organização atual sendo a Duli (Renato,
+    `teste-colaborador`), nenhuma organização de teste aparece em Parceiros nem
+    no seletor do Novo cliente. Com a atual de teste, só as de teste aparecem.
+    Provado na função pura que filtra.
 14. **Offline.** Sem internet, Configuração › Parceiros abre a lista do espelho.
     Criar parceiro offline entra na fila e sobe quando a rede volta. Pelo
     "Sincronização", a recusa (por exemplo, de quem não é dono) aparece com o
@@ -499,7 +513,8 @@ Fulano de Tal   thais@… (via Thais Fabrini)    +1 (305) 555-0100       Renato
 | O banco recusa funil e link da ficha para cliente de parceiro | nossa |
 | Vínculo fixo, travado também para o cliente do portal | nossa |
 | Editar parceiro: a policy da 0036 como está (dono da raiz e gestão do próprio parceiro) | nossa |
-| Contas de teste: `teste-parceiro` também `staff` da Indicador de Teste; nenhuma policy muda | nossa (revisão) |
+| Contas de teste: a `teste-colaborador` vira `admin` de uma organização de teste nova, onde moram os clientes de parceiro dos testes, e o parceiro é a `parceiro-teste`; nenhuma policy muda e nenhuma conta nova | nossa (revisões) |
+| Cliente de parceiro sem contato próprio em tela nenhuma (Dados cadastrais, Editar cliente, Editar de Contatos) | nossa (revisões) |
 | Funil e link travados também no `update` do `person_id`, calados para quem não enxerga a pessoa | nossa (revisão) |
 | "via ‹parceiro›" no Financeiro | nossa |
 
@@ -525,6 +540,8 @@ Fulano de Tal   thais@… (via Thais Fabrini)    +1 (305) 555-0100       Renato
 - O texto exato do histórico, desde que diga o parceiro.
 - Os testes, dentro do desenho da fixture (§6). As contas são `teste-parceiro`
   (dona da `parceiro-teste`), `teste-staff` (staff de lá), `teste-colaborador`
-  (staff da Duli: só lê, nunca grava na Duli) e `teste-cliente`
-  (`tests/rls/README.md`). Nenhum teste cria organização pela API: só o dono da
+  (staff da Duli, que nunca grava na Duli; com esta entrega, também `admin` da
+  `executora-teste`) e `teste-cliente`
+  (`tests/rls/README.md`, que passa a dizer a associação nova). Nenhum teste
+  cria organização pela API: só o dono da
   raiz cria, e o teste do PAR-4 prova a recusa para quem não é.
