@@ -313,7 +313,7 @@ describe("cliente de parceiro (0070)", () => {
     });
 
     it("editar o parceiro muda o contato de todos os clientes dele, sem cópia", async () => {
-      const id = await novoCliente(`Telefone ${letras}`);
+      await novoCliente(`Telefone ${letras}`);
       const { data: antes } = await parceiro
         .from("organizations")
         .select("phone")
