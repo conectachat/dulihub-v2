@@ -1074,6 +1074,7 @@ export type Database = {
           notes: string | null
           organization_id: string
           owner_id: string | null
+          partner_organization_id: string | null
           phone: string | null
           phone_country_code: string | null
           tax_id: string | null
@@ -1112,6 +1113,7 @@ export type Database = {
           notes?: string | null
           organization_id: string
           owner_id?: string | null
+          partner_organization_id?: string | null
           phone?: string | null
           phone_country_code?: string | null
           tax_id?: string | null
@@ -1150,6 +1152,7 @@ export type Database = {
           notes?: string | null
           organization_id?: string
           owner_id?: string | null
+          partner_organization_id?: string | null
           phone?: string | null
           phone_country_code?: string | null
           tax_id?: string | null
@@ -1184,6 +1187,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organization_members"
             referencedColumns: ["organization_id", "user_id"]
+          },
+          {
+            foreignKeyName: "people_parceiro_fk"
+            columns: ["partner_organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "people_user_id_fkey"
@@ -2290,6 +2300,11 @@ export type Database = {
           full_name: string
           id: string
           owner_id: string
+          parceiro_ddi: string
+          parceiro_email: string
+          parceiro_nome: string
+          parceiro_telefone: string
+          partner_organization_id: string
           phone: string
           phone_country_code: string
           total: number
@@ -2359,6 +2374,7 @@ export type Database = {
           p_contato?: string
           p_novo_contato?: Json
           p_organizacao: string
+          p_parceiro?: string
         }
         Returns: Json
       }
