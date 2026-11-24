@@ -100,7 +100,7 @@ Frases, cópia exata do desenho §5.8 e §5.4:
 
 ---
 
-### T1 0068 — Parceiros no banco (PAR-4)
+### Task 1: 0068 — Parceiros no banco (PAR-4)
 
 **Interfaces:**
 - **Produz:**
@@ -154,7 +154,7 @@ Frases, cópia exata do desenho §5.8 e §5.4:
 - [ ] `bun run test:rls` inteiro.
 - [ ] Commit `feat(banco): parceiros e a semente das organizações novas (0068)`.
 
-### T2 0069 — A conta `teste-executora` e a organização que faz o papel da Duli
+### Task 2: 0069 — A conta `teste-executora` e a organização que faz o papel da Duli
 
 **Antes, o Renato [Renato]:** no Supabase, Authentication → Users → Add user, com o e-mail `teste-executora@duliconsulting.com`, uma senha forte e "Auto confirm". Depois ele guarda a senha como `RLS_SENHA_EXECUTORA` no `.env.local` e nos segredos do GitHub (Settings → Secrets and variables → Actions). Sem isso a migration não liga a conta (como a 0039), e a suíte falha em vez de pular.
 
@@ -179,7 +179,7 @@ Frases, cópia exata do desenho §5.8 e §5.4:
 - [ ] Tipos (nada muda, conferir). `docs/banco.md`: a situação.
 - [ ] Commit `test: conta teste-executora e a organização executora-teste (0069)`.
 
-### T3 0070 — O vínculo e o Novo cliente › Parceiro no banco (PAR-5, PAR-6, PAR-9, PAR-10)
+### Task 3: 0070 — O vínculo e o Novo cliente › Parceiro no banco (PAR-5, PAR-6, PAR-9, PAR-10)
 
 **Interfaces:**
 - **Consome:** T1 e T2.
@@ -254,7 +254,7 @@ Frases, cópia exata do desenho §5.8 e §5.4:
 - [ ] `bun run test:rls` inteiro.
 - [ ] Commit `feat(banco): cliente de parceiro e o vínculo fixo (0070)`.
 
-### T4 0071 — Fora do funil e do link da ficha (PAR-7, PAR-8, no banco)
+### Task 4: 0071 — Fora do funil e do link da ficha (PAR-7, PAR-8, no banco)
 
 **Interfaces:**
 - **Produz:** `private.opportunities_fora_do_parceiro()` e `private.registration_forms_fora_do_parceiro()`, `security invoker` (D7), com os `revoke`/`grant` de `private.quem_tem_processo_e_cliente` (0045). Gatilhos `opportunities_cliente_de_parceiro` e `registration_forms_cliente_de_parceiro`, `before insert or update of person_id`.
@@ -272,7 +272,7 @@ Frases, cópia exata do desenho §5.8 e §5.4:
 **Passos:**
 - [ ] Vermelho → aplicar a 0071 → verde → tipos → `docs/banco.md` → `test:rls` inteiro → commit `feat(banco): cliente de parceiro fora do funil e do link da ficha (0071)`.
 
-### T5 Peças puras compartilhadas
+### Task 5: Peças puras compartilhadas
 
 **Interfaces:**
 - **Produz**, em `src/lib/parceiros.ts`:
@@ -299,7 +299,7 @@ Frases, cópia exata do desenho §5.8 e §5.4:
 
 - [ ] Vermelho → código → verde → `bun run verify` → commit `feat: peças puras dos parceiros`.
 
-### T6 Configuração › Parceiros (PAR-4, na tela)
+### Task 6: Configuração › Parceiros (PAR-4, na tela)
 
 **Interfaces:**
 - **Consome:** T1 e T5.
@@ -346,7 +346,7 @@ Frases, cópia exata do desenho §5.8 e §5.4:
 
 - [ ] Vermelho → código → verde → `bun run verify` → commit `feat(configuracao): Parceiros (PAR-4)`.
 
-### T7 Novo cliente › Parceiro (PAR-5, na tela)
+### Task 7: Novo cliente › Parceiro (PAR-5, na tela)
 
 **Interfaces:**
 - **Consome:** T3 e T5.
@@ -380,7 +380,7 @@ Frases, cópia exata do desenho §5.8 e §5.4:
 
 - [ ] Vermelho → código → verde → `bun run verify` → commit `feat(clientes): Novo cliente › Parceiro (PAR-5)`.
 
-### T8 O contato do parceiro aparece; Financeiro (PAR-6, PAR-11)
+### Task 8: O contato do parceiro aparece; Financeiro (PAR-6, PAR-11)
 
 **Interfaces:**
 - **Consome:** T3 e T5.
@@ -413,7 +413,7 @@ Frases, cópia exata do desenho §5.8 e §5.4:
 
 - [ ] Vermelho → código → verde → `bun run verify` → commit `feat: o contato do parceiro no cliente (PAR-6, PAR-11)`.
 
-### T9 Sem contato próprio, sem link e sem funil na tela (PAR-7, PAR-8)
+### Task 9: Sem contato próprio, sem link e sem funil na tela (PAR-7, PAR-8)
 
 **Interfaces:**
 - **Consome:** T3, T4 e T8 (`partner_organization_id` nas leituras).
@@ -443,7 +443,7 @@ Frases, cópia exata do desenho §5.8 e §5.4:
 
 - [ ] Vermelho → código → verde → `bun run verify` → commit `feat: cliente de parceiro sem contato próprio nem link da ficha (PAR-7, PAR-8)`.
 
-### T10 Documentação, verificação e push
+### Task 10: Documentação, verificação e push
 
 - [ ] **Documentação:**
   - `docs/spec.md`: PAR-4 a PAR-11 ✅.

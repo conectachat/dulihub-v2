@@ -244,6 +244,15 @@ describe("sincronia offline", () => {
       expect(tabelas).not.toContain("opportunity_products");
     });
 
+    // Desde a 0068 o parceiro é gravado pela fila e lido pelo Financeiro.
+    // Tabela fora do manifesto é puxada e nunca conferida (0033).
+    it("conta as organizações que cada um enxerga", async () => {
+      const { data, error } = await parceiro.rpc("sync_manifesto");
+      expect(error).toBeNull();
+      const organizacoes = data!.find((t) => t.tabela === "organizations");
+      expect(organizacoes?.linhas).toBe(1);
+    });
+
     it("traz o horizonte das lápides — antes dele, o aparelho recarrega tudo", async () => {
       const { data } = await parceiro.rpc("sync_manifesto");
       const horizonte = data!.find((t) => t.tabela === "deleted_rows");

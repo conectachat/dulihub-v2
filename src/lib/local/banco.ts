@@ -33,10 +33,10 @@ export const VERSAO_DO_ESPELHO = 3;
 /** As tabelas espelhadas neste estágio: a Configuração e o que ela usa. */
 export const TABELAS_ESPELHADAS = [
   // As duas primeiras respondem "de qual organização é esta gravação" sem
-  // servidor (`organizacao-local.ts`). `organizations` fica de fora da
-  // conferência do manifesto de propósito — não está na lista da 0030 —, e
-  // isso é seguro: quem se confere é o vínculo, e a linha da organização só
-  // fornece o `type` do desempate.
+  // servidor (`organizacao-local.ts`). `organizations` entrou no manifesto
+  // na 0068: desde então ela também é o cadastro dos parceiros, gravado pela
+  // fila e lido pelo Financeiro. Organização não se apaga, então não tem
+  // lápide.
   "organizations",
   "organization_members",
   "tags",

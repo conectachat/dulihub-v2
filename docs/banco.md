@@ -9,7 +9,7 @@ precisar ler 38 migrations para responder "onde está X e quem pode tocar".
 resumo delas; se divergir, a migration vence e este arquivo está errado.
 **Toda migration atualiza este arquivo no mesmo commit.**
 
-Situação: 0001 a 0067 aplicadas (a 0039 depois da 0042, quando a conta
+Situação: 0001 a 0068 aplicadas (a 0039 depois da 0042, quando a conta
 `teste-staff` passou a existir). Colunas atuais:
 `src/lib/supabase/database.types.ts` (gerado, não se edita à mão).
 
@@ -80,7 +80,8 @@ Funções de gatilho (ninguém chama direto): `set_updated_at`, `handle_new_user
 `projects_item_imutavel` e `projects_nunca_apagado` (0051),
 `opportunities_ganho_so_pela_funcao`, `opportunities_ganho_nao_se_apaga` e
 `people_trava_do_estagio_no_insert` (0054), `opportunities_data_do_ganho`
-(0056), `payment_plans_so_pelas_funcoes`, `payment_plans_nao_se_apaga`,
+(0056), `organizations_regra_do_parceiro` e `organizations_slug_pelo_nome`
+(0068), `payment_plans_so_pelas_funcoes`, `payment_plans_nao_se_apaga`,
 `forma_so_pelas_funcoes` (partes e parcelas), `payment_plan_responses_na_entrada`,
 `payment_plan_responses_nao_mudam` e `receivables_parte_so_pelo_ganho` (0058),
 `registration_forms_link_com_a_forma` e `opportunities_fecha_o_link_da_ficha` (0064; estas
@@ -104,7 +105,7 @@ Legenda de "quem": **membros** = qualquer membro da organização da linha;
 
 | Tabela | Para que serve | Pai / organização vem de | Quem lê | Quem grava | Regras especiais |
 |---|---|---|---|---|---|
-| `organizations` | A Duli (raiz) e cada parceiro, com marca e dados fiscais. `is_test` marca a organização dos testes. | É a própria. | Membros dela; **qualquer membro da Duli** lê todas. | Criar: dono da raiz. Alterar: gestão dela ou dono da raiz. Apagar: ninguém (sem policy). | Uma raiz só (índice). Ao nascer, gatilho semeia funil padrão (Novo Lead / Ganho / Perdido) e os três status de etapa (0019). `type` e `is_test` não mudam pela API (0036); nascer já `is_test` pela API é recusado (0037). |
+| `organizations` | A Duli (raiz) e cada parceiro, com marca e dados fiscais. `is_test` marca a organização dos testes. O parceiro (`type = 'partner'`) tem os dados da invoice: `legal_name`, `tax_id`, endereço (`address_country` e mais sete, os nomes de `people`), `email`, `phone_country_code` e `phone` (0068). | É a própria. | Membros dela; **qualquer membro da Duli** lê todas. | Criar: dono da raiz. Alterar: gestão dela ou dono da raiz. Apagar: ninguém (sem policy). | Uma raiz só (índice). Ao nascer, gatilho semeia funil padrão (Novo Lead / Ganho / Perdido) e os três status de etapa (0019; de 0027 a 0068 a semente falhava, porque gravava as etapas sem `organization_id` — nenhuma organização nova nascia). **Parceiro** (0068): `organizations_regra_do_parceiro`, antes da RLS, recusa primeiro o `insert` de quem não é dono da raiz ("Só o dono da Duli cadastra parceiro.", `42501`); depois, com ou sem usuário, apara os campos, normaliza o DDI e exige nome (até 200), país e contato válido (`contato_valido`), com documento até 50 e o resto até 200; nome repetido entre parceiros, sem caixa: "Já existe um parceiro com esse nome." (e o índice único `organizations_nome_do_parceiro`). O `slug` tem padrão provisório (`provisorio-…`) e `organizations_slug_pelo_nome` o troca pelo do nome (`private.slug_do_nome`, com `-2`, `-3`… quando já existe). O `insert` pelo dono da raiz se prova em `supabase/provas/parceiro-pelo-dono.sql`. `type` e `is_test` não mudam pela API (0036); nascer já `is_test` pela API é recusado (0037). |
 | `profiles` | Espelho de `auth.users`: nome, e-mail, foto, telefone. | Usuário (`id` = `auth.users.id`). | O próprio e colegas de alguma organização em comum. | Criar: gatilho `handle_new_user`. Alterar: só o próprio. Apagar: ninguém pela API (cascade de `auth.users`). | Não vai ao espelho offline (`AGENTS.md`). |
 | `organization_members` | Quem trabalha em qual organização, e com que papel. Cliente não entra aqui. | `organization_id`. | Membros da mesma organização; qualquer membro da Duli lê todas. | Gestão da organização ou dono da raiz. | Gatilho `organization_members_guarda` (0036): ninguém altera nem remove a própria linha, nem se associa sozinho (exceto dono da raiz); linha não muda de pessoa nem de organização; só dono (daquela organização ou da raiz) cria, altera ou remove um `owner`. Único `(organization_id, user_id)`. |
 
@@ -211,7 +212,7 @@ rodam numa transação só.
 | `reordenar_irmaos(tabela, ids[])` | Grava a ordem final de uma lista; idempotente (serve à fila offline). Recusa se alguma linha não for alcançável. Tabelas: `pipeline_stages`, `stage_statuses`, `document_types`, `visa_stages`, `visa_type_documents`, `project_stages`, `project_documents`. | `authenticated` | invoker |
 | `swap_positions(tabela, a, b)` | Troca duas linhas de posição. Mesmas sete tabelas (0026). Não é idempotente — para a fila, usar `reordenar_irmaos`. | `authenticated` | invoker |
 | `compactar_pagina(página, snapshot, até, conteúdo)` | Grava o snapshot novo da página e apaga os pedaços já incluídos, ligando a marca `app.compactando` só nesta transação. | `authenticated` | invoker (era definer na 0024; virou invoker na 0025) |
-| `sync_manifesto()` | Para cada uma das 22 tabelas do espelho, conta linhas e o maior `updated_at` **sob a RLS de quem chama**; linha extra `deleted_rows` com a lápide mais antiga (nula se não há nenhuma, 0032). Lista atual: 0054 (sem `products` e `opportunity_products`). | `authenticated` | invoker |
+| `sync_manifesto()` | Para cada uma das 23 tabelas do espelho, conta linhas e o maior `updated_at` **sob a RLS de quem chama**; linha extra `deleted_rows` com a lápide mais antiga (nula se não há nenhuma, 0032). Lista atual: 0068 (com `organizations`, que passou a ser gravada pela fila; sem `products` e `opportunity_products` desde a 0054). | `authenticated` | invoker |
 | `set_default_stage_status(id)` | Troca o status de etapa padrão da organização em um passo (0010). | `authenticated` | invoker |
 
 As duas da ficha são as **únicas** `security definer` em `public` e as únicas
@@ -259,7 +260,7 @@ Só um uso: a edição simultânea das Observações (0024).
 
 | Tabela / objeto | Migrations |
 |---|---|
-| `organizations` | 0001, 0002 (Duli), 0003, 0015 (organização de teste), 0019 (semente), 0036, 0037 |
+| `organizations` | 0001, 0002 (Duli), 0003, 0015 (organização de teste), 0019 (semente), 0036, 0037, 0068 (parceiro e semente consertada) |
 | `profiles` | 0001, 0003, 0013 (`handle_new_user`) |
 | `organization_members` | 0001, 0002, 0003, 0028, 0029, 0036, 0039 (staff de teste) |
 | `people` | 0001, 0003, 0006, 0007, 0013, 0016, 0029, 0036, 0037, 0040 (DDI corrigido, índices), 0044 (`owner_id`), 0045 (`client_since`, trava do estágio, conversão), 0054 (quem torna cliente, no update e no insert) |
@@ -291,7 +292,7 @@ Só um uso: a edição simultânea das Observações (0024).
 | `deleted_rows` | 0029, 0031 (limpeza), 0032 e 0033 (manifesto) |
 | Auxiliares de RLS | 0001 → 0003 (para `private`) → 0013 (versão atual); `current_user_is_root_owner` na 0036 |
 | Auxiliares de formato do contato | 0040; `telefone_nacional` 0042 (número americano com o 1 na frente) e 0043 (sem DDI, o 55 colado sai); `service_role` executa desde a 0043 |
-| RPCs | `swap_positions` 0014/0023/0026; `criar_processo` 0020/0051; `ganhar_negocio` 0052/0054/0059 e `reabrir_negocio` 0052; `buscar_encerradas` 0053; `compactar_pagina` 0024/0025; `sync_manifesto` 0030/0032/0033/0054; `reordenar_irmaos` 0030; ficha 0035 (`salvar_cadastro` refeita na 0040); `contatos_parecidos` 0040; `criar_oportunidade` 0041/0054; `marcar_como_cliente` 0045/0054/0055; `criar_cliente` 0055 e `buscar_contatos_para_cliente` 0055/0057; `ajustar_data_do_ganho` 0056; `salvar_forma_de_pagamento`, `confirmar_forma_de_pagamento_pela_equipe` e `voltar_forma_para_rascunho` 0058/0064; `enviar_forma_de_pagamento` 0064/0067; `responder_forma_de_pagamento` 0065/0067; `enviar_ficha_de_cadastro` 0035/0064/0065; `abrir_ficha_de_cadastro` 0035/0065; `buscar_clientes` 0049/0050/0055/0057; `set_default_stage_status` 0010 |
+| RPCs | `swap_positions` 0014/0023/0026; `criar_processo` 0020/0051; `ganhar_negocio` 0052/0054/0059 e `reabrir_negocio` 0052; `buscar_encerradas` 0053; `compactar_pagina` 0024/0025; `sync_manifesto` 0030/0032/0033/0054/0068; `reordenar_irmaos` 0030; ficha 0035 (`salvar_cadastro` refeita na 0040); `contatos_parecidos` 0040; `criar_oportunidade` 0041/0054; `marcar_como_cliente` 0045/0054/0055; `criar_cliente` 0055 e `buscar_contatos_para_cliente` 0055/0057; `ajustar_data_do_ganho` 0056; `salvar_forma_de_pagamento`, `confirmar_forma_de_pagamento_pela_equipe` e `voltar_forma_para_rascunho` 0058/0064; `enviar_forma_de_pagamento` 0064/0067; `responder_forma_de_pagamento` 0065/0067; `enviar_ficha_de_cadastro` 0035/0064/0065; `abrir_ficha_de_cadastro` 0035/0065; `buscar_clientes` 0049/0050/0055/0057; `set_default_stage_status` 0010 |
 | Storage | `documentos` 0020; `observacoes` 0024; `pessoas` 0047; `financeiro` 0048 |
 | Tempo real | 0024 |
 | Dados de teste | 0015, 0021 (organização `parceiro-teste`, `is_test` desde 0036), 0039 (`teste-staff`, staff da `parceiro-teste`) |

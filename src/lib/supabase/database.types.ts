@@ -743,6 +743,14 @@ export type Database = {
       }
       organizations: {
         Row: {
+          address_city: string | null
+          address_complement: string | null
+          address_country: string | null
+          address_district: string | null
+          address_number: string | null
+          address_postal_code: string | null
+          address_state: string | null
+          address_street: string | null
           created_at: string
           email: string | null
           id: string
@@ -751,6 +759,7 @@ export type Database = {
           logo_url: string | null
           name: string
           phone: string | null
+          phone_country_code: string | null
           primary_color: string | null
           secondary_color: string | null
           slug: string
@@ -759,6 +768,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          address_city?: string | null
+          address_complement?: string | null
+          address_country?: string | null
+          address_district?: string | null
+          address_number?: string | null
+          address_postal_code?: string | null
+          address_state?: string | null
+          address_street?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -767,14 +784,23 @@ export type Database = {
           logo_url?: string | null
           name: string
           phone?: string | null
+          phone_country_code?: string | null
           primary_color?: string | null
           secondary_color?: string | null
-          slug: string
+          slug?: string
           tax_id?: string | null
           type?: Database["public"]["Enums"]["organization_type"]
           updated_at?: string
         }
         Update: {
+          address_city?: string | null
+          address_complement?: string | null
+          address_country?: string | null
+          address_district?: string | null
+          address_number?: string | null
+          address_postal_code?: string | null
+          address_state?: string | null
+          address_street?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -783,6 +809,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           phone?: string | null
+          phone_country_code?: string | null
           primary_color?: string | null
           secondary_color?: string | null
           slug?: string
