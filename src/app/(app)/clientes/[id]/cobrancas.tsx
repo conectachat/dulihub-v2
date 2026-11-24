@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Download, Paperclip, Plus, Wallet } from "lucide-react";
+import { CalendarClock, Download, Paperclip, Plus, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 import { ConfirmAction } from "@/components/confirm-action";
@@ -30,6 +30,7 @@ import {
   darBaixa,
   desfazerBaixa,
   excluirCobranca,
+  mudarVencimento,
   renomearCobranca,
 } from "@/features/financeiro/escritas-locais";
 import { METODOS, ROTULO_DO_METODO } from "@/lib/parcelas";
@@ -170,6 +171,43 @@ function Baixa({
           </p>
         </div>
       )}
+    </FormDialog>
+  );
+}
+
+/**
+ * O cliente combinou pagar depois (24/nov): a parcela em aberto muda de
+ * vencimento, e o histórico guarda a data de antes.
+ */
+function MudarVencimento({ parcela }: { parcela: Cobranca["parcelas"][number] }) {
+  return (
+    <FormDialog
+      acao={mudarVencimento}
+      titulo={`Mudar o vencimento da parcela ${parcela.number}`}
+      descricao="Para o pagamento combinado com o cliente. O histórico guarda a data de antes."
+      gatilho={
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-primary"
+          aria-label={`Mudar o vencimento da parcela ${parcela.number}`}
+        >
+          <CalendarClock className="h-4 w-4" />
+        </Button>
+      }
+    >
+      <input type="hidden" name="id" value={parcela.id} />
+      <div className="space-y-1">
+        <Label htmlFor={`vencimento-${parcela.id}`}>Novo vencimento</Label>
+        <Input
+          id={`vencimento-${parcela.id}`}
+          name="due_on"
+          type="date"
+          defaultValue={parcela.due_on}
+          required
+          className="rounded-xl"
+        />
+      </div>
     </FormDialog>
   );
 }
@@ -620,7 +658,10 @@ export function Cobrancas({ personId }: { personId: string }) {
                           needsConfirmation
                         />
                       ) : (
-                        <Baixa parcela={p} moeda={c.currency} />
+                        <>
+                          <MudarVencimento parcela={p} />
+                          <Baixa parcela={p} moeda={c.currency} />
+                        </>
                       )}
                     </span>
                     {online ? (

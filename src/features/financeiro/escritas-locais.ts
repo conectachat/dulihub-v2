@@ -4,6 +4,7 @@ import { falhou, gravou, type ActionState } from "@/lib/action-state";
 import { novoId } from "@/lib/id";
 import type { BancoLocal } from "@/lib/local/banco";
 import { armazemDaFila, type BancoDaFila } from "@/lib/local/banco-da-fila";
+import { lerTabela, pendentesDaFila } from "@/lib/local/leitura";
 import { dependeDe, enfileirar, type ItemDaFila, type Operacao } from "@/lib/local/fila";
 import { organizacaoLocal } from "@/lib/local/organizacao-local";
 import { motivoDoPrazo, validadeDoEspelho } from "@/lib/local/sessao";
@@ -18,7 +19,8 @@ import { formatarDia, hojeEmSaoPaulo } from "@/lib/formatar";
 
 import { cobrancasDoContato } from "./consultas-locais";
 import { gerarParcelas } from "@/lib/parcelas";
-import { baixaSchema, cobrancaSchema } from "./schema";
+import type { Tables } from "@/lib/supabase/database.types";
+import { baixaSchema, cobrancaSchema, vencimentoSchema } from "./schema";
 
 /**
  * As gravações do a receber, feitas **no aparelho**.
@@ -274,6 +276,67 @@ export async function desfazerBaixa(formData: FormData): Promise<ActionState> {
         // A cotação sai junto: ela só faz sentido com pagamento, e o banco
         // tem um check dizendo isso.
         patch: { paid_on: null, paid_rate: null },
+      },
+    ],
+  });
+}
+
+/**
+ * Mudar o vencimento de uma parcela em aberto (24/nov): o cliente combinou
+ * pagar depois. A situação da parcela sai de `due_on` (não é guardada, 0033),
+ * então ela deixa de aparecer atrasada no Financeiro e na Início.
+ *
+ * O histórico do cliente guarda a data de antes, no **mesmo** item da fila:
+ * sobem juntos, e se o servidor recusar um, o item inteiro fica em conflito
+ * com o motivo. A parcela, a cobrança e a data de antes vêm do aparelho (com
+ * a fila por cima), para funcionar sem internet.
+ */
+export async function mudarVencimento(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = vencimentoSchema.safeParse({
+    id: formData.get("id"),
+    due_on: formData.get("due_on"),
+  });
+  if (!parsed.success) return falhou(parsed.error.issues[0].message);
+  const { id, due_on } = parsed.data;
+
+  const ctx = await contexto();
+  if ("erro" in ctx) return falhou(ctx.erro);
+
+  const itens = await pendentesDaFila(ctx.fila);
+  const [parcelas, cobrancas] = await Promise.all([
+    lerTabela(ctx.banco, "installments", itens),
+    lerTabela(ctx.banco, "receivables", itens),
+  ]);
+  const parcela = (parcelas as Tables<"installments">[]).find((p) => p.id === id);
+  const cobranca = parcela
+    ? (cobrancas as Tables<"receivables">[]).find((c) => c.id === parcela.receivable_id)
+    : undefined;
+  if (!parcela || !cobranca) return falhou("Parcela não encontrada neste aparelho.");
+  if (parcela.paid_on) return falhou("Parcela paga não muda de vencimento.");
+
+  // A mesma data: nada a gravar, nada a contar no histórico.
+  if (parcela.due_on === due_on) return gravou();
+
+  return gravarLocal(ctx, {
+    alvo: id,
+    depende: dependeDe(await naFila(ctx), id),
+    rotulo: `Mudar o vencimento da parcela ${parcela.number} para ${formatarDia(due_on)}`,
+    passos: [
+      { tipo: "update", tabela: "installments", id, patch: { due_on } },
+      {
+        tipo: "insert",
+        tabela: "activities",
+        linha: {
+          id: novoId(),
+          organization_id: parcela.organization_id,
+          person_id: cobranca.person_id,
+          type: "vencimento_alterado",
+          description: `Vencimento da parcela ${parcela.number} de ${cobranca.title} mudado de ${formatarDia(parcela.due_on)} para ${formatarDia(due_on)}`,
+          created_by: ctx.userId,
+        },
       },
     ],
   });

@@ -11,7 +11,7 @@ import {
 } from "@/lib/local/fila";
 import { transporteDaFila } from "@/lib/local/transporte-da-fila";
 
-import { entrarComo, type Cliente } from "./clientes";
+import { entrarComo, fixture, type Cliente } from "./clientes";
 
 /**
  * A fila subindo contra o banco **de verdade**.
@@ -133,6 +133,56 @@ describe("fila contra o banco", () => {
     expect(fila.itens[0].motivo).toBe("Você não tem permissão para isto.");
     const { data } = await duli.from("organizations").select("id").eq("id", id);
     expect(data).toEqual([]);
+  });
+
+  it("mudar o vencimento sobe a data e o histórico no mesmo item (24/nov)", async () => {
+    // O banco já aceita as duas gravações (nenhuma migration): este teste
+    // guarda isso. A parcela renegociada não fica atrasada, e o histórico do
+    // cliente guarda a data de antes.
+    const pessoa = await fixture(parceiro);
+    const eu = (await parceiro.auth.getUser()).data.user!.id;
+    const { data: cobranca, error } = await parceiro
+      .from("receivables")
+      .insert({ organization_id: org, person_id: pessoa.id, title: `Vencimento ${Date.now()}`, amount: 100, currency: "BRL" })
+      .select("id")
+      .single();
+    if (error) throw new Error(`Cobrança não criada: ${error.message}`);
+    try {
+      const { data: parcela } = await parceiro
+        .from("installments")
+        .insert({ organization_id: org, receivable_id: cobranca.id, number: 1, amount: 100, due_on: "2026-12-10", method: "pix" })
+        .select("id")
+        .single();
+      const atividade = crypto.randomUUID();
+      const fila = armazem([
+        item("v", parcela!.id, [
+          { tipo: "update", tabela: "installments", id: parcela!.id, patch: { due_on: "2026-12-17" } },
+          {
+            tipo: "insert",
+            tabela: "activities",
+            linha: {
+              id: atividade,
+              organization_id: org,
+              person_id: pessoa.id,
+              type: "vencimento_alterado",
+              description: "Vencimento da parcela 1 de Teste mudado de 10/12/2026 para 17/12/2026",
+              created_by: eu,
+            },
+          },
+        ]),
+      ]);
+
+      const resultado = await drenar(transporteDaFila(parceiro), fila);
+
+      expect(resultado.subiram).toBe(1);
+      const { data: depois } = await parceiro.from("installments").select("due_on").eq("id", parcela!.id).single();
+      expect(depois!.due_on).toBe("2026-12-17");
+      const { data: historico } = await parceiro.from("activities").select("type").eq("id", atividade);
+      expect(historico).toEqual([{ type: "vencimento_alterado" }]);
+    } finally {
+      await parceiro.from("activities").delete().eq("person_id", pessoa.id).eq("type", "vencimento_alterado");
+      await parceiro.from("receivables").delete().eq("id", cobranca.id);
+    }
   });
 
   it("o que a RLS esconde vira conflito, não silêncio", async () => {

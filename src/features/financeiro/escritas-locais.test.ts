@@ -31,7 +31,7 @@ vi.mock("@/lib/local/sincronizador", async (original) => ({
 }));
 
 const { MARCA_DA_SINCRONIA } = await import("@/lib/local/sessao");
-const { criarCobranca, darBaixa, desfazerBaixa, excluirCobranca } = await import(
+const { criarCobranca, darBaixa, desfazerBaixa, excluirCobranca, mudarVencimento } = await import(
   "./escritas-locais",
 );
 const { cobrancasDoContato, parcelasDoAparelho } = await import("./consultas-locais");
@@ -310,5 +310,99 @@ describe("dar baixa", () => {
     expect(item.passos[0]).toMatchObject({
       patch: { paid_on: null, paid_rate: null },
     });
+  });
+});
+
+describe("mudar o vencimento", () => {
+  // O cliente combina pagar depois (Renato, 24/nov): a parcela não pode ficar
+  // atrasada, e o histórico guarda a data de antes.
+  const PARCELA = "66666666-6666-4666-8666-666666666666";
+
+  beforeEach(async () => {
+    await banco.tabela("receivables").put({
+      id: "c1",
+      organization_id: ORG,
+      person_id: ERICK,
+      title: "EB-1A",
+      amount: 1000,
+      currency: "USD",
+      updated_at: "2026-10-01T10:00:00Z",
+    });
+    await banco.tabela("installments").put({
+      id: PARCELA,
+      organization_id: ORG,
+      receivable_id: "c1",
+      number: 1,
+      amount: 1000,
+      due_on: "2026-10-01",
+      paid_on: null,
+      paid_rate: null,
+      method: "pix",
+      updated_at: "2026-10-01T10:00:00Z",
+    });
+  });
+
+  it("muda a data e escreve o histórico, no mesmo item da fila", async () => {
+    const estado = await mudarVencimento({ error: null }, formulario({ id: PARCELA, due_on: "2026-10-08" }));
+
+    expect(estado.error).toBeNull();
+    const [item] = await fila.fila.toArray();
+    expect(item.alvo).toBe(PARCELA);
+    expect(item.rotulo).toBe("Mudar o vencimento da parcela 1 para 08/10/2026");
+    expect(item.passos).toHaveLength(2);
+    expect(item.passos[0]).toEqual({
+      tipo: "update",
+      tabela: "installments",
+      id: PARCELA,
+      patch: { due_on: "2026-10-08" },
+    });
+    expect(item.passos[1]).toMatchObject({
+      tipo: "insert",
+      tabela: "activities",
+      linha: {
+        organization_id: ORG,
+        person_id: ERICK,
+        type: "vencimento_alterado",
+        description: "Vencimento da parcela 1 de EB-1A mudado de 01/10/2026 para 08/10/2026",
+        created_by: USUARIO,
+      },
+    });
+  });
+
+  it("parcela paga não muda de vencimento", async () => {
+    await banco.tabela("installments").put({
+      id: PARCELA,
+      organization_id: ORG,
+      receivable_id: "c1",
+      number: 1,
+      amount: 1000,
+      due_on: "2026-10-01",
+      paid_on: "2026-10-01",
+      paid_rate: null,
+      method: "pix",
+      updated_at: "2026-10-02T10:00:00Z",
+    });
+
+    const estado = await mudarVencimento({ error: null }, formulario({ id: PARCELA, due_on: "2026-10-08" }));
+
+    expect(estado.error).toBe("Parcela paga não muda de vencimento.");
+    expect(await fila.fila.count()).toBe(0);
+  });
+
+  it("a mesma data não grava nada nem escreve histórico", async () => {
+    const estado = await mudarVencimento({ error: null }, formulario({ id: PARCELA, due_on: "2026-10-01" }));
+
+    expect(estado.error).toBeNull();
+    expect(await fila.fila.count()).toBe(0);
+  });
+
+  it("parcela que o aparelho não tem é recusada", async () => {
+    const estado = await mudarVencimento(
+      { error: null },
+      formulario({ id: "77777777-7777-4777-8777-777777777777", due_on: "2026-10-08" }),
+    );
+
+    expect(estado.error).toBe("Parcela não encontrada neste aparelho.");
+    expect(await fila.fila.count()).toBe(0);
   });
 });

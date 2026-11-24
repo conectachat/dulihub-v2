@@ -38,6 +38,7 @@ vi.mock("@/features/financeiro/escritas-locais", () => ({
   criarCobranca: vi.fn(),
   darBaixa: vi.fn(),
   desfazerBaixa: vi.fn(),
+  mudarVencimento: vi.fn(),
   excluirCobranca: vi.fn(),
   renomearCobranca: vi.fn(),
 }));
@@ -163,6 +164,23 @@ describe("aba Financeiro do cliente", () => {
         "Deixe em branco se o dinheiro ficou em dólar. Com a cotação, a parcela entra no recebido em reais.",
       ),
     ).toBeTruthy();
+  });
+
+  it("só a parcela em aberto muda de vencimento, e o diálogo abre com a data atual", async () => {
+    online(false);
+    cobrancas = [
+      cobranca("b", "BRL", [
+        [100, "2000-01-10", "2000-01-10"],
+        [100, "2999-01-10", null],
+      ]),
+    ];
+
+    render(<Cobrancas personId="p1" />);
+    await act(async () => {});
+
+    expect(screen.queryByRole("button", { name: "Mudar o vencimento da parcela 1" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Mudar o vencimento da parcela 2" }));
+    expect((screen.getByLabelText("Novo vencimento") as HTMLInputElement).value).toBe("2999-01-10");
   });
 
   it("os totais vêm por moeda, real e dólar separados", async () => {

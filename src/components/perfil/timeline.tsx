@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   ArrowRightLeft,
   BadgeCheck,
+  CalendarClock,
   CalendarDays,
   ClipboardCheck,
   History,
@@ -47,6 +48,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   registration_submitted: ClipboardCheck,
   virou_cliente: BadgeCheck,
   forma_de_pagamento: Wallet,
+  vencimento_alterado: CalendarClock,
 };
 
 const LABELS: Record<string, string> = {
@@ -62,6 +64,8 @@ const LABELS: Record<string, string> = {
   virou_cliente: "Virou cliente",
   // Gravado pela confirmação e pelo Refazer da forma de pagamento (0058).
   forma_de_pagamento: "Forma de pagamento",
+  // Gravado pelo Mudar vencimento da parcela (24/nov).
+  vencimento_alterado: "Vencimento",
 };
 
 /**

@@ -17,6 +17,8 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   virou_cliente: "Virou cliente",
   // Gravado pela confirmação e pelo Refazer da forma de pagamento (0058).
   forma_de_pagamento: "Forma de pagamento",
+  // Gravado pelo Mudar vencimento da parcela (24/nov).
+  vencimento_alterado: "Vencimento",
 };
 
 /**

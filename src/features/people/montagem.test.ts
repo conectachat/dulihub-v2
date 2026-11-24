@@ -41,6 +41,15 @@ describe("montarLinhaDoTempo", () => {
     expect(item.system).toBe(true);
   });
 
+  it("vencimento renegociado é registro do sistema: não se apaga (24/nov)", () => {
+    const [item] = montarLinhaDoTempo(
+      [],
+      [atividade("a1", "vencimento_alterado", "2026-11-24T12:00:00Z")],
+    );
+
+    expect(item.system).toBe(true);
+  });
+
   it("movimento no funil e ficha recebida são do sistema; ligação não", () => {
     const itens = montarLinhaDoTempo(
       [],

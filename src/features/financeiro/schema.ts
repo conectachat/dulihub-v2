@@ -79,3 +79,15 @@ export const baixaSchema = z
     message: "Cotação fora do normal — confira (ex.: 5,42)",
     path: ["paid_rate"],
   });
+
+/**
+ * Mudar o vencimento de uma parcela em aberto (24/nov): o cliente combinou
+ * pagar depois, e a parcela não pode aparecer como atrasada.
+ */
+export const vencimentoSchema = z.object({
+  id: z.string().uuid("Parcela não informada"),
+  due_on: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Informe o novo vencimento"),
+});
