@@ -282,6 +282,18 @@ describe("dar baixa", () => {
     expect(item.passos[0]).toMatchObject({ patch: { paid_on: "2026-10-03", paid_rate: null } });
   });
 
+  it("cotação digitada que não é número é recusada, em vez de virar baixa sem cotação", async () => {
+    // Revisão final: "R$" ou "abc" eram lidos como vazio, e a parcela saía do
+    // recebido em reais sem ninguém saber.
+    const estado = await darBaixa(
+      { error: null },
+      formulario({ id: PARCELA, paid_on: "2026-10-03", paid_rate: "abc", moeda: "USD" }),
+    );
+
+    expect(estado.error).toBe("Cotação fora do normal — confira (ex.: 5,42)");
+    expect(await fila.fila.count()).toBe(0);
+  });
+
   it("cotação zero é recusada — o banco também recusa", async () => {
     const estado = await darBaixa(
       { error: null },
@@ -367,6 +379,18 @@ describe("mudar o vencimento", () => {
         created_by: USUARIO,
       },
     });
+  });
+
+  it("o histórico leva a hora da mudança, não a da subida", async () => {
+    // Revisão final: sem a hora, o banco carimbava a da sincronia — a mudança
+    // feita offline na segunda aparecia na quinta, depois das notas do meio.
+    const antes = Date.now();
+    await mudarVencimento({ error: null }, formulario({ id: PARCELA, due_on: "2026-10-08" }));
+
+    const [item] = await fila.fila.toArray();
+    const linha = (item.passos[1] as { linha: { occurred_at?: string } }).linha;
+    expect(linha.occurred_at).toBeDefined();
+    expect(Date.parse(linha.occurred_at!)).toBeGreaterThanOrEqual(antes);
   });
 
   it("parcela paga não muda de vencimento", async () => {

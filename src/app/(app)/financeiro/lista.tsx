@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Search, TriangleAlert, Wallet } from "lucide-react";
+import { Search, Wallet } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { SeloPendente } from "@/components/selo-pendente";
@@ -31,8 +31,9 @@ import { enderecoDaPessoa } from "@/lib/pessoa";
  * Os números do topo vêm em duas unidades diferentes de propósito: **a
  * receber e vencido, por moeda**, porque converter uma dívida futura exigiria
  * inventar a cotação do dia em que ela for paga; e **recebido no mês, em
- * real**, porque aí a cotação existe — é a do dia em que o dinheiro entrou, e
- * está guardada na parcela.
+ * real**, pela cotação guardada em cada parcela paga. Pagamento em dólar sem
+ * cotação (o dinheiro ficou em dólar e é convertido depois, 24/nov) não é
+ * erro: fica fora da soma em real, e o número diz quantos.
  */
 
 type Filtro = "todas" | "vencidas" | "a-vencer" | "pagas";
@@ -246,13 +247,6 @@ export function ListaDoFinanceiro() {
         </ul>
       )}
 
-      {recebido.semCotacao > 0 ? (
-        <p className="flex items-center gap-2 text-xs text-destructive">
-          <TriangleAlert className="h-3 w-3 shrink-0" />
-          Há pagamento em dólar sem a cotação do dia. Ele não entra no total
-          recebido — somar dólar como se fosse real seria pior.
-        </p>
-      ) : null}
     </div>
   );
 }

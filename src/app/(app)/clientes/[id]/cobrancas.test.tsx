@@ -178,8 +178,11 @@ describe("aba Financeiro do cliente", () => {
     render(<Cobrancas personId="p1" />);
     await act(async () => {});
 
-    expect(screen.queryByRole("button", { name: "Mudar o vencimento da parcela 1" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Mudar o vencimento da parcela 2" }));
+    expect(screen.queryByRole("button", { name: "Mudar vencimento da parcela 1" })).toBeNull();
+    // Revisão final: com o texto à vista, não só o ícone — ao lado de "Dar baixa".
+    const botao = screen.getByRole("button", { name: "Mudar vencimento da parcela 2" });
+    expect(botao.textContent).toContain("Mudar vencimento");
+    fireEvent.click(botao);
     expect((screen.getByLabelText("Novo vencimento") as HTMLInputElement).value).toBe("2999-01-10");
   });
 

@@ -335,6 +335,9 @@ export async function mudarVencimento(
           person_id: cobranca.person_id,
           type: "vencimento_alterado",
           description: `Vencimento da parcela ${parcela.number} de ${cobranca.title} mudado de ${formatarDia(parcela.due_on)} para ${formatarDia(due_on)}`,
+          // A hora da mudança, não a da subida: offline, o banco carimbaria
+          // o dia em que a fila sincronizou.
+          occurred_at: new Date().toISOString(),
           created_by: ctx.userId,
         },
       },

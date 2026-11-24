@@ -63,10 +63,16 @@ export const baixaSchema = z
     id: z.string().uuid("Parcela não informada"),
     paid_on: dataISO,
     // Cotação tem regra própria: "5,425" é cinco e quatrocentos e vinte e
-    // cinco milésimos, não milhar (G3).
-    paid_rate: z.string().nullish().transform(parseCotacao),
+    // cinco milésimos, não milhar (G3). Lida abaixo, depois de saber se veio
+    // texto: digitado e ilegível não pode virar "sem cotação" calado.
+    paid_rate: z.string().nullish(),
     moeda: z.enum(["BRL", "USD"]),
   })
+  .transform((d) => ({
+    ...d,
+    digitada: Boolean(d.paid_rate?.trim()),
+    paid_rate: parseCotacao(d.paid_rate),
+  }))
   // Em dólar a cotação é opcional (24/nov): o dinheiro pode ficar em dólar
   // (Nomad, C6 Global, Binance) e ser convertido depois, juntando vários — não
   // há cotação do dia. Sem ela, a parcela fica paga em US$ e fora do recebido
@@ -75,10 +81,11 @@ export const baixaSchema = z
   // Digitada, tem de ser de verdade: zero o banco recusa (0063), e um dólar
   // nunca valeu cem reais — passou disso, foi dígito a mais ou separador
   // trocado, e o erro iria direto para o fechamento do mês.
-  .refine((d) => d.paid_rate === null || (d.paid_rate > 0 && d.paid_rate < 100), {
+  .refine((d) => (d.paid_rate === null ? !d.digitada : d.paid_rate > 0 && d.paid_rate < 100), {
     message: "Cotação fora do normal — confira (ex.: 5,42)",
     path: ["paid_rate"],
-  });
+  })
+  .transform((d) => ({ id: d.id, paid_on: d.paid_on, paid_rate: d.paid_rate, moeda: d.moeda }));
 
 /**
  * Mudar o vencimento de uma parcela em aberto (24/nov): o cliente combinou

@@ -113,8 +113,9 @@ function Totais({ cobrancas, hoje }: { cobrancas: Cobranca[]; hoje: string }) {
  * Dar baixa numa parcela.
  *
  * Pede a data — quase nunca é hoje, e a data certa é o que faz o fechamento
- * do mês bater — e, em dólar, a cotação daquele dia. Digitada, e não buscada:
- * a baixa pode acontecer sem internet, e é esse o ponto.
+ * do mês bater — e, em dólar, a cotação, opcional: o dinheiro pode ficar em
+ * dólar e ser convertido depois (24/nov). Digitada, e não buscada: a baixa
+ * pode acontecer sem internet, e é esse o ponto.
  */
 function Baixa({
   parcela,
@@ -187,12 +188,13 @@ function MudarVencimento({ parcela }: { parcela: Cobranca["parcelas"][number] })
       descricao="Para o pagamento combinado com o cliente. O histórico guarda a data de antes."
       gatilho={
         <Button
-          variant="ghost"
-          size="icon"
-          className="text-primary"
-          aria-label={`Mudar o vencimento da parcela ${parcela.number}`}
+          variant="outline"
+          size="sm"
+          className="rounded-xl"
+          aria-label={`Mudar vencimento da parcela ${parcela.number}`}
         >
-          <CalendarClock className="h-4 w-4" />
+          <CalendarClock className="mr-1 h-4 w-4 text-primary" />
+          Mudar vencimento
         </Button>
       }
     >
