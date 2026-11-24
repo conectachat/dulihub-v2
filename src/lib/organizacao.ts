@@ -46,6 +46,7 @@ export async function contextoAtual() {
       userId: null,
       organizationId: null,
       papel: null as PapelNaOrganizacao | null,
+      tipo: null as Enums<"organization_type"> | null,
       error: "Sua sessão expirou. Entre de novo.",
     };
   }
@@ -61,6 +62,7 @@ export async function contextoAtual() {
       userId: user.id,
       organizationId: null,
       papel: null as PapelNaOrganizacao | null,
+      tipo: null as Enums<"organization_type"> | null,
       error: traduzirErro(error),
     };
   }
@@ -72,6 +74,8 @@ export async function contextoAtual() {
     userId: user.id,
     organizationId: escolhida?.organization_id ?? null,
     papel: escolhida?.role ?? null,
+    /** O tipo da organização atual: com o papel, diz quem é dono da raiz. */
+    tipo: (escolhida?.organizations?.type ?? null) as Enums<"organization_type"> | null,
     error: null as string | null,
   };
 }

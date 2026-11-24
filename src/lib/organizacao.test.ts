@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { daGestaoDe, ehDaGestao, escolherOrganizacao } from "./organizacao";
+import { contextoAtual, daGestaoDe, ehDaGestao, escolherOrganizacao } from "./organizacao";
+
+const servidor = vi.hoisted(() => ({ cliente: null as unknown }));
+vi.mock("@/lib/supabase/server", () => ({ createClient: async () => servidor.cliente }));
 
 /**
  * Sete cópias do mesmo lookup faziam `.limit(1)` **sem** `order by` e sem
@@ -130,5 +133,31 @@ describe("daGestaoDe", () => {
     const banco = bancoFalso({ data: { role: "owner" }, error: null });
     expect(await daGestaoDe(banco.supabase, "o", null)).toEqual({ daGestao: false, error: null });
     expect(banco.from).not.toHaveBeenCalled();
+  });
+});
+
+describe("contextoAtual", () => {
+  // O tipo da organização escolhida decide quem cadastra parceiro (só o dono
+  // da raiz, `ehDonoDaRaiz`), na tela do Novo cliente.
+  function clienteCom(usuario: { id: string } | null, associacoes: ReturnType<typeof assoc>[]) {
+    servidor.cliente = {
+      auth: { getUser: async () => ({ data: { user: usuario } }) },
+      from: () => ({ select: () => ({ eq: async () => ({ data: associacoes, error: null }) }) }),
+    };
+  }
+
+  it("devolve o tipo da organização escolhida", async () => {
+    clienteCom({ id: "u-1" }, [
+      assoc("parceira", "partner", "2024-01-01T00:00:00Z"),
+      assoc("duli", "root", "2026-01-01T00:00:00Z"),
+    ]);
+    const ctx = await contextoAtual();
+    expect(ctx.organizationId).toBe("duli");
+    expect(ctx.tipo).toBe("root");
+  });
+
+  it("sem sessão, o tipo é nulo", async () => {
+    clienteCom(null, []);
+    expect((await contextoAtual()).tipo).toBeNull();
   });
 });

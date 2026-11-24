@@ -3,7 +3,7 @@ import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { BancoLocal } from "./banco";
-import { organizacaoLocal } from "./organizacao-local";
+import { organizacaoLocal, vinculoLocal } from "./organizacao-local";
 
 /**
  * De qual organização é a gravação feita **offline**.
@@ -35,7 +35,10 @@ afterEach(async () => {
   await BancoLocal.delete(`dulihub-${USUARIO}`);
 });
 
-async function semear(orgs: { id: string; type: string }[], vinculos: { organization_id: string; created_at: string }[]) {
+async function semear(
+  orgs: { id: string; type: string }[],
+  vinculos: { organization_id: string; created_at: string; role?: string }[],
+) {
   await banco.tabela("organizations").bulkPut(
     orgs.map((o) => ({ ...o, name: o.id, slug: o.id, updated_at: "2026-09-21T10:00:00Z" })),
   );
@@ -44,7 +47,7 @@ async function semear(orgs: { id: string; type: string }[], vinculos: { organiza
       id: `m${i}`,
       user_id: USUARIO,
       organization_id: v.organization_id,
-      role: "collaborator",
+      role: v.role ?? "collaborator",
       created_at: v.created_at,
       updated_at: "2026-09-21T10:00:00Z",
     })),
@@ -98,5 +101,51 @@ describe("organizacaoLocal", () => {
 
   it("espelho ainda vazio devolve nulo — ninguém grava no escuro", async () => {
     expect(await organizacaoLocal(banco, USUARIO)).toBeNull();
+  });
+});
+
+describe("vinculoLocal", () => {
+  // Offline também é preciso saber o papel: só o dono da raiz vê os botões de
+  // Configuração › Parceiros. A escolha é a mesma de `organizacaoLocal`.
+  it("devolve a associação escolhida com o papel e o tipo", async () => {
+    await semear(
+      [
+        { id: PARCEIRO, type: "partner" },
+        { id: DULI, type: "root" },
+      ],
+      [
+        { organization_id: PARCEIRO, created_at: "2024-01-01T00:00:00Z", role: "admin" },
+        { organization_id: DULI, created_at: "2026-01-01T00:00:00Z", role: "owner" },
+      ],
+    );
+
+    expect(await vinculoLocal(banco, USUARIO)).toEqual({
+      organizationId: DULI,
+      papel: "owner",
+      tipo: "root",
+    });
+  });
+
+  it("sem raiz, a mais antiga, com o papel dela", async () => {
+    await semear(
+      [
+        { id: PARCEIRO, type: "partner" },
+        { id: DULI, type: "partner" },
+      ],
+      [
+        { organization_id: DULI, created_at: "2026-01-01T00:00:00Z", role: "owner" },
+        { organization_id: PARCEIRO, created_at: "2024-01-01T00:00:00Z", role: "staff" },
+      ],
+    );
+
+    expect(await vinculoLocal(banco, USUARIO)).toEqual({
+      organizationId: PARCEIRO,
+      papel: "staff",
+      tipo: "partner",
+    });
+  });
+
+  it("espelho vazio devolve nulo", async () => {
+    expect(await vinculoLocal(banco, USUARIO)).toBeNull();
   });
 });

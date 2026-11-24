@@ -1,7 +1,7 @@
 "use client";
 
 import { escolherOrganizacao } from "@/lib/escolher-organizacao";
-import type { Tables } from "@/lib/supabase/database.types";
+import type { Enums, Tables } from "@/lib/supabase/database.types";
 
 import type { BancoLocal } from "./banco";
 
@@ -21,6 +21,23 @@ export async function organizacaoLocal(
   banco: BancoLocal,
   userId: string,
 ): Promise<string | null> {
+  return (await vinculoLocal(banco, userId))?.organizationId ?? null;
+}
+
+/**
+ * A associação escolhida, com o papel e o tipo da organização: o que a tela
+ * offline precisa para decidir o que mostrar (só o dono da raiz vê os botões
+ * de Configuração › Parceiros). Decide só o que aparece — quem decide a
+ * gravação é a RLS, quando ela sobe.
+ */
+export async function vinculoLocal(
+  banco: BancoLocal,
+  userId: string,
+): Promise<{
+  organizationId: string;
+  papel: Enums<"member_role">;
+  tipo: Enums<"organization_type"> | null;
+} | null> {
   const [vinculos, orgs] = await Promise.all([
     banco.tabela("organization_members").toArray() as unknown as Promise<
       Tables<"organization_members">[]
@@ -44,5 +61,11 @@ export async function organizacaoLocal(
         : null,
     }));
 
-  return escolherOrganizacao(meus)?.organization_id ?? null;
+  const escolhida = escolherOrganizacao(meus);
+  if (!escolhida) return null;
+  return {
+    organizationId: escolhida.organization_id,
+    papel: escolhida.role,
+    tipo: escolhida.organizations?.type ?? null,
+  };
 }
