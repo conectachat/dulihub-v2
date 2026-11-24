@@ -9,7 +9,7 @@ precisar ler 38 migrations para responder "onde está X e quem pode tocar".
 resumo delas; se divergir, a migration vence e este arquivo está errado.
 **Toda migration atualiza este arquivo no mesmo commit.**
 
-Situação: 0001 a 0068 aplicadas (a 0039 depois da 0042, quando a conta
+Situação: 0001 a 0069 aplicadas (a 0039 depois da 0042, quando a conta
 `teste-staff` passou a existir). Colunas atuais:
 `src/lib/supabase/database.types.ts` (gerado, não se edita à mão).
 
@@ -260,9 +260,9 @@ Só um uso: a edição simultânea das Observações (0024).
 
 | Tabela / objeto | Migrations |
 |---|---|
-| `organizations` | 0001, 0002 (Duli), 0003, 0015 (organização de teste), 0019 (semente), 0036, 0037, 0068 (parceiro e semente consertada) |
+| `organizations` | 0001, 0002 (Duli), 0003, 0015 (organização de teste), 0019 (semente), 0036, 0037, 0068 (parceiro e semente consertada), 0069 (`executora-teste`, a organização que faz o papel da Duli nos testes de cliente de parceiro) |
 | `profiles` | 0001, 0003, 0013 (`handle_new_user`) |
-| `organization_members` | 0001, 0002, 0003, 0028, 0029, 0036, 0039 (staff de teste) |
+| `organization_members` | 0001, 0002, 0003, 0028, 0029, 0036, 0039 (staff de teste), 0069 (`teste-executora`) |
 | `people` | 0001, 0003, 0006, 0007, 0013, 0016, 0029, 0036, 0037, 0040 (DDI corrigido, índices), 0044 (`owner_id`), 0045 (`client_since`, trava do estágio, conversão), 0054 (quem torna cliente, no update e no insert) |
 | `person_participants`, `opportunity_participants` | 0044 |
 | `opportunity_items` | 0051, 0054 (item com processo não se apaga), 0058 (trava com a forma confirmada), 0063 (valor sem NaN), 0064 (forma enviada), 0067 (a trava não conta o estado a outra organização) |
@@ -295,7 +295,7 @@ Só um uso: a edição simultânea das Observações (0024).
 | RPCs | `swap_positions` 0014/0023/0026; `criar_processo` 0020/0051; `ganhar_negocio` 0052/0054/0059 e `reabrir_negocio` 0052; `buscar_encerradas` 0053; `compactar_pagina` 0024/0025; `sync_manifesto` 0030/0032/0033/0054/0068; `reordenar_irmaos` 0030; ficha 0035 (`salvar_cadastro` refeita na 0040); `contatos_parecidos` 0040; `criar_oportunidade` 0041/0054; `marcar_como_cliente` 0045/0054/0055; `criar_cliente` 0055 e `buscar_contatos_para_cliente` 0055/0057; `ajustar_data_do_ganho` 0056; `salvar_forma_de_pagamento`, `confirmar_forma_de_pagamento_pela_equipe` e `voltar_forma_para_rascunho` 0058/0064; `enviar_forma_de_pagamento` 0064/0067; `responder_forma_de_pagamento` 0065/0067; `enviar_ficha_de_cadastro` 0035/0064/0065; `abrir_ficha_de_cadastro` 0035/0065; `buscar_clientes` 0049/0050/0055/0057; `set_default_stage_status` 0010 |
 | Storage | `documentos` 0020; `observacoes` 0024; `pessoas` 0047; `financeiro` 0048 |
 | Tempo real | 0024 |
-| Dados de teste | 0015, 0021 (organização `parceiro-teste`, `is_test` desde 0036), 0039 (`teste-staff`, staff da `parceiro-teste`) |
+| Dados de teste | 0015, 0021 (organização `parceiro-teste`, `is_test` desde 0036), 0039 (`teste-staff`, staff da `parceiro-teste`), 0069 (`executora-teste`, e a `teste-executora` como `admin` dela e `staff` da `parceiro-teste`) |
 
 ---
 

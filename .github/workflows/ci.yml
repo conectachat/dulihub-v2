@@ -19,6 +19,7 @@ jobs:
       RLS_SENHA_COLABORADOR: ${{ secrets.RLS_SENHA_COLABORADOR }}
       RLS_SENHA_CLIENTE: ${{ secrets.RLS_SENHA_CLIENTE }}
       RLS_SENHA_STAFF: ${{ secrets.RLS_SENHA_STAFF }}
+      RLS_SENHA_EXECUTORA: ${{ secrets.RLS_SENHA_EXECUTORA }}
     steps:
       # v5 roda em Node 24; a v4 está marcada como obsoleta pelo GitHub.
       - uses: actions/checkout@v5

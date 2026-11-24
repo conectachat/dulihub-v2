@@ -2,6 +2,8 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { escolherOrganizacao } from "@/lib/escolher-organizacao";
+
 import { entrarComo, type Cliente } from "./clientes";
 
 /**
@@ -210,6 +212,46 @@ describe("o papel decide, não a associação", () => {
         .select("id");
       expect(resposta.error?.code).toBe("42501");
       expect(resposta.error?.message).toMatch(/não muda de organização/);
+    });
+  });
+
+  describe("a conta teste-executora (0069)", () => {
+    // Faz nos testes o papel da Duli para os clientes de parceiro: é `admin`
+    // da executora, onde eles moram, e `staff` do parceiro deles, para ler o
+    // parceiro (desenho de 24/nov, §6).
+    it("é admin da executora-teste e staff da parceiro-teste, e opera pela executora", async () => {
+      const executora = await entrarComo("executora");
+      const eu = (await executora.auth.getUser()).data.user!.id;
+      const { data, error } = await executora
+        .from("organization_members")
+        .select("organization_id, role, created_at, organizations(slug, type)")
+        .eq("user_id", eu)
+        .order("created_at");
+      expect(error).toBeNull();
+      expect(data!.map((v) => [v.role, v.organizations?.slug])).toEqual([
+        ["admin", "executora-teste"],
+        ["staff", "parceiro-teste"],
+      ]);
+
+      const atual = escolherOrganizacao(data!);
+      expect(data!.find((v) => v.organization_id === atual?.organization_id)?.organizations?.slug).toBe(
+        "executora-teste",
+      );
+    });
+
+    it("a executora-teste nasceu com o funil padrão (a semente da 0068)", async () => {
+      const executora = await entrarComo("executora");
+      const { data: org } = await executora
+        .from("organizations")
+        .select("id")
+        .eq("slug", "executora-teste")
+        .single();
+      const { data: funis } = await executora
+        .from("pipelines")
+        .select("id")
+        .eq("organization_id", org!.id)
+        .eq("is_default", true);
+      expect(funis).toHaveLength(1);
     });
   });
 
