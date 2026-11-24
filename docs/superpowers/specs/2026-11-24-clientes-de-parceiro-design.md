@@ -127,7 +127,10 @@ N3), de propósito, e com o teste de RLS vermelho antes.
   toca `updated_at` (`set_updated_at`).
 - **Testes em produção, só com as contas e a organização de teste** (§12.6). Uma
   conta de teste não é dona da raiz, então não cria organização pela API. O
-  parceiro dos clientes de teste vem de uma migration de fixture (§6).
+  parceiro dos clientes de teste vem de uma migration de fixture (§6). O
+  `insert` de parceiro pelo dono da raiz, que nenhuma conta de teste alcança, é
+  provado em `supabase/provas/` (desfaz tudo no fim), como a trava da forma
+  (revisão, M1).
 - **O vínculo atravessa organizações de propósito.** É a primeira chave
   estrangeira que aponta para outra organização por desenho. A regra "referência
   cruzada é barrada pelo banco" ganha uma exceção registrada no `AGENTS.md`, com
@@ -152,11 +155,21 @@ N3), de propósito, e com o teste de RLS vermelho antes.
 - **O banco confere**, no `insert` e no `update` de organização `partner`:
   nome, país e contato. A regra não vale para a raiz (nossa). A organização
   `parceiro-teste`, que já existe, é preenchida pela migration para passar.
-- O `slug` é gerado a partir do nome, único, e não aparece na tela (nossa). O
-  construtor escolhe se isso acontece no banco ou no app.
+- **A ordem do gatilho** (revisão, I4): o gatilho roda antes da RLS. No
+  `insert` com usuário, a **primeira** conferência é o dono da raiz
+  (`current_user_is_root_owner()`), com "Só o dono da Duli cadastra parceiro."
+  Só depois vêm nome, país e contato. Sem isso, quem não é dono e manda dado
+  inválido leria "Informe o país." em vez da recusa de verdade. Inclusive na
+  Sincronização, quando a gravação veio da fila.
+- O `slug` é gerado **no banco**, num gatilho `before insert`, a partir do nome,
+  com sufixo quando já existe. Não aparece na tela (revisão, M2). Gerado no
+  aparelho, um choque de `slug` voltaria da fila como um conflito enganoso.
 - **Quem:** todo membro da Duli lê, porque precisa ver o contato. Só o dono da
-  Duli cria e edita (proposta, e o banco já exige na criação). Na tela, os
-  botões aparecem só para ele.
+  Duli cria (proposta; o banco já exige, 0036). Para **editar**, a policy da
+  0036 fica como está: editam o dono da raiz e a gestão da própria organização
+  (nossa). Hoje nenhum parceiro tem membro, então na prática só o Renato edita. No
+  portal, isso deixa o próprio parceiro corrigir o endereço dele, e se decide de
+  novo na Fase 7. Na tela, os botões aparecem só para o dono da raiz.
 - Parceiro não se apaga (fora).
 
 ### 5.2 O cliente de parceiro
@@ -167,7 +180,10 @@ N3), de propósito, e com o teste de RLS vermelho antes.
   e o contato **vazio** (e-mail, DDI e telefone nulos), e depois
   `marcar_como_cliente`. Isso dá o estágio, o "cliente desde" de hoje, o dono
   para quem criou e o histórico, que vira "Marcado como cliente — parceiro
-  ‹nome›" (nossa).
+  ‹nome›" (nossa). Quem escreve o histórico continua sendo `marcar_como_cliente`,
+  que passa a dizer o parceiro quando a pessoa tem vínculo (revisão, M5). Na
+  prática, esse ramo só roda pelo Novo cliente: o cliente de parceiro já nasce
+  cliente, e o botão "Marcar como cliente" nunca aparece para ele.
 - **Nome:** obrigatório, aparado, até 200 ("Informe o nome do cliente.").
   **Nome repetido no mesmo parceiro**, sem diferenciar maiúscula e fora da
   lixeira, não grava de primeira: o diálogo pergunta "Já existe um cliente com
@@ -183,6 +199,14 @@ N3), de propósito, e com o teste de RLS vermelho antes.
   cliente, e com a mesma marca de teste. Teste aponta só para teste, e real só
   para real. A organização do cliente é a raiz, ou, nos testes, uma organização
   `is_test` (nossa).
+- **Como o banco confere o alvo** (revisão, C1): `criar_cliente` é `invoker` e
+  procura o parceiro **sob a RLS de quem chama**. Parceiro que ele não enxerga é
+  "Parceiro não encontrado.". Só o gatilho do vínculo lê a organização-alvo
+  sem RLS (`security definer`, no `private`), para conferir `type` e `is_test`.
+  Para **qualquer** alvo inválido (inexistente, raiz, a própria, teste trocado),
+  ele dá a mesma frase, "Parceiro não encontrado.", e assim não conta o tipo de
+  uma organização pelo id. Nenhuma policy muda: o membro da Duli já lê todas as
+  organizações (0003), e é só ele que cria cliente de parceiro de verdade.
 - O cliente do portal (Fase 6) não muda o vínculo, que entra na lista de colunas
   travadas de `people_guard_self_update` (nossa).
 
@@ -203,13 +227,37 @@ parceiro, o do parceiro vence sempre**, mesmo que a linha da pessoa tenha e-mail
   `organizations` (nossa).
 
 A busca de Clientes (`buscar_clientes`) também acha pelo nome do parceiro, além
-de nome, e-mail e telefone da pessoa (proposta).
+de nome, e-mail e telefone da pessoa (proposta). A busca de **Contatos não**:
+ela continua procurando só nos campos da pessoa (revisão, M6). Quem procura
+clientes da Thais procura em Clientes.
 
-### 5.4 Dados cadastrais
+A função pura trata do mesmo jeito o vínculo `null` e o vínculo ausente
+(`undefined`). As linhas de `people` que já estavam no aparelho antes da
+migration não têm a chave (I23; revisão, M3).
 
-- **Editar** abre a ficha **sem** os campos de e-mail, DDI e telefone. A ação não
-  envia essas chaves, então `salvar_cadastro` não roda `contato_valido`, e
-  nenhum aviso de parecido roda.
+### 5.4 Dados cadastrais e o Editar do cliente
+
+O cliente de parceiro não tem contato próprio, e **nenhuma tela o cobra nem o
+grava**. São dois lugares que hoje exigem contato:
+
+- **Editar dados cadastrais** (`dados-cadastrais.tsx`, `salvarCadastro`) abre a
+  ficha **sem** os campos de e-mail, DDI e telefone. Hoje `fichaDoFormulario`
+  (`cadastro/schema.ts`) põe **toda** chave da ficha em `dados`, nula quando
+  vazia, e sempre roda `errosDeContato`. `salvarCadastro` roda
+  `buscarParecidos`, e `salvar_cadastro` roda `contato_valido` sempre que
+  qualquer uma das três chaves vem (0040). Por isso o leitor do formulário ganha
+  um **modo sem contato**. Ele tira as três chaves do `dados`, não roda
+  `errosDeContato`, e a ação não busca parecidos. Um teste de unidade prova que
+  o que vai a `salvar_cadastro` não leva `email`, `phone_country_code` nem
+  `phone` (revisão, I2).
+- **Editar cliente** (`clientes/[id]/cliente-dialog.tsx`: nome, dono,
+  participantes, "cliente desde") usa hoje `CamposDoContato` e
+  `atualizarCliente`, que validam o contato com `personSchema` → `erroDeContato`
+  e mostram `AvisoDeDuplicado`. No cliente de parceiro, o diálogo esconde
+  e-mail, DDI e telefone, não valida contato, não procura parecido, e a ação
+  **não escreve** essas três colunas (revisão, I1). Sem isso, para trocar o dono
+  seria preciso inventar um contato ou digitar o do parceiro, e o contato do
+  parceiro acabaria copiado no cliente.
 - **Sem link da ficha.** No lugar do bloco do link, a frase "Cliente de
   ‹parceiro›: os dados cadastrais são lançados aqui, em Editar." O banco recusa
   link da ficha para cliente de parceiro: "Cliente de parceiro não recebe o link
@@ -223,6 +271,16 @@ por `insert` direto em `opportunities`: "Cliente de parceiro não entra no funil
 use + Novo processo no perfil." Os processos nascem por "+ Novo processo", como
 hoje (CLI-7). A busca de contato existente da Nova oportunidade não o oferece
 (nossa).
+
+**`insert` e `update of person_id`** (revisão, I3). Nada congela hoje o
+`person_id` de `opportunities` nem de `registration_forms`, e só `projects` e
+`receivables` têm guarda nessa coluna (0045). Sem a guarda no `update`, um
+`update` direto levaria um negócio aberto, ou um link da ficha aberto, para o
+cliente de parceiro. Os dois gatilhos (funil e link) são `before insert or update
+of person_id`. **O gatilho roda antes da RLS**: como na 0065/0067, ele lê
+`people` como `invoker` e só recusa quando a pessoa é visível para quem grava.
+Pessoa invisível passa calada, e a RLS ou a chave recusam. Assim a frase não
+conta a um estranho que um id alheio é cliente de parceiro.
 
 ### 5.6 Financeiro
 
@@ -247,7 +305,8 @@ A seção já existe no menu como "Fase 7", com a lista do que vai ter
 - Sem parceiro: `EmptyState` com "Nenhum parceiro ainda. Cadastre aqui quem vende
   e contrata a Duli para montar o processo."
 - A organização de teste **não aparece** para quem não está numa organização de
-  teste. Isso vale aqui e no seletor do Novo cliente.
+  teste. Isso vale aqui e no seletor do Novo cliente. O seletor também nunca
+  oferece a organização atual.
 
 ### 5.8 Frases fixas novas
 
@@ -263,7 +322,7 @@ A seção já existe no menu como "Fase 7", com a lista do que vai ter
 | Link da ficha | "Cliente de parceiro não recebe o link da ficha." |
 | Parceiro sem nome / país | "Informe o nome do parceiro." / "Informe o país." |
 | Parceiro com nome repetido | "Já existe um parceiro com esse nome." |
-| Parceiro criado por quem não é dono da Duli | "Só o dono da Duli cadastra parceiro." |
+| Parceiro criado por quem não é dono da Duli | "Só o dono da Duli cadastra parceiro." (do gatilho, primeira conferência do `insert`, §5.1) |
 
 ## 6. Banco
 
@@ -275,9 +334,9 @@ Uma migration nova, `0068`, e a de fixture, se o construtor preferir separar.
 | `people.partner_organization_id` | `uuid` nulo, `references organizations(id)`. Índice parcial. Gatilho: só no `insert` e só com a marca; nunca muda; aponta para `partner`, diferente da organização da pessoa, com a mesma `is_test`; a pessoa é da raiz ou de organização `is_test`. Entra em `people_guard_self_update` |
 | `criar_cliente` | Ganha o ramo do parceiro, com a assinatura que o construtor escolher. Ele pode ser um `p_parceiro` com `p_novo_contato` trazendo só `full_name`, ou um parâmetro próprio. A ordem das recusas segue a do CLI-15 (gestão antes de tudo), depois o parceiro e o nome. Devolve `precisa_confirmar` com os homônimos, como devolve os parecidos |
 | `buscar_clientes` | Devolve o nome e o contato do parceiro e acha pelo nome dele |
-| Funil | Recusa de negócio para cliente de parceiro, em `criar_oportunidade` e num gatilho `before insert` em `opportunities` |
-| Link da ficha | Gatilho `before insert` em `registration_forms`, que recusa para cliente de parceiro |
-| Fixture | Uma segunda organização de teste, `partner` e `is_test`, com contato válido ("Indicador de Teste"), para ser o parceiro dos clientes que a `teste-parceiro` cria na `parceiro-teste`. E, para o critério 11, **um cliente na Indicador de Teste que aponta para a `parceiro-teste`**, gravado pela própria migration (sem usuário, as guardas deixam passar). Assim `teste-parceiro` e `teste-staff` fazem o papel de "membro do parceiro" e provam que não enxergam nada. Hoje nenhuma conta de teste é membro só de uma organização-parceira sem ser a dona do cliente |
+| Funil | Recusa de negócio para cliente de parceiro, em `criar_oportunidade` e num gatilho `before insert or update of person_id` em `opportunities`, que roda antes da RLS (§5.5) |
+| Link da ficha | Gatilho `before insert or update of person_id` em `registration_forms`, que recusa para cliente de parceiro, também antes da RLS (§5.5) |
+| Fixture (revisão, C1) | A conta `teste-parceiro` só enxerga a própria organização (`organizations_select`, 0003: membro dela ou da raiz), e por isso não veria um parceiro de teste. A fixture resolve **sem mudar policy nenhuma**. (1) Cria a "Indicador de Teste", `partner` e `is_test`, com contato válido. (2) Associa a `teste-parceiro` a ela como `staff`. A associação é mais nova que a da `parceiro-teste`, então `escolherOrganizacao` continua escolhendo a `parceiro-teste` (sem raiz, vale a mais antiga), e o seletor do Novo cliente tira a organização atual. (3) Para o critério 11, grava pela própria migration (sem usuário, as guardas deixam passar) **um cliente na Indicador de Teste que aponta para a `parceiro-teste`**. Quem prova o isolamento é a `teste-staff`, membro só da `parceiro-teste`, que faz o papel de "membro do parceiro" e não enxerga nada desse cliente. A `teste-parceiro` enxerga esse cliente por ser membro da Indicador. Os testes que contam o que ela vê (pessoas, clientes, organizações) precisam ser conferidos (revisão, M4) |
 | RLS | **Nenhuma policy nova nem alterada** além do necessário para as colunas. Nenhuma policy lê o vínculo |
 
 O espelho: `people` ganha uma coluna e `organizations` ganha várias. Os índices do
@@ -346,10 +405,15 @@ Fulano de Tal   thais@… (via Thais Fabrini)    +1 (305) 555-0100       Renato
    "Estados Unidos", e-mail e telefone "+1 (305) 555-0100". Ela aparece na lista
    com o país e o contato. Sem país, nada grava e aparece "Informe o país.".
    E-mail inválido dá a frase do contato. Nome repetido ("thais fabrini") dá "Já
-   existe um parceiro com esse nome.". No banco, `insert` direto sem contato
-   válido é recusado.
-2. **Quem cadastra.** Pela API, um `admin` ou `staff` da Duli que não é dono não
-   cria parceiro (RLS da 0036). Na tela, ele lê a lista sem os botões.
+   existe um parceiro com esse nome.". No banco, parceiro sem contato válido é
+   recusado: no `update`, pela suíte de RLS (a `teste-parceiro` editando a
+   `parceiro-teste`); no `insert` pelo dono da raiz, em `supabase/provas/`. O
+   `slug` nasce no banco, e dois nomes que dariam o mesmo `slug` ("Thais" e
+   "Thais!") não chocam.
+2. **Quem cadastra.** Pela API, quem não é dono da raiz (a `teste-parceiro`, a
+   `teste-colaborador`) não cria parceiro e recebe "Só o dono da Duli cadastra
+   parceiro.", **mesmo mandando dado inválido**. Na tela, ele lê a lista sem os
+   botões.
 3. **Editar o parceiro muda o contato de todos os clientes dele.** Com o telefone
    trocado, o perfil e a lista de Clientes de cada cliente da Thais mostram o
    telefone novo, e a linha da pessoa continua com o contato nulo.
@@ -364,26 +428,36 @@ Fulano de Tal   thais@… (via Thais Fabrini)    +1 (305) 555-0100       Renato
    não pergunta.
 6. **O contato aparece.** No perfil, na lista de Clientes (tabela e celular), em
    Contatos e no Financeiro, o cliente da Thais mostra o contato dela com "via
-   Thais Fabrini". O copiar copia o telefone dela. Buscar "Thais" em Clientes acha
-   o Fulano.
+   Thais Fabrini". O copiar copia o telefone dela. Buscar "Thais" **em Clientes**
+   acha o Fulano. Em Contatos, não acha, de propósito (§5.3). A função pura dá o
+   mesmo resultado com o vínculo `null` e ausente.
 7. **Sem aviso de duplicado.** Criar dez clientes da Thais não mostra nenhum
    aviso de contato parecido. Criar um contato novo com o e-mail da Thais também
    não acusa os clientes dela.
-8. **Dados cadastrais.** Editar a ficha do Fulano sem e-mail e telefone grava. O
-   bloco do link não aparece, e aparece a frase do §5.4. Pela API, gerar link da
-   ficha para ele é recusado com a frase.
-9. **Fora do funil.** `criar_oportunidade` com o Fulano, e `insert` direto em
-   `opportunities`, são recusados com a frase do §5.5. A Nova oportunidade não o
-   lista. "+ Novo processo" no perfil funciona.
+8. **Dados cadastrais.** Editar a ficha do Fulano sem e-mail e telefone grava, e
+   nenhum aviso de parecido aparece. O teste de unidade prova que o envio a
+   `salvar_cadastro` não leva as três chaves. O bloco do link não aparece, e
+   aparece a frase do §5.4. Pela API, gerar link da ficha para ele é recusado com
+   a frase, e também mudar o `person_id` de um link aberto de outra pessoa para
+   ele.
+9. **Fora do funil.** `criar_oportunidade` com o Fulano, `insert` direto em
+   `opportunities` e `update` do `person_id` de um negócio aberto para o Fulano
+   são recusados com a frase do §5.5. Para quem não enxerga a pessoa, a guarda
+   não fala: quem recusa é a RLS ou a chave. A Nova oportunidade não o lista.
+   "+ Novo processo" no perfil funciona.
+9a. **Editar cliente.** No Fulano, o Editar cliente não mostra e-mail, DDI nem
+    telefone. Trocar o dono ou o "cliente desde" grava sem pedir contato e sem
+    aviso de parecido, e a linha da pessoa continua com o contato nulo.
 10. **O vínculo é fixo.** Pela API, nenhum membro (nem a gestão) preenche, troca
     ou apaga `partner_organization_id`. Inserir pessoa já com o vínculo, fora do
     `criar_cliente`, é recusado. O vínculo para a raiz, para a própria
     organização, para organização de teste a partir de cliente real, ou o
-    contrário, é recusado.
+    contrário, é recusado, sempre com "Parceiro não encontrado.".
 11. **Nada de acesso novo.** Depois desta entrega, os testes de isolamento de hoje
-    passam iguais. Um membro da organização de teste do parceiro não enxerga o
-    cliente que aponta para ela: nem a pessoa, nem as notas, os processos ou as
-    cobranças.
+    passam iguais (conferidas as contagens da `teste-parceiro`, §6). A
+    `teste-staff`, membro só da `parceiro-teste`, não enxerga o cliente da
+    Indicador de Teste que aponta para a `parceiro-teste`: nem a pessoa, nem as
+    notas, os processos ou as cobranças.
 12. **Financeiro.** A cobrança à mão do Fulano em US$, com 2 parcelas, nasce e
     soma como qualquer outra. O anexo aparece como "Nota fiscal / invoice".
 13. **Teste fora da tela real.** Para a conta do Renato, a organização de teste
@@ -399,11 +473,11 @@ Fulano de Tal   thais@… (via Thais Fabrini)    +1 (305) 555-0100       Renato
 
 | ID | Requisito | Pri. |
 |---|---|---|
-| PAR-4 | Cadastro do parceiro em Configuração › Parceiros: nome, razão social, país, documento fiscal, endereço, e-mail e telefone; só o dono da Duli cria e edita (critérios 1, 2, 13, 14, 15) | P0 |
+| PAR-4 | Cadastro do parceiro em Configuração › Parceiros: nome, razão social, país, documento fiscal, endereço, e-mail e telefone; só o dono da Duli cria; edita o dono da Duli (e, pela 0036, a gestão do próprio parceiro, que hoje não existe) (critérios 1, 2, 13, 14, 15) | P0 |
 | PAR-5 | Novo cliente › Parceiro: parceiro e nome, numa gravação só, com aviso de nome repetido (4, 5) | P0 |
 | PAR-6 | O contato do cliente de parceiro é o do parceiro, em todo lugar onde o contato aparece, com "via"; a busca de Clientes acha pelo parceiro (3, 6, 7) | P0 |
-| PAR-7 | Dados cadastrais sem e-mail e telefone, e sem link da ficha (8) | P0 |
-| PAR-8 | Cliente de parceiro fora do funil (9) | P0 |
+| PAR-7 | Dados cadastrais e Editar cliente sem e-mail e telefone; sem link da ficha, nem por `update` do `person_id` (8, 9a) | P0 |
+| PAR-8 | Cliente de parceiro fora do funil, também por `update` do `person_id` (9) | P0 |
 | PAR-9 | Vínculo fixo, só para parceiro de verdade, teste com teste (10) | P0 |
 | PAR-10 | O vínculo não concede acesso nenhum até o portal (11) | P0 |
 | PAR-11 | "Nota fiscal / invoice" no anexo; "via ‹parceiro›" no Financeiro (12, 6) | P1 |
@@ -424,6 +498,9 @@ Fulano de Tal   thais@… (via Thais Fabrini)    +1 (305) 555-0100       Renato
 | Aviso de nome repetido no mesmo parceiro | nossa |
 | O banco recusa funil e link da ficha para cliente de parceiro | nossa |
 | Vínculo fixo, travado também para o cliente do portal | nossa |
+| Editar parceiro: a policy da 0036 como está (dono da raiz e gestão do próprio parceiro) | nossa |
+| Contas de teste: `teste-parceiro` também `staff` da Indicador de Teste; nenhuma policy muda | nossa (revisão) |
+| Funil e link travados também no `update` do `person_id`, calados para quem não enxerga a pessoa | nossa (revisão) |
 | "via ‹parceiro›" no Financeiro | nossa |
 
 **Em aberto (vai para §10 da spec):**
@@ -438,7 +515,7 @@ Fulano de Tal   thais@… (via Thais Fabrini)    +1 (305) 555-0100       Renato
 ## 11. Fica com quem constrói
 
 - A assinatura de `criar_cliente` e o nome da marca de sessão.
-- Onde o `slug` é gerado, e o formato.
+- O formato do `slug` (gerado no banco, §5.1).
 - Se a regra do parceiro é um gatilho só ou vários, e em que migration fica a
   fixture.
 - O nome e o lugar da função pura do contato (§5.3), e como Clientes e Contatos
