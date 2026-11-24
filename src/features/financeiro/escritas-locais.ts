@@ -218,8 +218,9 @@ export async function excluirCobranca(formData: FormData): Promise<ActionState> 
  * histórico inteiro mudar quando o dólar muda — foi o que aconteceu no app
  * antigo.
  *
- * Em dólar sem cotação a baixa é recusada: sem ela não há como dizer quanto
- * entrou, e o fechamento do mês somaria dólar como se fosse real.
+ * Em dólar a cotação é opcional (24/nov): sem ela, a parcela fica paga em
+ * US$ e fora do recebido em reais — o dinheiro ficou em dólar e é convertido
+ * depois, juntando vários.
  */
 export async function darBaixa(
   _prev: ActionState,

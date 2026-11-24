@@ -268,15 +268,27 @@ describe("dar baixa", () => {
     expect(await fila.fila.count()).toBe(0);
   });
 
-  it("em dólar sem cotação, recusa", async () => {
-    // Sem cotação não há como dizer quanto entrou, e o fechamento do mês
-    // somaria dólar como se fosse real.
+  it("em dólar sem cotação, grava a baixa só com a data", async () => {
+    // O dinheiro fica em dólar (Nomad, C6 Global, Binance) e é convertido
+    // depois, juntando vários: não há cotação do dia (Renato, 24/nov). A
+    // parcela fica paga em US$ e fora do recebido em reais.
     const estado = await darBaixa(
       { error: null },
       formulario({ id: PARCELA, paid_on: "2026-10-03", paid_rate: "", moeda: "USD" }),
     );
 
-    expect(estado.error).toMatch(/cotação/i);
+    expect(estado.error).toBeNull();
+    const [item] = await fila.fila.toArray();
+    expect(item.passos[0]).toMatchObject({ patch: { paid_on: "2026-10-03", paid_rate: null } });
+  });
+
+  it("cotação zero é recusada — o banco também recusa", async () => {
+    const estado = await darBaixa(
+      { error: null },
+      formulario({ id: PARCELA, paid_on: "2026-10-03", paid_rate: "0", moeda: "USD" }),
+    );
+
+    expect(estado.error).toBe("Cotação fora do normal — confira (ex.: 5,42)");
     expect(await fila.fila.count()).toBe(0);
   });
 

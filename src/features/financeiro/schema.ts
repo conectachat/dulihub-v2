@@ -67,15 +67,15 @@ export const baixaSchema = z
     paid_rate: z.string().nullish().transform(parseCotacao),
     moeda: z.enum(["BRL", "USD"]),
   })
-  // Em dólar, sem cotação não há como dizer quanto entrou no caixa. Guardar
-  // a baixa assim faria o fechamento do mês somar dólar como se fosse real.
-  .refine((d) => d.moeda === "BRL" || (d.paid_rate !== null && d.paid_rate > 0), {
-    message: "Informe a cotação do dólar no dia do pagamento",
-    path: ["paid_rate"],
-  })
-  // Um dólar nunca valeu cem reais. Passou disso, foi dígito a mais ou
-  // separador trocado — e o erro iria direto para o fechamento do mês.
-  .refine((d) => d.paid_rate === null || d.paid_rate < 100, {
+  // Em dólar a cotação é opcional (24/nov): o dinheiro pode ficar em dólar
+  // (Nomad, C6 Global, Binance) e ser convertido depois, juntando vários — não
+  // há cotação do dia. Sem ela, a parcela fica paga em US$ e fora do recebido
+  // em reais (`recebidoNoMes`), em vez de inventar quanto entrou.
+  //
+  // Digitada, tem de ser de verdade: zero o banco recusa (0063), e um dólar
+  // nunca valeu cem reais — passou disso, foi dígito a mais ou separador
+  // trocado, e o erro iria direto para o fechamento do mês.
+  .refine((d) => d.paid_rate === null || (d.paid_rate > 0 && d.paid_rate < 100), {
     message: "Cotação fora do normal — confira (ex.: 5,42)",
     path: ["paid_rate"],
   });

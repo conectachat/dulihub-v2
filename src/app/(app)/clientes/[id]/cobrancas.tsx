@@ -118,11 +118,9 @@ function Totais({ cobrancas, hoje }: { cobrancas: Cobranca[]; hoje: string }) {
 function Baixa({
   parcela,
   moeda,
-  ultimaCotacao,
 }: {
   parcela: Cobranca["parcelas"][number];
   moeda: string;
-  ultimaCotacao: number | null;
 }) {
   return (
     <FormDialog
@@ -155,20 +153,20 @@ function Baixa({
       {moeda === "BRL" ? null : (
         <div className="space-y-1">
           <Label htmlFor={`baixa-cotacao-${parcela.id}`}>
-            Cotação do dólar no dia
+            Cotação do dólar (opcional)
           </Label>
+          {/* Sempre vazio (Renato, 24/nov): uma cotação sugerida seria
+              gravada sem ninguém confirmar. */}
           <Input
             id={`baixa-cotacao-${parcela.id}`}
             name="paid_rate"
             inputMode="decimal"
             placeholder="Ex.: 5,42"
-            defaultValue={ultimaCotacao ? String(ultimaCotacao).replace(".", ",") : ""}
-            required
             className="rounded-xl"
           />
           <p className="text-xs text-muted-foreground">
-            É ela que diz quanto entrou em real. Fica guardada nesta parcela —
-            mudar o dólar amanhã não muda o que entrou hoje.
+            Deixe em branco se o dinheiro ficou em dólar. Com a cotação, a parcela entra no
+            recebido em reais.
           </p>
         </div>
       )}
@@ -533,14 +531,6 @@ export function Cobrancas({ personId }: { personId: string }) {
   const anexosDa = (parcela: string) => (anexos ?? []).filter((a) => a.installment_id === parcela);
   const temAnexo = (c: Cobranca) => c.parcelas.some((p) => anexosDa(p.id).length > 0);
 
-  // A cotação mais recente já usada neste aparelho, só para sugerir. O valor
-  // que vale é o que a pessoa confirmar na hora da baixa.
-  const ultimaCotacao =
-    cobrancas
-      .flatMap((c) => c.parcelas)
-      .filter((p) => p.paid_on && p.paid_rate)
-      .sort((a, b) => (a.paid_on ?? "").localeCompare(b.paid_on ?? ""))
-      .at(-1)?.paid_rate ?? null;
 
   return (
     <div className="space-y-4">
@@ -630,11 +620,7 @@ export function Cobrancas({ personId }: { personId: string }) {
                           needsConfirmation
                         />
                       ) : (
-                        <Baixa
-                          parcela={p}
-                          moeda={c.currency}
-                          ultimaCotacao={ultimaCotacao}
-                        />
+                        <Baixa parcela={p} moeda={c.currency} />
                       )}
                     </span>
                     {online ? (

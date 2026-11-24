@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Cobranca } from "@/features/financeiro/consultas-locais";
@@ -138,6 +138,31 @@ describe("aba Financeiro do cliente", () => {
 
     expect(screen.getByText("1 cobrança")).toBeTruthy();
     expect(sincronizarAgora).not.toHaveBeenCalled();
+  });
+
+  it("a baixa em dólar abre com a cotação vazia e opcional, mesmo com cotação usada antes", async () => {
+    // Renato, 24/nov: o campo vem sempre vazio, independentemente da cotação
+    // usada antes, e não é obrigatório.
+    online(false);
+    cobrancas = [
+      cobranca("b", "USD", [
+        [100, "2000-01-10", "2000-01-10"],
+        [100, "2999-01-10", null],
+      ]),
+    ];
+
+    render(<Cobrancas personId="p1" />);
+    await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: "Dar baixa" }));
+
+    const campo = screen.getByLabelText("Cotação do dólar (opcional)") as HTMLInputElement;
+    expect(campo.value).toBe("");
+    expect(campo.required).toBe(false);
+    expect(
+      screen.getByText(
+        "Deixe em branco se o dinheiro ficou em dólar. Com a cotação, a parcela entra no recebido em reais.",
+      ),
+    ).toBeTruthy();
   });
 
   it("os totais vêm por moeda, real e dólar separados", async () => {
