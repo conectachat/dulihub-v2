@@ -127,7 +127,8 @@ N3), de propósito, e com o teste de RLS vermelho antes.
   toca `updated_at` (`set_updated_at`).
 - **Testes em produção, só com as contas e a organização de teste** (§12.6). Uma
   conta de teste não é dona da raiz, então não cria organização pela API. O
-  parceiro dos clientes de teste vem de uma migration de fixture (§6). O
+  parceiro dos clientes de teste vem de uma migration de fixture, com uma conta
+  de teste nova, a `teste-executora` (§6). O
   `insert` de parceiro pelo dono da raiz, que nenhuma conta de teste alcança, é
   provado em `supabase/provas/` (desfaz tudo no fim), como a trava da forma
   (revisão, M1).
@@ -359,7 +360,7 @@ Uma migration nova, `0068`, e a de fixture, se o construtor preferir separar.
 | `buscar_clientes` | Devolve o nome e o contato do parceiro e acha pelo nome dele |
 | Funil | Recusa de negócio para cliente de parceiro, em `criar_oportunidade` e num gatilho `before insert or update of person_id` em `opportunities`, que roda antes da RLS (§5.5) |
 | Link da ficha | Gatilho `before insert or update of person_id` em `registration_forms`, que recusa para cliente de parceiro, também antes da RLS (§5.5) |
-| Fixture (revisões, C1 e Q1 do construtor) | A `teste-parceiro` só enxerga a própria organização (`organizations_select`, 0003: membro dela ou da raiz), e `tests/rls/espelho.test.ts` exige isso ("o vínculo que o aparelho guarda…": o espelho dela traz só a `parceiro-teste`). Por isso ela **não** ganha associação nova. O arranjo é o inverso, e **nenhuma policy muda nem conta nova é necessária**. (1) Cria a "Executora de Teste" (`executora-teste`, `partner` e `is_test`), que faz nos testes o papel da Duli: é onde moram os clientes de parceiro. (2) Associa a `teste-colaborador` a ela como `admin`. Ela é membro da raiz, então já lê todas as organizações, inclusive a `parceiro-teste`, e a raiz continua vencendo em `escolherOrganizacao`: a tela dela segue sendo a da Duli. (3) **O parceiro dos clientes de teste é a `parceiro-teste`**, que já existe. Os testes do PAR-5 chamam `criar_cliente(p_organizacao = executora-teste, parceiro = parceiro-teste)` como `teste-colaborador`. O critério 11 sai naturalmente: `teste-parceiro` e `teste-staff`, membros do parceiro, não enxergam nada desses clientes. A `teste-colaborador` continua sem gravar na Duli e grava só na organização de teste. Os testes que contam o que ela vê precisam ser conferidos, porque ela passa a ver as pessoas da `executora-teste` (revisão, M4) |
+| Fixture (revisões: C1, Q1 do construtor e N1 da segunda) | **Uma conta de teste nova, a `teste-executora@duliconsulting.com`** (Renato, 24/nov). Por que nova: a `teste-parceiro` só enxerga a própria organização (`organizations_select`, 0003: membro dela ou da raiz), e `tests/rls/espelho.test.ts` exige isso; e a `teste-colaborador`, com uma segunda organização, quebraria o CRM em silêncio, porque `getBoard` (`features/opportunities/queries.ts`) e `consultas-locais.ts` da Configuração procuram o funil padrão sem filtrar por organização e passariam a achar dois, com a fumaça verde (segunda revisão, N1). O arranjo, **sem policy nova**: (1) cria a "Executora de Teste" (`executora-teste`, `partner` e `is_test`), que faz nos testes o papel da Duli: é onde moram os clientes de parceiro; (2) a `teste-executora` é `admin` dela e `staff` da `parceiro-teste`, e é essa associação que a deixa ler o parceiro (0003); (3) a associação à `executora-teste` é a mais antiga, com data explícita na migration (as duas nascem na mesma transação, com o mesmo `now()`), para que `escolherOrganizacao` a escolha como atual; (4) **o parceiro dos clientes de teste é a `parceiro-teste`**, que já existe. Os testes do PAR-5 chamam `criar_cliente(p_organizacao = executora-teste, parceiro = parceiro-teste)` como `teste-executora`. O critério 11 sai naturalmente: `teste-parceiro` e `teste-staff` são da parceira e não da executora. **Antes da migration**, como na 0039, o Renato cria o usuário em Authentication e guarda a senha (`RLS_SENHA_EXECUTORA`) no `.env.local` e nos segredos do GitHub; a migration liga por e-mail e é idempotente. A `teste-colaborador` não é tocada: as contagens dela e a fumaça ficam como estão (`can_access_person` decide por associação, não pela raiz). A `teste-parceiro` passa a ver mais uma associação na própria organização (a `staff` da `teste-executora`), e as asserções de hoje continuam valendo: em `espelho.test.ts`, toda associação que ela vê é da `parceiro-teste`; em `papeis.test.ts`, a `teste-staff` é só da `parceiro-teste` |
 | RLS | **Nenhuma policy nova nem alterada** além do necessário para as colunas. Nenhuma policy lê o vínculo |
 
 O espelho: `people` ganha uma coluna e `organizations` ganha várias. Os índices do
@@ -478,16 +479,17 @@ Fulano de Tal   thais@… (via Thais Fabrini)    +1 (305) 555-0100       Renato
     organização, para organização de teste a partir de cliente real, ou o
     contrário, é recusado, sempre com "Parceiro não encontrado.".
 11. **Nada de acesso novo.** Depois desta entrega, os testes de isolamento de hoje
-    passam **sem mudança**, inclusive o do espelho da `teste-parceiro` (conferidas
-    as contagens da `teste-colaborador`, §6). `teste-parceiro` e `teste-staff`,
+    passam **sem mudança**, inclusive o do espelho da `teste-parceiro`, e a
+    fumaça da `teste-colaborador` também (§6). `teste-parceiro` e `teste-staff`,
     membros da `parceiro-teste`, não enxergam o cliente da `executora-teste` que
     aponta para ela: nem a pessoa, nem as notas, os processos ou as cobranças.
 12. **Financeiro.** A cobrança à mão do Fulano em US$, com 2 parcelas, nasce e
     soma como qualquer outra. O anexo aparece como "Nota fiscal / invoice".
 13. **Teste fora da tela real.** Com a organização atual sendo a Duli (Renato,
     `teste-colaborador`), nenhuma organização de teste aparece em Parceiros nem
-    no seletor do Novo cliente. Com a atual de teste, só as de teste aparecem.
-    Provado na função pura que filtra.
+    no seletor do Novo cliente. Com a atual de teste (a `teste-executora`, na
+    `executora-teste`), só as de teste aparecem, e nunca a atual. Provado na
+    função pura que filtra.
 14. **Offline.** Sem internet, Configuração › Parceiros abre a lista do espelho.
     Criar parceiro offline entra na fila e sobe quando a rede volta. Pelo
     "Sincronização", a recusa (por exemplo, de quem não é dono) aparece com o
@@ -525,7 +527,7 @@ Fulano de Tal   thais@… (via Thais Fabrini)    +1 (305) 555-0100       Renato
 | O banco recusa funil e link da ficha para cliente de parceiro | nossa |
 | Vínculo fixo, travado também para o cliente do portal | nossa |
 | Editar parceiro: a policy da 0036 como está (dono da raiz e gestão do próprio parceiro) | nossa |
-| Contas de teste: a `teste-colaborador` vira `admin` de uma organização de teste nova, onde moram os clientes de parceiro dos testes, e o parceiro é a `parceiro-teste`; nenhuma policy muda e nenhuma conta nova | nossa (revisões) |
+| Contas de teste: uma 5ª conta, a `teste-executora`, `admin` da organização de teste nova (`executora-teste`), onde moram os clientes de parceiro dos testes, e `staff` da `parceiro-teste`, que é o parceiro; nenhuma policy muda e a `teste-colaborador` não é tocada | Renato (segunda revisão, N1) |
 | Cliente de parceiro sem contato próprio em tela nenhuma (Dados cadastrais, Editar cliente, Editar de Contatos) | nossa (revisões) |
 | Funil e link travados também no `update` do `person_id`, calados para quem não enxerga a pessoa | nossa (revisão) |
 | "via ‹parceiro›" no Financeiro | nossa |
@@ -552,8 +554,18 @@ Fulano de Tal   thais@… (via Thais Fabrini)    +1 (305) 555-0100       Renato
 - O texto exato do histórico, desde que diga o parceiro.
 - Os testes, dentro do desenho da fixture (§6). As contas são `teste-parceiro`
   (dona da `parceiro-teste`), `teste-staff` (staff de lá), `teste-colaborador`
-  (staff da Duli, que nunca grava na Duli; com esta entrega, também `admin` da
-  `executora-teste`) e `teste-cliente`
-  (`tests/rls/README.md`, que passa a dizer a associação nova). Nenhum teste
-  cria organização pela API: só o dono da
-  raiz cria, e o teste do PAR-4 prova a recusa para quem não é.
+  (staff da Duli, que nunca grava na Duli; esta entrega não a toca),
+  `teste-cliente` e, nova, `teste-executora` (`admin` da `executora-teste` e
+  `staff` da `parceiro-teste`). `tests/contas.ts`, `tests/rls/README.md` e o CI
+  (`RLS_SENHA_EXECUTORA`) passam a conhecê-la. Nenhum teste cria organização
+  pela API: só o dono da raiz cria, e o teste do PAR-4 prova a recusa para
+  quem não é.
+- Registrar em `docs/plano.md`, como pendência do portal (Fase 7), o defeito
+  que a segunda revisão achou (N1): `getBoard` e `consultas-locais.ts` da
+  Configuração procuram o funil padrão sem filtrar pela organização atual. Em
+  produção não morde hoje, porque nenhuma pessoa real é membro de duas
+  organizações; morde no dia em que alguém da Duli entrar num parceiro. A
+  `teste-executora`, membro de duas organizações de teste, é a única conta onde
+  ele aparece: o CRM dela não abre direito, e por isso ela não entra na fumaça
+  nem serve para conferir o CRM. Os critérios desta entrega não passam pelo
+  quadro do CRM.
