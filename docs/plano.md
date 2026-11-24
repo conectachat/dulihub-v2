@@ -32,7 +32,7 @@ se encaixam: `docs/spec.md` §12.
 | Processo | Status e campos do USCIS, inclusive quando a resposta da RFE foi enviada; abas **Etapas** (tabela com status, data prevista e de conclusão, sub-etapas em grupo), **Documentos** (pastas, envio, visualizar, aprovar, recusar com motivo, resolver) e **Observações** (editor estilo Notion, várias pessoas ao mesmo tempo) |
 | Configurações | Etapas do funil, tags, catálogo de pastas, tipos de visto, status de etapa e **Parceiros** (nome, país, documento fiscal, endereço, e-mail e telefone — os dados da invoice; só o dono da Duli cadastra) — **abre e grava sem internet**, e sincroniza sozinha |
 | Sincronização | O que este aparelho gravou e o servidor ainda não recebeu; o que ele recusou, com o motivo |
-| Financeiro | **A receber**: cobrança por cliente, parcelas com vencimento, baixa com a cotação do dia, e o que venceu. Abre e grava sem internet |
+| Financeiro | **A receber**: cobrança por cliente, parcelas com vencimento, baixa (em dólar, a cotação é opcional: o dinheiro pode ficar em dólar e ser convertido depois), mudar o vencimento combinado com o cliente (fica no histórico), e o que venceu. Abre e grava sem internet |
 
 ### Dados
 
@@ -381,6 +381,22 @@ o código no ar.
   ninguém de verdade é membro de duas organizações; morde no dia em que
   alguém da Duli entrar num parceiro (o portal). A `teste-executora`, membro
   de duas organizações de teste, já vê o problema.
+
+### Baixa em dólar sem cotação e vencimento renegociado (24/nov)
+
+Pedido do Renato ao dar baixa na primeira parcela da Thais: o dinheiro em
+dólar (ou USDT/USDC) fica na Nomad, no C6 Global ou na Binance e é convertido
+depois, juntando vários — não há cotação do dia. Desenho:
+`docs/superpowers/specs/2026-11-24-baixa-em-dolar-sem-cotacao-design.md`.
+Plano: `docs/superpowers/plans/2026-11-24-baixa-em-dolar-e-vencimento.md`. Sem
+migration: o banco já aceitava as duas coisas.
+
+- A cotação da baixa em dólar ficou opcional e abre sempre vazia; sem ela, a
+  parcela fica paga em US$ e o "recebido em reais" a mostra à parte.
+- "Mudar vencimento" na parcela em aberto, com o histórico da data de antes
+  (`vencimento_alterado`, do sistema).
+- Fica para depois, se precisar: registrar as conversões (dólar → real) para
+  saber o valor real em reais.
 
 ---
 

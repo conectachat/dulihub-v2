@@ -378,7 +378,7 @@ Dúvidas que bloqueiam este módulo estão em §10 (Q1, Q2, Q4 e Q14; a Q3 foi d
 | ID | Requisito | Pri. | Estado |
 |---|---|---|---|
 | REC-1 | Cobrança por cliente, em real ou dólar, com desconto | P0 | 🟡 — cobrança não é tudo-ou-nada; carimbada com a organização de quem clicou (I20, I24) |
-| REC-2 | Parcelas geradas sem perder centavo; baixa com data e cotação | P0 | 🟡 — entrada negativa gera parcela negativa (I20) |
+| REC-2 | Parcelas geradas sem perder centavo; baixa com data e, em dólar, cotação opcional (24/nov: o dinheiro pode ficar em dólar e ser convertido depois; sem cotação, a parcela fica fora do recebido em reais) | P0 | 🟡 — entrada negativa gera parcela negativa (I20) |
 | REC-3 | Lista com filtros (vencidas, a vencer, pagas) e números do mês | P0 | ✅ |
 | REC-4 | Funciona sem internet | P0 | 🟡 — sem o prazo de 14 dias (I19), "Nenhuma cobrança" antes de baixar (I26), e os defeitos da fila (I17, I21, I23) |
 | REC-5 | Anexar boleto e nota fiscal à parcela — virou o CLI-6 (entregue em 19/nov) | P1 | ✅ |
@@ -504,7 +504,7 @@ aqui mesmo, abaixo da tabela.
 | CLI-2 | Perfil do cliente: cabeçalho numa linha (com as Tags) e abas Dados cadastrais, Financeiro, Projetos, Documentos, Notas. Não lista oportunidades (CRM-16) | P0 | ✅ |
 | CLI-3 | Copiar telefone e e-mail com um clique | P0 | ✅ |
 | CLI-4 | Dados cadastrais: a ficha inteira (contratante, endereço, dependentes) e a situação do link | P0 | ✅ |
-| CLI-5 | Financeiro: cobranças, totais por moeda (contratado, pago, saldo devedor, vencido), parcelas, baixa, cobrança manual | P0 | ✅ |
+| CLI-5 | Financeiro: cobranças, totais por moeda (contratado, pago, saldo devedor, vencido), parcelas, baixa, cobrança manual; mudar o vencimento de parcela em aberto, com o histórico (24/nov) | P0 | ✅ |
 | CLI-6 | Anexar boleto, nota fiscal e comprovante à parcela (era o REC-5) | P1 | ✅ |
 | CLI-7 | Projetos: os processos do cliente, com andamento; clicar abre o processo; **+ Novo processo** à mão | P0 | ✅ |
 | CLI-8 | Documentos do cliente por categoria (identidade, passaporte, comprovante de residência, contrato, outro); os do processo ficam no processo | P0 | ✅ |
@@ -701,6 +701,7 @@ e cada pessoa da equipe define a sua senha.
 | 23/nov | Sem "criar as cobranças mesmo assim": forma enviada ou recusada não gera cobrança no Ganho; o cliente que confirmou por fora passa por "Confirmar pela equipe" (REC-6) |
 | 23/nov | Q11: um link novo não invalida a ficha recebida e ainda não conferida; o aviso da Início fica até o "Conferi" (I4, INI-4) |
 | 23/nov | Itaú e C6 saem do roadmap (eram o REC-7 e a Q9): boleto e baixa à mão. O Renato retoma se um dia as credenciais saírem |
+| 24/nov | Baixa em dólar com cotação opcional: o pagamento em dólar ou em cripto atrelada ao dólar (USDT, USDC) fica numa conta em dólar (Nomad, C6 Global, Binance) e é convertido depois, juntando vários; onde caiu não se registra, e o campo da cotação abre sempre vazio. E mudar o vencimento de parcela em aberto, com o histórico da data de antes (Renato) |
 | 23/nov | O cliente que já respondeu a forma de pagamento e abre o link de novo lê "Você já respondeu", e não "peça um novo link" (FIC-8). Itaú e C6 saem também da lista de integrações da Configuração |
 | 23/nov | A cópia de segurança e o monitor (OPS-1, OPS-2) ficam para quando os clientes tiverem acesso ao app; o plano pago do Supabase ainda não compensa (Q13) |
 | 24/nov | Parceiros e clientes de parceiro antes da Fase 7 (7.17): o parceiro é organização `partner`, e o cliente é da Duli, marcado com o parceiro, sem acesso novo. O cliente de parceiro tem só o nome; o contato mostrado é o do parceiro. Não passa pelo CRM: ficha, processo e cobrança à mão no perfil, uma cobrança por cliente. O parceiro tem dados cadastrais completos para a invoice. Sem conversão de cliente existente |
