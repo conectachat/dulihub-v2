@@ -129,9 +129,15 @@ export function FormularioDoCadastro({
   rotuloEnviando = "Enviando...",
   rodape,
   aviso,
+  semContato = false,
 }: {
   /** `completa`: o lead preenche tudo. `parcial`: a equipe completa aos poucos. */
   modo: "completa" | "parcial";
+  /**
+   * Cliente de parceiro (PAR-7): sem e-mail, DDI e telefone — o contato é o
+   * do parceiro. O servidor decide pela linha da pessoa; aqui é só a tela.
+   */
+  semContato?: boolean;
   inicial: Valores;
   dependentes?: Dependente[];
   enviar: (formData: FormData) => Promise<EstadoDaFicha>;
@@ -189,7 +195,7 @@ export function FormularioDoCadastro({
     evento.preventDefault();
     const formData = new FormData(evento.currentTarget);
 
-    const ficha = fichaDoFormulario(formData, modo);
+    const ficha = fichaDoFormulario(formData, modo, undefined, { semContato });
     const campos = ficha.ok ? {} : { ...ficha.campos };
     if (declaracao && formData.get("aceite") !== "on") {
       campos.aceite = "Marque para enviar";
@@ -314,6 +320,7 @@ export function FormularioDoCadastro({
           />
         </div>
 
+        {semContato ? null : (
         <div className="grid gap-4 sm:grid-cols-2">
           <Campo
             nome="email"
@@ -344,6 +351,7 @@ export function FormularioDoCadastro({
             />
           </div>
         </div>
+        )}
       </Secao>
 
       <Secao titulo="Endereço">

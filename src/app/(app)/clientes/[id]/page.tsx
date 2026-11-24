@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/empty-state";
 import { DadosCadastrais } from "@/components/perfil/dados-cadastrais";
 import { PersonTags } from "@/components/perfil/person-tags";
 import { QueryError } from "@/components/query-error";
+import { ViaDoParceiro } from "@/components/via-do-parceiro";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { TabsContent } from "@/components/ui/tabs";
@@ -19,6 +20,7 @@ import { getTimeline } from "@/features/people/timeline-queries";
 import { processosDoContato, vistosParaProcesso } from "@/features/projects/queries";
 import { formatarDia, hojeEmSaoPaulo, telefoneCompleto } from "@/lib/formatar";
 import { origemDoPedido } from "@/lib/origem";
+import { contatoExibido } from "@/lib/parceiros";
 import { oQueAbrir } from "@/features/clientes/regras";
 import { destinoDoPerfil, type AbaDoPerfil } from "@/lib/pessoa";
 import { createClient } from "@/lib/supabase/server";
@@ -65,7 +67,8 @@ export default async function ClientePage({
     .select(
       `id, full_name, email, phone, phone_country_code, company, job_title,
        lifecycle_stage, created_at, deleted_at, notes, owner_id, client_since,
-       organization_id,
+       organization_id, partner_organization_id,
+       parceiro:organizations!people_parceiro_fk(name, email, phone_country_code, phone),
        person_tags(tag:tags(id, name))`,
     )
     .eq("id", id)
@@ -136,7 +139,9 @@ export default async function ClientePage({
   const origem = origemDoPedido(cabecalhos);
   const negocios = oportunidades ?? [];
   const tags = person.person_tags.map((t) => t.tag);
-  const telefone = telefoneCompleto(person.phone_country_code, person.phone);
+  // O contato do cliente de parceiro é o do parceiro, lido na hora (PAR-6).
+  const contato = contatoExibido(person, person.parceiro);
+  const telefone = telefoneCompleto(contato.ddi, contato.telefone);
 
   // Negócio ganho que ainda não virou processo: a oferta do CRM, repetida
   // aqui onde o processo nasce.
@@ -160,6 +165,9 @@ export default async function ClientePage({
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="font-serif text-2xl font-medium tracking-tight">{person.full_name}</h1>
           <Badge>Cliente</Badge>
+          {person.parceiro ? (
+            <Badge variant="secondary">Cliente de parceiro · {person.parceiro.name}</Badge>
+          ) : null}
           {person.deleted_at ? <Badge variant="destructive">Na lixeira</Badge> : null}
         </div>
 
@@ -171,15 +179,17 @@ export default async function ClientePage({
           </span>
         ) : null}
 
-        {person.email ? (
+        {contato.email ? (
           <span className="inline-flex min-w-0 items-center gap-1 text-sm">
             <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <a href={`mailto:${person.email}`} className="truncate hover:underline">
-              {person.email}
+            <a href={`mailto:${contato.email}`} className="truncate hover:underline">
+              {contato.email}
             </a>
-            <CopiarTexto texto={person.email} rotulo="e-mail" />
+            <CopiarTexto texto={contato.email} rotulo="e-mail" />
           </span>
         ) : null}
+
+        {contato.via ? <ViaDoParceiro nome={contato.via} /> : null}
 
         <span className="text-sm text-muted-foreground">
           Dono: <span className="text-foreground">{dono ? dono.full_name || dono.email : "—"}</span>
@@ -207,7 +217,12 @@ export default async function ClientePage({
       <AbasNaUrl abas={ABAS} padrao="dados">
         <TabsContent value="dados" className="pt-4">
           {cadastro ? (
-            <DadosCadastrais personId={person.id} cadastro={cadastro} origem={origem} />
+            <DadosCadastrais
+              personId={person.id}
+              cadastro={cadastro}
+              origem={origem}
+              parceiro={person.parceiro?.name ?? null}
+            />
           ) : null}
         </TabsContent>
 

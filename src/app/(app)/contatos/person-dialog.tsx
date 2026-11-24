@@ -25,7 +25,12 @@ export type PersonFormValues = {
   // Empresa e Cargo (revisão de 18/nov).
   company: string | null;
   job_title: string | null;
+  /** Cliente de parceiro (PAR-7): sem contato próprio, o Editar não o mostra. */
+  partner_organization_id?: string | null;
 };
+
+/** O contato do cliente de parceiro é o do parceiro (PAR-7, critério 9a). */
+export const DESCRICAO_SEM_CONTATO = "O contato é o do parceiro.";
 
 /**
  * Criar ou editar contato. Nome, telefone e e-mail são obrigatórios (CON-8);
@@ -45,7 +50,11 @@ export function PersonDialog({ person }: { person?: PersonFormValues }) {
     <FormDialog<EstadoComConfirmacao>
       acao={person ? updatePerson : createPerson}
       titulo={person ? "Editar contato" : "Novo contato"}
-      descricao="Nome, telefone e e-mail são obrigatórios."
+      descricao={
+        person?.partner_organization_id
+          ? DESCRICAO_SEM_CONTATO
+          : "Nome, telefone e e-mail são obrigatórios."
+      }
       gatilho={
         person ? (
           <Button
@@ -81,7 +90,7 @@ export function PersonDialog({ person }: { person?: PersonFormValues }) {
     >
       {person ? <input type="hidden" name="id" value={person.id} /> : null}
 
-      <CamposDoContato person={person} />
+      <CamposDoContato person={person} semContato={Boolean(person?.partner_organization_id)} />
     </FormDialog>
   );
 }
@@ -91,7 +100,14 @@ export function PersonDialog({ person }: { person?: PersonFormValues }) {
  * mesmos no Editar do contato e no do cliente. A lista tem de bater com
  * `personFromForm`.
  */
-export function CamposDoContato({ person }: { person?: PersonFormValues }) {
+export function CamposDoContato({
+  person,
+  semContato = false,
+}: {
+  person?: PersonFormValues;
+  /** Cliente de parceiro: sem DDI, telefone e e-mail — o servidor nem os lê. */
+  semContato?: boolean;
+}) {
   return (
     <>
       <div className="space-y-2">
@@ -105,6 +121,8 @@ export function CamposDoContato({ person }: { person?: PersonFormValues }) {
         />
       </div>
 
+      {semContato ? null : (
+      <>
       <div className="grid gap-4 sm:grid-cols-[6rem_1fr]">
         <div className="space-y-2">
           <Label htmlFor="phone_country_code">DDI *</Label>
@@ -138,6 +156,8 @@ export function CamposDoContato({ person }: { person?: PersonFormValues }) {
           required
         />
       </div>
+      </>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">

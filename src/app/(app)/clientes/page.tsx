@@ -5,6 +5,7 @@ import { BuscaNaUrl } from "@/components/busca-na-url";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
+import { ViaDoParceiro } from "@/components/via-do-parceiro";
 import {
   Table,
   TableBody,
@@ -13,9 +14,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { listarClientes } from "@/features/clientes/queries";
+import { listarClientes, listarParceirosParaNovoCliente } from "@/features/clientes/queries";
 import { dicaDaListaVazia } from "@/features/clientes/regras";
 import { contextoAtual, ehDaGestao } from "@/lib/organizacao";
+import { contatoExibido, ehDonoDaRaiz } from "@/lib/parceiros";
 import { contagemDaLista, paginaPedida, POR_PAGINA } from "@/lib/paginacao";
 import { formatarDia, iniciais, telefoneCompleto } from "@/lib/formatar";
 
@@ -38,12 +40,20 @@ export default async function ClientesPage({
 }) {
   const { q, pagina: paginaNaUrl } = await searchParams;
   const pagina = paginaPedida(paginaNaUrl);
-  const [{ clientes, total, error }, { papel }] = await Promise.all([
+  const [{ clientes, total, error }, { papel, tipo, organizationId }] = await Promise.all([
     listarClientes({ busca: q, pagina }),
     contextoAtual(),
   ]);
   // O botão só aparece para a gestão; quem decide é o banco (`criar_cliente`).
   const daGestao = ehDaGestao(papel);
+  // Os parceiros do Novo cliente › Parceiro (PAR-5); o link para cadastrar
+  // um, só para quem pode (o dono da Duli).
+  const { parceiros } = daGestao
+    ? await listarParceirosParaNovoCliente(organizationId)
+    : { parceiros: [] };
+  const novoCliente = (
+    <NovoClienteDialog parceiros={parceiros} podeCadastrarParceiro={ehDonoDaRaiz(papel, tipo)} />
+  );
 
   const contagem = contagemDaLista({
     total,
@@ -67,7 +77,7 @@ export default async function ClientesPage({
       <PageHeader
         title="Clientes"
         description="Quem já fechou: dados, financeiro, processos e documentos."
-        actions={daGestao ? <NovoClienteDialog /> : undefined}
+        actions={daGestao ? novoCliente : undefined}
       />
 
       <BuscaNaUrl placeholder="Buscar por nome, e-mail ou telefone..." rotulo="Buscar clientes" />
@@ -91,7 +101,7 @@ export default async function ClientesPage({
                 Voltar para a primeira página
               </Link>
             ) : daGestao && !q ? (
-              <NovoClienteDialog />
+              novoCliente
             ) : undefined
           }
         />
@@ -115,7 +125,10 @@ export default async function ClientesPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clientes.map((c) => (
+                {clientes.map((c) => {
+                  // O contato do cliente de parceiro é o do parceiro (PAR-6).
+                  const contato = contatoExibido(c, c.parceiro);
+                  return (
                   <TableRow key={c.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -127,9 +140,17 @@ export default async function ClientesPage({
                         </Link>
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{c.email ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {contato.email ?? "—"}
+                      {contato.via ? (
+                        <>
+                          {" "}
+                          <ViaDoParceiro nome={contato.via} />
+                        </>
+                      ) : null}
+                    </TableCell>
                     <TableCell className="whitespace-nowrap text-muted-foreground">
-                      {telefoneCompleto(c.phone_country_code, c.phone) ?? "—"}
+                      {telefoneCompleto(contato.ddi, contato.telefone) ?? "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{c.dono ?? "—"}</TableCell>
                     <TableCell className="whitespace-nowrap text-muted-foreground">
@@ -145,7 +166,8 @@ export default async function ClientesPage({
                       </Link>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -153,7 +175,8 @@ export default async function ClientesPage({
           {/* Celular: cada cliente vira um cartão (spec §10). */}
           <ul className="space-y-2 md:hidden">
             {clientes.map((c) => {
-              const telefone = telefoneCompleto(c.phone_country_code, c.phone);
+              const contato = contatoExibido(c, c.parceiro);
+              const telefone = telefoneCompleto(contato.ddi, contato.telefone);
               return (
                 <li key={c.id}>
                   <Link
@@ -165,11 +188,16 @@ export default async function ClientesPage({
                     </span>
                     <span className="min-w-0 flex-1 space-y-0.5">
                       <span className="block truncate font-medium">{c.full_name}</span>
-                      {c.email ? (
-                        <span className="block truncate text-sm text-muted-foreground">{c.email}</span>
+                      {contato.email ? (
+                        <span className="block truncate text-sm text-muted-foreground">{contato.email}</span>
                       ) : null}
                       {telefone ? (
                         <span className="block text-sm text-muted-foreground">{telefone}</span>
+                      ) : null}
+                      {contato.via ? (
+                        <span className="block">
+                          <ViaDoParceiro nome={contato.via} />
+                        </span>
                       ) : null}
                       <span className="block text-xs text-muted-foreground">
                         Dono: {c.dono ?? "—"} · Cliente desde{" "}

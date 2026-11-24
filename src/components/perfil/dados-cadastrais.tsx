@@ -42,12 +42,18 @@ export function DadosCadastrais({
   cadastro,
   origem,
   agora = new Date(),
+  parceiro = null,
 }: {
   personId: string;
   cadastro: CadastroDoContato;
   /** `https://dulihub…`, para montar o endereço público da ficha. */
   origem: string;
   agora?: Date;
+  /**
+   * O parceiro do cliente de parceiro (PAR-7): sem link da ficha — o Renato
+   * não fala com o cliente — e sem contato próprio no Editar.
+   */
+  parceiro?: string | null;
 }) {
   const { ficha, dependentes, fichaRecebida: recebida, linkAtual: link } = cadastro;
   // A ficha recebida e o link atual são coisas separadas (I4): o selo olha os dois.
@@ -92,7 +98,12 @@ export function DadosCadastrais({
             </Badge>
           ) : null}
         </div>
-        <EditarCadastro personId={personId} ficha={ficha} dependentes={dependentes} />
+        <EditarCadastro
+          personId={personId}
+          ficha={ficha}
+          dependentes={dependentes}
+          semContato={parceiro !== null}
+        />
       </CardHeader>
 
       <CardContent className="space-y-6">
@@ -117,6 +128,11 @@ export function DadosCadastrais({
         ) : null}
 
         {/* ------------------------------------------------- o link da ficha */}
+        {parceiro !== null ? (
+          <p className="rounded-2xl border p-3 text-sm text-muted-foreground">
+            Cliente de {parceiro}: os dados cadastrais são lançados aqui, em Editar.
+          </p>
+        ) : (
         <div className="space-y-3 rounded-2xl border p-3">
           {link?.negocio ? (
             // O link com a forma de pagamento é do negócio: cancela-se lá (P8).
@@ -173,6 +189,7 @@ export function DadosCadastrais({
             </>
           ) : null}
         </div>
+        )}
 
         {/* ---------------------------------------------------------- a ficha */}
         {temDado ? (
@@ -232,8 +249,9 @@ export function DadosCadastrais({
           </>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Nenhum dado cadastral ainda. Gere o link para o cliente preencher, ou
-            use Editar para lançar aqui.
+            {parceiro !== null
+              ? "Nenhum dado cadastral ainda."
+              : "Nenhum dado cadastral ainda. Gere o link para o cliente preencher, ou use Editar para lançar aqui."}
           </p>
         )}
       </CardContent>

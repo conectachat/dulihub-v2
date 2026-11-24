@@ -46,7 +46,7 @@ const ATUAL = {
 };
 
 /** `people` e `person_participants` falsos, guardando o que se pediu. */
-function bancoFalso(participantesAtuais: string[]) {
+function bancoFalso(participantesAtuais: string[], atual: Record<string, unknown> = ATUAL) {
   const atualizado = vi.fn(async () => ({ error: null }));
   const update = vi.fn(() => ({ eq: atualizado }));
   const insert = vi.fn(async () => ({ error: null }));
@@ -59,7 +59,7 @@ function bancoFalso(participantesAtuais: string[]) {
     from: vi.fn((tabela: string) =>
       tabela === "people"
         ? {
-            select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: ATUAL, error: null }) }) }),
+            select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: atual, error: null }) }) }),
             update,
           }
         : {
@@ -105,6 +105,36 @@ beforeEach(() => {
   banco = bancoFalso(["u2", "u3"]);
   vi.mocked(createClient).mockResolvedValue(banco.supabase as never);
   vi.mocked(buscarParecidos).mockResolvedValue({ parecidos: [], error: null });
+});
+
+describe("atualizarCliente › cliente de parceiro (PAR-7, critério 9a)", () => {
+  // Trocar o nome, o dono ou o "cliente desde" grava sem pedir contato e sem
+  // aviso de parecido, e a linha continua com o contato nulo.
+  it("grava sem contato, sem procurar parecido e sem escrever as três colunas", async () => {
+    banco = bancoFalso(["u2", "u3"], {
+      organization_id: "org-da-pessoa",
+      email: null,
+      phone_country_code: null,
+      phone: null,
+      partner_organization_id: "thais",
+    });
+    vi.mocked(createClient).mockResolvedValue(banco.supabase as never);
+
+    const r = await atualizarCliente(
+      ESTADO,
+      formulario({ full_name: "Fulano de Tal", email: "", phone_country_code: "", phone: "" }, ["u2", "u3"]),
+    );
+
+    expect(r.error).toBeNull();
+    expect(buscarParecidos).not.toHaveBeenCalled();
+    expect(banco.update).toHaveBeenCalledWith({
+      full_name: "Fulano de Tal",
+      company: null,
+      job_title: null,
+      owner_id: "u1",
+      client_since: "2026-03-01",
+    });
+  });
 });
 
 describe("atualizarCliente", () => {

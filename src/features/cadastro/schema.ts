@@ -75,9 +75,13 @@ export type Dependente = {
   birth_country: string;
 };
 
-export type DadosDaFicha = Record<CampoDaFicha, string | null> & {
-  dependents: Dependente[];
-};
+/** As três chaves que o cliente de parceiro não tem (PAR-7). */
+type CampoDeContatoDaFicha = "email" | "phone_country_code" | "phone";
+
+export type DadosDaFicha = Omit<Record<CampoDaFicha, string | null>, CampoDeContatoDaFicha> &
+  Partial<Record<CampoDeContatoDaFicha, string | null>> & {
+    dependents: Dependente[];
+  };
 
 export type FichaTraduzida =
   | { ok: true; dados: DadosDaFicha }
@@ -121,6 +125,12 @@ export function fichaDoFormulario(
   formData: FormData,
   modo: "completa" | "parcial",
   hoje: string = hojeEmSaoPaulo(),
+  /**
+   * Cliente de parceiro (PAR-7): sem contato próprio. As três chaves saem do
+   * objeto — chave com nulo ainda faria `salvar_cadastro` conferir o contato
+   * (0040) — e o contato não é conferido.
+   */
+  opcoes: { semContato?: boolean } = {},
 ): FichaTraduzida {
   const dados = {} as Record<CampoDaFicha, string | null>;
   const campos: Record<string, string> = {};
@@ -153,17 +163,19 @@ export function fichaDoFormulario(
     "CEP precisa ter 8 dígitos",
   );
 
-  const contato = errosDeContato({
-    email: dados.email,
-    ddi: dados.phone_country_code,
-    telefone: dados.phone,
-  });
-  if (contato.email) campos.email = contato.email;
-  if (contato.ddi) campos.phone_country_code = contato.ddi;
-  if (contato.telefone) campos.phone = contato.telefone;
+  if (!opcoes.semContato) {
+    const contato = errosDeContato({
+      email: dados.email,
+      ddi: dados.phone_country_code,
+      telefone: dados.phone,
+    });
+    if (contato.email) campos.email = contato.email;
+    if (contato.ddi) campos.phone_country_code = contato.ddi;
+    if (contato.telefone) campos.phone = contato.telefone;
 
-  // "55" grava como "+55", como no banco.
-  if (!campos.phone_country_code) dados.phone_country_code = normalizarDdi(dados.phone_country_code);
+    // "55" grava como "+55", como no banco.
+    if (!campos.phone_country_code) dados.phone_country_code = normalizarDdi(dados.phone_country_code);
+  }
 
   // Só os dígitos: a máscara é da tela.
   if (dados.tax_id !== null && !campos.tax_id) dados.tax_id = soDigitos(dados.tax_id);
@@ -213,6 +225,14 @@ export function fichaDoFormulario(
 
   if (Object.keys(campos).length > 0) {
     return { ok: false, erro: "Confira os campos destacados.", campos };
+  }
+
+  if (opcoes.semContato) {
+    const semContato: Omit<DadosDaFicha, "dependents"> = { ...dados };
+    delete semContato.email;
+    delete semContato.phone_country_code;
+    delete semContato.phone;
+    return { ok: true, dados: { ...semContato, dependents } };
   }
 
   return { ok: true, dados: { ...dados, dependents } };

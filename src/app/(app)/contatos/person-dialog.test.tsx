@@ -150,3 +150,28 @@ describe("PersonDialog", () => {
     await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 });
+
+describe("PersonDialog › cliente de parceiro (PAR-7, critério 9a)", () => {
+  it("o Editar da lista de Contatos não mostra os campos de contato", () => {
+    render(
+      <PersonDialog
+        person={{
+          id: "p1",
+          full_name: "Fulano de Tal",
+          email: null,
+          phone: null,
+          phone_country_code: null,
+          company: null,
+          job_title: null,
+          partner_organization_id: "thais",
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Editar Fulano de Tal" }));
+
+    expect(screen.getByLabelText("Nome *")).toBeTruthy();
+    expect(screen.queryByLabelText("E-mail *")).toBeNull();
+    expect(screen.queryByLabelText("Telefone *")).toBeNull();
+    expect(screen.getByText("O contato é o do parceiro.")).toBeTruthy();
+  });
+});

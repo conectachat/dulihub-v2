@@ -49,6 +49,8 @@ export type ParcelaNaLista = Parcela & {
   currency: string;
   cliente: string;
   person_id: string;
+  /** O parceiro do cliente, para o "via ‹parceiro›" (PAR-11); nulo no cliente direto. */
+  via: string | null;
 };
 
 const porNumero = (a: Parcela, b: Parcela) => a.number - b.number;
@@ -135,14 +137,24 @@ export async function parcelasDoAparelho(
   fila: BancoDaFila,
 ): Promise<ParcelaNaLista[]> {
   const itens = await pendentesDaFila(fila);
-  const [cobrancas, parcelas, pessoas] = await Promise.all([
+  const [cobrancas, parcelas, pessoas, orgs] = await Promise.all([
     lerTabela(banco, "receivables", itens),
     lerTabela(banco, "installments", itens),
     lerTabela(banco, "people", itens),
+    lerTabela(banco, "organizations", itens),
   ]);
 
   const nome = new Map(
     (pessoas as Tables<"people">[]).map((p) => [p.id, p.full_name]),
+  );
+  // A linha de `people` que estava no aparelho antes da 0070 não tem a chave
+  // do vínculo: vale como nula.
+  const nomeDaOrg = new Map((orgs as Tables<"organizations">[]).map((o) => [o.id, o.name]));
+  const via = new Map(
+    (pessoas as Tables<"people">[]).map((p) => [
+      p.id,
+      p.partner_organization_id ? (nomeDaOrg.get(p.partner_organization_id) ?? null) : null,
+    ]),
   );
   const cabecalho = new Map(
     (cobrancas as Tables<"receivables">[]).map((c) => [c.id, c]),
@@ -172,6 +184,7 @@ export async function parcelasDoAparelho(
           currency: c.currency,
           cliente: nome.get(c.person_id) ?? "Cliente removido",
           person_id: c.person_id,
+          via: via.get(c.person_id) ?? null,
         },
       ];
     })

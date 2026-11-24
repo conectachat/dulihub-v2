@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 
 import { POR_PAGINA } from "@/lib/paginacao";
+import { parceirosVisiveis, type ParceiroDoContato } from "@/lib/parceiros";
 
 export type ClienteDaLista = {
   id: string;
@@ -11,6 +12,9 @@ export type ClienteDaLista = {
   client_since: string | null;
   /** Nome do dono, ou o e-mail dele; nulo sem dono ou quando não se enxerga. */
   dono: string | null;
+  /** O parceiro que trouxe o cliente (PAR-6); o contato que aparece é o dele. */
+  partner_organization_id: string | null;
+  parceiro: ParceiroDoContato | null;
 };
 
 /**
@@ -56,6 +60,9 @@ export async function listarClientes({
   return {
     clientes: linhas.map((l) => {
       const dono: string | null = l.owner_id;
+      // O gerador dá as colunas do parceiro como não nulas; no cliente direto
+      // elas vêm nulas (left join).
+      const parceiro: string | null = l.partner_organization_id ?? null;
       return {
         id: l.id,
         full_name: l.full_name,
@@ -64,9 +71,37 @@ export async function listarClientes({
         phone: l.phone,
         client_since: l.client_since,
         dono: dono === null ? null : (nomes.get(dono) ?? null),
+        partner_organization_id: parceiro,
+        parceiro:
+          parceiro === null
+            ? null
+            : {
+                name: l.parceiro_nome,
+                email: l.parceiro_email,
+                phone_country_code: l.parceiro_ddi,
+                phone: l.parceiro_telefone,
+              },
       };
     }),
     total: Number(linhas[0]?.total ?? 0),
+    error: null,
+  };
+}
+
+/**
+ * Os parceiros que o Novo cliente oferece (PAR-5), da organização atual: só
+ * `partner`, nunca ela mesma, e teste só com teste (`parceirosVisiveis`).
+ * Membro da Duli lê todas as organizações (0003); a RLS decide o resto.
+ */
+export async function listarParceirosParaNovoCliente(
+  organizacaoAtual: string | null,
+): Promise<{ parceiros: { id: string; nome: string }[]; error: string | null }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("organizations").select("id, name, type, is_test");
+  if (error) return { parceiros: [], error: error.message };
+
+  return {
+    parceiros: parceirosVisiveis(data ?? [], organizacaoAtual).map((o) => ({ id: o.id, nome: o.name })),
     error: null,
   };
 }

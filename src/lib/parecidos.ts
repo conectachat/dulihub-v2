@@ -46,7 +46,13 @@ export type OportunidadeExistente = {
 export type EstadoComConfirmacao = ActionState & {
   parecidos?: ContatoParecido[];
   oportunidades?: OportunidadeExistente[];
+  /** Novo cliente › Parceiro: clientes com o mesmo nome vindos do mesmo parceiro. */
+  homonimos?: Homonimo[];
+  /** O nome do parceiro, para a frase do aviso de homônimo. */
+  parceiro?: string;
 };
+
+export type Homonimo = { id: string; nome: string };
 
 /**
  * A confirmação só existe no clique: é acrescentada ao reenvio, nunca é um
@@ -144,15 +150,21 @@ export const respostaDaCriacao = z.discriminatedUnion("situacao", [
 export type RespostaDaCriacao = z.output<typeof respostaDaCriacao>;
 
 /**
- * A resposta de `criar_cliente` (0055): ou criou (a pessoa, agora cliente), ou
- * parou para perguntar, com os parecidos — cada um dizendo se é de outra
- * organização.
+ * A resposta de `criar_cliente` (0055, 0070): ou criou (a pessoa, agora
+ * cliente), ou parou para perguntar — com os parecidos, cada um dizendo se é
+ * de outra organização, ou, no cliente de parceiro, com os homônimos do mesmo
+ * parceiro.
  */
-export const respostaDoNovoCliente = z.discriminatedUnion("situacao", [
+export const respostaDoNovoCliente = z.union([
   z.object({ situacao: z.literal("criado"), pessoa: z.string() }),
   z.object({
     situacao: z.literal("precisa_confirmar"),
     parecidos: z.array(parecidoDoNovoCliente),
+  }),
+  z.object({
+    situacao: z.literal("precisa_confirmar"),
+    homonimos: z.array(z.object({ id: z.string(), nome: z.string() })),
+    parceiro: z.string(),
   }),
 ]);
 

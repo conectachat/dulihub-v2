@@ -74,3 +74,25 @@ describe("ClienteDialog", () => {
     expect([...dono.options].map((o) => o.text)).toEqual(["Sem dono", "Ana"]);
   });
 });
+
+describe("ClienteDialog › cliente de parceiro (PAR-7, critério 9a)", () => {
+  // O contato é o do parceiro: o Editar não mostra nem cobra e-mail, DDI e
+  // telefone.
+  it("não mostra os campos de contato, e a descrição diz por quê", () => {
+    render(
+      <ClienteDialog
+        cliente={{ ...CLIENTE, email: null, phone: null, phone_country_code: null, partner_organization_id: "thais" }}
+        equipe={EQUIPE}
+        participantes={[]}
+        hoje="2026-11-19"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Editar Carla Souza" }));
+
+    expect(screen.getByLabelText("Nome *")).toBeTruthy();
+    expect(screen.queryByLabelText("E-mail *")).toBeNull();
+    expect(screen.queryByLabelText("Telefone *")).toBeNull();
+    expect(screen.queryByLabelText("DDI *")).toBeNull();
+    expect(screen.getByText("O contato é o do parceiro.")).toBeTruthy();
+  });
+});

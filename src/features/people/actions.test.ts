@@ -43,7 +43,12 @@ const PARECIDO: ContatoParecido = {
 const ESTADO = { error: null };
 
 /** Um `people` falso: o que a linha tem hoje, e o que se pediu para gravar. */
-function bancoFalso(atual: { email: string | null; phone_country_code: string | null; phone: string | null }) {
+function bancoFalso(atual: {
+  email: string | null;
+  phone_country_code: string | null;
+  phone: string | null;
+  partner_organization_id?: string | null;
+}) {
   const insert = vi.fn(async () => ({ error: null }));
   const atualizado = vi.fn(async () => ({ error: null }));
   const update = vi.fn(() => ({ eq: atualizado }));
@@ -138,5 +143,24 @@ describe("updatePerson", () => {
     );
     expect(r.parecidos).toEqual([PARECIDO]);
     expect(banco.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("updatePerson › cliente de parceiro (PAR-7, critério 9a)", () => {
+  // O cliente de parceiro não tem contato próprio: o Editar da lista de
+  // Contatos não o cobra, não procura parecido e não escreve as três colunas.
+  // Quem decide é a linha da pessoa, nunca o formulário.
+  it("grava o nome, sem contato e sem procurar parecido", async () => {
+    banco = bancoFalso({ email: null, phone_country_code: null, phone: null, partner_organization_id: "thais" });
+    vi.mocked(createClient).mockResolvedValue(banco.supabase as never);
+
+    const r = await updatePerson(
+      ESTADO,
+      formulario({ id: "p9", full_name: "Fulano de Tal", email: "", phone_country_code: "", phone: "", company: "Acme" }),
+    );
+
+    expect(r.ok).toBe(true);
+    expect(buscarParecidos).not.toHaveBeenCalled();
+    expect(banco.update).toHaveBeenCalledWith({ full_name: "Fulano de Tal", company: "Acme", job_title: null });
   });
 });

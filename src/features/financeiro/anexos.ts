@@ -25,7 +25,7 @@ const DEPOSITO = "financeiro";
 
 export const TIPOS_DE_ANEXO = [
   { valor: "boleto", rotulo: "Boleto" },
-  { valor: "nota_fiscal", rotulo: "Nota fiscal" },
+  { valor: "nota_fiscal", rotulo: "Nota fiscal / invoice" },
   { valor: "comprovante", rotulo: "Comprovante" },
   { valor: "outro", rotulo: "Outro" },
 ] as const;

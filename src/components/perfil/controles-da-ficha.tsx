@@ -42,10 +42,13 @@ export function EditarCadastro({
   personId,
   ficha,
   dependentes,
+  semContato = false,
 }: {
   personId: string;
   ficha: CadastroDoContato["ficha"];
   dependentes: CadastroDoContato["dependentes"];
+  /** Cliente de parceiro (PAR-7): a ficha sem e-mail, DDI e telefone. */
+  semContato?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const router = useRouter();
@@ -63,12 +66,15 @@ export function EditarCadastro({
         <DialogHeader>
           <DialogTitle>Dados cadastrais</DialogTitle>
           <DialogDescription>
-            Nome, telefone e e-mail são obrigatórios. O cliente, pelo link, preenche tudo.
+            {semContato
+              ? "O nome é obrigatório. O contato é o do parceiro."
+              : "Nome, telefone e e-mail são obrigatórios. O cliente, pelo link, preenche tudo."}
           </DialogDescription>
         </DialogHeader>
 
         <FormularioDoCadastro
           modo="parcial"
+          semContato={semContato}
           inicial={ficha}
           dependentes={dependentes}
           enviar={(formData) => salvarCadastro(personId, formData)}

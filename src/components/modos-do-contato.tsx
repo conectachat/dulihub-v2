@@ -5,7 +5,7 @@ import { useId } from "react";
 import { useDispensarAviso } from "@/components/form-dialog";
 import { Button } from "@/components/ui/button";
 
-export type ModoDoContato = "existente" | "novo";
+export type ModoDoContato = "existente" | "novo" | "parceiro";
 
 /**
  * Botão que muda o contato que vai ser enviado sem ser campo de formulário
@@ -66,28 +66,32 @@ export function ContatoEscolhido({
 
 /**
  * "Contato existente" ou "Novo contato" (Nova oportunidade, Novo cliente), com
- * o campo oculto `modo_contato` que a ação do servidor lê.
+ * o campo oculto `modo_contato` que a ação do servidor lê. O terceiro modo,
+ * "Parceiro", só aparece com `comParceiro` (Novo cliente, PAR-5): cliente de
+ * parceiro não entra no funil, então a Nova oportunidade não o oferece.
  */
 export function ModosDoContato({
   modo,
   aoTrocar,
   rotulo,
+  comParceiro = false,
 }: {
   modo: ModoDoContato;
   aoTrocar: (modo: ModoDoContato) => void;
   /** O nome do grupo para o leitor de tela ("Contato da oportunidade"). */
   rotulo: string;
+  comParceiro?: boolean;
 }) {
+  const modos: [ModoDoContato, string][] = [
+    ["existente", "Contato existente"],
+    ["novo", "Novo contato"],
+    ...(comParceiro ? [["parceiro", "Parceiro"] as [ModoDoContato, string]] : []),
+  ];
   return (
     <>
       <input type="hidden" name="modo_contato" value={modo} />
-      <div className="flex gap-2" role="group" aria-label={rotulo}>
-        {(
-          [
-            ["existente", "Contato existente"],
-            ["novo", "Novo contato"],
-          ] as const
-        ).map(([valor, nome]) => (
+      <div className="flex flex-wrap gap-2" role="group" aria-label={rotulo}>
+        {modos.map(([valor, nome]) => (
           <BotaoQueDispensa
             key={valor}
             type="button"

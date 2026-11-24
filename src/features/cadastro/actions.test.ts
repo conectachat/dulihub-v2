@@ -41,14 +41,19 @@ const PARECIDO: ContatoParecido = {
 };
 
 /** O contato como está gravado hoje, e a gravação por `salvar_cadastro`. */
-function bancoFalso() {
+function bancoFalso(vinculo: string | null = null) {
   const rpc = vi.fn(async () => ({ error: null }));
   const supabase = {
     from: vi.fn(() => ({
       select: () => ({
         eq: () => ({
           maybeSingle: async () => ({
-            data: { email: "carla@example.com", phone_country_code: "+55", phone: "(31) 99999-0000" },
+            data: {
+              email: "carla@example.com",
+              phone_country_code: "+55",
+              phone: "(31) 99999-0000",
+              partner_organization_id: vinculo,
+            },
             error: null,
           }),
         }),
@@ -80,6 +85,25 @@ beforeEach(() => {
   banco = bancoFalso();
   vi.mocked(createClient).mockResolvedValue(banco.supabase as never);
   vi.mocked(buscarParecidos).mockResolvedValue({ parecidos: [PARECIDO], error: null });
+});
+
+describe("salvarCadastro › cliente de parceiro (PAR-7, critério 8)", () => {
+  // Quem decide é a linha da pessoa: o envio a `salvar_cadastro` não leva as
+  // três chaves, e nenhum parecido é procurado.
+  it("grava sem as chaves de contato e sem procurar parecidos", async () => {
+    banco = bancoFalso("thais");
+    vi.mocked(createClient).mockResolvedValue(banco.supabase as never);
+
+    const r = await salvarCadastro("p9", ficha({ full_name: "Fulano de Tal", email: "", phone: "" }));
+
+    expect(r.error).toBeNull();
+    expect(buscarParecidos).not.toHaveBeenCalled();
+    const [, args] = banco.rpc.mock.calls[0] as unknown as [string, { p_dados: Record<string, unknown> }];
+    expect(args.p_dados.full_name).toBe("Fulano de Tal");
+    expect(args.p_dados).not.toHaveProperty("email");
+    expect(args.p_dados).not.toHaveProperty("phone_country_code");
+    expect(args.p_dados).not.toHaveProperty("phone");
+  });
 });
 
 describe("salvarCadastro", () => {

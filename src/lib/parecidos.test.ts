@@ -169,6 +169,20 @@ describe("contatoMudou", () => {
 });
 
 describe("respostaDoNovoCliente", () => {
+  it("lê os homônimos do cliente de parceiro (PAR-5)", () => {
+    expect(
+      respostaDoNovoCliente.parse({
+        situacao: "precisa_confirmar",
+        homonimos: [{ id: "p1", nome: "Fulano de Tal" }],
+        parceiro: "Thais Fabrini",
+      }),
+    ).toEqual({
+      situacao: "precisa_confirmar",
+      homonimos: [{ id: "p1", nome: "Fulano de Tal" }],
+      parceiro: "Thais Fabrini",
+    });
+  });
+
   it("lê o criado", () => {
     expect(respostaDoNovoCliente.parse({ situacao: "criado", pessoa: "p1" })).toEqual({
       situacao: "criado",

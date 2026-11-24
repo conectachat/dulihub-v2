@@ -89,6 +89,25 @@ export function personFromForm(formData: FormData) {
   });
 }
 
+/**
+ * O Editar do cliente de parceiro (PAR-7): sem contato próprio — o que
+ * aparece é o do parceiro. Só o nome, a empresa e o cargo, com as regras de
+ * `personSchema`; e-mail, DDI e telefone não são lidos nem gravados.
+ */
+export const personSemContatoSchema = z.object({
+  full_name: z.string().trim().min(1, "Informe o nome"),
+  company: textoOpcional,
+  job_title: textoOpcional,
+});
+
+export function personSemContatoFromForm(formData: FormData) {
+  return personSemContatoSchema.safeParse({
+    full_name: formData.get("full_name"),
+    company: formData.get("company"),
+    job_title: formData.get("job_title"),
+  });
+}
+
 export const LIFECYCLE_LABELS: Record<string, string> = {
   contact: "Contato",
   opportunity: "Oportunidade",

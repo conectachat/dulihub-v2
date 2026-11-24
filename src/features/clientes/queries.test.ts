@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createClient } from "@/lib/supabase/server";
 
-import { listarClientes } from "./queries";
+import { listarClientes, listarParceirosParaNovoCliente } from "./queries";
 
 /**
  * A leitura da lista de Clientes. O banco é falso aqui: o que se prova é o
@@ -22,6 +22,11 @@ type LinhaDaBusca = {
   phone: string | null;
   owner_id: string | null;
   client_since: string | null;
+  partner_organization_id?: string | null;
+  parceiro_nome?: string | null;
+  parceiro_email?: string | null;
+  parceiro_ddi?: string | null;
+  parceiro_telefone?: string | null;
   total: number;
 };
 
@@ -121,5 +126,72 @@ describe("listarClientes", () => {
     bancoFalso({ erro: "falhou" });
 
     expect(await listarClientes({ pagina: 1 })).toEqual({ clientes: [], total: 0, error: "falhou" });
+  });
+});
+
+describe("listarClientes › cliente de parceiro (PAR-6)", () => {
+  it("monta o parceiro com o nome e o contato dele; o cliente direto fica sem", async () => {
+    bancoFalso([
+      {
+        ...linha("c1", null, 2),
+        email: null,
+        phone_country_code: null,
+        phone: null,
+        partner_organization_id: "thais",
+        parceiro_nome: "Thais Fabrini",
+        parceiro_email: "thais@exemplo.com",
+        parceiro_ddi: "+1",
+        parceiro_telefone: "3055550100",
+      },
+      { ...linha("c2", null, 2), partner_organization_id: null },
+    ]);
+
+    const { clientes } = await listarClientes({ pagina: 1 });
+
+    expect(clientes[0].partner_organization_id).toBe("thais");
+    expect(clientes[0].parceiro).toEqual({
+      name: "Thais Fabrini",
+      email: "thais@exemplo.com",
+      phone_country_code: "+1",
+      phone: "3055550100",
+    });
+    expect(clientes[1].parceiro).toBeNull();
+  });
+});
+
+describe("listarParceirosParaNovoCliente", () => {
+  // Os parceiros que o Novo cliente oferece (PAR-5): os da organização atual,
+  // pela regra de `parceirosVisiveis` — nunca ela mesma, e teste só com teste.
+  function organizacoes(resposta: { data: unknown; error: unknown }) {
+    const select = vi.fn(async () => resposta);
+    const from = vi.fn(() => ({ select }));
+    vi.mocked(createClient).mockResolvedValue({ from } as never);
+    return { from, select };
+  }
+
+  it("devolve os parceiros reais, por nome, para quem está na Duli", async () => {
+    const banco = organizacoes({
+      data: [
+        { id: "duli", name: "Duli", type: "root", is_test: false },
+        { id: "thais", name: "Thais Fabrini", type: "partner", is_test: false },
+        { id: "teste", name: "Parceiro de Teste", type: "partner", is_test: true },
+        { id: "ana", name: "Ana Parceira", type: "partner", is_test: false },
+      ],
+      error: null,
+    });
+
+    expect(await listarParceirosParaNovoCliente("duli")).toEqual({
+      parceiros: [
+        { id: "ana", nome: "Ana Parceira" },
+        { id: "thais", nome: "Thais Fabrini" },
+      ],
+      error: null,
+    });
+    expect(banco.from).toHaveBeenCalledWith("organizations");
+  });
+
+  it("erro de leitura volta como erro, não como lista vazia", async () => {
+    organizacoes({ data: null, error: { message: "caiu" } });
+    expect(await listarParceirosParaNovoCliente("duli")).toEqual({ parceiros: [], error: "caiu" });
   });
 });

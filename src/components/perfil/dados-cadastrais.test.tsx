@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { CadastroDoContato } from "@/features/cadastro/queries";
@@ -196,5 +196,37 @@ describe("DadosCadastrais", () => {
     expect(screen.getByText(/Link da ficha enviado com a forma do negócio Contrato EB-2/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Cancelar link/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /Gerar/ })).toBeNull();
+  });
+});
+
+describe("DadosCadastrais › cliente de parceiro (PAR-7, critério 8)", () => {
+  function montarDeParceiro(cadastro: Partial<CadastroDoContato> = {}) {
+    render(
+      <DadosCadastrais
+        personId="p1"
+        cadastro={{ ficha: VAZIA, dependentes: [], fichaRecebida: null, linkAtual: null, ...cadastro }}
+        origem={ORIGEM}
+        agora={AGORA}
+        parceiro="Thais Fabrini"
+      />,
+    );
+  }
+
+  it("no lugar do link, diz que os dados são lançados aqui, em Editar", () => {
+    montarDeParceiro();
+
+    expect(
+      screen.getByText("Cliente de Thais Fabrini: os dados cadastrais são lançados aqui, em Editar."),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Gerar link da ficha/ })).toBeNull();
+    expect(screen.queryByText(/Gere o link/)).toBeNull();
+  });
+
+  it("o Editar abre sem e-mail, DDI e telefone", () => {
+    montarDeParceiro();
+    fireEvent.click(screen.getByRole("button", { name: /Editar/ }));
+
+    expect(screen.queryByLabelText(/^E-mail/)).toBeNull();
+    expect(screen.queryByLabelText(/^Telefone/)).toBeNull();
   });
 });

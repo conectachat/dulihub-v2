@@ -179,6 +179,35 @@ describe("parcelasDoAparelho", () => {
     expect(lista[0].cobranca).toBe("EB-1A — honorários");
   });
 
+  it("o cliente de parceiro leva o \"via\" com o nome do parceiro (PAR-11)", async () => {
+    await banco.tabela("organizations").put({
+      id: "thais",
+      name: "Thais Fabrini",
+      slug: "thais-fabrini",
+      type: "partner",
+      is_test: false,
+      updated_at: "2026-10-01T10:00:00Z",
+    });
+    await banco.tabela("people").put({
+      id: ERICK,
+      organization_id: ORG,
+      full_name: "Erick de Teste",
+      partner_organization_id: "thais",
+      updated_at: "2026-10-02T10:00:00Z",
+    });
+
+    const lista = await parcelasDoAparelho(banco, fila);
+
+    expect(lista[0].via).toBe("Thais Fabrini");
+  });
+
+  it("cliente direto, e a linha antiga sem a chave do vínculo, ficam sem \"via\"", async () => {
+    // A pessoa semeada acima não tem `partner_organization_id`: é a linha que
+    // já estava no aparelho antes da 0070.
+    const lista = await parcelasDoAparelho(banco, fila);
+    expect(lista[0].via).toBeNull();
+  });
+
   it("parcela sem o cabeçalho no aparelho não vira linha sem moeda", async () => {
     // O espelho pode trazer a parcela antes da cobrança. Mostrar sem moeda
     // nem cliente é pior do que não mostrar.

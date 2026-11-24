@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/empty-state";
 import { SeloPendente } from "@/components/selo-pendente";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ViaDoParceiro } from "@/components/via-do-parceiro";
 import { parcelasDoAparelho } from "@/features/financeiro/consultas-locais";
 import { recebidoNoMes, situacaoDaParcela } from "@/features/financeiro/regras";
 import { ROTULO_DO_METODO } from "@/lib/parcelas";
@@ -215,6 +216,8 @@ export function ListaDoFinanceiro() {
                   >
                     {p.cliente}
                   </Link>
+                  {/* De quem é a cobrança quando o cliente veio de parceiro (PAR-11). */}
+                  {p.via ? <ViaDoParceiro nome={p.via} /> : null}
                   <p className="truncate text-xs text-muted-foreground">
                     {p.cobranca} · parcela {p.number} ·{" "}
                     {ROTULO_DO_METODO[p.method as keyof typeof ROTULO_DO_METODO] ?? p.method}

@@ -1,3 +1,4 @@
+import type { ParceiroDoContato } from "@/lib/parceiros";
 import type { Tables } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -15,7 +16,10 @@ export type PersonListItem = Pick<
   | "lifecycle_stage"
   | "created_at"
   | "deleted_at"
+  | "partner_organization_id"
 > & {
+  /** O parceiro do cliente de parceiro: o contato que aparece é o dele (PAR-6). */
+  parceiro: ParceiroDoContato | null;
   tags: PersonTag[];
   /** Quantas oportunidades a pessoa tem. É o número do ícone de maleta. */
   opportunity_count: number;
@@ -48,7 +52,8 @@ export async function listPeople({
     .from("people")
     .select(
       `id, full_name, email, phone, phone_country_code, company, job_title,
-       lifecycle_stage, created_at, deleted_at,
+       lifecycle_stage, created_at, deleted_at, partner_organization_id,
+       parceiro:organizations!people_parceiro_fk(name, email, phone_country_code, phone),
        person_tags(tag:tags(id, name, color)),
        opportunities(count)`,
     )
@@ -86,6 +91,8 @@ export async function listPeople({
       lifecycle_stage: r.lifecycle_stage,
       created_at: r.created_at,
       deleted_at: r.deleted_at,
+      partner_organization_id: r.partner_organization_id,
+      parceiro: r.parceiro,
       tags: r.person_tags.map((t) => t.tag),
       opportunity_count: r.opportunities[0]?.count ?? 0,
     };

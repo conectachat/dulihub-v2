@@ -1,14 +1,16 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, TriangleAlert } from "lucide-react";
 
 import { AvisoDeDuplicado } from "@/components/aviso-de-duplicado";
 import { CamposDoContatoNovo } from "@/components/campos-do-contato-novo";
 import { FieldError } from "@/components/field-error";
 import { FormDialog } from "@/components/form-dialog";
 import { ContatoEscolhido, ModosDoContato, type ModoDoContato } from "@/components/modos-do-contato";
+import { NativeSelect } from "@/components/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,8 +25,9 @@ import {
   CAMPO_CONFIRMAR_PARECIDO,
   type ContatoParecido,
   type EstadoComConfirmacao,
+  type Homonimo,
 } from "@/lib/parecidos";
-import { enderecoDoNovoCliente } from "@/lib/pessoa";
+import { enderecoDaPessoa, enderecoDoNovoCliente } from "@/lib/pessoa";
 
 /** A espera entre teclas, a mesma de `BuscaNaUrl`. */
 const ESPERA_DA_BUSCA = 350;
@@ -42,8 +45,19 @@ type Resultado = { linhas: ContatoParaCliente[]; total: number; error: string | 
  * - **Contato novo:** os mesmos campos da Nova oportunidade.
  * - **Parecido** (CON-4): "Sim" usa o existente — se ele já é cliente, abre o
  *   perfil dele, sem gravar; na lixeira, restaura antes.
+ * - **Parceiro** (PAR-5): o parceiro e só o nome do cliente — o contato é o
+ *   do parceiro. O mesmo nome no mesmo parceiro pergunta antes. A lista vem
+ *   do servidor (`parceirosVisiveis`), então parceiro cadastrado offline só
+ *   aparece depois de subir.
  */
-export function NovoClienteDialog() {
+export function NovoClienteDialog({
+  parceiros = [],
+  podeCadastrarParceiro = false,
+}: {
+  parceiros?: { id: string; nome: string }[];
+  /** Só o dono da Duli cadastra parceiro: só ele vê o link para a Configuração. */
+  podeCadastrarParceiro?: boolean;
+} = {}) {
   const router = useRouter();
   const [modo, setModo] = useState<ModoDoContato>("existente");
   const [escolhido, setEscolhido] = useState<{ id: string; nome: string } | null>(null);
@@ -118,6 +132,15 @@ export function NovoClienteDialog() {
         </Button>
       }
       aviso={(estado, { reenviarCom }) => {
+        if (estado.homonimos?.length) {
+          return (
+            <AvisoDeHomonimo
+              homonimos={estado.homonimos}
+              parceiro={estado.parceiro ?? ""}
+              aoCriarMesmoAssim={() => reenviarCom({ [CAMPO_CONFIRMAR_PARECIDO]: "1" })}
+            />
+          );
+        }
         if (!estado.parecidos?.length) return null;
         const parecidos = estado.parecidos;
         return (
@@ -131,9 +154,11 @@ export function NovoClienteDialog() {
         );
       }}
     >
-      <ModosDoContato modo={modo} aoTrocar={setModo} rotulo="Contato do cliente" />
+      <ModosDoContato modo={modo} aoTrocar={setModo} rotulo="Contato do cliente" comParceiro />
 
-      {modo === "novo" ? (
+      {modo === "parceiro" ? (
+        <CamposDoClienteDeParceiro parceiros={parceiros} podeCadastrar={podeCadastrarParceiro} />
+      ) : modo === "novo" ? (
         <CamposDoContatoNovo />
       ) : escolhido ? (
         <ContatoEscolhido id={escolhido.id} nome={escolhido.nome} aoTrocar={() => setEscolhido(null)} />
@@ -193,5 +218,92 @@ export function NovoClienteDialog() {
 
       <p className="text-sm text-muted-foreground">Não tem volta: cliente não volta a ser lead.</p>
     </FormDialog>
+  );
+}
+
+/** O parceiro e o nome: o resto do contato é o do parceiro. */
+function CamposDoClienteDeParceiro({
+  parceiros,
+  podeCadastrar,
+}: {
+  parceiros: { id: string; nome: string }[];
+  podeCadastrar: boolean;
+}) {
+  if (parceiros.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Nenhum parceiro cadastrado. Cadastre em{" "}
+        {podeCadastrar ? (
+          <Link href="/configuracoes/parceiros" className="font-medium text-primary underline underline-offset-4">
+            Configuração › Parceiros
+          </Link>
+        ) : (
+          "Configuração › Parceiros"
+        )}
+        .
+      </p>
+    );
+  }
+
+  return (
+    <>
+      <div className="space-y-2">
+        <Label htmlFor="nc-parceiro">Parceiro *</Label>
+        <NativeSelect id="nc-parceiro" name="parceiro_id" defaultValue="" required>
+          <option value="" disabled>
+            Escolha o parceiro
+          </option>
+          {parceiros.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nome}
+            </option>
+          ))}
+        </NativeSelect>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="nc-nome-do-cliente">Nome do cliente *</Label>
+        <Input id="nc-nome-do-cliente" name="nome_do_cliente" autoComplete="off" required />
+      </div>
+    </>
+  );
+}
+
+/**
+ * O mesmo cliente subido duas vezes numa carga grande: o mesmo nome, vindo do
+ * mesmo parceiro, pergunta antes (desenho §5.2).
+ */
+function AvisoDeHomonimo({
+  homonimos,
+  parceiro,
+  aoCriarMesmoAssim,
+}: {
+  homonimos: Homonimo[];
+  parceiro: string;
+  aoCriarMesmoAssim: () => void;
+}) {
+  return (
+    <div role="alert" className="space-y-3 rounded-2xl border bg-warning/15 p-4 text-sm">
+      <p className="flex items-center gap-2 font-medium">
+        <TriangleAlert className="h-4 w-4 shrink-0 text-brand" />
+        Já existe um cliente com esse nome vindo de {parceiro}.
+      </p>
+      <ul className="space-y-1">
+        {homonimos.map((h) => (
+          <li key={h.id}>
+            <Link
+              href={enderecoDaPessoa(h.id, "client")}
+              className="font-medium text-primary underline underline-offset-4"
+            >
+              {h.nome}
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <div className="flex justify-end">
+        <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={aoCriarMesmoAssim}>
+          Criar mesmo assim
+        </Button>
+      </div>
+    </div>
   );
 }

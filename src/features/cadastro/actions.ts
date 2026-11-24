@@ -33,25 +33,29 @@ export async function salvarCadastro(
   personId: string,
   formData: FormData,
 ): Promise<EstadoDaFicha> {
-  // A equipe completa aos poucos: nome, e-mail, DDI e telefone obrigatórios.
-  const ficha = fichaDoFormulario(formData, "parcial");
-  if (!ficha.ok) return { error: ficha.erro, campos: ficha.campos };
-
   const supabase = await createClient();
 
-  if (formData.get(CAMPO_CONFIRMAR_PARECIDO) !== "1") {
-    const { data: atual, error: erroAtual } = await supabase
-      .from("people")
-      .select("email, phone_country_code, phone")
-      .eq("id", personId)
-      .maybeSingle();
-    if (erroAtual) return { error: traduzirErro(erroAtual) };
-    if (!atual) return { error: "Contato não encontrado." };
+  // Quem decide se a ficha tem contato é a linha da pessoa, nunca o
+  // formulário: o cliente de parceiro não tem contato próprio (PAR-7).
+  const { data: atual, error: erroAtual } = await supabase
+    .from("people")
+    .select("email, phone_country_code, phone, partner_organization_id")
+    .eq("id", personId)
+    .maybeSingle();
+  if (erroAtual) return { error: traduzirErro(erroAtual) };
+  if (!atual) return { error: "Contato não encontrado." };
+  const semContato = atual.partner_organization_id !== null && atual.partner_organization_id !== undefined;
 
+  // A equipe completa aos poucos: nome, e-mail, DDI e telefone obrigatórios —
+  // menos no cliente de parceiro, que fica só com o nome.
+  const ficha = fichaDoFormulario(formData, "parcial", undefined, { semContato });
+  if (!ficha.ok) return { error: ficha.erro, campos: ficha.campos };
+
+  if (!semContato && formData.get(CAMPO_CONFIRMAR_PARECIDO) !== "1") {
     const novo = {
-      email: ficha.dados.email,
-      ddi: ficha.dados.phone_country_code,
-      telefone: ficha.dados.phone,
+      email: ficha.dados.email ?? null,
+      ddi: ficha.dados.phone_country_code ?? null,
+      telefone: ficha.dados.phone ?? null,
     };
     const antes = { email: atual.email, ddi: atual.phone_country_code, telefone: atual.phone };
 

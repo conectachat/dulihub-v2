@@ -198,3 +198,77 @@ describe("buscarContatosParaCliente", () => {
     expect(r.error).toBe("Não foi possível concluir. Tente de novo.");
   });
 });
+
+describe("criarCliente › Parceiro (PAR-5)", () => {
+  const PARCEIRO = "22222222-2222-4222-8222-222222222222";
+
+  it("manda o parceiro e só o nome, e leva ao perfil em Projetos", async () => {
+    await expect(
+      criarCliente(
+        VAZIO,
+        formulario({ modo_contato: "parceiro", parceiro_id: PARCEIRO, nome_do_cliente: " Fulano de Tal " }),
+      ),
+    ).rejects.toThrow(`NEXT_REDIRECT /clientes/${PESSOA}?aba=projetos&novo-processo=novo`);
+
+    expect(rpc).toHaveBeenCalledWith("criar_cliente", {
+      p_organizacao: "org-1",
+      p_parceiro: PARCEIRO,
+      p_novo_contato: { full_name: "Fulano de Tal" },
+      p_confirmar_contato_parecido: false,
+    });
+  });
+
+  it("sem parceiro escolhido, para antes do banco", async () => {
+    const r = await criarCliente(VAZIO, formulario({ modo_contato: "parceiro", nome_do_cliente: "Fulano" }));
+    expect(r.error).toBe("Escolha o parceiro.");
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("sem nome, para antes do banco", async () => {
+    const r = await criarCliente(
+      VAZIO,
+      formulario({ modo_contato: "parceiro", parceiro_id: PARCEIRO, nome_do_cliente: "   " }),
+    );
+    expect(r.error).toBe("Informe o nome do cliente.");
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("nome repetido no parceiro: devolve os homônimos, sem gravar", async () => {
+    usar({
+      data: {
+        situacao: "precisa_confirmar",
+        homonimos: [{ id: PESSOA, nome: "Fulano de Tal" }],
+        parceiro: "Thais Fabrini",
+      },
+      error: null,
+    });
+
+    const r = await criarCliente(
+      VAZIO,
+      formulario({ modo_contato: "parceiro", parceiro_id: PARCEIRO, nome_do_cliente: "fulano de tal" }),
+    );
+
+    expect(r.ok).toBeUndefined();
+    expect(r.homonimos).toEqual([{ id: PESSOA, nome: "Fulano de Tal" }]);
+    expect(r.parceiro).toBe("Thais Fabrini");
+    expect(r.token).toBeTruthy();
+  });
+
+  it("a confirmação vem do campo de confirmação", async () => {
+    await expect(
+      criarCliente(
+        VAZIO,
+        formulario({
+          modo_contato: "parceiro",
+          parceiro_id: PARCEIRO,
+          nome_do_cliente: "Fulano",
+          [CAMPO_CONFIRMAR_PARECIDO]: "1",
+        }),
+      ),
+    ).rejects.toThrow("NEXT_REDIRECT");
+    expect(rpc).toHaveBeenCalledWith(
+      "criar_cliente",
+      expect.objectContaining({ p_confirmar_contato_parecido: true }),
+    );
+  });
+});

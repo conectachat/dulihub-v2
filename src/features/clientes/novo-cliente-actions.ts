@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { falhou } from "@/lib/action-state";
-import { contatoNovoDoFormulario } from "@/lib/contato";
+import { aparar, contatoNovoDoFormulario } from "@/lib/contato";
 import { traduzirErro } from "@/lib/erros";
 import { novoId } from "@/lib/id";
 import { contextoAtual, SEM_ORGANIZACAO } from "@/lib/organizacao";
@@ -45,8 +45,18 @@ export async function criarCliente(
   _anterior: EstadoComConfirmacao,
   formData: FormData,
 ): Promise<EstadoComConfirmacao> {
-  let contato: { p_contato: string } | { p_novo_contato: Record<string, string | null> };
-  if (formData.get("modo_contato") === "novo") {
+  let contato:
+    | { p_contato: string }
+    | { p_novo_contato: Record<string, string | null> }
+    | { p_parceiro: string; p_novo_contato: { full_name: string } };
+  if (formData.get("modo_contato") === "parceiro") {
+    // Novo cliente › Parceiro (PAR-5): só o nome; o contato é o do parceiro.
+    const parceiro = formData.get("parceiro_id");
+    if (!z.string().uuid().safeParse(parceiro).success) return falhou("Escolha o parceiro.");
+    const nome = aparar(String(formData.get("nome_do_cliente") ?? ""));
+    if (!nome) return falhou("Informe o nome do cliente.");
+    contato = { p_parceiro: parceiro as string, p_novo_contato: { full_name: nome } };
+  } else if (formData.get("modo_contato") === "novo") {
     const novo = contatoNovoDoFormulario(formData);
     if (!novo.ok) return falhou(novo.erro);
     contato = { p_novo_contato: novo.contato };
@@ -71,6 +81,14 @@ export async function criarCliente(
   if (!resposta.success) return falhou("O servidor respondeu num formato inesperado.");
 
   if (resposta.data.situacao === "precisa_confirmar") {
+    if ("homonimos" in resposta.data) {
+      return {
+        error: null,
+        homonimos: resposta.data.homonimos,
+        parceiro: resposta.data.parceiro,
+        token: novoId(),
+      };
+    }
     return { error: null, parecidos: resposta.data.parecidos, token: novoId() };
   }
 

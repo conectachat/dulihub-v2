@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/empty-state";
 import { IconAction } from "@/components/icon-action";
 import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
+import { ViaDoParceiro } from "@/components/via-do-parceiro";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -17,6 +18,7 @@ import {
 import { restorePerson, softDeletePerson } from "@/features/people/actions";
 import { listPeople, listTags } from "@/features/people/queries";
 import { formatarData, iniciais, telefoneCompleto } from "@/lib/formatar";
+import { contatoExibido } from "@/lib/parceiros";
 import { enderecoDaPessoa } from "@/lib/pessoa";
 
 import { ContactFilters } from "./filters";
@@ -94,7 +96,9 @@ export default async function ContatosPage({
             </TableHeader>
             <TableBody>
               {people.map((person) => {
-                const phone = telefoneCompleto(person.phone_country_code, person.phone);
+                // O contato do cliente de parceiro é o do parceiro (PAR-6).
+                const contato = contatoExibido(person, person.parceiro);
+                const phone = telefoneCompleto(contato.ddi, contato.telefone);
 
                 return (
                   <TableRow key={person.id}>
@@ -117,7 +121,13 @@ export default async function ContatosPage({
                     </TableCell>
 
                     <TableCell className="text-muted-foreground">
-                      {person.email ?? "—"}
+                      {contato.email ?? "—"}
+                      {contato.via ? (
+                        <>
+                          {" "}
+                          <ViaDoParceiro nome={contato.via} />
+                        </>
+                      ) : null}
                     </TableCell>
 
                     <TableCell>

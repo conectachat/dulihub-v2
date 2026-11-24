@@ -444,7 +444,7 @@ function Anexar({
     <FormDialog
       acao={enviar}
       titulo={`Anexar à parcela ${parcela.number}`}
-      descricao="Boleto, nota fiscal ou comprovante. PDF, imagem, Word ou Excel, até 20 MB."
+      descricao="Boleto, nota fiscal / invoice ou comprovante. PDF, imagem, Word ou Excel, até 20 MB."
       gatilho={
         <Button
           type="button"

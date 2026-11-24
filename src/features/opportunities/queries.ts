@@ -153,6 +153,9 @@ export async function listPeopleForPicker() {
     .from("people")
     .select("id, full_name")
     .is("deleted_at", null)
+    // Cliente de parceiro não entra no funil (PAR-8): o banco recusa (0071), e
+    // o seletor nem o oferece.
+    .is("partner_organization_id", null)
     .order("full_name")
     .limit(500);
 

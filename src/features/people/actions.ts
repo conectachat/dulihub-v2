@@ -18,7 +18,13 @@ import { hojeEmSaoPaulo } from "@/lib/formatar";
 import { diferencaDeParticipantes } from "@/lib/participantes";
 import { revalidarPessoa } from "@/lib/revalidar";
 import { createClient } from "@/lib/supabase/server";
-import { clienteFromForm, personFromForm, type PersonInput } from "./schema";
+import type { TablesUpdate } from "@/lib/supabase/database.types";
+import {
+  clienteFromForm,
+  personFromForm,
+  personSemContatoFromForm,
+  type PersonInput,
+} from "./schema";
 
 type Banco = Awaited<ReturnType<typeof createClient>>;
 
@@ -104,25 +110,33 @@ export async function updatePerson(
   const id = formData.get("id");
   if (typeof id !== "string" || !id) return falhou("Contato não informado.");
 
-  const parsed = personFromForm(formData);
-  if (!parsed.success) return falhou(parsed.error.issues[0].message);
-
   const supabase = await createClient();
+  const { data: atual, error: erroAtual } = await supabase
+    .from("people")
+    .select("email, phone_country_code, phone, partner_organization_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (erroAtual) return falhou(traduzirErro(erroAtual));
+  if (!atual) return falhou("Contato não encontrado.");
 
-  if (formData.get(CAMPO_CONFIRMAR_PARECIDO) !== "1") {
-    const { data: atual, error: erroAtual } = await supabase
-      .from("people")
-      .select("email, phone_country_code, phone")
-      .eq("id", id)
-      .maybeSingle();
-    if (erroAtual) return falhou(traduzirErro(erroAtual));
-    if (!atual) return falhou("Contato não encontrado.");
-
-    const parar = await parecidosNaTroca(supabase, id, atual, parsed.data);
-    if (parar) return parar;
+  // O cliente de parceiro não tem contato próprio (PAR-7): quem decide é a
+  // linha, nunca o formulário. Sem contato, sem parecido, sem as três colunas.
+  let campos: TablesUpdate<"people">;
+  if (atual.partner_organization_id) {
+    const semContato = personSemContatoFromForm(formData);
+    if (!semContato.success) return falhou(semContato.error.issues[0].message);
+    campos = semContato.data;
+  } else {
+    const parsed = personFromForm(formData);
+    if (!parsed.success) return falhou(parsed.error.issues[0].message);
+    if (formData.get(CAMPO_CONFIRMAR_PARECIDO) !== "1") {
+      const parar = await parecidosNaTroca(supabase, id, atual, parsed.data);
+      if (parar) return parar;
+    }
+    campos = parsed.data;
   }
 
-  const { error } = await supabase.from("people").update(parsed.data).eq("id", id);
+  const { error } = await supabase.from("people").update(campos).eq("id", id);
 
   if (error) return falhou(traduzirErro(error));
 
@@ -193,28 +207,39 @@ export async function atualizarCliente(
   const id = formData.get("id");
   if (typeof id !== "string" || !id) return falhou("Cliente não informado.");
 
-  const parsed = personFromForm(formData);
-  if (!parsed.success) return falhou(parsed.error.issues[0].message);
   const cliente = clienteFromForm(formData, hojeEmSaoPaulo());
   if (!cliente.ok) return falhou(cliente.erro);
 
   const supabase = await createClient();
   const { data: atual, error: erroAtual } = await supabase
     .from("people")
-    .select("organization_id, email, phone_country_code, phone")
+    .select("organization_id, email, phone_country_code, phone, partner_organization_id")
     .eq("id", id)
     .maybeSingle();
   if (erroAtual) return falhou(traduzirErro(erroAtual));
   if (!atual) return falhou("Cliente não encontrado.");
 
-  if (formData.get(CAMPO_CONFIRMAR_PARECIDO) !== "1") {
-    const parar = await parecidosNaTroca(supabase, id, atual, parsed.data);
-    if (parar) return parar;
+  // Cliente de parceiro (PAR-7, critério 9a): trocar o nome, o dono ou o
+  // "cliente desde" não pede contato, não procura parecido e não escreve as
+  // três colunas — o contato que aparece é o do parceiro.
+  let campos: TablesUpdate<"people">;
+  if (atual.partner_organization_id) {
+    const semContato = personSemContatoFromForm(formData);
+    if (!semContato.success) return falhou(semContato.error.issues[0].message);
+    campos = semContato.data;
+  } else {
+    const parsed = personFromForm(formData);
+    if (!parsed.success) return falhou(parsed.error.issues[0].message);
+    if (formData.get(CAMPO_CONFIRMAR_PARECIDO) !== "1") {
+      const parar = await parecidosNaTroca(supabase, id, atual, parsed.data);
+      if (parar) return parar;
+    }
+    campos = parsed.data;
   }
 
   const { error } = await supabase
     .from("people")
-    .update({ ...parsed.data, owner_id: cliente.owner_id, client_since: cliente.client_since })
+    .update({ ...campos, owner_id: cliente.owner_id, client_since: cliente.client_since })
     .eq("id", id);
   if (error) return falhou(traduzirErro(error));
 

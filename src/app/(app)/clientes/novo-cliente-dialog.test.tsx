@@ -229,3 +229,75 @@ describe("NovoClienteDialog: a busca enquanto espera e quando falha", () => {
     expect(await screen.findByRole("button", { name: /Escolher Bia Lima/ })).toBeInTheDocument();
   });
 });
+
+describe("NovoClienteDialog › Parceiro (PAR-5)", () => {
+  const THAIS = { id: "p1", nome: "Thais Fabrini" };
+
+  async function abrirNoParceiro(parceiros = [THAIS], podeCadastrarParceiro = true) {
+    render(<NovoClienteDialog parceiros={parceiros} podeCadastrarParceiro={podeCadastrarParceiro} />);
+    fireEvent.click(screen.getByRole("button", { name: "Novo cliente" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Parceiro" }));
+  }
+
+  function preencher(nome: string) {
+    fireEvent.change(screen.getByLabelText("Parceiro *"), { target: { value: "p1" } });
+    fireEvent.change(screen.getByLabelText("Nome do cliente *"), { target: { value: nome } });
+  }
+
+  it("pede só o parceiro e o nome, e envia os dois", async () => {
+    vi.mocked(criarCliente).mockResolvedValueOnce(gravou());
+    await abrirNoParceiro();
+
+    expect(screen.queryByLabelText("E-mail *")).toBeNull();
+    expect(screen.queryByLabelText("Telefone *")).toBeNull();
+    preencher("Fulano de Tal");
+    fireEvent.click(screen.getByRole("button", { name: "Criar cliente" }));
+
+    await vi.waitFor(() => expect(criarCliente).toHaveBeenCalledTimes(1));
+    expect(chamada(0).get("modo_contato")).toBe("parceiro");
+    expect(chamada(0).get("parceiro_id")).toBe("p1");
+    expect(chamada(0).get("nome_do_cliente")).toBe("Fulano de Tal");
+    expect(screen.getByText("Não tem volta: cliente não volta a ser lead.")).toBeInTheDocument();
+  });
+
+  it("nome repetido no parceiro: pergunta, com o perfil, e Criar mesmo assim reenvia confirmando", async () => {
+    vi.mocked(criarCliente)
+      .mockResolvedValueOnce({
+        error: null,
+        token: "t1",
+        homonimos: [{ id: "c1", nome: "Fulano de Tal" }],
+        parceiro: "Thais Fabrini",
+      })
+      .mockResolvedValueOnce(gravou());
+    await abrirNoParceiro();
+    preencher("fulano de tal");
+    fireEvent.click(screen.getByRole("button", { name: "Criar cliente" }));
+
+    expect(
+      await screen.findByText("Já existe um cliente com esse nome vindo de Thais Fabrini."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Fulano de Tal/ })).toHaveAttribute("href", "/clientes/c1");
+
+    fireEvent.click(screen.getByRole("button", { name: "Criar mesmo assim" }));
+    await vi.waitFor(() => expect(criarCliente).toHaveBeenCalledTimes(2));
+    expect(chamada(1).get(CAMPO_CONFIRMAR_PARECIDO)).toBe("1");
+    expect(chamada(1).get("modo_contato")).toBe("parceiro");
+  });
+
+  it("sem parceiro cadastrado, diz onde cadastrar, com o link para quem pode", async () => {
+    await abrirNoParceiro([], true);
+    expect(screen.getByText(/Nenhum parceiro cadastrado\. Cadastre em/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Configuração › Parceiros" })).toHaveAttribute(
+      "href",
+      "/configuracoes/parceiros",
+    );
+  });
+
+  it("sem parceiro e sem poder cadastrar, a frase vem sem o link", async () => {
+    await abrirNoParceiro([], false);
+    expect(
+      screen.getByText("Nenhum parceiro cadastrado. Cadastre em Configuração › Parceiros."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Configuração › Parceiros" })).toBeNull();
+  });
+});

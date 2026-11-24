@@ -13,7 +13,11 @@ import { atualizarCliente } from "@/features/people/actions";
 import { CAMPO_CONFIRMAR_PARECIDO, type EstadoComConfirmacao } from "@/lib/parecidos";
 import { enderecoDaPessoa } from "@/lib/pessoa";
 
-import { CamposDoContato, type PersonFormValues } from "../../contatos/person-dialog";
+import {
+  CamposDoContato,
+  DESCRICAO_SEM_CONTATO,
+  type PersonFormValues,
+} from "../../contatos/person-dialog";
 
 type Membro = { id: string; nome: string };
 
@@ -45,7 +49,11 @@ export function ClienteDialog({
     <FormDialog<EstadoComConfirmacao>
       acao={atualizarCliente}
       titulo="Editar cliente"
-      descricao="Nome, telefone e e-mail são obrigatórios."
+      descricao={
+        cliente.partner_organization_id
+          ? DESCRICAO_SEM_CONTATO
+          : "Nome, telefone e e-mail são obrigatórios."
+      }
       gatilho={
         <Button
           variant="ghost"
@@ -72,7 +80,7 @@ export function ClienteDialog({
     >
       <input type="hidden" name="id" value={cliente.id} />
 
-      <CamposDoContato person={cliente} />
+      <CamposDoContato person={cliente} semContato={Boolean(cliente.partner_organization_id)} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <CampoDoDono equipe={equipe} ownerId={cliente.owner_id} nomeDoDono={nomeDoDono} />

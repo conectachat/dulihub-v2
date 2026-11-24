@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { anexar, removerAnexo } from "./anexos";
+import { anexar, removerAnexo, TIPOS_DE_ANEXO } from "./anexos";
 
 /**
  * Anexos da parcela (CLI-6): boleto, nota fiscal, comprovante. Pelo cliente
@@ -95,5 +95,13 @@ describe("removerAnexo", () => {
 
     expect(r.error).not.toBeNull();
     expect(b.remove).not.toHaveBeenCalled();
+  });
+});
+
+describe("TIPOS_DE_ANEXO", () => {
+  // A nota da Duli para parceiro de fora do Brasil é invoice (PAR-11); o
+  // valor gravado não muda.
+  it("a nota fiscal se chama \"Nota fiscal / invoice\"", () => {
+    expect(TIPOS_DE_ANEXO.find((t) => t.valor === "nota_fiscal")?.rotulo).toBe("Nota fiscal / invoice");
   });
 });

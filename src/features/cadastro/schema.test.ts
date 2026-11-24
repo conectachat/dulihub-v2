@@ -286,3 +286,24 @@ describe("fichaDoFormulario — parcial (a porta da equipe)", () => {
     expect(r.campos.tax_id).toMatch(/CPF/);
   });
 });
+
+describe("fichaDoFormulario — sem contato (cliente de parceiro, PAR-7)", () => {
+  // O cliente de parceiro não tem contato próprio: a ficha não cobra nem
+  // leva as três chaves. Chave com nulo ainda conta para `salvar_cadastro`
+  // (0040), por isso elas saem do objeto.
+  it("não leva e-mail, DDI nem telefone, e não confere contato", () => {
+    const r = fichaDoFormulario(
+      formulario({ full_name: "Fulano de Tal", email: "x", phone: "1" }),
+      "parcial",
+      undefined,
+      { semContato: true },
+    );
+
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.dados.full_name).toBe("Fulano de Tal");
+    expect(r.dados).not.toHaveProperty("email");
+    expect(r.dados).not.toHaveProperty("phone_country_code");
+    expect(r.dados).not.toHaveProperty("phone");
+  });
+});
